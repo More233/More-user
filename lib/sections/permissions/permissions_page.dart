@@ -22,49 +22,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
         curve: Curves.easeInOut,
       );
     } else {
-      // End of flow: show a nice success snackbar or dialog
-      _showSuccessDialog();
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const AuthFlowPage()),
+      );
     }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'All Set!',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF1A1A2E),
-          ),
-        ),
-        content: Text(
-          'Your permissions preferences have been configured successfully.',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF9CA3AF),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const AuthFlowPage()),
-              );
-            },
-            child: Text(
-              'Done',
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF7C57FC),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

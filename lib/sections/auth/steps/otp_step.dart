@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/otp_input.dart';
 
 class OtpBottomSheet extends StatefulWidget {
@@ -21,17 +22,44 @@ class OtpBottomSheet extends StatefulWidget {
 class _OtpBottomSheetState extends State<OtpBottomSheet> {
   String _enteredCode = '';
   String? _errorCode;
+  bool _isLoading = false;
 
-  void _verifyCode() {
+  void _verifyCode() async {
     if (_enteredCode.length == 6) {
-      if (_enteredCode == '123456' || _enteredCode == '111111') {
-        // Success code
-        widget.onVerified();
-      } else {
-        // Validation fails for any other code for demo purposes
+      setState(() {
+        _isLoading = true;
+        _errorCode = null;
+      });
+      try {
+        final isEmail = widget.targetAddress.contains('@');
+        final response = await Supabase.instance.client.auth.verifyOTP(
+          type: isEmail ? OtpType.email : OtpType.sms,
+          token: _enteredCode,
+          phone: isEmail ? null : widget.targetAddress,
+          email: isEmail ? widget.targetAddress : null,
+        );
+        
+        if (response.user != null) {
+          widget.onVerified();
+        } else {
+          setState(() {
+            _errorCode = 'Verification failed. Please check the code.';
+          });
+        }
+      } on AuthException catch (e) {
         setState(() {
-          _errorCode = 'Incorrect verification code. Please try again.';
+          _errorCode = e.message;
         });
+      } catch (e) {
+        setState(() {
+          _errorCode = 'An unexpected error occurred: $e';
+        });
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -126,9 +154,9 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
               width: double.infinity,
               height: 56,
               child: Opacity(
-                opacity: canVerify ? 1.0 : 0.7,
+                opacity: (canVerify && !_isLoading) ? 1.0 : 0.7,
                 child: ElevatedButton(
-                  onPressed: canVerify ? _verifyCode : null,
+                  onPressed: (canVerify && !_isLoading) ? _verifyCode : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C57FC),
                     disabledBackgroundColor: const Color(0xFF7C57FC).withValues(alpha: 0.5),
@@ -137,26 +165,24 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    'Verify',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Verify',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Helper note
-            Text(
-              'For testing: Use code 123456 or 111111',
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: const Color(0xFF9CA3AF),
-                fontStyle: FontStyle.italic,
               ),
             ),
           ],

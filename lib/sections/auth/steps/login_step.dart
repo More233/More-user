@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/country_picker.dart';
 
@@ -24,6 +25,7 @@ class _LoginStepState extends State<LoginStep> {
   final TextEditingController _inputController = TextEditingController();
   CountryInfo _selectedCountry = CountryPicker.countries[0]; // Default SA
   String? _errorText;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -31,7 +33,7 @@ class _LoginStepState extends State<LoginStep> {
     super.dispose();
   }
 
-  void _handleContinue() {
+  Future<void> _handleContinue() async {
     final value = _inputController.text.trim();
     if (value.isEmpty) return;
 
@@ -62,188 +64,74 @@ class _LoginStepState extends State<LoginStep> {
 
     setState(() {
       _errorText = null;
+      _isLoading = true;
     });
 
-    // Show Detected Account bottom sheet for testing specific email/numbers to wow the user
-    if (!_isPhoneTab && value.contains('abdelrahman')) {
-      _showAccountDetectedBottomSheet(context, value);
-    } else {
-      widget.onContinue(_isPhoneTab ? '${_selectedCountry.dialCode} $value' : value);
+    final address = _isPhoneTab ? '${_selectedCountry.dialCode}$value' : value;
+
+    try {
+      if (_isPhoneTab) {
+        await Supabase.instance.client.auth.signInWithOtp(
+          phone: address,
+        );
+      } else {
+        await Supabase.instance.client.auth.signInWithOtp(
+          email: address,
+        );
+      }
+
+      if (mounted) {
+        widget.onContinue(address);
+      }
+    } on AuthException catch (e) {
+      setState(() {
+        _errorText = e.message;
+      });
+    } catch (e) {
+      setState(() {
+        _errorText = 'An unexpected error occurred: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  void _showAccountDetectedBottomSheet(BuildContext context, String enteredEmail) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: Colors.white,
-      builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 12,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Slider Indicator
-              Container(
-                width: 56,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8E8E8),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              // Header
-              Text(
-                'Account Detected',
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1A2E),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'An account is already linked to this email address. Let’s sign you in directly.',
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF6B7280),
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              // Account Card
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFCFCFD),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE8E8E8)),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEDE6FC),
-                        shape: BoxShape.circle,
-                      ),
-                      padding: const EdgeInsets.all(10),
-                      child: SvgPicture.asset(
-                        'assets/Auth Section/Basic information  Default/icon/user-multiple.svg',
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFF7C57FC),
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Abdel-rahman Mohammed',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1A1A2E),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            enteredEmail,
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: const Color(0xFF9CA3AF),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Actions
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onContinue(enteredEmail);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7C57FC),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Sign in to this account',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFFE8E8E8)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    'Use a different email',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1A1A2E),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () {},
-                child: Text(
-                  'Need help?',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF9CA3AF),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
-    );
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.moreapp://login-callback',
+      );
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign-in failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -397,19 +285,22 @@ class _LoginStepState extends State<LoginStep> {
                 hintText: '${_selectedCountry.dialCode}  ${_selectedCountry.hintFormat}',
                 keyboardType: TextInputType.phone,
                 errorText: _errorText,
+                readOnly: _isLoading,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(_selectedCountry.code == 'EG' ? 10 : 9),
                 ],
                 prefixIcon: CountryPicker(
                   selectedCountry: _selectedCountry,
-                  onCountryChanged: (c) {
-                    setState(() {
-                      _selectedCountry = c;
-                      _inputController.clear();
-                      _errorText = null;
-                    });
-                  },
+                  onCountryChanged: _isLoading
+                      ? (_) {}
+                      : (c) {
+                          setState(() {
+                            _selectedCountry = c;
+                            _inputController.clear();
+                            _errorText = null;
+                          });
+                        },
                 ),
                 onChanged: (val) {
                   setState(() {
@@ -425,6 +316,7 @@ class _LoginStepState extends State<LoginStep> {
                 hintText: 'name@example.com',
                 keyboardType: TextInputType.emailAddress,
                 errorText: _errorText,
+                readOnly: _isLoading,
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(2.0),
                   child: SvgPicture.asset(
@@ -449,9 +341,9 @@ class _LoginStepState extends State<LoginStep> {
               width: double.infinity,
               height: 56,
               child: Opacity(
-                opacity: hasValue ? 1.0 : 0.7,
+                opacity: (hasValue && !_isLoading) ? 1.0 : 0.7,
                 child: ElevatedButton(
-                  onPressed: hasValue ? _handleContinue : null,
+                  onPressed: (hasValue && !_isLoading) ? _handleContinue : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C57FC),
                     disabledBackgroundColor: const Color(0xFF7C57FC).withValues(alpha: 0.5),
@@ -460,14 +352,23 @@ class _LoginStepState extends State<LoginStep> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    'Continue',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Continue',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -495,19 +396,19 @@ class _LoginStepState extends State<LoginStep> {
             _buildSocialButton(
               logoSvgPath: 'assets/Auth Section/Get started with More/icon/Social icon.svg',
               platformName: 'Google',
-              onPressed: () {
-                // Pre-populate with testing email to showcase Bottom Sheet account detection
-                setState(() {
-                  _isPhoneTab = false;
-                  _inputController.text = 'abdelrahmanOfficial@gmail.com';
-                });
-              },
+              onPressed: _isLoading ? () {} : _handleGoogleSignIn,
             ),
             const SizedBox(height: 16),
             _buildSocialButton(
               logoSvgPath: 'assets/Auth Section/Get started with More/icon/Social icon apple.svg',
               platformName: 'Apple',
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Apple sign-in will be enabled soon.'),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 48),
             // Sign Up Switcher Link
