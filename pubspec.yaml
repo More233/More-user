@@ -96,6 +96,7 @@ flutter:
     - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Multiple Photos Crop Preview/image/
     - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/
     - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Selected Photos Bottom Tray/icon/
+    - assets/Organized/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
