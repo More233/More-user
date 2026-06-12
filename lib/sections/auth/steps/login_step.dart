@@ -454,7 +454,7 @@ class _LoginStepState extends State<LoginStep> {
                   onPressed: hasValue ? _handleContinue : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C57FC),
-                    disabledBackgroundColor: const Color(0xFF7C57FC).withOpacity(0.5),
+                    disabledBackgroundColor: const Color(0xFF7C57FC).withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

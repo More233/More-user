@@ -99,7 +99,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
               boxShadow: _isFocused
                   ? [
                       BoxShadow(
-                        color: const Color(0xFF7C57FC).withOpacity(0.1),
+                        color: const Color(0xFF7C57FC).withValues(alpha: 0.1),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),

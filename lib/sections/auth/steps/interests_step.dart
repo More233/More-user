@@ -188,7 +188,7 @@ class _InterestsStepState extends State<InterestsStep> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF8B60FC).withOpacity(0.18),
+                            color: const Color(0xFF8B60FC).withValues(alpha: 0.18),
                             blurRadius: 12,
                             offset: const Offset(0, 2),
                           ),
@@ -249,7 +249,7 @@ class _InterestsStepState extends State<InterestsStep> {
                         onPressed: canContinue ? widget.onCompleted : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7C57FC),
-                          disabledBackgroundColor: const Color(0xFF7C57FC).withOpacity(0.5),
+                          disabledBackgroundColor: const Color(0xFF7C57FC).withValues(alpha: 0.5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

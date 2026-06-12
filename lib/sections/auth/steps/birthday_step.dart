@@ -134,7 +134,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                   border: Border.all(color: const Color(0xFFE8E8E8), width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF7C57FC).withOpacity(0.02),
+                      color: const Color(0xFF7C57FC).withValues(alpha: 0.02),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -158,7 +158,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                       Container(
                         height: 44,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF7C57FC).withOpacity(0.06),
+                          color: const Color(0xFF7C57FC).withValues(alpha: 0.06),
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
