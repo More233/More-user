@@ -37,6 +37,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
   path_drawing: ^1.0.1
   google_fonts: ^6.2.0
+  supabase_flutter: ^2.8.0
 
 dev_dependencies:
   flutter_test:
