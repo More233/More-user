@@ -222,7 +222,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
             child: const CircleAvatar(
               radius: 24,
               backgroundImage: AssetImage(
-                'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/Element.png',
+                'assets/Timeline/Personal Timeline  Default State/image/Element.png',
               ),
             ),
           ),
@@ -239,7 +239,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/image 156.png',
+                  'assets/Timeline/Personal Timeline  Default State/image/image 156.png',
                   width: 24,
                   height: 24,
                 ),
@@ -258,7 +258,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
           const Spacer(),
           // Search button
           _buildActionButton(
-            iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/search-01.svg',
+            iconPath: 'assets/Timeline/Personal Timeline  Default State/icon/search-01.svg',
             onTap: () {
               Navigator.push(
                 context,
@@ -275,7 +275,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
           const SizedBox(width: 16),
           // Notification button
           _buildActionButton(
-            iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/notification-02.svg',
+            iconPath: 'assets/Timeline/Personal Timeline  Default State/icon/notification-02.svg',
             onTap: () {
               Navigator.push(
                 context,

@@ -16,22 +16,22 @@ class GalleryPickerScreen extends StatefulWidget {
 class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
   // Mock list of local images available in gallery
   final List<String> _galleryImages = [
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-1.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-2.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-3.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-4.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-5.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-6.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-7.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-8.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-9.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-10.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-11.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-12.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-13.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle-14.png',
-    'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/Rectangle0.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-1.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-2.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-3.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-4.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-5.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-6.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-7.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-8.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-9.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-10.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-11.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-12.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-13.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-14.png',
+    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle0.png',
   ];
 
   late List<String> _currentGridPhotos;
@@ -121,14 +121,14 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     });
 
     final albums = [
-      {'name': 'Facebook', 'count': 785, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 19487548413.png'},
-      {'name': 'Instagram', 'count': 1000, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 1948754843.png'},
-      {'name': 'Sport', 'count': 247, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 19487548d43.png'},
-      {'name': 'Outside', 'count': 511, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 19487548s43.png'},
-      {'name': 'Mine', 'count': 403, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 194875d4843.png'},
-      {'name': 'Tourism', 'count': 24985, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 1948d754843.png'},
-      {'name': 'Snapchat', 'count': 612, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 1948s754843.png'},
-      {'name': 'WhatsApp', 'count': 942, 'cover': 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/Frame 1s948754843.png'},
+      {'name': 'Facebook', 'count': 785, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 19487548413.png'},
+      {'name': 'Instagram', 'count': 1000, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1948754843.png'},
+      {'name': 'Sport', 'count': 247, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 19487548d43.png'},
+      {'name': 'Outside', 'count': 511, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 19487548s43.png'},
+      {'name': 'Mine', 'count': 403, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 194875d4843.png'},
+      {'name': 'Tourism', 'count': 24985, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1948d754843.png'},
+      {'name': 'Snapchat', 'count': 612, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1948s754843.png'},
+      {'name': 'WhatsApp', 'count': 942, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1s948754843.png'},
     ];
 
     showModalBottomSheet(
@@ -284,7 +284,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: SvgPicture.asset(
-                          'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/icon/cancel-01.svg',
+                          'assets/Timeline/Add Photos  Gallery Picker/icon/cancel-01.svg',
                           width: 24,
                           height: 24,
                         ),
@@ -348,7 +348,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                             ),
                             const SizedBox(width: 4),
                             SvgPicture.asset(
-                              'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/icon/arrow-down-01.svg',
+                              'assets/Timeline/Add Photos  Gallery Picker/icon/arrow-down-01.svg',
                               width: 20,
                               height: 20,
                             ),
@@ -371,8 +371,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                             children: [
                               SvgPicture.asset(
                                 _isMultiSelect
-                                    ? 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/icon/cancel-01.svg'
-                                    : 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/icon/Frame 1948754838.svg',
+                                    ? 'assets/Timeline/Add Photos  Gallery Picker/icon/cancel-01.svg'
+                                    : 'assets/Timeline/Add Photos  Gallery Picker/icon/Frame 1948754838.svg',
                                 width: 16,
                                 height: 16,
                                 colorFilter: const ColorFilter.mode(Color(0xFF333333), BlendMode.srcIn),
@@ -411,7 +411,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                           color: Colors.black,
                           child: Center(
                             child: SvgPicture.asset(
-                              'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/icon/camera-01.svg',
+                              'assets/Timeline/Add Photos  Gallery Picker/icon/camera-01.svg',
                               width: 32,
                               height: 32,
                               colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
@@ -633,22 +633,22 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _buildDropdownItem(
-                              iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Selected Photos Bottom Tray/icon/image-02.svg',
+                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-02.svg',
                               title: 'Recents',
                               onTap: () => _onCategorySelected('Recents'),
                             ),
                             _buildDropdownItem(
-                              iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Selected Photos Bottom Tray/icon/image-01.svg',
+                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-01.svg',
                               title: 'Photos',
                               onTap: () => _onCategorySelected('Photos'),
                             ),
                             _buildDropdownItem(
-                              iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Selected Photos Bottom Tray/icon/google-photos.svg',
+                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/google-photos.svg',
                               title: 'Google Photos',
                               onTap: () => _onCategorySelected('Google Photos'),
                             ),
                             _buildDropdownItem(
-                              iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Add Photos  Selected Photos Bottom Tray/icon/album-02.svg',
+                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/album-02.svg',
                               title: 'All albums',
                               onTap: _openAlbumsBottomSheet,
                             ),

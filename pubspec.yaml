@@ -80,22 +80,22 @@ flutter:
     - assets/Permissions Section/Contact Permission/icon/
     - assets/Permissions Section/Prtivacy Permission/image/
     - assets/Permissions Section/Prtivacy Permission/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/
-    - assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/image/
-    - assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  Intro Bottom Sheet/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  Intro Bottom Sheet/image/
-    - assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/
-    - assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  Check-in Composer  First Check/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  Check-in Composer  First Check/image/
-    - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Gallery Picker/image/
-    - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Multiple Photos Crop Preview/icon/
-    - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Multiple Photos Crop Preview/image/
-    - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Select Album Bottom Sheet/image/
-    - assets/Timeline Phase need to rename/Timeline Section  Add Photos  Selected Photos Bottom Tray/icon/
+    - assets/Timeline/Personal Timeline  Default State/icon/
+    - assets/Timeline/Personal Timeline  Default State/image/
+    - assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/
+    - assets/Timeline/First Check-in Onboarding  FAB Coachmark/image/
+    - assets/Timeline/First Check-in Onboarding  Intro Bottom Sheet/icon/
+    - assets/Timeline/First Check-in Onboarding  Intro Bottom Sheet/image/
+    - assets/Timeline/Check-in Success  First Check-in Reward/image/
+    - assets/Timeline/Check-in Success  First Check-in Reward/icon/
+    - assets/Timeline/Check-in Composer  First Check/icon/
+    - assets/Timeline/Check-in Composer  First Check/image/
+    - assets/Timeline/Add Photos  Gallery Picker/icon/
+    - assets/Timeline/Add Photos  Gallery Picker/image/
+    - assets/Timeline/Add Photos  Multiple Photos Crop Preview/icon/
+    - assets/Timeline/Add Photos  Multiple Photos Crop Preview/image/
+    - assets/Timeline/Add Photos  Select Album Bottom Sheet/image/
+    - assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/
     - assets/Organized/
 
   # An image asset can refer to one or more resolution-specific "variants", see

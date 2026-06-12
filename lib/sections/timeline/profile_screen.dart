@@ -130,7 +130,7 @@ class ProfileScreen extends StatelessWidget {
               const CircleAvatar(
                 radius: 40,
                 backgroundImage: AssetImage(
-                  'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/Element.png',
+                  'assets/Timeline/Personal Timeline  Default State/image/Element.png',
                 ),
               ),
               const SizedBox(width: 20),
@@ -188,7 +188,7 @@ class ProfileScreen extends StatelessWidget {
                 child: Row(
                   children: [
                     Image.asset(
-                      'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/image 156.png',
+                      'assets/Timeline/Personal Timeline  Default State/image/image 156.png',
                       width: 20,
                       height: 20,
                     ),

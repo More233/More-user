@@ -25,7 +25,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
     final comment = TimelineComment(
       authorName: 'sally.samer.3',
-      authorAvatar: 'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/Element.png',
+      authorAvatar: 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
       commentText: text,
       timeAgo: 'Just now',
     );
@@ -141,7 +141,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           const CircleAvatar(
             radius: 18,
             backgroundImage: AssetImage(
-              'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/Element.png',
+              'assets/Timeline/Personal Timeline  Default State/image/Element.png',
             ),
           ),
           const SizedBox(width: 12),
@@ -240,7 +240,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           const CircleAvatar(
             radius: 16,
             backgroundImage: AssetImage(
-              'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/Element.png',
+              'assets/Timeline/Personal Timeline  Default State/image/Element.png',
             ),
           ),
           const SizedBox(width: 12),

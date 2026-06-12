@@ -80,7 +80,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                 child: ImageFiltered(
                   imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                   child: SvgPicture.asset(
-                    'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/icon/highlight_glow.svg',
+                    'assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/highlight_glow.svg',
                     fit: BoxFit.fill,
                   ),
                 ),
@@ -101,7 +101,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                       width: 56 * scaleX,
                       height: 58 * scaleX,
                       child: Image.asset(
-                        'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/image/location_bubble.png',
+                        'assets/Timeline/First Check-in Onboarding  FAB Coachmark/image/location_bubble.png',
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -112,7 +112,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                       width: 12 * scaleX,
                       height: 12 * scaleX,
                       child: SvgPicture.asset(
-                        'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/icon/plus-sign.svg',
+                        'assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/plus-sign.svg',
                       ),
                     ),
                     // Photo/Gallery Icon Bubble
@@ -122,7 +122,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                       width: 54 * scaleX,
                       height: 56 * scaleX,
                       child: Image.asset(
-                        'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/image/photo_bubble.png',
+                        'assets/Timeline/First Check-in Onboarding  FAB Coachmark/image/photo_bubble.png',
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -133,7 +133,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                       width: 12 * scaleX,
                       height: 12 * scaleX,
                       child: SvgPicture.asset(
-                        'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/icon/plus-sign.svg',
+                        'assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/plus-sign.svg',
                       ),
                     ),
                     // Camera Icon Bubble
@@ -143,7 +143,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                       width: 56 * scaleX,
                       height: 57 * scaleX,
                       child: Image.asset(
-                        'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/image/camera_bubble.png',
+                        'assets/Timeline/First Check-in Onboarding  FAB Coachmark/image/camera_bubble.png',
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -191,7 +191,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                 width: 99.5 * scaleX,
                 height: 144.5 * scaleY,
                 child: SvgPicture.asset(
-                  'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/icon/dotted_arrow.svg',
+                  'assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/dotted_arrow.svg',
                   fit: BoxFit.fill,
                 ),
               ),
@@ -219,7 +219,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                     ),
                     const SizedBox(width: 2),
                     SvgPicture.asset(
-                      'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/icon/plus-sign.svg',
+                      'assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/plus-sign.svg',
                       width: 14 * scaleX,
                       height: 14 * scaleX,
                     ),
@@ -281,7 +281,7 @@ class _FabCoachmarkOverlayState extends State<FabCoachmarkOverlay> with SingleTi
                           ),
                           child: Center(
                             child: SvgPicture.asset(
-                              'assets/Timeline Phase need to rename/Timeline Section  First Check-in Onboarding  FAB Coachmark/icon/plus-signLg.svg',
+                              'assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/plus-signLg.svg',
                               width: 28,
                               height: 28,
                             ),

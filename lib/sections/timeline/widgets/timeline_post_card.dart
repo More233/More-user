@@ -25,11 +25,11 @@ class TimelinePostCard extends StatelessWidget {
   String _getCategoryIconPath() {
     switch (post.categoryIcon) {
       case CategoryIconType.coffee:
-        return 'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/coffee-02.svg';
+        return 'assets/Timeline/Personal Timeline  Default State/icon/coffee-02.svg';
       case CategoryIconType.building:
-        return 'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/building-05.svg';
+        return 'assets/Timeline/Personal Timeline  Default State/icon/building-05.svg';
       case CategoryIconType.camera:
-        return 'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/camera-01.svg';
+        return 'assets/Timeline/Personal Timeline  Default State/icon/camera-01.svg';
     }
   }
 
@@ -152,7 +152,7 @@ class TimelinePostCard extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         SvgPicture.asset(
-          'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/Post Options.svg',
+          'assets/Timeline/Personal Timeline  Default State/icon/Post Options.svg',
           width: 20,
           height: 20,
           colorFilter: const ColorFilter.mode(
@@ -201,7 +201,7 @@ class TimelinePostCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
-          'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/image 156.png',
+          'assets/Timeline/Personal Timeline  Default State/image/image 156.png',
           width: 16,
           height: 16,
         ),
@@ -260,7 +260,7 @@ class TimelinePostCard extends StatelessWidget {
       children: [
         _EngagementButton(
           iconPath:
-              'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/Like Icon.svg',
+              'assets/Timeline/Personal Timeline  Default State/icon/Like Icon.svg',
           count: post.likesCount,
           active: post.isLiked,
           onTap: onLike,
@@ -268,7 +268,7 @@ class TimelinePostCard extends StatelessWidget {
         const SizedBox(width: 16),
         _EngagementButton(
           iconPath:
-              'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/Comment Icon.svg',
+              'assets/Timeline/Personal Timeline  Default State/icon/Comment Icon.svg',
           count: post.commentsCount,
           active: false,
           onTap: onComment,
@@ -276,7 +276,7 @@ class TimelinePostCard extends StatelessWidget {
         const SizedBox(width: 16),
         _EngagementButton(
           iconPath:
-              'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/Share Icon.svg',
+              'assets/Timeline/Personal Timeline  Default State/icon/Share Icon.svg',
           count: 0,
           active: false,
           onTap: onShare,
@@ -285,7 +285,7 @@ class TimelinePostCard extends StatelessWidget {
         GestureDetector(
           onTap: onBookmark,
           child: SvgPicture.asset(
-            'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/icon/Bookmark Icon.svg',
+            'assets/Timeline/Personal Timeline  Default State/icon/Bookmark Icon.svg',
             width: 20,
             height: 20,
             colorFilter: ColorFilter.mode(

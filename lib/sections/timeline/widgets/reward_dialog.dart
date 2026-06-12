@@ -52,7 +52,7 @@ class RewardDialog extends StatelessWidget {
                                       shape: BoxShape.circle,
                                     ),
                                     child: Image.asset(
-                                      'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/hotel_placeholder.png',
+                                      'assets/Timeline/Check-in Success  First Check-in Reward/image/hotel_placeholder.png',
                                       fit: BoxFit.contain,
                                     ),
                                   ),
@@ -63,7 +63,7 @@ class RewardDialog extends StatelessWidget {
                                     width: 42,
                                     height: 46,
                                     child: Image.asset(
-                                      'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/checkmark_badge.png',
+                                      'assets/Timeline/Check-in Success  First Check-in Reward/image/checkmark_badge.png',
                                       fit: BoxFit.contain,
                                     ),
                                   ),
@@ -115,29 +115,29 @@ class RewardDialog extends StatelessWidget {
                           children: [
                             // Milestone 1: First check-in
                             _buildRewardRow(
-                              iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/icon/location.svg',
+                              iconPath: 'assets/Timeline/Check-in Success  First Check-in Reward/icon/location.svg',
                               title: "First check-in",
                               subtitle: "Thanks for being here.",
                               coins: "+100",
-                              coinAsset: 'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/single_coin.png',
+                              coinAsset: 'assets/Timeline/Check-in Success  First Check-in Reward/image/single_coin.png',
                             ),
                             const Divider(height: 1, color: Color(0xFFEFEFEF), indent: 70, endIndent: 20),
                             // Milestone 2: First hotel
                             _buildRewardRow(
-                              iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/icon/hotel.svg',
+                              iconPath: 'assets/Timeline/Check-in Success  First Check-in Reward/icon/hotel.svg',
                               title: "First hotel",
                               subtitle: "Exploring new places.",
                               coins: "+100",
-                              coinAsset: 'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/single_coin.png',
+                              coinAsset: 'assets/Timeline/Check-in Success  First Check-in Reward/image/single_coin.png',
                             ),
                             const Divider(height: 1, color: Color(0xFFEFEFEF), indent: 70, endIndent: 20),
                             // Milestone 3: Great photo
                             _buildRewardRow(
-                              iconPath: 'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/icon/camera.svg',
+                              iconPath: 'assets/Timeline/Check-in Success  First Check-in Reward/icon/camera.svg',
                               title: "Great photo",
                               subtitle: "Nice shot!",
                               coins: "+100",
-                              coinAsset: 'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/single_coin.png',
+                              coinAsset: 'assets/Timeline/Check-in Success  First Check-in Reward/image/single_coin.png',
                             ),
                             // Highlighted total row at the bottom of the card
                             Container(
@@ -153,7 +153,7 @@ class RewardDialog extends StatelessWidget {
                                 children: [
                                   // Coins stack icon
                                   Image.asset(
-                                    'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/coins_stack.png',
+                                    'assets/Timeline/Check-in Success  First Check-in Reward/image/coins_stack.png',
                                     width: 32,
                                     height: 32,
                                     fit: BoxFit.contain,
@@ -179,7 +179,7 @@ class RewardDialog extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   // Gold coin badge
                                   Image.asset(
-                                    'assets/Timeline Phase need to rename/Timeline Section  Personal Timeline  Default State/image/image 156.png',
+                                    'assets/Timeline/Personal Timeline  Default State/image/image 156.png',
                                     width: 24,
                                     height: 24,
                                     fit: BoxFit.contain,
@@ -211,7 +211,7 @@ class RewardDialog extends StatelessWidget {
                           children: [
                             // Sticker Image
                             Image.asset(
-                              'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/image/first_checkin_sticker.png',
+                              'assets/Timeline/Check-in Success  First Check-in Reward/image/first_checkin_sticker.png',
                               width: 60,
                               height: 60,
                               fit: BoxFit.contain,
@@ -252,7 +252,7 @@ class RewardDialog extends StatelessWidget {
                             ),
                             // Right arrow SVG
                             SvgPicture.asset(
-                              'assets/Timeline Phase need to rename/Timeline Section  Check-in Success  First Check-in Reward/icon/arrow_right.svg',
+                              'assets/Timeline/Check-in Success  First Check-in Reward/icon/arrow_right.svg',
                               width: 20,
                               height: 20,
                               colorFilter: const ColorFilter.mode(
