@@ -5,7 +5,7 @@ import '../widgets/auth_text_field.dart';
 
 class BasicInfoStep extends StatefulWidget {
   final VoidCallback onBack;
-  final VoidCallback onCompleted;
+  final void Function(String firstName, String lastName, String username, String city) onCompleted;
 
   const BasicInfoStep({
     super.key,
@@ -44,7 +44,12 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
     });
 
     if (_firstNameError == null && _usernameError == null && _cityError == null) {
-      widget.onCompleted();
+      widget.onCompleted(
+        _firstNameController.text.trim(),
+        _lastNameController.text.trim(),
+        _usernameController.text.trim(),
+        _cityController.text.trim(),
+      );
     }
   }
 

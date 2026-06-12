@@ -5,7 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 class BirthdayStep extends StatefulWidget {
   final VoidCallback onBack;
-  final VoidCallback onCompleted;
+  final void Function(DateTime birthday) onCompleted;
 
   const BirthdayStep({
     super.key,
@@ -303,7 +303,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: widget.onCompleted,
+                  onPressed: () => widget.onCompleted(DateTime(_selectedYear, _selectedMonth, _selectedDay)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C57FC),
                     shape: RoundedRectangleBorder(

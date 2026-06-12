@@ -10,8 +10,8 @@ class InterestItem {
 }
 
 class InterestsStep extends StatefulWidget {
-  final VoidCallback onCompleted;
-  final VoidCallback onSkip;
+  final void Function(List<String> interests) onCompleted;
+  final void Function(List<String> interests) onSkip;
 
   const InterestsStep({
     super.key,
@@ -246,7 +246,12 @@ class _InterestsStepState extends State<InterestsStep> {
                     child: Opacity(
                       opacity: canContinue ? 1.0 : 0.7,
                       child: ElevatedButton(
-                        onPressed: canContinue ? widget.onCompleted : null,
+                        onPressed: canContinue
+                            ? () {
+                                final selectedList = _selectedIndices.map((i) => _interests[i].label).toList();
+                                widget.onCompleted(selectedList);
+                              }
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF7C57FC),
                           disabledBackgroundColor: const Color(0xFF7C57FC).withValues(alpha: 0.5),
@@ -268,7 +273,7 @@ class _InterestsStepState extends State<InterestsStep> {
                   ),
                   const SizedBox(height: 16),
                   GestureDetector(
-                    onTap: widget.onSkip,
+                    onTap: () => widget.onSkip([]),
                     child: Text(
                       'Skip',
                       style: GoogleFonts.ibmPlexSansArabic(
