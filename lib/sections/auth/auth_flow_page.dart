@@ -184,81 +184,85 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(), // Require programmatic steps
-              children: [
-                // Step 0: Splash
-                SplashStep(
-                  onGetStarted: () => _navigateToStep(AuthStep.login),
-                  onLoginPressed: () => _navigateToStep(AuthStep.login),
-                ),
-                // Step 1: Login
-                LoginStep(
-                  onContinue: (address) {
-                    _showOtpBottomSheet(context, address);
-                  },
-                  onSignUpPressed: () {
-                    _navigateToStep(AuthStep.basicInfo);
-                  },
-                ),
-                // Step 2: Sign Up Basic Info
-                BasicInfoStep(
-                  onBack: () => _navigateToStep(AuthStep.login),
-                  onCompleted: (firstName, lastName, username, city) {
-                    setState(() {
-                      _firstName = firstName;
-                      _lastName = lastName;
-                      _username = username;
-                      _city = city;
-                    });
-                    _navigateToStep(AuthStep.birthday);
-                  },
-                ),
-                // Step 3: Birthday Step
-                BirthdayStep(
-                  onBack: () => _navigateToStep(AuthStep.basicInfo),
-                  onCompleted: (birthday) {
-                    setState(() {
-                      _birthday = birthday;
-                    });
-                    _navigateToStep(AuthStep.interests);
-                  },
-                ),
-                // Step 4: Interests Selection
-                InterestsStep(
-                  onCompleted: (interests) {
-                    setState(() {
-                      _interests = interests;
-                    });
-                    _navigateToStep(AuthStep.addFriends);
-                  },
-                  onSkip: (interests) {
-                    setState(() {
-                      _interests = interests;
-                    });
-                    _navigateToStep(AuthStep.addFriends);
-                  },
-                ),
-                // Step 5: Add Friends
-                AddFriendsStep(
-                  onDone: _saveProfileAndComplete,
-                ),
-              ],
-            ),
-            if (_isSavingProfile)
-              Container(
-                color: Colors.black.withValues(alpha: 0.3),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF7C57FC),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.opaque,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(), // Require programmatic steps
+                children: [
+                  // Step 0: Splash
+                  SplashStep(
+                    onGetStarted: () => _navigateToStep(AuthStep.login),
+                    onLoginPressed: () => _navigateToStep(AuthStep.login),
+                  ),
+                  // Step 1: Login
+                  LoginStep(
+                    onContinue: (address) {
+                      _showOtpBottomSheet(context, address);
+                    },
+                    onSignUpPressed: () {
+                      _navigateToStep(AuthStep.basicInfo);
+                    },
+                  ),
+                  // Step 2: Sign Up Basic Info
+                  BasicInfoStep(
+                    onBack: () => _navigateToStep(AuthStep.login),
+                    onCompleted: (firstName, lastName, username, city) {
+                      setState(() {
+                        _firstName = firstName;
+                        _lastName = lastName;
+                        _username = username;
+                        _city = city;
+                      });
+                      _navigateToStep(AuthStep.birthday);
+                    },
+                  ),
+                  // Step 3: Birthday Step
+                  BirthdayStep(
+                    onBack: () => _navigateToStep(AuthStep.basicInfo),
+                    onCompleted: (birthday) {
+                      setState(() {
+                        _birthday = birthday;
+                      });
+                      _navigateToStep(AuthStep.interests);
+                    },
+                  ),
+                  // Step 4: Interests Selection
+                  InterestsStep(
+                    onCompleted: (interests) {
+                      setState(() {
+                        _interests = interests;
+                      });
+                      _navigateToStep(AuthStep.addFriends);
+                    },
+                    onSkip: (interests) {
+                      setState(() {
+                        _interests = interests;
+                      });
+                      _navigateToStep(AuthStep.addFriends);
+                    },
+                  ),
+                  // Step 5: Add Friends
+                  AddFriendsStep(
+                    onDone: _saveProfileAndComplete,
+                  ),
+                ],
+              ),
+              if (_isSavingProfile)
+                Container(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF7C57FC),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
