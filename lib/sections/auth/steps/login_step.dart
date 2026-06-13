@@ -301,7 +301,7 @@ class _LoginStepState extends State<LoginStep> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SvgPicture.asset(
-                              'assets/Auth Section/Get started with More/icon/call.svg',
+                              'assets/Auth Section/icons/call.svg',
                               width: 20,
                               height: 20,
                               colorFilter: ColorFilter.mode(
@@ -343,7 +343,7 @@ class _LoginStepState extends State<LoginStep> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             SvgPicture.asset(
-                              'assets/Auth Section/Get started with More/icon/mail-01.svg',
+                              'assets/Auth Section/icons/mail_01.svg',
                               width: 20,
                               height: 20,
                               colorFilter: ColorFilter.mode(
@@ -413,7 +413,7 @@ class _LoginStepState extends State<LoginStep> {
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(2.0),
                   child: SvgPicture.asset(
-                    'assets/Auth Section/Get started with More/icon/mail-01.svg',
+                    'assets/Auth Section/icons/mail_01.svg',
                     width: 20,
                     height: 20,
                     colorFilter: const ColorFilter.mode(
@@ -487,13 +487,13 @@ class _LoginStepState extends State<LoginStep> {
             const SizedBox(height: 32),
             // Social Action Buttons
             _buildSocialButton(
-              logoSvgPath: 'assets/Auth Section/Get started with More/icon/Social icon.svg',
+              logoSvgPath: 'assets/Auth Section/icons/social_icon.svg',
               platformName: 'Google',
               onPressed: _isLoading ? () {} : _handleGoogleSignIn,
             ),
             const SizedBox(height: 16),
             _buildSocialButton(
-              logoSvgPath: 'assets/Auth Section/Get started with More/icon/Social icon apple.svg',
+              logoSvgPath: 'assets/Auth Section/icons/social_icon_apple.svg',
               platformName: 'Apple',
               onPressed: _isLoading ? () {} : _handleAppleSignIn,
             ),

@@ -74,25 +74,25 @@ class SplashStep extends StatelessWidget {
               child: Column(
                 children: [
                   _buildFeatureRow(
-                    iconPath: 'assets/Auth Section/Discover more around you/icon/location-01.svg',
+                    iconPath: 'assets/Auth Section/icons/location.svg',
                     title: 'Check in',
                     description: 'Let friends know where you are.',
                   ),
                   const Divider(color: Color(0xFFF3F4F6), height: 24),
                   _buildFeatureRow(
-                    iconPath: 'assets/Auth Section/Discover more around you/icon/bookmark-02.svg',
+                    iconPath: 'assets/Auth Section/icons/bookmark_02.svg',
                     title: 'Save places',
                     description: 'Keep your favorite places in one spot.',
                   ),
                   const Divider(color: Color(0xFFF3F4F6), height: 24),
                   _buildFeatureRow(
-                    iconPath: 'assets/Auth Section/Discover more around you/icon/shopping-bag-01.svg',
+                    iconPath: 'assets/Auth Section/icons/shopping_bag_01.svg',
                     title: 'Book & order',
                     description: 'Reserve tables and order with ease.',
                   ),
                   const Divider(color: Color(0xFFF3F4F6), height: 24),
                   _buildFeatureRow(
-                    iconPath: 'assets/Auth Section/Discover more around you/icon/user-multiple.svg',
+                    iconPath: 'assets/Auth Section/icons/user_multiple.svg',
                     title: 'Stay connected',
                     description: 'See friends, activity, and updates.',
                   ),

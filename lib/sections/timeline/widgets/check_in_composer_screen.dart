@@ -96,42 +96,42 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
   final List<Map<String, dynamic>> _stickers = [
     {
       'type': 'svg',
-      'path': 'assets/Timeline/Check-in Composer  First Check/icon/smile_outline.svg',
+      'path': 'assets/Timeline/icons/smile_outline.svg',
       'name': 'Smile',
     },
     {
       'type': 'image',
-      'path': 'assets/Timeline/Check-in Composer  First Check/image/heart.png',
+      'path': 'assets/Timeline/images/heart.png',
       'name': 'Heart',
     },
     {
       'type': 'image',
-      'path': 'assets/Timeline/Check-in Composer  First Check/image/beer.png',
+      'path': 'assets/Timeline/images/beer.png',
       'name': 'Beer',
     },
     {
       'type': 'image',
-      'path': 'assets/Timeline/Check-in Composer  First Check/image/hands_face.png',
+      'path': 'assets/Timeline/images/hands_face.png',
       'name': 'Shy/Clap',
     },
     {
       'type': 'image',
-      'path': 'assets/Timeline/Check-in Composer  First Check/image/thumbs_up.png',
+      'path': 'assets/Timeline/images/thumbs_up.png',
       'name': 'Thumbs Up',
     },
     {
       'type': 'image',
-      'path': 'assets/Timeline/Check-in Composer  First Check/image/fire.png',
+      'path': 'assets/Timeline/images/fire.png',
       'name': 'Fire',
     },
     {
       'type': 'image',
-      'path': 'assets/Timeline/Check-in Composer  First Check/image/heart_eyes.png',
+      'path': 'assets/Timeline/images/heart_eyes.png',
       'name': 'Heart Eyes',
     },
     {
       'type': 'image',
-      'path': 'assets/Timeline/Check-in Composer  First Check/image/plus_one.png',
+      'path': 'assets/Timeline/images/plus_one.png',
       'name': '+1',
     },
   ];
@@ -288,7 +288,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                 width: double.infinity,
                 height: 220 + topPadding,
                 child: Image.asset(
-                  'assets/Timeline/Check-in Composer  First Check/image/map_background.png',
+                  'assets/Timeline/images/map_background.png',
                   fit: BoxFit.cover,
                 ),
               ),
@@ -303,7 +303,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                     alignment: Alignment.center,
                     children: [
                       SvgPicture.asset(
-                        'assets/Timeline/Check-in Composer  First Check/icon/location_pin.svg',
+                        'assets/Timeline/icons/location_pin.svg',
                         width: 80,
                         height: 80,
                       ),
@@ -322,12 +322,12 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                     _currentUserAvatarUrl!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, e, s) => Image.asset(
-                                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                      'assets/Timeline/images/element.png',
                                       fit: BoxFit.cover,
                                     ),
                                   )
                                 : Image.asset(
-                                    'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                    'assets/Timeline/images/element.png',
                                     fit: BoxFit.cover,
                                   ),
                           ),
@@ -358,7 +358,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       ],
                     ),
                     child: SvgPicture.asset(
-                      'assets/Timeline/Check-in Composer  First Check/icon/close.svg',
+                      'assets/Timeline/icons/close.svg',
                       width: 20,
                       height: 20,
                       colorFilter: const ColorFilter.mode(
@@ -549,7 +549,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               SvgPicture.asset(
-                                'assets/Timeline/Check-in Composer  First Check/icon/add_photos.svg',
+                                'assets/Timeline/icons/add_photos.svg',
                                 width: 24,
                                 height: 24,
                                 colorFilter: const ColorFilter.mode(
@@ -687,7 +687,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                 ),
                                 alignment: Alignment.center,
                                 child: SvgPicture.asset(
-                                  'assets/Timeline/Check-in Composer  First Check/icon/add_photos.svg',
+                                  'assets/Timeline/icons/add_photos.svg',
                                   width: 24,
                                   height: 24,
                                   colorFilter: const ColorFilter.mode(
@@ -726,7 +726,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             SvgPicture.asset(
-                              'assets/Timeline/Check-in Composer  First Check/icon/add_friends.svg',
+                              'assets/Timeline/icons/add_friends.svg',
                               width: 20,
                               height: 20,
                               colorFilter: const ColorFilter.mode(
@@ -794,12 +794,12 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                                     avatarUrl,
                                                     fit: BoxFit.cover,
                                                     errorBuilder: (context, e, s) => Image.asset(
-                                                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                                      'assets/Timeline/images/element.png',
                                                       fit: BoxFit.cover,
                                                     ),
                                                   )
                                                 : Image.asset(
-                                                    'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                                    'assets/Timeline/images/element.png',
                                                     fit: BoxFit.cover,
                                                   ),
                                           ),
@@ -890,7 +890,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                               ),
                               alignment: Alignment.center,
                               child: SvgPicture.asset(
-                                'assets/Timeline/Check-in Composer  First Check/icon/add_friends.svg',
+                                'assets/Timeline/icons/add_friends.svg',
                                 width: 20,
                                 height: 20,
                                 colorFilter: const ColorFilter.mode(
@@ -918,7 +918,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       ),
                       const SizedBox(width: 8),
                       SvgPicture.asset(
-                        'assets/Timeline/Check-in Composer  First Check/icon/info_circle_small.svg',
+                        'assets/Timeline/icons/info_circle_small.svg',
                         width: 20,
                         height: 20,
                         colorFilter: const ColorFilter.mode(
@@ -978,7 +978,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       child: Row(
                         children: [
                           SvgPicture.asset(
-                            'assets/Timeline/Check-in Composer  First Check/icon/info_circle_large.svg',
+                            'assets/Timeline/icons/info_circle_large.svg',
                             width: 28,
                             height: 28,
                             colorFilter: const ColorFilter.mode(

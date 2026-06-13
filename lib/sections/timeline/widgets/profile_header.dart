@@ -27,7 +27,7 @@ class ProfileHeader extends StatelessWidget {
             child: const CircleAvatar(
               radius: 24,
               backgroundImage: AssetImage(
-                'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                'assets/Timeline/images/element.png',
               ),
             ),
           ),
@@ -44,7 +44,7 @@ class ProfileHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  'assets/Timeline/Personal Timeline  Default State/image/image 156.png',
+                  'assets/Timeline/images/coin.png',
                   width: 24,
                   height: 24,
                 ),
@@ -64,14 +64,14 @@ class ProfileHeader extends StatelessWidget {
           // Search button
           _ActionButton(
             iconPath:
-                'assets/Timeline/Personal Timeline  Default State/icon/search-01.svg',
+                'assets/Timeline/icons/search_01.svg',
             onTap: onSearchTap,
           ),
           const SizedBox(width: 16),
           // Notification button
           _ActionButton(
             iconPath:
-                'assets/Timeline/Personal Timeline  Default State/icon/notification-02.svg',
+                'assets/Timeline/icons/notification_02.svg',
             onTap: onNotificationTap,
           ),
         ],

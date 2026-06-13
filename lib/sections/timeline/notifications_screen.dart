@@ -26,7 +26,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           child: Container(
             padding: const EdgeInsets.all(16),
             child: SvgPicture.asset(
-              'assets/Timeline/Notifications/icon/arrow-left-01.svg',
+              'assets/Timeline/icons/arrow_left_01.svg',
               width: 24,
               height: 24,
             ),
@@ -82,7 +82,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ],
             ),
             child: SvgPicture.asset(
-              'assets/Timeline/Notifications/icon/notificationlg-02.svg',
+              'assets/Timeline/icons/notificationlg_02.svg',
               width: 64,
               height: 64,
             ),
@@ -109,7 +109,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         const CircleAvatar(
           radius: 20,
           backgroundImage: AssetImage(
-            'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+            'assets/Timeline/images/element.png',
           ),
         ),
         const SizedBox(width: 12),

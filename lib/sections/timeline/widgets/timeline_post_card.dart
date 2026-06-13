@@ -29,11 +29,11 @@ class TimelinePostCard extends StatelessWidget {
   String _getCategoryIconPath() {
     switch (post.categoryIcon) {
       case CategoryIconType.coffee:
-        return 'assets/Timeline/Personal Timeline  Default State/icon/coffee-02.svg';
+        return 'assets/Timeline/icons/coffee_02.svg';
       case CategoryIconType.building:
-        return 'assets/Timeline/Personal Timeline  Default State/icon/building-05.svg';
+        return 'assets/Timeline/icons/building_05.svg';
       case CategoryIconType.camera:
-        return 'assets/Timeline/Personal Timeline  Default State/icon/camera-01.svg';
+        return 'assets/Timeline/icons/camera_01_1.svg';
     }
   }
 
@@ -157,7 +157,7 @@ class TimelinePostCard extends StatelessWidget {
         const SizedBox(width: 16),
         PopupMenuButton<String>(
           icon: SvgPicture.asset(
-            'assets/Timeline/Personal Timeline  Default State/icon/Post Options.svg',
+            'assets/Timeline/icons/post_options.svg',
             width: 20,
             height: 20,
             colorFilter: const ColorFilter.mode(
@@ -185,7 +185,7 @@ class TimelinePostCard extends StatelessWidget {
               child: Row(
                 children: [
                   SvgPicture.asset(
-                    'assets/Timeline/Personal Timeline  Default State/icon/edit-02.svg',
+                    'assets/Timeline/icons/edit_02.svg',
                     width: 20,
                     height: 20,
                     colorFilter: const ColorFilter.mode(
@@ -211,7 +211,7 @@ class TimelinePostCard extends StatelessWidget {
               child: Row(
                 children: [
                   SvgPicture.asset(
-                    'assets/Timeline/Story/icon/delete-03.svg',
+                    'assets/Timeline/icons/delete_03_1.svg',
                     width: 20,
                     height: 20,
                     colorFilter: const ColorFilter.mode(
@@ -274,7 +274,7 @@ class TimelinePostCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Image.asset(
-          'assets/Timeline/Personal Timeline  Default State/image/image 156.png',
+          'assets/Timeline/images/coin.png',
           width: 16,
           height: 16,
         ),
@@ -350,7 +350,7 @@ class TimelinePostCard extends StatelessWidget {
       children: [
         _EngagementButton(
           iconPath:
-              'assets/Timeline/Personal Timeline  Default State/icon/Like Icon.svg',
+              'assets/Timeline/icons/like_icon.svg',
           count: post.likesCount,
           active: post.isLiked,
           onTap: onLike,
@@ -358,7 +358,7 @@ class TimelinePostCard extends StatelessWidget {
         const SizedBox(width: 16),
         _EngagementButton(
           iconPath:
-              'assets/Timeline/Personal Timeline  Default State/icon/Comment Icon.svg',
+              'assets/Timeline/icons/comment_icon.svg',
           count: post.commentsCount,
           active: false,
           onTap: onComment,
@@ -366,7 +366,7 @@ class TimelinePostCard extends StatelessWidget {
         const SizedBox(width: 16),
         _EngagementButton(
           iconPath:
-              'assets/Timeline/Personal Timeline  Default State/icon/Share Icon.svg',
+              'assets/Timeline/icons/share_icon_1.svg',
           count: 0,
           active: false,
           onTap: onShare,
@@ -375,7 +375,7 @@ class TimelinePostCard extends StatelessWidget {
         GestureDetector(
           onTap: onBookmark,
           child: SvgPicture.asset(
-            'assets/Timeline/Personal Timeline  Default State/icon/Bookmark Icon.svg',
+            'assets/Timeline/icons/bookmark_icon.svg',
             width: 20,
             height: 20,
             colorFilter: ColorFilter.mode(

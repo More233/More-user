@@ -91,7 +91,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
         scrolledUnderElevation: 0,
         leading: IconButton(
           icon: SvgPicture.asset(
-            'assets/Auth Section/Basic information  Birthday/icon/arrow-left.svg',
+            'assets/Auth Section/icons/arrow_left.svg',
             width: 24,
             height: 24,
             colorFilter: const ColorFilter.mode(
@@ -192,7 +192,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
                         shape: BoxShape.circle,
                       ),
                       child: SvgPicture.asset(
-                        'assets/Auth Section/Basic information  Default/icon/user-multiple.svg',
+                        'assets/Auth Section/icons/user_multiple_1.svg',
                         width: 20,
                         height: 20,
                         colorFilter: const ColorFilter.mode(

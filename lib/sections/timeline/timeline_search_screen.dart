@@ -306,7 +306,7 @@ class _TimelineSearchScreenState extends State<TimelineSearchScreen> {
                 child: Row(
                   children: [
                     SvgPicture.asset(
-                      'assets/Timeline/Personal Timeline  Default State/icon/search-01.svg',
+                      'assets/Timeline/icons/search_01.svg',
                       width: 20,
                       height: 20,
                       colorFilter: const ColorFilter.mode(
@@ -380,7 +380,7 @@ class _TimelineSearchScreenState extends State<TimelineSearchScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SvgPicture.asset(
-                        'assets/Timeline/First Check-in Onboarding  FAB Coachmark - Copy/icon/calendar-03.svg',
+                        'assets/Timeline/icons/calendar_03.svg',
                         width: 18,
                         height: 18,
                         colorFilter: const ColorFilter.mode(
@@ -416,7 +416,7 @@ class _TimelineSearchScreenState extends State<TimelineSearchScreen> {
                         )
                       else
                         SvgPicture.asset(
-                          'assets/Timeline/First Check-in Onboarding  FAB Coachmark - Copy/icon/arrow-down-01.svg',
+                          'assets/Timeline/icons/arrow_down_01_1.svg',
                           width: 18,
                           height: 18,
                           colorFilter: const ColorFilter.mode(
@@ -457,7 +457,7 @@ class _TimelineSearchScreenState extends State<TimelineSearchScreen> {
           ),
           // Item 1: Atmosphere (Coffee Shop)
           _buildSuggestedItem(
-            iconPath: 'assets/Timeline/Personal Timeline  Default State/icon/coffee-02.svg',
+            iconPath: 'assets/Timeline/icons/coffee_02.svg',
             title: 'ATMOSPHERE',
             subtitle: 'Coffee Shop • Al-Malik Fahd, Riyadh',
             timeText: 'Last Check-in • Today 5:38 PM',
@@ -469,7 +469,7 @@ class _TimelineSearchScreenState extends State<TimelineSearchScreen> {
           const SizedBox(height: 12),
           // Item 2: Location
           _buildSuggestedItem(
-            iconPath: 'assets/Timeline/First Check-in Onboarding  FAB Coachmark - Copy/icon/location-01.svg',
+            iconPath: 'assets/Timeline/icons/location_01.svg',
             title: 'Muhafazat al Fayyūm, Egypt',
             onTap: () {
               _searchController.text = 'Muhafazat al Fayyūm, Egypt';
@@ -479,7 +479,7 @@ class _TimelineSearchScreenState extends State<TimelineSearchScreen> {
           const SizedBox(height: 12),
           // Item 3: Category
           _buildSuggestedItem(
-            iconPath: 'assets/Timeline/First Check-in Onboarding  FAB Coachmark - Copy/icon/record.svg',
+            iconPath: 'assets/Timeline/icons/record.svg',
             title: 'Travel and Transportation',
             onTap: () {
               _searchController.text = 'Travel and Transportation';

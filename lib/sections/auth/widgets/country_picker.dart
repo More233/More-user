@@ -143,7 +143,7 @@ class CountryPicker extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           SvgPicture.asset(
-            'assets/Auth Section/Get started with More/icon/arrow-down.svg',
+            'assets/Auth Section/icons/arrow_down.svg',
             width: 16,
             height: 16,
             colorFilter: const ColorFilter.mode(

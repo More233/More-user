@@ -44,23 +44,23 @@ class _PermissionsPageState extends State<PermissionsPage> {
             children: [
               // Step 0: Notifications Permission
               PermissionStepLayout(
-                imagePath: 'assets/Permissions Section/Notifications Permission/image/onborading 1.png',
+                imagePath: 'assets/Permissions Section/images/onborading_1.png',
                 title: 'Turn on notifications',
                 description:
                     'Get updates for bookings, orders, nearby places, and friends’ activity. You can manage this anytime.',
                 featureRows: const [
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Notifications Permission/icon/notification-02.svg',
+                    iconPath: 'assets/Permissions Section/icons/notification_02.svg',
                     title: 'Booking reminders',
                     subtitle: 'Never miss a reservation or important update',
                   ),
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Notifications Permission/icon/package.svg',
+                    iconPath: 'assets/Permissions Section/icons/package.svg',
                     title: 'Order status',
                     subtitle: 'Track your orders from confirmed to delivered',
                   ),
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Notifications Permission/icon/user-group.svg',
+                    iconPath: 'assets/Permissions Section/icons/user_group.svg',
                     title: 'Nearby activity',
                     subtitle: 'See when friends check in around you',
                   ),
@@ -73,23 +73,23 @@ class _PermissionsPageState extends State<PermissionsPage> {
 
               // Step 1: Contact Permission
               PermissionStepLayout(
-                imagePath: 'assets/Permissions Section/Contact Permission/image/onborading 2.png',
+                imagePath: 'assets/Permissions Section/images/onborading_2.png',
                 title: 'More is better with friends',
                 description:
                     'Find friends already on More, share places, and discover trusted activity around you.',
                 featureRows: const [
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Contact Permission/icon/user-group.svg',
+                    iconPath: 'assets/Permissions Section/icons/user_group.svg',
                     title: 'Find friends already on More',
                     subtitle: 'See which of your contacts use More.',
                   ),
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Contact Permission/icon/sent-02.svg',
+                    iconPath: 'assets/Permissions Section/icons/sent_02.svg',
                     title: 'Share lists and check-ins',
                     subtitle: 'Send places, lists, and recommendations.',
                   ),
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Contact Permission/icon/location-01.svg',
+                    iconPath: 'assets/Permissions Section/icons/location.svg',
                     title: 'See nearby activity',
                     subtitle: 'Discover who checked in around you.',
                   ),
@@ -105,23 +105,23 @@ class _PermissionsPageState extends State<PermissionsPage> {
 
               // Step 3: Location Permission
               PermissionStepLayout(
-                imagePath: 'assets/Permissions Section/Location Permission/image/onborading 4.png',
+                imagePath: 'assets/Permissions Section/images/onborading_4.png',
                 title: 'Enable always-on location',
                 description:
                     'Allow More to suggest check-ins, send arrival reminders, and improve your visit map.',
                 featureRows: const [
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Location Permission/icon/location-01.svg',
+                    iconPath: 'assets/Permissions Section/icons/location.svg',
                     title: 'Passive check-ins',
                     subtitle: 'We detect visits in the background.',
                   ),
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Location Permission/icon/notification-02.svg',
+                    iconPath: 'assets/Permissions Section/icons/notification_02.svg',
                     title: 'Smart reminders',
                     subtitle: 'Get alerts right when you arrive or need to leave.',
                   ),
                   FeatureRow(
-                    iconPath: 'assets/Permissions Section/Location Permission/icon/artificial-intelligence-08.svg',
+                    iconPath: 'assets/Permissions Section/icons/artificial_intelligence_08.svg',
                     title: 'Better recommendations',
                     subtitle: 'We learn your patterns to suggest what\'s best.',
                   ),
@@ -154,7 +154,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 width: double.infinity,
                 alignment: Alignment.center,
                 child: Image.asset(
-                  'assets/Permissions Section/Prtivacy Permission/image/onborading 3.png',
+                  'assets/Permissions Section/images/onborading_3.png',
                   fit: BoxFit.contain,
                 ),
               ),
@@ -184,28 +184,28 @@ class _PermissionsPageState extends State<PermissionsPage> {
                         physics: const BouncingScrollPhysics(),
                         children: [
                           const FeatureRow(
-                            iconPath: 'assets/Permissions Section/Prtivacy Permission/icon/star.svg',
+                            iconPath: 'assets/Permissions Section/icons/star.svg',
                             title: 'Personalized suggestions',
                             subtitle: 'Improve recommendations.',
                             trailing: CustomSwitch(initialValue: true),
                           ),
                           const SizedBox(height: 16),
                           const FeatureRow(
-                            iconPath: 'assets/Permissions Section/Prtivacy Permission/icon/chart-01.svg',
+                            iconPath: 'assets/Permissions Section/icons/chart_01.svg',
                             title: 'Usage insights',
                             subtitle: 'Share anonymous usage data.',
                             trailing: CustomSwitch(initialValue: true),
                           ),
                           const SizedBox(height: 16),
                           const FeatureRow(
-                            iconPath: 'assets/Permissions Section/Prtivacy Permission/icon/tag-01.svg',
+                            iconPath: 'assets/Permissions Section/icons/tag_01.svg',
                             title: 'Relevant offers',
                             subtitle: 'Get offers you may like.',
                             trailing: CustomSwitch(initialValue: true),
                           ),
                           const SizedBox(height: 16),
                           FeatureRow(
-                            iconPath: 'assets/Permissions Section/Prtivacy Permission/icon/square-lock-01.svg',
+                            iconPath: 'assets/Permissions Section/icons/square_lock_01.svg',
                             title: 'Your data is secure and never sold.',
                             subtitle: 'Update your preferences anytime in Settings.',
                             backgroundColor: const Color(0xFFF7F6FC),
@@ -213,7 +213,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                             trailing: RotatedBox(
                               quarterTurns: 3,
                               child: SvgPicture.asset(
-                                'assets/Permissions Section/Prtivacy Permission/icon/arrow-right-01.svg',
+                                'assets/Permissions Section/icons/arrow_right_01.svg',
                                 width: 12,
                                 height: 12,
                                 colorFilter: const ColorFilter.mode(

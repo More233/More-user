@@ -194,12 +194,12 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
                               widget.currentUserAvatarUrl!,
                               fit: BoxFit.cover,
                               errorBuilder: (context, e, s) => Image.asset(
-                                'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                'assets/Timeline/images/element.png',
                                 fit: BoxFit.cover,
                               ),
                             )
                           : Image.asset(
-                              'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                              'assets/Timeline/images/element.png',
                               fit: BoxFit.cover,
                             ),
                     ),
@@ -230,7 +230,7 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
                         ),
                         alignment: Alignment.center,
                         child: SvgPicture.asset(
-                          'assets/Timeline/Check-in Success  First Check-in Reward/icon/location.svg',
+                          'assets/Timeline/icons/location.svg',
                           width: 20,
                           height: 20,
                           colorFilter: const ColorFilter.mode(

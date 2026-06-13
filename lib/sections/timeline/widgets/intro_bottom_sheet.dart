@@ -70,7 +70,7 @@ class IntroBottomSheet extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Image.asset(
-                      'assets/Timeline/First Check-in Onboarding  Intro Bottom Sheet/image/food_truck_street.png',
+                      'assets/Timeline/images/food_truck_street.png',
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -96,7 +96,7 @@ class IntroBottomSheet extends StatelessWidget {
                     ),
                     child: ClipOval(
                       child: Image.asset(
-                        'assets/Timeline/First Check-in Onboarding  Intro Bottom Sheet/image/avatar_female.png',
+                        'assets/Timeline/images/avatar_female.png',
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -157,7 +157,7 @@ class IntroBottomSheet extends StatelessWidget {
                     ),
                     child: ClipOval(
                       child: Image.asset(
-                        'assets/Timeline/First Check-in Onboarding  Intro Bottom Sheet/image/avatar_male.png',
+                        'assets/Timeline/images/avatar_male.png',
                         fit: BoxFit.cover,
                       ),
                     ),

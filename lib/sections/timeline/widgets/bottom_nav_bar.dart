@@ -88,7 +88,7 @@ class _NavItem extends StatelessWidget {
   Widget _buildIcon() {
     if (label == 'Timeline') {
       return SvgPicture.asset(
-        'assets/Timeline/Personal Timeline  Default State/icon/time-04.svg',
+        'assets/Timeline/icons/time_04.svg',
         width: 22,
         height: 22,
         colorFilter: ColorFilter.mode(

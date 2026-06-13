@@ -230,15 +230,15 @@ class _MessagesScreenState extends State<MessagesScreen> {
     }
     switch (username.toLowerCase()) {
       case 'mayat':
-        return const AssetImage('assets/Timeline/Story/image/Profile Image.png');
+        return const AssetImage('assets/Timeline/images/profile_image_1.png');
       case 'jordanmarco':
-        return const AssetImage('assets/Timeline/Story/image/Profile Image2.png');
+        return const AssetImage('assets/Timeline/images/profile_image2.png');
       case 'avaj':
-        return const AssetImage('assets/Timeline/Story/image/Avatar.png');
+        return const AssetImage('assets/Timeline/images/avatar.png');
       case 'karennne':
-        return const AssetImage('assets/Timeline/Personal Timeline  Default State/image/Element.png');
+        return const AssetImage('assets/Timeline/images/element.png');
       default:
-        return const AssetImage('assets/Timeline/Personal Timeline  Default State/image/Element.png');
+        return const AssetImage('assets/Timeline/images/element.png');
     }
   }
 
@@ -400,7 +400,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 ],
               ),
               child: SvgPicture.asset(
-                'assets/Timeline/Social Onboarding/chat_bubble_icon.svg',
+                'assets/Timeline/icons/chat_bubble_icon.svg',
                 width: 64,
                 height: 64,
                 colorFilter: const ColorFilter.mode(Color(0xFF82858C), BlendMode.srcIn),
@@ -459,7 +459,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         radius: 30,
                         backgroundColor: Colors.grey,
                         backgroundImage: AssetImage(
-                          'assets/Timeline/Story/image/Profile Image.png',
+                          'assets/Timeline/images/profile_image_1.png',
                         ),
                       ),
                     ),
@@ -575,7 +575,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
             child: Center(
               child: _buildActionButtonChild(
                 child: SvgPicture.asset(
-                  'assets/Timeline/Social Onboarding/add_friend_icon.svg',
+                  'assets/Timeline/icons/add_friend_icon.svg',
                   width: 24,
                   height: 24,
                 ),

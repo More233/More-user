@@ -43,28 +43,28 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
       name: 'Maya Thompson',
       username: 'mayat',
       subtitle: 'Recently at Bice Bottle Coffee',
-      avatarAsset: 'assets/Timeline/Story/image/Profile Image.png',
+      avatarAsset: 'assets/Timeline/images/profile_image_1.png',
       isOnMore: false,
     ),
     SuggestedUser(
       name: 'Jordan Marco',
       username: 'jordanmarco',
       subtitle: '5 Mutual Friends',
-      avatarAsset: 'assets/Timeline/Story/image/Profile Image2.png',
+      avatarAsset: 'assets/Timeline/images/profile_image2.png',
       hasMutualFriends: true,
     ),
     SuggestedUser(
       name: 'Ava Johnson',
       username: 'avaj',
       subtitle: 'On More',
-      avatarAsset: 'assets/Timeline/Story/image/Avatar.png',
+      avatarAsset: 'assets/Timeline/images/avatar.png',
       isOnMore: true,
     ),
     SuggestedUser(
       name: 'karennne',
       username: 'karennne',
       subtitle: 'On More',
-      avatarAsset: 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      avatarAsset: 'assets/Timeline/images/element.png',
       isOnMore: true,
     ),
   ];
@@ -74,19 +74,19 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
       name: 'Maya Thompson',
       username: 'mayat',
       subtitle: 'In your contacts',
-      avatarAsset: 'assets/Timeline/Story/image/Profile Image.png',
+      avatarAsset: 'assets/Timeline/images/profile_image_1.png',
     ),
     SuggestedUser(
       name: 'Jordan Marco',
       username: 'jordanmarco',
       subtitle: 'In your contacts',
-      avatarAsset: 'assets/Timeline/Story/image/Profile Image2.png',
+      avatarAsset: 'assets/Timeline/images/profile_image2.png',
     ),
     SuggestedUser(
       name: 'Ava Johnson',
       username: 'avaj',
       subtitle: 'In your contacts',
-      avatarAsset: 'assets/Timeline/Story/image/Avatar.png',
+      avatarAsset: 'assets/Timeline/images/avatar.png',
     ),
   ];
 
@@ -121,21 +121,21 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
             left: 0,
             child: CircleAvatar(
               radius: 9,
-              backgroundImage: AssetImage('assets/Timeline/Story/image/Profile Image.png'),
+              backgroundImage: AssetImage('assets/Timeline/images/profile_image_1.png'),
             ),
           ),
           Positioned(
             left: 12,
             child: CircleAvatar(
               radius: 9,
-              backgroundImage: AssetImage('assets/Timeline/Story/image/Profile Image2.png'),
+              backgroundImage: AssetImage('assets/Timeline/images/profile_image2.png'),
             ),
           ),
           Positioned(
             left: 24,
             child: CircleAvatar(
               radius: 9,
-              backgroundImage: AssetImage('assets/Timeline/Story/image/Avatar.png'),
+              backgroundImage: AssetImage('assets/Timeline/images/avatar.png'),
             ),
           ),
         ],

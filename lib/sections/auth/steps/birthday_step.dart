@@ -78,7 +78,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
         scrolledUnderElevation: 0,
         leading: IconButton(
           icon: SvgPicture.asset(
-            'assets/Auth Section/Basic information  Birthday/icon/arrow-left.svg',
+            'assets/Auth Section/icons/arrow_left.svg',
             width: 24,
             height: 24,
             colorFilter: const ColorFilter.mode(

@@ -123,7 +123,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
                   leading: const CircleAvatar(
                     radius: 20,
                     backgroundImage: AssetImage(
-                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                      'assets/Timeline/images/element.png',
                     ),
                   ),
                   title: Text(

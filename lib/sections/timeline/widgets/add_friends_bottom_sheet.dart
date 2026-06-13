@@ -130,7 +130,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
                               backgroundImage: avatarUrl != null
                                   ? NetworkImage(avatarUrl) as ImageProvider
                                   : const AssetImage(
-                                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                      'assets/Timeline/images/element.png',
                                     ),
                             ),
                             title: Text(

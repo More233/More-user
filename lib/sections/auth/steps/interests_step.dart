@@ -25,18 +25,18 @@ class InterestsStep extends StatefulWidget {
 
 class _InterestsStepState extends State<InterestsStep> {
   static const List<InterestItem> _interests = [
-    InterestItem('Coffee', 'assets/Auth Section/Basic information  Intrestes/icon/coffee-02.svg'),
-    InterestItem('Restaurants', 'assets/Auth Section/Basic information  Intrestes/icon/restaurant-03.svg'),
-    InterestItem('Bakeries', 'assets/Auth Section/Basic information  Intrestes/icon/cupcake-02.svg'),
-    InterestItem('Night spots', 'assets/Auth Section/Basic information  Intrestes/icon/drink.svg'),
-    InterestItem('Work spots', 'assets/Auth Section/Basic information  Intrestes/icon/work.svg'),
-    InterestItem('Outdoor', 'assets/Auth Section/Basic information  Intrestes/icon/tree-02.svg'),
-    InterestItem('Shopping', 'assets/Auth Section/Discover more around you/icon/shopping-bag-01.svg'),
-    InterestItem('Events', 'assets/Auth Section/Basic information  Intrestes/icon/calendar-03.svg'),
-    InterestItem('Family places', 'assets/Auth Section/Basic information  Intrestes/icon/user-multiple.svg'),
-    InterestItem('Hidden gems', 'assets/Auth Section/Basic information  Intrestes/icon/gem.svg'),
-    InterestItem('Desserts', 'assets/Auth Section/Basic information  Intrestes/icon/ice-cream-02.svg'),
-    InterestItem('Brunch', 'assets/Auth Section/Basic information  Intrestes/icon/croissant.svg'),
+    InterestItem('Coffee', 'assets/Auth Section/icons/coffee_02.svg'),
+    InterestItem('Restaurants', 'assets/Auth Section/icons/restaurant_03.svg'),
+    InterestItem('Bakeries', 'assets/Auth Section/icons/cupcake_02.svg'),
+    InterestItem('Night spots', 'assets/Auth Section/icons/drink.svg'),
+    InterestItem('Work spots', 'assets/Auth Section/icons/work.svg'),
+    InterestItem('Outdoor', 'assets/Auth Section/icons/tree_02.svg'),
+    InterestItem('Shopping', 'assets/Auth Section/icons/shopping_bag_01.svg'),
+    InterestItem('Events', 'assets/Auth Section/icons/calendar_03.svg'),
+    InterestItem('Family places', 'assets/Auth Section/icons/user_multiple_1.svg'),
+    InterestItem('Hidden gems', 'assets/Auth Section/icons/gem.svg'),
+    InterestItem('Desserts', 'assets/Auth Section/icons/ice_cream_02.svg'),
+    InterestItem('Brunch', 'assets/Auth Section/icons/croissant.svg'),
   ];
 
   final Set<int> _selectedIndices = {};
@@ -208,7 +208,7 @@ class _InterestsStepState extends State<InterestsStep> {
                             alignment: Alignment.center,
                             padding: const EdgeInsets.all(10),
                             child: SvgPicture.asset(
-                              'assets/Auth Section/Basic information  Intrestes/icon/ai-magic.svg',
+                              'assets/Auth Section/icons/ai_magic.svg',
                               colorFilter: const ColorFilter.mode(
                                 Color(0xFF7C57FC),
                                 BlendMode.srcIn,

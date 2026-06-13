@@ -340,15 +340,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
     switch (username.toLowerCase()) {
       case 'mayat':
-        return const AssetImage('assets/Timeline/Story/image/Profile Image.png');
+        return const AssetImage('assets/Timeline/images/profile_image_1.png');
       case 'jordanmarco':
-        return const AssetImage('assets/Timeline/Story/image/Profile Image2.png');
+        return const AssetImage('assets/Timeline/images/profile_image2.png');
       case 'avaj':
-        return const AssetImage('assets/Timeline/Story/image/Avatar.png');
+        return const AssetImage('assets/Timeline/images/avatar.png');
       case 'karennne':
-        return const AssetImage('assets/Timeline/Personal Timeline  Default State/image/Element.png');
+        return const AssetImage('assets/Timeline/images/element.png');
       default:
-        return const AssetImage('assets/Timeline/Personal Timeline  Default State/image/Element.png');
+        return const AssetImage('assets/Timeline/images/element.png');
     }
   }
 

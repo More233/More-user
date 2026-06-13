@@ -410,7 +410,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: SvgPicture.asset(
-                          'assets/Timeline/Add Photos  Gallery Picker/icon/cancel-01.svg',
+                          'assets/Timeline/icons/cancel_01.svg',
                           width: 24,
                           height: 24,
                         ),
@@ -466,7 +466,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                             ),
                             const SizedBox(width: 4),
                             SvgPicture.asset(
-                              'assets/Timeline/Add Photos  Gallery Picker/icon/arrow-down-01.svg',
+                              'assets/Timeline/icons/arrow_down_01.svg',
                               width: 20,
                               height: 20,
                             ),
@@ -489,8 +489,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                             children: [
                               SvgPicture.asset(
                                 _isMultiSelect
-                                    ? 'assets/Timeline/Add Photos  Gallery Picker/icon/cancel-01.svg'
-                                    : 'assets/Timeline/Add Photos  Gallery Picker/icon/Frame 1948754838.svg',
+                                    ? 'assets/Timeline/icons/cancel_01.svg'
+                                    : 'assets/Timeline/icons/frame_1948754838.svg',
                                 width: 16,
                                 height: 16,
                                 colorFilter: const ColorFilter.mode(Color(0xFF333333), BlendMode.srcIn),
@@ -531,7 +531,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                             color: Colors.black,
                             child: Center(
                               child: SvgPicture.asset(
-                                'assets/Timeline/Add Photos  Gallery Picker/icon/camera-01.svg',
+                                'assets/Timeline/icons/camera_01.svg',
                                 width: 32,
                                 height: 32,
                                 colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
@@ -756,7 +756,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                           children: [
                             if (_deviceAlbums.isEmpty) ...[
                               _buildDropdownItem(
-                                iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-02.svg',
+                                iconPath: 'assets/Timeline/icons/image_02.svg',
                                 title: 'Recents',
                                 onTap: () {
                                   setState(() {
@@ -769,14 +769,14 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                               ..._deviceAlbums.take(3).map((album) {
                                 final int index = _deviceAlbums.indexOf(album);
                                 return _buildDropdownItem(
-                                  iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-01.svg',
+                                  iconPath: 'assets/Timeline/icons/image_01.svg',
                                   title: album.name,
                                   onTap: () => _onCategorySelected(index),
                                 );
                               }),
                             ],
                             _buildDropdownItem(
-                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/album-02.svg',
+                              iconPath: 'assets/Timeline/icons/album_02.svg',
                               title: 'All albums',
                               onTap: _openAlbumsBottomSheet,
                             ),

@@ -72,45 +72,12 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/Splash/
-    - assets/Auth Section/Detected Signed Account/icon/
-    - assets/Auth Section/Basic information  Birthday/icon/
-    - assets/Auth Section/Discover more around you/icon/
-    - assets/Auth Section/Basic information  Default/icon/
-    - assets/Auth Section/Basic information  Add Friend/image/
-    - assets/Auth Section/Basic information  Add Friend/icon/
-    - assets/Auth Section/Basic information  Intrestes/icon/
-    - assets/Auth Section/Get started with More/icon/
-    - assets/Permissions Section/Location Permission/image/
-    - assets/Permissions Section/Location Permission/icon/
-    - assets/Permissions Section/Notifications Permission/image/
-    - assets/Permissions Section/Notifications Permission/icon/
-    - assets/Permissions Section/Contact Permission/image/
-    - assets/Permissions Section/Contact Permission/icon/
-    - assets/Permissions Section/Prtivacy Permission/image/
-    - assets/Permissions Section/Prtivacy Permission/icon/
-    - assets/Timeline/Personal Timeline  Default State/icon/
-    - assets/Timeline/Personal Timeline  Default State/image/
-    - assets/Timeline/First Check-in Onboarding  FAB Coachmark/icon/
-    - assets/Timeline/First Check-in Onboarding  FAB Coachmark/image/
-    - assets/Timeline/First Check-in Onboarding  Intro Bottom Sheet/icon/
-    - assets/Timeline/First Check-in Onboarding  Intro Bottom Sheet/image/
-    - assets/Timeline/Check-in Success  First Check-in Reward/image/
-    - assets/Timeline/Check-in Success  First Check-in Reward/icon/
-    - assets/Timeline/Check-in Composer  First Check/icon/
-    - assets/Timeline/Check-in Composer  First Check/image/
-    - assets/Timeline/Add Photos  Gallery Picker/icon/
-    - assets/Timeline/Add Photos  Gallery Picker/image/
-    - assets/Timeline/Add Photos  Multiple Photos Crop Preview/icon/
-    - assets/Timeline/Add Photos  Multiple Photos Crop Preview/image/
-    - assets/Timeline/Add Photos  Select Album Bottom Sheet/image/
-    - assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/
-    - assets/Timeline/Story/icon/
-    - assets/Timeline/Story/image/
-    - assets/Timeline/First Check-in Onboarding  FAB Coachmark - Copy/icon/
-    - assets/Timeline/Notifications/icon/
-    - assets/Timeline/Notifications/image/
-    - assets/Timeline/Comments  Empty Comments Bottom Sheet/icon/
-    - assets/Timeline/Social Onboarding/
+    - assets/Auth Section/icons/
+    - assets/Auth Section/images/
+    - assets/Permissions Section/icons/
+    - assets/Permissions Section/images/
+    - assets/Timeline/icons/
+    - assets/Timeline/images/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

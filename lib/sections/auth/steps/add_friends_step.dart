@@ -71,20 +71,20 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
     final clean = username.startsWith('@') ? username.substring(1) : username;
     final lower = clean.toLowerCase();
     if (lower == 'mayat') {
-      return 'assets/Auth Section/Basic information  Add Friend/image/Element.png';
+      return 'assets/Auth Section/images/element.png';
     } else if (lower == 'jordanmarco') {
-      return 'assets/Auth Section/Basic information  Add Friend/image/Element-1.png';
+      return 'assets/Auth Section/images/element_1.png';
     } else if (lower == 'avaj') {
-      return 'assets/Auth Section/Basic information  Add Friend/image/Element-2.png';
+      return 'assets/Auth Section/images/element_2.png';
     } else {
       final hash = clean.codeUnits.fold(0, (prev, element) => prev + element);
       final index = hash % 3;
       if (index == 0) {
-        return 'assets/Auth Section/Basic information  Add Friend/image/Element.png';
+        return 'assets/Auth Section/images/element.png';
       } else if (index == 1) {
-        return 'assets/Auth Section/Basic information  Add Friend/image/Element-1.png';
+        return 'assets/Auth Section/images/element_1.png';
       } else {
-        return 'assets/Auth Section/Basic information  Add Friend/image/Element-2.png';
+        return 'assets/Auth Section/images/element_2.png';
       }
     }
   }
@@ -155,7 +155,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
         } else if (city.isNotEmpty) {
           detailText = 'Recently at $city';
           detailIcon = SvgPicture.asset(
-            'assets/Auth Section/Discover more around you/icon/location-01.svg',
+            'assets/Auth Section/icons/location.svg',
             width: 14,
             height: 14,
             colorFilter: const ColorFilter.mode(Color(0xFF9CA3AF), BlendMode.srcIn),
@@ -417,7 +417,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                 child: Row(
                   children: [
                     SvgPicture.asset(
-                      'assets/Auth Section/Basic information  Add Friend/icon/search-01.svg',
+                      'assets/Auth Section/icons/search_01.svg',
                       width: 20,
                       height: 20,
                       colorFilter: const ColorFilter.mode(

@@ -295,18 +295,18 @@ class _SaveToListBottomSheetState extends State<SaveToListBottomSheet> {
           case CategoryIconType.coffee:
             bgColor = const Color(0xFFFDF6EC);
             iconColor = const Color(0xFFE6A23C);
-            iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/coffee-02.svg';
+            iconSvg = 'assets/Timeline/icons/coffee_02.svg';
             break;
           case CategoryIconType.camera:
             bgColor = const Color(0xFFFFF0F5);
             iconColor = const Color(0xFFFF5B9D);
-            iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/camera-01.svg';
+            iconSvg = 'assets/Timeline/icons/camera_01_1.svg';
             break;
           case CategoryIconType.building:
           default:
             bgColor = const Color(0xFFF2EEFC);
             iconColor = const Color(0xFF7C57FC);
-            iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/building-05.svg';
+            iconSvg = 'assets/Timeline/icons/building_05.svg';
             break;
         }
 
@@ -608,8 +608,8 @@ class _SaveToListBottomSheetState extends State<SaveToListBottomSheet> {
             trailing: IconButton(
               icon: SvgPicture.asset(
                 isSavedInSaved
-                    ? 'assets/Timeline/Save Flow  New Collection Creation/icon/bookmark-02.svg'
-                    : 'assets/Timeline/Story/icon/bookmark-02.svg',
+                    ? 'assets/Timeline/icons/bookmark_02.svg'
+                    : 'assets/Timeline/icons/bookmark_02_1.svg',
                 width: 24,
                 height: 24,
                 colorFilter: ColorFilter.mode(
@@ -760,8 +760,8 @@ class _SaveToListBottomSheetState extends State<SaveToListBottomSheet> {
                             padding: const EdgeInsets.all(8.0),
                             child: SvgPicture.asset(
                               inCollection
-                                  ? 'assets/Timeline/Save Flow  New Collection Creation/icon/checkmark-circle-01.svg'
-                                  : 'assets/Timeline/Save Flow  New Collection Creation/icon/add-circle.svg',
+                                  ? 'assets/Timeline/icons/checkmark_circle_01.svg'
+                                  : 'assets/Timeline/icons/add_circle.svg',
                               width: 28,
                               height: 28,
                               colorFilter: ColorFilter.mode(

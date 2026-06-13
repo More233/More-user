@@ -54,7 +54,7 @@ class TimelineTabBar extends StatelessWidget {
                     child: _TabItem(
                       label: 'Timeline',
                       iconPath:
-                          'assets/Timeline/Personal Timeline  Default State/icon/time-04.svg',
+                          'assets/Timeline/icons/time_04.svg',
                       isActive: selectedIndex == 0,
                       onTap: () => onTabChanged(0),
                     ),
@@ -64,7 +64,7 @@ class TimelineTabBar extends StatelessWidget {
                     child: _TabItem(
                       label: 'Social',
                       iconPath:
-                          'assets/Timeline/Personal Timeline  Default State/icon/user-multiple.svg',
+                          'assets/Timeline/icons/user_multiple.svg',
                       isActive: selectedIndex == 1,
                       onTap: () => onTabChanged(1),
                     ),

@@ -169,17 +169,17 @@ class _CollectionDetailsScreenState extends State<CollectionDetailsScreen> {
       case CategoryIconType.coffee:
         bgColor = const Color(0xFFFDF6EC);
         iconColor = const Color(0xFFE6A23C);
-        iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/coffee-02.svg';
+        iconSvg = 'assets/Timeline/icons/coffee_02.svg';
         break;
       case CategoryIconType.camera:
         bgColor = const Color(0xFFFFF0F5);
         iconColor = const Color(0xFFFF5B9D);
-        iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/camera-01.svg';
+        iconSvg = 'assets/Timeline/icons/camera_01_1.svg';
         break;
       case CategoryIconType.building:
         bgColor = const Color(0xFFF2EEFC);
         iconColor = const Color(0xFF7C57FC);
-        iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/building-05.svg';
+        iconSvg = 'assets/Timeline/icons/building_05.svg';
         break;
     }
 
@@ -484,15 +484,15 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
     switch (post.categoryIcon) {
       case CategoryIconType.coffee:
         iconColor = const Color(0xFFE6A23C);
-        iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/coffee-02.svg';
+        iconSvg = 'assets/Timeline/icons/coffee_02.svg';
         break;
       case CategoryIconType.camera:
         iconColor = const Color(0xFFFF5B9D);
-        iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/camera-01.svg';
+        iconSvg = 'assets/Timeline/icons/camera_01_1.svg';
         break;
       case CategoryIconType.building:
         iconColor = const Color(0xFF7C57FC);
-        iconSvg = 'assets/Timeline/Personal Timeline  Default State/icon/building-05.svg';
+        iconSvg = 'assets/Timeline/icons/building_05.svg';
         break;
     }
 
@@ -676,7 +676,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                           const CircleAvatar(
                             radius: 18,
                             backgroundImage: AssetImage(
-                              'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                              'assets/Timeline/images/element.png',
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -706,7 +706,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                           ),
                           IconButton(
                             icon: SvgPicture.asset(
-                              'assets/Timeline/Story/icon/delete-03.svg',
+                              'assets/Timeline/icons/delete_03_1.svg',
                               width: 24,
                               height: 24,
                               colorFilter: const ColorFilter.mode(
@@ -718,7 +718,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
                           ),
                           IconButton(
                             icon: SvgPicture.asset(
-                              'assets/Timeline/Personal Timeline  Default State/icon/Share Icon.svg',
+                              'assets/Timeline/icons/share_icon_1.svg',
                               width: 24,
                               height: 24,
                               colorFilter: const ColorFilter.mode(

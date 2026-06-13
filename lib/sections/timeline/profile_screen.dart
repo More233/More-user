@@ -542,7 +542,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const CircleAvatar(
                 radius: 40,
                 backgroundImage: AssetImage(
-                  'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                  'assets/Timeline/images/element.png',
                 ),
               ),
               const SizedBox(width: 20),
@@ -600,7 +600,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   children: [
                     Image.asset(
-                      'assets/Timeline/Personal Timeline  Default State/image/image 156.png',
+                      'assets/Timeline/images/coin.png',
                       width: 20,
                       height: 20,
                     ),

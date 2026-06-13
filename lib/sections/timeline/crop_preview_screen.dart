@@ -25,7 +25,7 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
     _images = List.from(widget.selectedImages);
     if (_images.isEmpty) {
       // Fallback
-      _images.add('assets/Timeline/Add Photos  Gallery Picker/image/Rectangle.png');
+      _images.add('assets/Timeline/images/picker_rectangle.png');
     }
   }
 
@@ -68,7 +68,7 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
                 children: [
                   IconButton(
                     icon: SvgPicture.asset(
-                      'assets/Timeline/Add Photos  Multiple Photos Crop Preview/icon/arrow-left-01.svg',
+                      'assets/Timeline/icons/arrow_left_01.svg',
                       width: 24,
                       height: 24,
                       colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
@@ -134,7 +134,7 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
                                 ),
                                 child: Center(
                                   child: SvgPicture.asset(
-                                    'assets/Timeline/Add Photos  Multiple Photos Crop Preview/icon/cancel-01.svg',
+                                    'assets/Timeline/icons/cancel_01_1.svg',
                                     width: 16,
                                     height: 16,
                                     colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
@@ -180,7 +180,7 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
                             ),
                             child: Center(
                               child: SvgPicture.asset(
-                                'assets/Timeline/Add Photos  Multiple Photos Crop Preview/icon/plus-sign.svg',
+                                'assets/Timeline/icons/plus_sign_2.svg',
                                 width: 24,
                                 height: 24,
                                 colorFilter: const ColorFilter.mode(

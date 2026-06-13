@@ -24,27 +24,27 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   List<Map<String, String>> _allProfiles = [
     {
       'username': 'sally.samer.3',
-      'avatar_url': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      'avatar_url': 'assets/Timeline/images/element.png',
     },
     {
       'username': 'zackjohn',
-      'avatar_url': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      'avatar_url': 'assets/Timeline/images/element.png',
     },
     {
       'username': 'kiero_d',
-      'avatar_url': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      'avatar_url': 'assets/Timeline/images/element.png',
     },
     {
       'username': 'craig_love',
-      'avatar_url': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      'avatar_url': 'assets/Timeline/images/element.png',
     },
     {
       'username': 'martini_rond',
-      'avatar_url': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      'avatar_url': 'assets/Timeline/images/element.png',
     },
     {
       'username': 'jacob_w',
-      'avatar_url': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      'avatar_url': 'assets/Timeline/images/element.png',
     },
   ];
   List<Map<String, String>> _mentionSuggestions = [];
@@ -141,7 +141,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
     final comment = TimelineComment(
       authorName: 'sally.samer.3',
-      authorAvatar: 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+      authorAvatar: 'assets/Timeline/images/element.png',
       commentText: text,
       timeAgo: 'Just now',
     );
@@ -244,7 +244,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                       avatarWidget = const CircleAvatar(
                         radius: 12,
                         backgroundImage: AssetImage(
-                          'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                          'assets/Timeline/images/element.png',
                         ),
                       );
                     }
@@ -301,7 +301,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               ],
             ),
             child: SvgPicture.asset(
-              'assets/Timeline/Comments  Empty Comments Bottom Sheet/icon/message-multiple-02lg.svg',
+              'assets/Timeline/icons/message_multiple_02lg.svg',
               width: 64,
               height: 64,
             ),
@@ -330,7 +330,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           const CircleAvatar(
             radius: 18,
             backgroundImage: AssetImage(
-              'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+              'assets/Timeline/images/element.png',
             ),
           ),
           const SizedBox(width: 12),
@@ -460,7 +460,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             const CircleAvatar(
               radius: 16,
               backgroundImage: AssetImage(
-                'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                'assets/Timeline/images/element.png',
               ),
             ),
             const SizedBox(width: 12),
