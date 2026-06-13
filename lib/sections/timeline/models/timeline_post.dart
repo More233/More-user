@@ -40,6 +40,7 @@ class TimelinePost {
   final bool isPrivate;
   final int stickerIndex;
   final List<String> taggedFriends;
+  final DateTime? createdAt;
 
   TimelinePost({
     required this.id,
@@ -59,6 +60,7 @@ class TimelinePost {
     this.isPrivate = false,
     this.stickerIndex = -1,
     this.taggedFriends = const [],
+    this.createdAt,
   });
 
   TimelinePost copyWith({
@@ -79,6 +81,7 @@ class TimelinePost {
     bool? isPrivate,
     int? stickerIndex,
     List<String>? taggedFriends,
+    DateTime? createdAt,
   }) {
     return TimelinePost(
       id: id ?? this.id,
@@ -98,6 +101,62 @@ class TimelinePost {
       isPrivate: isPrivate ?? this.isPrivate,
       stickerIndex: stickerIndex ?? this.stickerIndex,
       taggedFriends: taggedFriends ?? this.taggedFriends,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  static TimelinePost fromMap(Map<String, dynamic> postData) {
+    final categoryName = postData['category_name'] as String? ?? 'Hotel';
+    CategoryIconType catIcon = CategoryIconType.building;
+    if (categoryName.toLowerCase() == 'coffee' || categoryName.toLowerCase() == 'cafe') {
+      catIcon = CategoryIconType.coffee;
+    } else if (categoryName.toLowerCase() == 'attraction' || categoryName.toLowerCase() == 'camera') {
+      catIcon = CategoryIconType.camera;
+    }
+
+    String postTimeStr = 'Just now';
+    final createdAtStr = postData['created_at'] as String?;
+    final createdAt = createdAtStr != null ? DateTime.tryParse(createdAtStr) : null;
+    if (createdAt != null) {
+      final difference = DateTime.now().difference(createdAt.toLocal());
+      if (difference.inMinutes < 1) {
+        postTimeStr = 'Just now';
+      } else if (difference.inMinutes < 60) {
+        postTimeStr = '${difference.inMinutes}m ago';
+      } else if (difference.inHours < 24) {
+        postTimeStr = '${difference.inHours}h ago';
+      } else {
+        postTimeStr = '${difference.inDays}d ago';
+      }
+    }
+
+    final taggedListRaw = postData['tagged_friends'];
+    final List<String> tagged = [];
+    if (taggedListRaw is List) {
+      for (final t in taggedListRaw) {
+        tagged.add(t.toString());
+      }
+    }
+
+    return TimelinePost(
+      id: postData['id'] as String,
+      title: postData['title'] as String? ?? '',
+      categoryName: categoryName,
+      locationAddress: postData['location_address'] as String? ?? '',
+      visitorCount: postData['visitor_count'] as int? ?? 1,
+      postTime: postTimeStr,
+      description: postData['description'] as String? ?? '',
+      imageUrl: postData['image_url'] as String?,
+      likesCount: postData['likes_count'] as int? ?? 0,
+      commentsCount: postData['comments_count'] as int? ?? 0,
+      categoryIcon: catIcon,
+      comments: [],
+      isPrivate: postData['is_private'] as bool? ?? false,
+      stickerIndex: postData['sticker_index'] as int? ?? -1,
+      taggedFriends: tagged,
+      createdAt: createdAt,
+      isLiked: postData['is_liked'] as bool? ?? false,
+      isBookmarked: postData['is_bookmarked'] as bool? ?? false,
     );
   }
 }

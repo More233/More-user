@@ -1,8 +1,13 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:crypto/crypto.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/country_picker.dart';
 
@@ -126,6 +131,93 @@ class _LoginStepState extends State<LoginStep> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleAppleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      if (!kIsWeb && Platform.isIOS) {
+        final rawNonce = Supabase.instance.client.auth.generateRawNonce();
+        final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+        final credential = await SignInWithApple.getAppleIDCredential(
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+          nonce: hashedNonce,
+        );
+
+        final idToken = credential.identityToken;
+        if (idToken == null) {
+          throw const AuthException(
+              'Could not find ID Token from generated credential.');
+        }
+
+        await Supabase.instance.client.auth.signInWithIdToken(
+          provider: OAuthProvider.apple,
+          idToken: idToken,
+          nonce: rawNonce,
+        );
+
+        // Apple only provides the user's full name on the first sign-in
+        // Save it to user metadata if available
+        if (credential.givenName != null || credential.familyName != null) {
+          final nameParts = <String>[];
+          if (credential.givenName != null) nameParts.add(credential.givenName!);
+          if (credential.familyName != null) nameParts.add(credential.familyName!);
+
+          final fullName = nameParts.join(' ');
+
+          await Supabase.instance.client.auth.updateUser(
+            UserAttributes(
+              data: {
+                'full_name': fullName,
+                'given_name': credential.givenName,
+                'family_name': credential.familyName,
+              },
+            ),
+          );
+        }
+      } else {
+        // Fallback for Android/Web (web-based OAuth)
+        await Supabase.instance.client.auth.signInWithOAuth(
+          OAuthProvider.apple,
+          redirectTo: kIsWeb ? null : 'io.supabase.moreapp://login-callback',
+          authScreenLaunchMode:
+              kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+        );
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString();
+      // Only show error if the user did not cancel the native Apple sheet
+      if (!msg.contains('SignInWithAppleAuthorizationExceptionCode.canceled') &&
+          !msg.contains('SignInWithAppleAuthorizationError.canceled')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Apple Sign-in failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -403,13 +495,7 @@ class _LoginStepState extends State<LoginStep> {
             _buildSocialButton(
               logoSvgPath: 'assets/Auth Section/Get started with More/icon/Social icon apple.svg',
               platformName: 'Apple',
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Apple sign-in will be enabled soon.'),
-                  ),
-                );
-              },
+              onPressed: _isLoading ? () {} : _handleAppleSignIn,
             ),
             const SizedBox(height: 48),
             // Sign Up Switcher Link

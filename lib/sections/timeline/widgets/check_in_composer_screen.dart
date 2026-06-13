@@ -11,7 +11,12 @@ import 'posting_loading_screen.dart';
 
 class CheckInComposerScreen extends StatefulWidget {
   final bool isFirstCheckIn;
-  const CheckInComposerScreen({super.key, this.isFirstCheckIn = false});
+  final TimelinePost? editPost;
+  const CheckInComposerScreen({
+    super.key,
+    this.isFirstCheckIn = false,
+    this.editPost,
+  });
 
   @override
   State<CheckInComposerScreen> createState() => _CheckInComposerScreenState();
@@ -19,19 +24,32 @@ class CheckInComposerScreen extends StatefulWidget {
 
 class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
   final TextEditingController _captionController = TextEditingController();
-  final String _locationName = "Helnan Auberge El Fayoum Hotel";
+  String _locationName = "Helnan Auberge El Fayoum Hotel";
+  String _locationAddress = "Muhafazat al Fayyūm, Egypt";
   
   List<String> _selectedImages = [];
   List<Map<String, dynamic>> _taggedFriends = [];
   bool _isPrivate = false;
   int _selectedStickerIndex = -1; // -1 means none selected
   String? _currentUserAvatarUrl;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
-    if (widget.isFirstCheckIn) {
+    if (widget.editPost != null) {
+      final post = widget.editPost!;
+      _locationName = post.title;
+      _locationAddress = post.locationAddress;
+      _captionController.text = post.description;
+      _isPrivate = post.isPrivate;
+      _selectedStickerIndex = post.stickerIndex;
+      if (post.imageUrl != null) {
+        _selectedImages = [post.imageUrl!];
+      }
+      _taggedFriends = post.taggedFriends.map((name) => {'name': name}).toList();
+    } else if (widget.isFirstCheckIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showIntroBottomSheet();
       });
@@ -156,7 +174,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: _locationName,
       categoryName: 'Hotel',
-      locationAddress: 'El Fayoum, Egypt',
+      locationAddress: _locationAddress,
       visitorCount: 1,
       postTime: 'Today • Just now',
       description: caption,
@@ -183,6 +201,60 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
 
     if (result == true && mounted) {
       Navigator.pop(context, true);
+    }
+  }
+
+  void _saveChanges() async {
+    final caption = _captionController.text.trim();
+    if (caption.isEmpty) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final client = Supabase.instance.client;
+      String? finalImageUrl = _selectedImages.isNotEmpty ? _selectedImages.first : null;
+
+      // If it's a local file path, upload it to storage
+      if (finalImageUrl != null && (finalImageUrl.startsWith('/') || finalImageUrl.startsWith('file:'))) {
+        final user = client.auth.currentUser;
+        if (user != null) {
+          final file = File(finalImageUrl);
+          final fileName = 'posts/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          await client.storage.from('post-images').upload(
+            fileName,
+            file,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
+          finalImageUrl = client.storage.from('post-images').getPublicUrl(fileName);
+        }
+      }
+
+      await client.from('posts').update({
+        'description': caption,
+        'image_url': finalImageUrl,
+        'is_private': _isPrivate,
+        'sticker_index': _selectedStickerIndex,
+        'tagged_friends': _taggedFriends.map((f) => f['name'] as String).toList(),
+      }).eq('id', widget.editPost!.id);
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      debugPrint("Error updating post: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to save changes: $e")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -386,7 +458,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          "Change location",
+                          widget.editPost != null ? _locationAddress : "Change location",
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -512,7 +584,8 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                         children: [
                           ...List.generate(_selectedImages.length, (index) {
                             final imgPath = _selectedImages[index];
-                            final isAsset = !imgPath.startsWith('/') && !imgPath.startsWith('file:');
+                            final isNetwork = imgPath.startsWith('http://') || imgPath.startsWith('https://');
+                            final isAsset = !isNetwork && !imgPath.startsWith('/') && !imgPath.startsWith('file:');
                             return Stack(
                               clipBehavior: Clip.none,
                               children: [
@@ -531,19 +604,30 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
-                                    child: isAsset
-                                        ? Image.asset(
+                                    child: isNetwork
+                                        ? Image.network(
                                             imgPath,
                                             width: 100,
                                             height: 100,
                                             fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => Container(
+                                              color: Colors.grey[200],
+                                              child: const Icon(Icons.broken_image, color: Colors.grey),
+                                            ),
                                           )
-                                        : Image.file(
-                                            File(imgPath),
-                                            width: 100,
-                                            height: 100,
-                                            fit: BoxFit.cover,
-                                          ),
+                                        : isAsset
+                                            ? Image.asset(
+                                                imgPath,
+                                                width: 100,
+                                                height: 100,
+                                                fit: BoxFit.cover,
+                                              )
+                                            : Image.file(
+                                                File(imgPath),
+                                                width: 100,
+                                                height: 100,
+                                                fit: BoxFit.cover,
+                                              ),
                                   ),
                                 ),
                                 Positioned(
@@ -924,29 +1008,43 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
           ),
 
           // Bottom Action Button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C57FC),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-                onPressed: hasCaption ? _submitPost : null,
-                child: Opacity(
-                  opacity: hasCaption ? 1.0 : 0.6,
-                  child: Text(
-                    'Continue',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C57FC),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    elevation: 0,
+                  ),
+                  onPressed: hasCaption && !_isSaving
+                      ? (widget.editPost != null ? _saveChanges : _submitPost)
+                      : null,
+                  child: Opacity(
+                    opacity: hasCaption && !_isSaving ? 1.0 : 0.6,
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            widget.editPost != null ? 'Save changes' : 'Continue',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ),

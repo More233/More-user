@@ -10,6 +10,8 @@ class TimelinePostCard extends StatelessWidget {
   final VoidCallback? onBookmark;
   final VoidCallback? onComment;
   final VoidCallback? onShare;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
   final bool isLastInSection;
 
   const TimelinePostCard({
@@ -19,6 +21,8 @@ class TimelinePostCard extends StatelessWidget {
     this.onBookmark,
     this.onComment,
     this.onShare,
+    this.onEdit,
+    this.onDelete,
     this.isLastInSection = false,
   });
 
@@ -151,14 +155,83 @@ class TimelinePostCard extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        SvgPicture.asset(
-          'assets/Timeline/Personal Timeline  Default State/icon/Post Options.svg',
-          width: 20,
-          height: 20,
-          colorFilter: const ColorFilter.mode(
-            Color(0xFF3B3C4F),
-            BlendMode.srcIn,
+        PopupMenuButton<String>(
+          icon: SvgPicture.asset(
+            'assets/Timeline/Personal Timeline  Default State/icon/Post Options.svg',
+            width: 20,
+            height: 20,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFF3B3C4F),
+              BlendMode.srcIn,
+            ),
           ),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 141),
+          color: const Color(0x99131116), // Dark semi-transparent (rgba(19, 17, 22, 0.6))
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          onSelected: (value) {
+            if (value == 'edit') {
+              onEdit?.call();
+            } else if (value == 'delete') {
+              onDelete?.call();
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem<String>(
+              value: 'edit',
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  SvgPicture.asset(
+                    'assets/Timeline/Personal Timeline  Default State/icon/edit-02.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Edit',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'delete',
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  SvgPicture.asset(
+                    'assets/Timeline/Story/icon/delete-03.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFDF0000),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Delete',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: const Color(0xFFDF0000),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

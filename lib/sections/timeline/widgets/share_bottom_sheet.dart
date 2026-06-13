@@ -162,40 +162,42 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
             ),
           ),
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
-          // Share Button Box
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C57FC),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C57FC),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                onPressed: _selectedUsernames.isEmpty
-                    ? null
-                    : () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Shared successfully with ${_selectedUsernames.length} friend(s)!',
-                              style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                  onPressed: _selectedUsernames.isEmpty
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Shared successfully with ${_selectedUsernames.length} friend(s)!',
+                                style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                              ),
+                              backgroundColor: const Color(0xFF7C57FC),
                             ),
-                            backgroundColor: const Color(0xFF7C57FC),
-                          ),
-                        );
-                      },
-                child: Text(
-                  'Share (${_selectedUsernames.length})',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                          );
+                        },
+                  child: Text(
+                    'Share (${_selectedUsernames.length})',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),

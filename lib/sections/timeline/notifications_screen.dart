@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -10,40 +11,7 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   // Mock notifications list
-  final List<Map<String, dynamic>> _activities = [
-    {
-      'type': 'like',
-      'username': 'karennne',
-      'avatar': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-      'text': 'liked your photo.',
-      'time': '1h',
-      'photo': 'assets/Timeline/Personal Timeline  Default State/image/sa.png',
-    },
-    {
-      'type': 'like_multiple',
-      'username': 'kiero_d, zackjohn',
-      'avatar': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-      'text': 'and 26 others liked your photo.',
-      'time': '3h',
-      'photo': 'assets/Timeline/Personal Timeline  Default State/image/sa.png',
-    },
-    {
-      'type': 'mention',
-      'username': 'craig_love',
-      'avatar': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-      'text': 'mentioned you in a comment: @jacob_w exactly.. 💫',
-      'time': '2d',
-      'photo': 'assets/Timeline/Personal Timeline  Default State/image/sa.png',
-    },
-    {
-      'type': 'follow',
-      'username': 'martini_rond',
-      'avatar': 'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-      'text': 'started following you.',
-      'time': '3d',
-      'isFollowing': false,
-    },
-  ];
+  final List<Map<String, dynamic>> _activities = [];
 
   @override
   Widget build(BuildContext context) {
@@ -52,15 +20,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+        centerTitle: true,
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: SvgPicture.asset(
+              'assets/Timeline/Notifications/icon/arrow-left-01.svg',
+              width: 24,
+              height: 24,
+            ),
+          ),
         ),
         title: Text(
-          'Activity',
+          'Notifications',
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
             color: Colors.black,
           ),
         ),
@@ -70,14 +46,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         children: [
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: _activities.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final activity = _activities[index];
-                return _buildActivityItem(activity, index);
-              },
+            child: _activities.isEmpty
+                ? _buildEmptyState()
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    itemCount: _activities.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final activity = _activities[index];
+                      return _buildActivityItem(activity, index);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0x335D5D5D), // rgba(93, 93, 93, 0.2)
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 0),
+                ),
+              ],
+            ),
+            child: SvgPicture.asset(
+              'assets/Timeline/Notifications/icon/notificationlg-02.svg',
+              width: 64,
+              height: 64,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No notifications yet',
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
             ),
           ),
         ],

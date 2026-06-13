@@ -165,29 +165,31 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
                       ),
           ),
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
-          // Confirm Button
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C57FC),
-                  shape: RoundedRectangleBorder(
-                     borderRadius: BorderRadius.circular(12),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C57FC),
+                    shape: RoundedRectangleBorder(
+                       borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  Navigator.pop(context, _selectedFriends);
-                },
-                child: Text(
-                  'Add Friends (${_selectedFriends.length})',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                  onPressed: () {
+                    Navigator.pop(context, _selectedFriends);
+                  },
+                  child: Text(
+                    'Add Friends (${_selectedFriends.length})',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),

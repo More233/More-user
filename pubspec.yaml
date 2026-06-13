@@ -43,6 +43,8 @@ dependencies:
   image_picker: ^1.2.2
   photo_manager: ^3.9.0
   photo_manager_image_provider: ^2.2.0
+  sign_in_with_apple: ^8.1.0
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:
@@ -102,7 +104,14 @@ flutter:
     - assets/Timeline/Add Photos  Multiple Photos Crop Preview/image/
     - assets/Timeline/Add Photos  Select Album Bottom Sheet/image/
     - assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/
-    - assets/Organized/
+    - assets/Timeline/Story/icon/
+    - assets/Timeline/Story/image/
+    - assets/Timeline/First Check-in Onboarding  FAB Coachmark - Copy/icon/
+    - assets/Timeline/Notifications/icon/
+    - assets/Timeline/Notifications/image/
+    - assets/Timeline/Comments  Empty Comments Bottom Sheet/icon/
+    - assets/Timeline/Social Onboarding/
+
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
