@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'steps/splash_step.dart';
 import 'steps/login_step.dart';
@@ -28,6 +28,71 @@ class AuthFlowPage extends StatefulWidget {
 
 class _AuthFlowPageState extends State<AuthFlowPage> {
   final PageController _pageController = PageController();
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+      final session = data.session;
+      if (session != null) {
+        try {
+          final userId = session.user.id;
+          final profile = await Supabase.instance.client
+              .from('profiles')
+              .select()
+              .eq('id', userId)
+              .maybeSingle();
+
+          if (!mounted) return;
+          if (profile != null && profile['username'] != null) {
+            // User already has a completed profile -> go directly to TimelineScreen
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const TimelineScreen()),
+            );
+            return;
+          }
+        } catch (_) {
+          // Fallback to onboarding flow if query fails
+        }
+
+        // Pre-populate fields from Google meta data if available
+        final user = session.user;
+        final metadata = user.userMetadata;
+        if (metadata != null && mounted) {
+          setState(() {
+            final fullName = metadata['full_name'] as String? ?? metadata['name'] as String? ?? '';
+            if (fullName.isNotEmpty && (_firstName == null || _firstName!.isEmpty)) {
+              final parts = fullName.split(' ');
+              _firstName = parts.first;
+              if (parts.length > 1) {
+                _lastName = parts.sublist(1).join(' ');
+              }
+            }
+            final email = user.email;
+            if (email != null && (_username == null || _username!.isEmpty)) {
+              _username = email.split('@').first;
+            }
+            _googleAvatarUrl = metadata['avatar_url'] as String? ?? metadata['picture'] as String?;
+          });
+        }
+
+        if (_pageController.hasClients) {
+          final currentPage = _pageController.page?.round() ?? 0;
+          if (currentPage <= AuthStep.login.index) {
+            _navigateToStep(AuthStep.basicInfo);
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   // Onboarding profile data state
   String? _firstName;
@@ -37,6 +102,7 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
   DateTime? _birthday;
   List<String> _interests = [];
   bool _isSavingProfile = false;
+  String? _googleAvatarUrl;
 
   void _navigateToStep(AuthStep step) {
     _pageController.animateToPage(
@@ -46,60 +112,7 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
     );
   }
 
-  void _showOnboardingSuccess() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Onboarding Complete!',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF1A1A2E),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        content: Text(
-          'Congratulations! You have completed the premium onboarding flow and registration process successfully.',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF6B7280),
-          ),
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          Center(
-            child: SizedBox(
-              width: 120,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => const TimelineScreen(),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C57FC),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  'Restart',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   void _showOtpBottomSheet(BuildContext context, String address) {
     showModalBottomSheet(
@@ -147,11 +160,14 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
         'city': _city,
         'birthday': _birthday?.toIso8601String().split('T').first,
         'interests': _interests,
+        'avatar_url': _googleAvatarUrl,
         'updated_at': DateTime.now().toIso8601String(),
       });
 
       if (mounted) {
-        _showOnboardingSuccess();
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const TimelineScreen()),
+        );
       }
     } on PostgrestException catch (e) {
       if (mounted) {
@@ -211,6 +227,9 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
                   // Step 2: Sign Up Basic Info
                   BasicInfoStep(
                     onBack: () => _navigateToStep(AuthStep.login),
+                    initialFirstName: _firstName,
+                    initialLastName: _lastName,
+                    initialUsername: _username,
                     onCompleted: (firstName, lastName, username, city) {
                       setState(() {
                         _firstName = firstName;

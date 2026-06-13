@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/timeline_post.dart';
 import '../gallery_picker_screen.dart';
 import 'add_friends_bottom_sheet.dart';
 import 'intro_bottom_sheet.dart';
+import 'posting_loading_screen.dart';
 
 class CheckInComposerScreen extends StatefulWidget {
   final bool isFirstCheckIn;
@@ -19,17 +22,40 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
   final String _locationName = "Helnan Auberge El Fayoum Hotel";
   
   List<String> _selectedImages = [];
-  List<String> _taggedFriends = [];
+  List<Map<String, dynamic>> _taggedFriends = [];
   bool _isPrivate = false;
   int _selectedStickerIndex = -1; // -1 means none selected
+  String? _currentUserAvatarUrl;
 
   @override
   void initState() {
     super.initState();
+    _fetchUserProfile();
     if (widget.isFirstCheckIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showIntroBottomSheet();
       });
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user != null) {
+        final data = await client
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (data != null && data['avatar_url'] != null && mounted) {
+          setState(() {
+            _currentUserAvatarUrl = data['avatar_url'] as String?;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching user profile: $e");
     }
   }
 
@@ -108,7 +134,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
   }
 
   void _openAddFriends() async {
-    final List<String>? result = await showModalBottomSheet<List<String>>(
+    final List<Map<String, dynamic>>? result = await showModalBottomSheet<List<Map<String, dynamic>>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -122,7 +148,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
     }
   }
 
-  void _submitPost() {
+  void _submitPost() async {
     final caption = _captionController.text.trim();
     if (caption.isEmpty) return;
 
@@ -139,9 +165,25 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       commentsCount: 0,
       categoryIcon: CategoryIconType.building,
       comments: [],
+      isPrivate: _isPrivate,
+      stickerIndex: _selectedStickerIndex,
+      taggedFriends: _taggedFriends.map((f) => f['name'] as String).toList(),
     );
 
-    Navigator.pop(context, newPost);
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PostingLoadingScreen(
+          newPost: newPost,
+          selectedImages: _selectedImages,
+          currentUserAvatarUrl: _currentUserAvatarUrl,
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      Navigator.pop(context, true);
+    }
   }
 
   @override
@@ -156,9 +198,14 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
     final int remainingChars = 160 - _captionController.text.length;
     final double topPadding = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Column(
         children: [
           // Top Map Header Stack
           Stack(
@@ -198,10 +245,19 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                             border: Border.all(color: const Color(0xFF945CF6), width: 1.5),
                           ),
                           child: ClipOval(
-                            child: Image.asset(
-                              'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-                              fit: BoxFit.cover,
-                            ),
+                            child: _currentUserAvatarUrl != null
+                                ? Image.network(
+                                    _currentUserAvatarUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, e, s) => Image.asset(
+                                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : Image.asset(
+                                    'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                    fit: BoxFit.cover,
+                                  ),
                           ),
                         ),
                       ),
@@ -392,83 +448,107 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   // Optional Add Photos dashed button
-                  GestureDetector(
-                    onTap: _openGallery,
-                    child: CustomPaint(
-                      painter: DashedBorderPainter(
-                        color: const Color(0xFF7C57FC).withValues(alpha: 0.7),
-                        borderRadius: 12,
-                      ),
-                      child: Container(
-                        height: 58,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C57FC).withValues(alpha: 0.12),
-                              blurRadius: 4,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                  if (_selectedImages.isEmpty) ...[
+                    GestureDetector(
+                      onTap: _openGallery,
+                      child: CustomPaint(
+                        painter: DashedBorderPainter(
+                          color: const Color(0xFF7C57FC).withValues(alpha: 0.7),
+                          borderRadius: 12,
                         ),
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SvgPicture.asset(
-                              'assets/Timeline/Check-in Composer  First Check/icon/add_photos.svg',
-                              width: 24,
-                              height: 24,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFF7C57FC),
-                                BlendMode.srcIn,
+                        child: Container(
+                          height: 58,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF7C57FC).withValues(alpha: 0.12),
+                                blurRadius: 4,
+                                offset: const Offset(0, 4),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              "Add photos (Optional)",
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF7C57FC),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SvgPicture.asset(
+                                'assets/Timeline/Check-in Composer  First Check/icon/add_photos.svg',
+                                width: 24,
+                                height: 24,
+                                colorFilter: const ColorFilter.mode(
+                                  Color(0xFF7C57FC),
+                                  BlendMode.srcIn,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Text(
+                                "Add photos (Optional)",
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF7C57FC),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+                  ],
 
-                  // Selected Images Previews Horizontal Tray
+                  // Selected Images Previews Grid
                   if (_selectedImages.isNotEmpty) ...[
-                    SizedBox(
-                      height: 80,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _selectedImages.length,
-                        itemBuilder: (context, index) {
-                          final imgPath = _selectedImages[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Stack(
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          ...List.generate(_selectedImages.length, (index) {
+                            final imgPath = _selectedImages[index];
+                            final isAsset = !imgPath.startsWith('/') && !imgPath.startsWith('file:');
+                            return Stack(
+                              clipBehavior: Clip.none,
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.asset(
-                                    imgPath,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
+                                Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: isAsset
+                                        ? Image.asset(
+                                            imgPath,
+                                            width: 100,
+                                            height: 100,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Image.file(
+                                            File(imgPath),
+                                            width: 100,
+                                            height: 100,
+                                            fit: BoxFit.cover,
+                                          ),
                                   ),
                                 ),
                                 Positioned(
-                                  top: 4,
-                                  right: 4,
+                                  top: -6,
+                                  right: -6,
                                   child: GestureDetector(
                                     onTap: () {
                                       setState(() {
@@ -476,25 +556,67 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                       });
                                     },
                                     child: Container(
-                                      decoration: const BoxDecoration(
-                                        color: Colors.black54,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
                                         shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.15),
+                                            blurRadius: 3,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
                                       ),
+                                      padding: const EdgeInsets.all(4),
                                       child: const Icon(
                                         Icons.close,
                                         size: 14,
-                                        color: Colors.white,
+                                        color: Color(0xFF333333),
                                       ),
                                     ),
                                   ),
                                 ),
                               ],
+                            );
+                          }),
+                          // Add Photos dashed card
+                          GestureDetector(
+                            onTap: _openGallery,
+                            child: CustomPaint(
+                              painter: DashedBorderPainter(
+                                color: const Color(0xFF7C57FC).withValues(alpha: 0.7),
+                                borderRadius: 12,
+                              ),
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF7C57FC).withValues(alpha: 0.08),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: SvgPicture.asset(
+                                  'assets/Timeline/Check-in Composer  First Check/icon/add_photos.svg',
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: const ColorFilter.mode(
+                                    Color(0xFF7C57FC),
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
                   ],
 
                   // Check-in With Friends tag widgets
@@ -507,24 +629,183 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      // Tag button
-                      GestureDetector(
-                        onTap: _openAddFriends,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEDE6FC),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SvgPicture.asset(
+                  if (_taggedFriends.isEmpty)
+                    GestureDetector(
+                      onTap: _openAddFriends,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDE6FC),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SvgPicture.asset(
+                              'assets/Timeline/Check-in Composer  First Check/icon/add_friends.svg',
+                              width: 20,
+                              height: 20,
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFF7C57FC),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Add friends",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF7C57FC),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: _openAddFriends,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8F6FE),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFEDE6FC)),
+                        ),
+                        child: Row(
+                          children: [
+                            // Overlapping Avatars Group
+                            SizedBox(
+                              height: 44,
+                              child: Builder(
+                                builder: (context) {
+                                  final int total = _taggedFriends.length;
+                                  final List<Widget> children = [];
+                                  
+                                  // Show up to 2 avatars
+                                  final int displayAvatars = total > 2 ? 2 : total;
+                                  for (int i = 0; i < displayAvatars; i++) {
+                                    final friend = _taggedFriends[i];
+                                    final avatarUrl = friend['avatar_url'] as String?;
+                                    children.add(
+                                      Positioned(
+                                        left: i * 24.0, // 44px size, overlaps by 20px
+                                        child: Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white, width: 2),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.08),
+                                                blurRadius: 4,
+                                              ),
+                                            ],
+                                          ),
+                                          child: ClipOval(
+                                            child: avatarUrl != null
+                                                ? Image.network(
+                                                    avatarUrl,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, e, s) => Image.asset(
+                                                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  )
+                                                : Image.asset(
+                                                    'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  
+                                  // Show +X indicator if total > 2
+                                  if (total > 2) {
+                                    children.add(
+                                      Positioned(
+                                        left: 2 * 24.0,
+                                        child: Container(
+                                          width: 44,
+                                          height: 44,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEDE6FC),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: Colors.white, width: 2),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.08),
+                                                blurRadius: 4,
+                                              ),
+                                            ],
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '+${total - 2}',
+                                            style: GoogleFonts.ibmPlexSansArabic(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: const Color(0xFF7C57FC),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  
+                                  final double width = (displayAvatars * 24.0) + (total > 2 ? 44.0 : 20.0);
+                                  return SizedBox(
+                                    width: width,
+                                    child: Stack(
+                                      alignment: Alignment.centerLeft,
+                                      children: children,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Tagged friends names list text
+                            Expanded(
+                              child: Builder(
+                                builder: (context) {
+                                  final int total = _taggedFriends.length;
+                                  String namesText = '';
+                                  if (total == 1) {
+                                    namesText = _taggedFriends[0]['name'] as String;
+                                  } else if (total == 2) {
+                                    namesText = '${_taggedFriends[0]['name']}, ${_taggedFriends[1]['name']}';
+                                  } else {
+                                    namesText = '${_taggedFriends[0]['name']}, ${_taggedFriends[1]['name']} +${total - 2}';
+                                  }
+                                  return Text(
+                                    namesText,
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF666666),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Small add friends square button
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEDE6FC),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: SvgPicture.asset(
                                 'assets/Timeline/Check-in Composer  First Check/icon/add_friends.svg',
                                 width: 20,
                                 height: 20,
@@ -533,46 +814,11 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                   BlendMode.srcIn,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                "Add friends",
-                                style: GoogleFonts.ibmPlexSansArabic(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF7C57FC),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                      // Tagged friends chips
-                      ..._taggedFriends.map((friend) {
-                        return Chip(
-                          avatar: const CircleAvatar(
-                            backgroundImage: AssetImage(
-                              'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-                            ),
-                          ),
-                          label: Text(
-                            friend,
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              color: const Color(0xFF7C57FC),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          backgroundColor: const Color(0xFFF2EEFC),
-                          deleteIconColor: const Color(0xFF7C57FC),
-                          onDeleted: () {
-                            setState(() {
-                              _taggedFriends.remove(friend);
-                            });
-                          },
-                        );
-                      }),
-                    ],
-                  ),
+                    ),
                   const SizedBox(height: 24),
 
                   // Private Check-in Switch Row
@@ -708,8 +954,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class DashedBorderPainter extends CustomPainter {

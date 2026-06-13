@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddFriendsBottomSheet extends StatefulWidget {
-  final List<String> previouslySelected;
+  final List<Map<String, dynamic>> previouslySelected;
 
   const AddFriendsBottomSheet({super.key, this.previouslySelected = const []});
 
@@ -11,21 +12,57 @@ class AddFriendsBottomSheet extends StatefulWidget {
 }
 
 class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
-  final List<String> _friendsList = [
-    'Sally Samer',
-    'Craig Love',
-    'Zack John',
-    'Kieron D',
-    'Martini Rond',
-    'Jacob West',
-  ];
-
-  final List<String> _selectedFriends = [];
+  List<Map<String, dynamic>> _deviceProfiles = [];
+  bool _isLoading = true;
+  final List<Map<String, dynamic>> _selectedFriends = [];
 
   @override
   void initState() {
     super.initState();
     _selectedFriends.addAll(widget.previouslySelected);
+    _fetchFriendsFromDatabase();
+  }
+
+  Future<void> _fetchFriendsFromDatabase() async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUserId = client.auth.currentUser?.id;
+      final List<dynamic> response = await client
+          .from('profiles')
+          .select('id, first_name, last_name, username, avatar_url');
+      
+      final List<Map<String, dynamic>> fetched = [];
+      for (final p in response) {
+        final id = p['id'] as String;
+        if (id == currentUserId) continue;
+
+        final firstName = p['first_name'] as String? ?? '';
+        final lastName = p['last_name'] as String? ?? '';
+        final username = p['username'] as String? ?? '';
+        final avatarUrl = p['avatar_url'] as String?;
+        final fullName = '$firstName $lastName'.trim();
+        final displayName = fullName.isNotEmpty ? fullName : (username.isNotEmpty ? '@$username' : 'User');
+
+        fetched.add({
+          'name': displayName,
+          'avatar_url': avatarUrl,
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          _deviceProfiles = fetched;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching friends: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -64,48 +101,68 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
           const SizedBox(height: 16),
           // Scrollable List
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _friendsList.length,
-              itemBuilder: (context, index) {
-                final friend = _friendsList[index];
-                final isSelected = _selectedFriends.contains(friend);
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC)))
+                : _deviceProfiles.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No friends found',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _deviceProfiles.length,
+                        itemBuilder: (context, index) {
+                          final profile = _deviceProfiles[index];
+                          final name = profile['name'] as String;
+                          final avatarUrl = profile['avatar_url'] as String?;
+                          final isSelected = _selectedFriends.any((f) => f['name'] == name);
 
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    radius: 18,
-                    backgroundImage: AssetImage(
-                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-                    ),
-                  ),
-                  title: Text(
-                    friend,
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                  trailing: Checkbox(
-                    value: isSelected,
-                    activeColor: const Color(0xFF7C57FC),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    onChanged: (bool? val) {
-                      setState(() {
-                        if (val == true) {
-                          _selectedFriends.add(friend);
-                        } else {
-                          _selectedFriends.remove(friend);
-                        }
-                      });
-                    },
-                  ),
-                );
-              },
-            ),
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.grey[200],
+                              backgroundImage: avatarUrl != null
+                                  ? NetworkImage(avatarUrl) as ImageProvider
+                                  : const AssetImage(
+                                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                    ),
+                            ),
+                            title: Text(
+                              name,
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                            ),
+                            trailing: Checkbox(
+                              value: isSelected,
+                              activeColor: const Color(0xFF7C57FC),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              onChanged: (bool? val) {
+                                setState(() {
+                                  if (val == true) {
+                                    _selectedFriends.add({
+                                      'name': name,
+                                      'avatar_url': avatarUrl,
+                                    });
+                                  } else {
+                                    _selectedFriends.removeWhere((f) => f['name'] == name);
+                                  }
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
           ),
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
           // Confirm Button
@@ -118,7 +175,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7C57FC),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                     borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 0,
                 ),

@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:photo_manager/photo_manager.dart';
+import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'crop_preview_screen.dart';
 
 class GalleryPickerScreen extends StatefulWidget {
@@ -14,41 +17,111 @@ class GalleryPickerScreen extends StatefulWidget {
 }
 
 class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
-  // Mock list of local images available in gallery
-  final List<String> _galleryImages = [
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-1.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-2.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-3.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-4.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-5.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-6.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-7.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-8.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-9.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-10.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-11.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-12.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-13.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle-14.png',
-    'assets/Timeline/Add Photos  Gallery Picker/image/Rectangle0.png',
-  ];
-
-  late List<String> _currentGridPhotos;
-  final List<String> _selectedImages = [];
+  final List<GalleryImage> _galleryImages = [];
+  List<GalleryImage> _currentGridPhotos = [];
+  final List<GalleryImage> _selectedImages = [];
   bool _isMultiSelect = false;
-  late String _activePreviewImage;
+  GalleryImage? _activePreviewImage;
   bool _isDropdownOpen = false;
   String _selectedCategory = "Recents";
+  List<AssetPathEntity> _deviceAlbums = [];
 
   @override
   void initState() {
     super.initState();
-    _currentGridPhotos = List.from(_galleryImages);
-    _selectedImages.addAll(widget.previouslySelected);
-    _activePreviewImage = _selectedImages.isNotEmpty ? _selectedImages.first : _galleryImages.first;
+    // Wrap any previously selected files
+    for (var path in widget.previouslySelected) {
+      _selectedImages.add(GalleryImage(filePath: path));
+    }
     if (_selectedImages.isNotEmpty) {
       _isMultiSelect = true;
+      _activePreviewImage = _selectedImages.first;
+    }
+    _loadGalleryImages();
+  }
+
+  Future<void> _loadGalleryImages() async {
+    try {
+      final PermissionState ps = await PhotoManager.requestPermissionExtend();
+      if (ps.isAuth) {
+        List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
+          type: RequestType.common,
+        );
+        
+        final List<AssetPathEntity> validAlbums = [];
+        final List<Future<int>> countsFutures = albums.map((a) => a.assetCountAsync).toList();
+        final List<int> counts = await Future.wait(countsFutures);
+        for (int i = 0; i < albums.length; i++) {
+          if (counts[i] > 0) {
+            validAlbums.add(albums[i]);
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _deviceAlbums = validAlbums;
+          });
+        }
+        if (validAlbums.isNotEmpty) {
+          await _loadAssetsFromAlbum(validAlbums[0]);
+        }
+      } else {
+        debugPrint("Permission denied to access photo library");
+      }
+    } catch (e) {
+      debugPrint("Error loading gallery images: $e");
+    }
+  }
+
+  Future<void> _loadAssetsFromAlbum(AssetPathEntity album) async {
+    try {
+      final int totalCount = await album.assetCountAsync;
+      List<AssetEntity> assets = await album.getAssetListRange(start: 0, end: totalCount);
+      
+      List<GalleryImage> images = assets.map((entity) => GalleryImage(entity: entity)).toList();
+      
+      if (mounted) {
+        setState(() {
+          _galleryImages.clear();
+          _galleryImages.addAll(images);
+          _currentGridPhotos = List.from(_galleryImages);
+          _selectedCategory = album.name;
+          
+          if (_selectedImages.isEmpty && _currentGridPhotos.isNotEmpty) {
+            _activePreviewImage = _currentGridPhotos.first;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading assets from album: $e");
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+      if (photo != null) {
+        final galleryImg = GalleryImage(filePath: photo.path);
+        setState(() {
+          _galleryImages.insert(0, galleryImg);
+          _currentGridPhotos = List.from(_galleryImages);
+          _activePreviewImage = galleryImg;
+          if (_isMultiSelect) {
+            if (!_isSelected(galleryImg)) {
+              _selectedImages.add(galleryImg);
+            }
+          } else {
+            _selectedImages.clear();
+            _selectedImages.add(galleryImg);
+          }
+        });
+        if (!_isMultiSelect) {
+          _navigateToCropPreview();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error taking photo: $e");
     }
   }
 
@@ -58,78 +131,146 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       if (!_isMultiSelect) {
         _selectedImages.clear();
       } else {
-        // If entering multi-select and we have an active preview, select it
-        if (!_selectedImages.contains(_activePreviewImage)) {
-          _selectedImages.add(_activePreviewImage);
+        if (_activePreviewImage != null && !_isSelected(_activePreviewImage!)) {
+          _selectedImages.add(_activePreviewImage!);
         }
       }
     });
   }
 
-  void _onPhotoTapped(String path) {
+  void _onPhotoTapped(GalleryImage img) {
     setState(() {
       if (_isMultiSelect) {
-        if (_selectedImages.contains(path)) {
-          _selectedImages.remove(path);
-          if (_activePreviewImage == path && _selectedImages.isNotEmpty) {
+        if (_isSelected(img)) {
+          _removeSelected(img);
+          if (_activePreviewImage == img && _selectedImages.isNotEmpty) {
             _activePreviewImage = _selectedImages.last;
           }
         } else {
-          _selectedImages.add(path);
-          _activePreviewImage = path;
+          _selectedImages.add(img);
+          _activePreviewImage = img;
         }
       } else {
-        _activePreviewImage = path;
+        _selectedImages.clear();
+        _selectedImages.add(img);
+        _activePreviewImage = img;
       }
     });
   }
 
-  void _onCategorySelected(String category) {
+  void _onCategorySelected(int index) async {
+    if (index >= 0 && index < _deviceAlbums.length) {
+      setState(() {
+        _isDropdownOpen = false;
+      });
+      await _loadAssetsFromAlbum(_deviceAlbums[index]);
+    }
+  }
+
+  void _onAlbumSelected(AssetPathEntity album) async {
     setState(() {
-      _selectedCategory = category;
       _isDropdownOpen = false;
-      if (category == 'Recents') {
-        _currentGridPhotos = List.from(_galleryImages);
-      } else if (category == 'Photos') {
-        _currentGridPhotos = _galleryImages.take(8).toList();
-      } else if (category == 'Google Photos') {
-        _currentGridPhotos = _galleryImages.skip(4).take(8).toList();
+    });
+    await _loadAssetsFromAlbum(album);
+  }
+
+  bool _isSelected(GalleryImage img) {
+    return _selectedImages.any((selected) {
+      if (img.isEntity && selected.isEntity) {
+        return img.entity!.id == selected.entity!.id;
       }
-      
-      // Update active preview
-      if (_currentGridPhotos.isNotEmpty) {
-        _activePreviewImage = _currentGridPhotos.first;
+      if (img.isFile && selected.isFile) {
+        return img.filePath == selected.filePath;
       }
+      if (img.isAsset && selected.isAsset) {
+        return img.assetPath == selected.assetPath;
+      }
+      return false;
     });
   }
 
-  void _onAlbumSelected(String albumName) {
-    setState(() {
-      _selectedCategory = albumName;
-      _isDropdownOpen = false;
-      // Shuffle list to simulate album contents
-      _currentGridPhotos = List.from(_galleryImages)..shuffle();
-      if (_currentGridPhotos.isNotEmpty) {
-        _activePreviewImage = _currentGridPhotos.first;
+  void _removeSelected(GalleryImage img) {
+    _selectedImages.removeWhere((selected) {
+      if (img.isEntity && selected.isEntity) {
+        return img.entity!.id == selected.entity!.id;
       }
+      if (img.isFile && selected.isFile) {
+        return img.filePath == selected.filePath;
+      }
+      if (img.isAsset && selected.isAsset) {
+        return img.assetPath == selected.assetPath;
+      }
+      return false;
     });
+  }
+
+  Future<String?> _resolveImagePath(GalleryImage img) async {
+    if (img.isFile) return img.filePath;
+    if (img.isAsset) return img.assetPath;
+    if (img.isEntity) {
+      final file = await img.entity!.file;
+      return file?.path;
+    }
+    return null;
+  }
+
+  void _navigateToCropPreview() async {
+    if (_selectedImages.isEmpty && _activePreviewImage != null) {
+      _selectedImages.add(_activePreviewImage!);
+    }
+    if (_selectedImages.isEmpty) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF7C57FC),
+        ),
+      ),
+    );
+
+    List<String> resolvedPaths = [];
+    try {
+      for (var img in _selectedImages) {
+        final path = await _resolveImagePath(img);
+        if (path != null) {
+          resolvedPaths.add(path);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error resolving paths: $e");
+    }
+
+    if (mounted) {
+      Navigator.pop(context);
+    }
+
+    if (resolvedPaths.isEmpty) return;
+
+    if (!mounted) return;
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CropPreviewScreen(selectedImages: resolvedPaths),
+      ),
+    );
+
+    if (result != null) {
+      if (result == 'ADD_MORE') {
+        return;
+      }
+      if (result is List<String>) {
+        if (!mounted) return;
+        Navigator.pop(context, result);
+      }
+    }
   }
 
   void _openAlbumsBottomSheet() {
     setState(() {
       _isDropdownOpen = false;
     });
-
-    final albums = [
-      {'name': 'Facebook', 'count': 785, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 19487548413.png'},
-      {'name': 'Instagram', 'count': 1000, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1948754843.png'},
-      {'name': 'Sport', 'count': 247, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 19487548d43.png'},
-      {'name': 'Outside', 'count': 511, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 19487548s43.png'},
-      {'name': 'Mine', 'count': 403, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 194875d4843.png'},
-      {'name': 'Tourism', 'count': 24985, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1948d754843.png'},
-      {'name': 'Snapchat', 'count': 612, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1948s754843.png'},
-      {'name': 'WhatsApp', 'count': 942, 'cover': 'assets/Timeline/Add Photos  Select Album Bottom Sheet/image/Frame 1s948754843.png'},
-    ];
 
     showModalBottomSheet(
       context: context,
@@ -144,7 +285,6 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
           ),
           child: Column(
             children: [
-              // Bottom sheet handle
               const SizedBox(height: 12),
               Container(
                 width: 36,
@@ -155,8 +295,6 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
-              // Header
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -176,64 +314,42 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    const SizedBox(width: 48), // Balancing spacing
+                    const SizedBox(width: 48),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
-              
-              // Albums Grid
               Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.8,
-                  ),
-                  itemCount: albums.length,
-                  itemBuilder: (context, index) {
-                    final album = albums[index];
-                    return GestureDetector(
-                      onTap: () {
-                        _onAlbumSelected(album['name'] as String);
-                        Navigator.pop(context);
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.asset(
-                                album['cover'] as String,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
+                child: _deviceAlbums.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No albums found',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 16,
+                            color: Colors.grey,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            album['name'] as String,
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          Text(
-                            '${album['count']}',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              color: const Color(0xFF666666),
-                            ),
-                          ),
-                        ],
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.8,
+                        ),
+                        itemCount: _deviceAlbums.length,
+                        itemBuilder: (context, index) {
+                          final album = _deviceAlbums[index];
+                          return AlbumGridItem(
+                            album: album,
+                            onTap: () {
+                              _onAlbumSelected(album);
+                              Navigator.pop(context);
+                            },
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),
@@ -242,23 +358,33 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     );
   }
 
-  void _navigateToCropPreview() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CropPreviewScreen(selectedImages: _selectedImages),
-      ),
-    );
+  Widget _buildActivePreviewWidget(GalleryImage img) {
+    if (img.isAsset) {
+      return Image.asset(img.assetPath!, fit: BoxFit.cover);
+    } else if (img.isFile) {
+      return Image.file(File(img.filePath!), fit: BoxFit.cover);
+    } else {
+      return AssetEntityImage(
+        img.entity!,
+        isOriginal: false,
+        thumbnailSize: const ThumbnailSize(800, 800),
+        fit: BoxFit.cover,
+      );
+    }
+  }
 
-    if (result != null) {
-      if (result == 'ADD_MORE') {
-        // Just remain here in multi-select state
-        return;
-      }
-      if (result is List<String>) {
-        if (!mounted) return;
-        Navigator.pop(context, result);
-      }
+  Widget _buildGridImageWidget(GalleryImage img) {
+    if (img.isAsset) {
+      return Image.asset(img.assetPath!, fit: BoxFit.cover);
+    } else if (img.isFile) {
+      return Image.file(File(img.filePath!), fit: BoxFit.cover);
+    } else {
+      return AssetEntityImage(
+        img.entity!,
+        isOriginal: false,
+        thumbnailSize: const ThumbnailSize(200, 200),
+        fit: BoxFit.cover,
+      );
     }
   }
 
@@ -310,16 +436,8 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                   width: double.infinity,
                   height: 266,
                   color: const Color(0xFFF9F9F9),
-                  child: _activePreviewImage.isNotEmpty
-                      ? (_activePreviewImage.startsWith('/') || _activePreviewImage.startsWith('file:')
-                          ? Image.file(
-                              File(_activePreviewImage),
-                              fit: BoxFit.cover,
-                            )
-                          : Image.asset(
-                              _activePreviewImage,
-                              fit: BoxFit.cover,
-                            ))
+                  child: _activePreviewImage != null
+                      ? _buildActivePreviewWidget(_activePreviewImage!)
                       : Container(color: Colors.grey[300]),
                 ),
                 
@@ -407,14 +525,17 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                     itemBuilder: (context, index) {
                       if (index == 3) {
                         // Camera card (4th item)
-                        return Container(
-                          color: Colors.black,
-                          child: Center(
-                            child: SvgPicture.asset(
-                              'assets/Timeline/Add Photos  Gallery Picker/icon/camera-01.svg',
-                              width: 32,
-                              height: 32,
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        return GestureDetector(
+                          onTap: _takePhoto,
+                          child: Container(
+                            color: Colors.black,
+                            child: Center(
+                              child: SvgPicture.asset(
+                                'assets/Timeline/Add Photos  Gallery Picker/icon/camera-01.svg',
+                                width: 32,
+                                height: 32,
+                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              ),
                             ),
                           ),
                         );
@@ -426,25 +547,27 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                         return const SizedBox.shrink();
                       }
                       
-                      final photoPath = _currentGridPhotos[photoIndex];
-                      final isPhotoAsset = !photoPath.startsWith('/') && !photoPath.startsWith('file:');
-                      final selectedIndex = _selectedImages.indexOf(photoPath);
-                      final isSelected = selectedIndex != -1;
+                      final img = _currentGridPhotos[photoIndex];
+                      final isSelected = _isSelected(img);
+                      final selectedIndex = _selectedImages.indexWhere((selected) {
+                        if (img.isEntity && selected.isEntity) {
+                          return img.entity!.id == selected.entity!.id;
+                        }
+                        if (img.isFile && selected.isFile) {
+                          return img.filePath == selected.filePath;
+                        }
+                        if (img.isAsset && selected.isAsset) {
+                          return img.assetPath == selected.assetPath;
+                        }
+                        return false;
+                      });
 
                       return GestureDetector(
-                        onTap: () => _onPhotoTapped(photoPath),
+                        onTap: () => _onPhotoTapped(img),
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            isPhotoAsset
-                                ? Image.asset(
-                                    photoPath,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Image.file(
-                                    File(photoPath),
-                                    fit: BoxFit.cover,
-                                  ),
+                            _buildGridImageWidget(img),
                             
                             // Dim overlay when selected
                             if (isSelected)
@@ -497,21 +620,21 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                 if (_isMultiSelect && _selectedImages.isNotEmpty)
                   Container(
                     color: Colors.white,
-                    padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding > 0 ? bottomPadding + 8 : 16),
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, bottomPadding > 0 ? bottomPadding + 8 : 16),
                     child: Row(
                       children: [
                         // Selected thumbnails list
                         Expanded(
                           child: SizedBox(
-                            height: 50,
+                            height: 66,
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
+                              clipBehavior: Clip.none,
                               itemCount: _selectedImages.length,
                               itemBuilder: (context, index) {
-                                final path = _selectedImages[index];
-                                final isThumbAsset = !path.startsWith('/') && !path.startsWith('file:');
+                                final img = _selectedImages[index];
                                 return Padding(
-                                  padding: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
                                   child: Stack(
                                     clipBehavior: Clip.none,
                                     children: [
@@ -520,30 +643,29 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                                         child: SizedBox(
                                           width: 50,
                                           height: 50,
-                                          child: isThumbAsset
-                                              ? Image.asset(path, fit: BoxFit.cover)
-                                              : Image.file(File(path), fit: BoxFit.cover),
+                                          child: _buildGridImageWidget(img),
                                         ),
                                       ),
                                       // Small delete/deselect tag
                                       Positioned(
-                                        top: -4,
-                                        right: -4,
+                                        top: -8,
+                                        right: -8,
                                         child: GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
                                           onTap: () {
                                             setState(() {
-                                              _selectedImages.removeAt(index);
+                                              _removeSelected(img);
                                             });
                                           },
                                           child: Container(
                                             decoration: const BoxDecoration(
-                                              color: Colors.black87,
+                                              color: Colors.black,
                                               shape: BoxShape.circle,
                                             ),
-                                            padding: const EdgeInsets.all(2),
+                                            padding: const EdgeInsets.all(5),
                                             child: const Icon(
                                               Icons.close,
-                                              size: 10,
+                                              size: 13,
                                               color: Colors.white,
                                             ),
                                           ),
@@ -632,21 +754,27 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildDropdownItem(
-                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-02.svg',
-                              title: 'Recents',
-                              onTap: () => _onCategorySelected('Recents'),
-                            ),
-                            _buildDropdownItem(
-                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-01.svg',
-                              title: 'Photos',
-                              onTap: () => _onCategorySelected('Photos'),
-                            ),
-                            _buildDropdownItem(
-                              iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/google-photos.svg',
-                              title: 'Google Photos',
-                              onTap: () => _onCategorySelected('Google Photos'),
-                            ),
+                            if (_deviceAlbums.isEmpty) ...[
+                              _buildDropdownItem(
+                                iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-02.svg',
+                                title: 'Recents',
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCategory = 'Recents';
+                                    _isDropdownOpen = false;
+                                  });
+                                },
+                              ),
+                            ] else ...[
+                              ..._deviceAlbums.take(3).map((album) {
+                                final int index = _deviceAlbums.indexOf(album);
+                                return _buildDropdownItem(
+                                  iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/image-01.svg',
+                                  title: album.name,
+                                  onTap: () => _onCategorySelected(index),
+                                );
+                              }),
+                            ],
                             _buildDropdownItem(
                               iconPath: 'assets/Timeline/Add Photos  Selected Photos Bottom Tray/icon/album-02.svg',
                               title: 'All albums',
@@ -697,6 +825,86 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class GalleryImage {
+  final String? assetPath;
+  final String? filePath;
+  final AssetEntity? entity;
+
+  GalleryImage({this.assetPath, this.filePath, this.entity});
+
+  bool get isAsset => entity == null && filePath == null;
+  bool get isFile => filePath != null;
+  bool get isEntity => entity != null;
+}
+
+class AlbumGridItem extends StatelessWidget {
+  final AssetPathEntity album;
+  final VoidCallback onTap;
+
+  const AlbumGridItem({super.key, required this.album, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: album.assetCountAsync,
+      builder: (context, countSnapshot) {
+        final count = countSnapshot.data ?? 0;
+        return FutureBuilder<List<AssetEntity>>(
+          future: album.getAssetListRange(start: 0, end: 1),
+          builder: (context, assetsSnapshot) {
+            final assets = assetsSnapshot.data;
+            final hasCover = assets != null && assets.isNotEmpty;
+
+            return GestureDetector(
+              onTap: onTap,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: hasCover
+                          ? AssetEntityImage(
+                              assets[0],
+                              isOriginal: false,
+                              thumbnailSize: const ThumbnailSize(200, 200),
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              color: const Color(0xFFEEEEEE),
+                              child: const Icon(Icons.image, color: Colors.grey),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    album.name,
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '$count',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 14,
+                      color: const Color(0xFF666666),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

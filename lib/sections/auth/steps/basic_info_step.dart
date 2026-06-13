@@ -6,11 +6,17 @@ import '../widgets/auth_text_field.dart';
 class BasicInfoStep extends StatefulWidget {
   final VoidCallback onBack;
   final void Function(String firstName, String lastName, String username, String city) onCompleted;
+  final String? initialFirstName;
+  final String? initialLastName;
+  final String? initialUsername;
 
   const BasicInfoStep({
     super.key,
     required this.onBack,
     required this.onCompleted,
+    this.initialFirstName,
+    this.initialLastName,
+    this.initialUsername,
   });
 
   @override
@@ -22,6 +28,28 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
   final _lastNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _cityController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _firstNameController.text = widget.initialFirstName ?? '';
+    _lastNameController.text = widget.initialLastName ?? '';
+    _usernameController.text = widget.initialUsername ?? '';
+  }
+
+  @override
+  void didUpdateWidget(covariant BasicInfoStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFirstName != oldWidget.initialFirstName && widget.initialFirstName != null && _firstNameController.text.isEmpty) {
+      _firstNameController.text = widget.initialFirstName!;
+    }
+    if (widget.initialLastName != oldWidget.initialLastName && widget.initialLastName != null && _lastNameController.text.isEmpty) {
+      _lastNameController.text = widget.initialLastName!;
+    }
+    if (widget.initialUsername != oldWidget.initialUsername && widget.initialUsername != null && _usernameController.text.isEmpty) {
+      _usernameController.text = widget.initialUsername!;
+    }
+  }
 
   String? _firstNameError;
   String? _usernameError;

@@ -108,6 +108,7 @@ class _LoginStepState extends State<LoginStep> {
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: 'io.supabase.moreapp://login-callback',
+        authScreenLaunchMode: LaunchMode.externalApplication,
       );
     } on AuthException catch (e) {
       if (!mounted) return;

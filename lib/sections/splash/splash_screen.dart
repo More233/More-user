@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:path_drawing/path_drawing.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../permissions/permissions_page.dart';
+import '../timeline/timeline_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -38,6 +40,34 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller.forward().then((_) async {
       // Pause briefly for high premium feel, then navigate to Permissions page
       await Future.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
+      
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        try {
+          final userId = session.user.id;
+          final profile = await Supabase.instance.client
+              .from('profiles')
+              .select()
+              .eq('id', userId)
+              .maybeSingle();
+
+          if (!mounted) return;
+          if (profile != null && profile['username'] != null) {
+            // Logged in with completed profile
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const TimelineScreen()),
+            );
+            return;
+          } else {
+            // Logged in but profile incomplete -> sign out so they see the login screen
+            await Supabase.instance.client.auth.signOut();
+          }
+        } catch (_) {
+          // Fallback to default
+        }
+      }
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const PermissionsPage()),

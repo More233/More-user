@@ -37,6 +37,9 @@ class TimelinePost {
   bool isBookmarked;
   final CategoryIconType categoryIcon;
   final List<TimelineComment> comments;
+  final bool isPrivate;
+  final int stickerIndex;
+  final List<String> taggedFriends;
 
   TimelinePost({
     required this.id,
@@ -53,6 +56,9 @@ class TimelinePost {
     this.isBookmarked = false,
     required this.categoryIcon,
     required this.comments,
+    this.isPrivate = false,
+    this.stickerIndex = -1,
+    this.taggedFriends = const [],
   });
 
   TimelinePost copyWith({
@@ -70,6 +76,9 @@ class TimelinePost {
     bool? isBookmarked,
     CategoryIconType? categoryIcon,
     List<TimelineComment>? comments,
+    bool? isPrivate,
+    int? stickerIndex,
+    List<String>? taggedFriends,
   }) {
     return TimelinePost(
       id: id ?? this.id,
@@ -86,6 +95,9 @@ class TimelinePost {
       isBookmarked: isBookmarked ?? this.isBookmarked,
       categoryIcon: categoryIcon ?? this.categoryIcon,
       comments: comments ?? this.comments,
+      isPrivate: isPrivate ?? this.isPrivate,
+      stickerIndex: stickerIndex ?? this.stickerIndex,
+      taggedFriends: taggedFriends ?? this.taggedFriends,
     );
   }
 }

@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'models/timeline_post.dart';
 import 'widgets/timeline_tab_bar.dart';
 import 'widgets/timeline_post_card.dart';
@@ -9,8 +12,6 @@ import 'widgets/comments_bottom_sheet.dart';
 import 'widgets/share_bottom_sheet.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/fab_coachmark_overlay.dart';
-import 'widgets/posting_loading_screen.dart';
-import 'widgets/reward_dialog.dart';
 import 'timeline_search_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
@@ -33,6 +34,241 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   // Stateful list of timeline posts
   final List<TimelinePost> _posts = [];
+  String? _currentUserAvatarUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPosts();
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchPosts() async {
+    try {
+      final client = Supabase.instance.client;
+      final List<dynamic> response = await client
+          .from('posts')
+          .select()
+          .order('created_at', ascending: false);
+
+      final List<TimelinePost> fetchedPosts = [];
+      for (final postData in response) {
+        final categoryName = postData['category_name'] as String? ?? 'Hotel';
+        CategoryIconType catIcon = CategoryIconType.building;
+        if (categoryName.toLowerCase() == 'coffee' || categoryName.toLowerCase() == 'cafe') {
+          catIcon = CategoryIconType.coffee;
+        } else if (categoryName.toLowerCase() == 'attraction' || categoryName.toLowerCase() == 'camera') {
+          catIcon = CategoryIconType.camera;
+        }
+
+        String postTimeStr = 'Just now';
+        final createdAtStr = postData['created_at'] as String?;
+        if (createdAtStr != null) {
+          final createdAt = DateTime.tryParse(createdAtStr);
+          if (createdAt != null) {
+            final difference = DateTime.now().difference(createdAt.toLocal());
+            if (difference.inMinutes < 1) {
+              postTimeStr = 'Just now';
+            } else if (difference.inMinutes < 60) {
+              postTimeStr = '${difference.inMinutes}m ago';
+            } else if (difference.inHours < 24) {
+              postTimeStr = '${difference.inHours}h ago';
+            } else {
+              postTimeStr = '${difference.inDays}d ago';
+            }
+          }
+        }
+
+        final taggedListRaw = postData['tagged_friends'];
+        final List<String> tagged = [];
+        if (taggedListRaw is List) {
+          for (final t in taggedListRaw) {
+            tagged.add(t.toString());
+          }
+        }
+
+        fetchedPosts.add(
+          TimelinePost(
+            id: postData['id'] as String,
+            title: postData['title'] as String? ?? '',
+            categoryName: categoryName,
+            locationAddress: postData['location_address'] as String? ?? '',
+            visitorCount: postData['visitor_count'] as int? ?? 1,
+            postTime: postTimeStr,
+            description: postData['description'] as String? ?? '',
+            imageUrl: postData['image_url'] as String?,
+            likesCount: postData['likes_count'] as int? ?? 0,
+            commentsCount: postData['comments_count'] as int? ?? 0,
+            categoryIcon: catIcon,
+            comments: [],
+            isPrivate: postData['is_private'] as bool? ?? false,
+            stickerIndex: postData['sticker_index'] as int? ?? -1,
+            taggedFriends: tagged,
+          ),
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _posts.clear();
+          _posts.addAll(fetchedPosts);
+          if (_posts.isNotEmpty) {
+            _isFirstCheckIn = false;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching posts: $e");
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user != null) {
+        final data = await client
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (data != null && data['avatar_url'] != null && mounted) {
+          setState(() {
+            _currentUserAvatarUrl = data['avatar_url'] as String?;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching user profile: $e");
+    }
+  }
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 500,
+        maxHeight: 500,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Row(
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(width: 12),
+              Text("Uploading profile photo..."),
+            ],
+          )),
+        );
+
+        final client = Supabase.instance.client;
+        final user = client.auth.currentUser;
+        if (user == null) return;
+
+        final file = File(image.path);
+        final fileName = 'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        
+        await client.storage.from('post-images').upload(
+          fileName,
+          file,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+        );
+
+        final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
+
+        await client.from('profiles').update({
+          'avatar_url': publicUrl,
+        }).eq('id', user.id);
+
+        if (mounted) {
+          setState(() {
+            _currentUserAvatarUrl = publicUrl;
+          });
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Profile photo updated successfully!")),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error picking/uploading profile image: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update profile photo: $e")),
+        );
+      }
+    }
+  }
+
+  void _onAvatarTapped() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCCCCCC),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: const Icon(Icons.person_outline, color: Color(0xFF7C57FC)),
+                title: Text(
+                  'View Profile',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProfileScreen(userPosts: _posts),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF7C57FC)),
+                title: Text(
+                  'Change Profile Photo',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickProfileImage();
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
 
   // Toggle Like state
   void _toggleLike(String postId) {
@@ -99,49 +335,20 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   // Open Check-in Composer
   void _openCheckInComposer({bool isFirstCheckIn = false}) async {
-    final newPost = await Navigator.push<TimelinePost>(
+    final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => CheckInComposerScreen(isFirstCheckIn: isFirstCheckIn),
       ),
     );
 
-    if (newPost != null) {
-      _handlePostSubmission(newPost);
+    if (result == true) {
+      _fetchPosts();
+      setState(() {
+        _isFirstCheckIn = false;
+        _userCoins = 300;
+      });
     }
-  }
-
-  // Handle post creation with loading overlay & reward claim popup
-  void _handlePostSubmission(TimelinePost newPost) {
-    // 1. Show posting loading overlay
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const PostingLoadingScreen(),
-    );
-
-    // 2. Wait 1.5 seconds, then dismiss loading and show reward popup
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (!mounted) return;
-      Navigator.pop(context); // Dismiss loading spinner
-
-      // Show First Check-in Reward dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => RewardDialog(
-          locationName: newPost.title,
-          onClaimTap: () {
-            Navigator.pop(context); // Dismiss reward popup
-            setState(() {
-              _posts.insert(0, newPost);
-              _isFirstCheckIn = false;
-              _userCoins = 300;
-            });
-          },
-        ),
-      );
-    });
   }
 
   @override
@@ -211,19 +418,15 @@ class _TimelineScreenState extends State<TimelineScreen> {
         children: [
           // Avatar
           GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProfileScreen(userPosts: _posts),
-                ),
-              );
-            },
-            child: const CircleAvatar(
+            onTap: _onAvatarTapped,
+            child: CircleAvatar(
               radius: 24,
-              backgroundImage: AssetImage(
-                'assets/Timeline/Personal Timeline  Default State/image/Element.png',
-              ),
+              backgroundColor: Colors.grey[200],
+              backgroundImage: _currentUserAvatarUrl != null
+                  ? NetworkImage(_currentUserAvatarUrl!) as ImageProvider
+                  : const AssetImage(
+                      'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                    ),
             ),
           ),
           const SizedBox(width: 10),

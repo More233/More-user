@@ -2,15 +2,20 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/timeline_post.dart';
 
 class RewardDialog extends StatelessWidget {
-  final VoidCallback onClaimTap;
+  final VoidCallback? onClaimTap;
   final String locationName;
+  final String? currentUserAvatarUrl;
+  final TimelinePost? savedPost;
 
   const RewardDialog({
     super.key,
-    required this.onClaimTap,
+    this.onClaimTap,
     this.locationName = "Helnan Auberge El Fayoum Hotel",
+    this.currentUserAvatarUrl,
+    this.savedPost,
   });
 
   @override
@@ -44,16 +49,27 @@ class RewardDialog extends StatelessWidget {
                                 clipBehavior: Clip.none,
                                 alignment: Alignment.bottomRight,
                                 children: [
-                                  // Circular Hotel Image
+                                  // Circular Hotel Image / User Avatar
                                   Container(
                                     width: 110,
                                     height: 110,
                                     decoration: const BoxDecoration(
                                       shape: BoxShape.circle,
                                     ),
-                                    child: Image.asset(
-                                      'assets/Timeline/Check-in Success  First Check-in Reward/image/hotel_placeholder.png',
-                                      fit: BoxFit.contain,
+                                    child: ClipOval(
+                                      child: currentUserAvatarUrl != null
+                                          ? Image.network(
+                                              currentUserAvatarUrl!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, e, s) => Image.asset(
+                                                'assets/Timeline/Personal Timeline  Default State/image/Element.png',
+                                                fit: BoxFit.cover,
+                                              ),
+                                            )
+                                          : Image.asset(
+                                              'assets/Timeline/Check-in Success  First Check-in Reward/image/hotel_placeholder.png',
+                                              fit: BoxFit.contain,
+                                            ),
                                     ),
                                   ),
                                   // Purple Checkmark Badge
@@ -63,7 +79,7 @@ class RewardDialog extends StatelessWidget {
                                     width: 42,
                                     height: 46,
                                     child: Image.asset(
-                                      'assets/Timeline/Check-in Success  First Check-in Reward/image/checkmark_badge.png',
+                                      'assets/Timeline/Check-in Success  First Check-in Reward/image/first_checkin_sticker.png',
                                       fit: BoxFit.contain,
                                     ),
                                   ),
@@ -211,7 +227,7 @@ class RewardDialog extends StatelessWidget {
                           children: [
                             // Sticker Image
                             Image.asset(
-                              'assets/Timeline/Check-in Success  First Check-in Reward/image/first_checkin_sticker.png',
+                              'assets/Timeline/Check-in Success  First Check-in Reward/image/checkmark_badge.png',
                               width: 60,
                               height: 60,
                               fit: BoxFit.contain,
@@ -283,7 +299,9 @@ class RewardDialog extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    onPressed: onClaimTap,
+                    onPressed: onClaimTap ?? () {
+                      Navigator.pop(context, true);
+                    },
                     child: Text(
                       'Done',
                       style: GoogleFonts.ibmPlexSansArabic(

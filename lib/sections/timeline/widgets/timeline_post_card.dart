@@ -235,6 +235,23 @@ class TimelinePostCard extends StatelessWidget {
 
   Widget _buildImage() {
     final path = post.imageUrl!;
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          path,
+          width: 264,
+          height: 172,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: 264,
+            height: 172,
+            color: Colors.grey[200],
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          ),
+        ),
+      );
+    }
     final isAsset = !path.startsWith('/') && !path.startsWith('file:');
     
     return ClipRRect(
