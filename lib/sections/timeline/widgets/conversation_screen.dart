@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 class ConversationScreen extends StatefulWidget {
   final String threadId;
@@ -25,17 +29,52 @@ class _ConversationScreenState extends State<ConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   
-  // Audio playback simulation states
+  // Real Audio playback & recording states
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  StreamSubscription<void>? _playerCompleteSubscription;
+  StreamSubscription<Duration>? _playerDurationSubscription;
+  StreamSubscription<Duration>? _playerPositionSubscription;
+
   String? _activeAudioId;
   int _activeAudioDuration = 14;
   double _playbackProgress = 0.0;
   double _playbackSpeed = 1.0;
   Timer? _playbackTimer;
 
-  // Voice recording simulation states
   bool _isRecording = false;
   int _recordingSeconds = 0;
   Timer? _recordingTimer;
+  bool _hasMicPermission = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkMicPermission();
+    // Listen to audio player events to update progress dynamically
+    _playerCompleteSubscription = _audioPlayer.onPlayerComplete.listen((_) {
+      setState(() {
+        _playbackProgress = 1.0;
+        _activeAudioId = null;
+      });
+    });
+    _playerPositionSubscription = _audioPlayer.onPositionChanged.listen((pos) {
+      if (_activeAudioId != null && _activeAudioDuration > 0) {
+        setState(() {
+          _playbackProgress = pos.inMilliseconds / (_activeAudioDuration * 1000);
+          if (_playbackProgress > 1.0) _playbackProgress = 1.0;
+        });
+      }
+    });
+  }
+
+  Future<void> _checkMicPermission() async {
+    try {
+      _hasMicPermission = await _audioRecorder.hasPermission();
+    } catch (e) {
+      debugPrint("Error checking mic permission: $e");
+    }
+  }
 
   @override
   void dispose() {
@@ -43,6 +82,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
     _scrollController.dispose();
     _playbackTimer?.cancel();
     _recordingTimer?.cancel();
+    _playerCompleteSubscription?.cancel();
+    _playerDurationSubscription?.cancel();
+    _playerPositionSubscription?.cancel();
+    _audioPlayer.dispose();
+    _audioRecorder.dispose();
     super.dispose();
   }
 
@@ -79,9 +123,67 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   Future<void> _pickAndSendImage() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC1C1C1),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Send a Photo',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: Color(0xFF7C57FC)),
+                title: const Text('Take Photo (Camera)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _processImagePick(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF7C57FC)),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _processImagePick(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _processImagePick(ImageSource source) async {
     try {
       final picker = ImagePicker();
-      final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      final image = await picker.pickImage(source: source, imageQuality: 85);
       if (image == null) return;
 
       if (!mounted) return;
@@ -92,7 +194,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       final client = Supabase.instance.client;
       final file = File(image.path);
       final fileName = 'chat_images/${widget.threadId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      
+
       await client.storage.from('post-images').upload(
         fileName,
         file,
@@ -122,18 +224,66 @@ class _ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  // Recording Simulation handlers
-  void _startRecording() {
-    setState(() {
-      _isRecording = true;
-      _recordingSeconds = 0;
-    });
+  // Recording handlers using record package
+  Future<void> _startRecording() async {
+    try {
+      if (_hasMicPermission || await _audioRecorder.hasPermission()) {
+        _hasMicPermission = true;
 
-    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) return;
+        // Unfocus text fields to close keyboard
+        FocusScope.of(context).unfocus();
+
+        final tempDir = await getTemporaryDirectory();
+        final path = p.join(tempDir.path, 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a');
+
+        await _audioRecorder.start(
+          const RecordConfig(encoder: AudioEncoder.aacLc),
+          path: path,
+        );
+
+        setState(() {
+          _isRecording = true;
+          _recordingSeconds = 0;
+        });
+
+        _recordingTimer?.cancel();
+        _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          setState(() {
+            _recordingSeconds++;
+          });
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Microphone permission denied")),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error starting recording: $e");
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    try {
+      _recordingTimer?.cancel();
+      await _audioRecorder.stop();
       setState(() {
-        _recordingSeconds++;
+        _isRecording = false;
+        _recordingSeconds = 0;
       });
-    });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Voice message discarded"),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error cancelling recording: $e");
+    }
   }
 
   Future<void> _stopAndSendRecording() async {
@@ -145,25 +295,54 @@ class _ConversationScreenState extends State<ConversationScreen> {
       _isRecording = false;
     });
 
-    if (duration < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Hold to record voice message")),
-      );
-      return;
-    }
-
     try {
+      final path = await _audioRecorder.stop();
+      if (duration < 1 || path == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Voice message too short")),
+          );
+        }
+        return;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Uploading voice message...")),
+        );
+      }
+
       final client = Supabase.instance.client;
+      final file = File(path);
+      final fileName = 'chat_audio/${widget.threadId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      await client.storage.from('post-images').upload(
+        fileName,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+
+      final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
+
       await client.from('chat_messages').insert({
         'thread_id': widget.threadId,
         'sender_id': widget.currentUserId,
         'message_type': 'audio',
-        'content': 'mock_audio_url',
+        'content': publicUrl,
         'media_duration': duration,
       });
-      _scrollToBottom();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        _scrollToBottom();
+      }
     } catch (e) {
       debugPrint("Error sending audio message: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to upload voice message: $e")),
+        );
+      }
     }
   }
 
@@ -272,17 +451,18 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
-  // Waveform player timer controller
-  void _toggleAudioPlay(String msgId, int durationSeconds) {
+  // Waveform player timer controller using AudioPlayer
+  Future<void> _toggleAudioPlay(String msgId, String url, int durationSeconds) async {
     if (_activeAudioId == msgId) {
       // Pause
-      _playbackTimer?.cancel();
+      await _audioPlayer.pause();
       setState(() {
         _activeAudioId = null;
       });
     } else {
-      // Start/Resume
-      _playbackTimer?.cancel();
+      // Stop current playing
+      await _audioPlayer.stop();
+
       setState(() {
         if (_activeAudioId != msgId) {
           _playbackProgress = 0.0;
@@ -294,20 +474,32 @@ class _ConversationScreenState extends State<ConversationScreen> {
         }
       });
 
-      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-        setState(() {
-          _playbackProgress += (0.1 * _playbackSpeed) / durationSeconds;
-          if (_playbackProgress >= 1.0) {
-            _playbackProgress = 1.0;
-            _playbackTimer?.cancel();
-            _activeAudioId = null;
-          }
-        });
-      });
+      try {
+        if (url == 'mock_audio_url') {
+          // Simulation fallback for mock replies
+          _playbackTimer?.cancel();
+          _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+            setState(() {
+              _playbackProgress += (0.1 * _playbackSpeed) / durationSeconds;
+              if (_playbackProgress >= 1.0) {
+                _playbackProgress = 1.0;
+                _playbackTimer?.cancel();
+                _activeAudioId = null;
+              }
+            });
+          });
+        } else {
+          // Play real audio file from Supabase Storage
+          await _audioPlayer.setPlaybackRate(_playbackSpeed);
+          await _audioPlayer.play(UrlSource(url));
+        }
+      } catch (e) {
+        debugPrint("Error playing audio: $e");
+      }
     }
   }
 
-  void _togglePlaybackSpeed() {
+  Future<void> _togglePlaybackSpeed() async {
     setState(() {
       if (_playbackSpeed == 1.0) {
         _playbackSpeed = 1.5;
@@ -318,19 +510,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
       }
     });
 
-    // If actively playing, restart timer with new speed
     if (_activeAudioId != null) {
-      _playbackTimer?.cancel();
-      _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-        setState(() {
-          _playbackProgress += (0.1 * _playbackSpeed) / _activeAudioDuration;
-          if (_playbackProgress >= 1.0) {
-            _playbackProgress = 1.0;
-            _playbackTimer?.cancel();
-            _activeAudioId = null;
-          }
-        });
-      });
+      try {
+        await _audioPlayer.setPlaybackRate(_playbackSpeed);
+      } catch (e) {
+        debugPrint("Error setting playback speed: $e");
+      }
     }
   }
 
@@ -357,7 +542,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   }
 
   // Audio waveform UI builder (Figma vertical bars matching exact proportions)
-  Widget _buildAudioWaveform(String msgId, int duration, bool isSent) {
+  Widget _buildAudioWaveform(String msgId, String url, int duration, bool isSent) {
     final isCurrentPlaying = _activeAudioId == msgId;
     final List<double> barHeights = [11.8, 19.7, 25.0, 25.0, 9.2, 14.5, 22.3, 9.2, 9.2, 3.9, 3.9, 27.6, 19.7, 25.0, 19.7, 9.2, 14.0];
     final activeColor = isSent ? Colors.white : const Color(0xFF101010);
@@ -369,7 +554,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       children: [
         // Play/Pause button
         GestureDetector(
-          onTap: () => _toggleAudioPlay(msgId, duration),
+          onTap: () => _toggleAudioPlay(msgId, url, duration),
           child: Container(
             width: 32,
             height: 32,
@@ -548,7 +733,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                             ),
                           ),
                         )
-                      : _buildAudioWaveform(msg['id'], duration, isSent),
+                      : _buildAudioWaveform(msg['id'], content, duration, isSent),
             ),
           ),
         ],
@@ -706,24 +891,21 @@ class _ConversationScreenState extends State<ConversationScreen> {
                                     onSubmitted: (val) => _sendMessage(),
                                   ),
                                 ),
-                                                                // Right voice mic recorder inside message field
-                                 GestureDetector(
-                                   onLongPressStart: (_) => _startRecording(),
-                                   onLongPressEnd: (_) => _stopAndSendRecording(),
-                                   onLongPressCancel: () => _stopAndSendRecording(),
-                                   onTap: () {
-                                     ScaffoldMessenger.of(context).showSnackBar(
-                                       const SnackBar(
-                                         content: Text("Hold to record voice message"),
-                                         duration: Duration(seconds: 2),
-                                       ),
-                                     );
-                                   },
-                                   child: const Padding(
-                                     padding: EdgeInsets.all(4.0),
-                                     child: Icon(Icons.mic, color: Color(0xFF7C57FC), size: 24),
-                                   ),
-                                 ),
+                                // Right voice mic recorder inside message field
+                                GestureDetector(
+                                  onLongPressStart: (_) => _startRecording(),
+                                  onLongPressEnd: (_) => _stopAndSendRecording(),
+                                  onLongPressCancel: () => _cancelRecording(),
+                                  onTap: () {
+                                    if (!_isRecording) {
+                                      _startRecording();
+                                    }
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4.0),
+                                    child: Icon(Icons.mic, color: Color(0xFF7C57FC), size: 24),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -754,46 +936,112 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   Widget _buildRecordingOverlay() {
     return Container(
-      height: 48,
+      height: 52,
       decoration: BoxDecoration(
-        color: const Color(0xFFFFECEC),
+        color: const Color(0xFFF7F6FB), // Ultra soft lavender/purple tinted background
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFFFB8B8), width: 1),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Recording: ${_recordingSeconds ~/ 60}:${(_recordingSeconds % 60).toString().padLeft(2, '0')}',
-                style: GoogleFonts.ibmPlexSansArabic(
-                  color: Colors.red,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            'Release to Send',
-            style: GoogleFonts.ibmPlexSansArabic(
-              color: Colors.red.withValues(alpha: 0.7),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
+        border: Border.all(color: const Color(0xFFE5DFFF), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF7C57FC).withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          // Cancel/Delete Button (Left)
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 24),
+            tooltip: 'Discard',
+            onPressed: _cancelRecording,
+          ),
+          
+          const SizedBox(width: 8),
+          
+          // Recording indicator and timer (Center)
+          Expanded(
+            child: Row(
+              children: [
+                // Pulsing dot
+                const _RecordingDotPulse(),
+                const SizedBox(width: 10),
+                Text(
+                  'Recording: ${_recordingSeconds ~/ 60}:${(_recordingSeconds % 60).toString().padLeft(2, '0')}',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    color: const Color(0xFF1E1E24),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Send Button (Right)
+          GestureDetector(
+            onTap: _stopAndSendRecording,
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(
+                color: Color(0xFF7C57FC),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.send_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordingDotPulse extends StatefulWidget {
+  const _RecordingDotPulse();
+
+  @override
+  State<_RecordingDotPulse> createState() => _RecordingDotPulseState();
+}
+
+class _RecordingDotPulseState extends State<_RecordingDotPulse> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.3, end: 1.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _animation,
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: const BoxDecoration(
+          color: Color(0xFFEF4444),
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }

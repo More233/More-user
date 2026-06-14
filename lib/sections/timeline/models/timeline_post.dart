@@ -41,6 +41,8 @@ class TimelinePost {
   final int stickerIndex;
   final List<String> taggedFriends;
   final DateTime? createdAt;
+  final String? authorName;
+  final String? authorAvatar;
 
   TimelinePost({
     required this.id,
@@ -61,6 +63,8 @@ class TimelinePost {
     this.stickerIndex = -1,
     this.taggedFriends = const [],
     this.createdAt,
+    this.authorName,
+    this.authorAvatar,
   });
 
   TimelinePost copyWith({
@@ -82,6 +86,8 @@ class TimelinePost {
     int? stickerIndex,
     List<String>? taggedFriends,
     DateTime? createdAt,
+    String? authorName,
+    String? authorAvatar,
   }) {
     return TimelinePost(
       id: id ?? this.id,
@@ -102,6 +108,8 @@ class TimelinePost {
       stickerIndex: stickerIndex ?? this.stickerIndex,
       taggedFriends: taggedFriends ?? this.taggedFriends,
       createdAt: createdAt ?? this.createdAt,
+      authorName: authorName ?? this.authorName,
+      authorAvatar: authorAvatar ?? this.authorAvatar,
     );
   }
 
@@ -138,6 +146,19 @@ class TimelinePost {
       }
     }
 
+    final authorProfile = postData['author'];
+    String? authorName;
+    String? authorAvatar;
+    if (authorProfile != null) {
+      final firstName = authorProfile['first_name'] as String? ?? '';
+      final lastName = authorProfile['last_name'] as String? ?? '';
+      authorName = '$firstName $lastName'.trim();
+      if (authorName.isEmpty) {
+        authorName = authorProfile['username'] as String?;
+      }
+      authorAvatar = authorProfile['avatar_url'] as String?;
+    }
+
     return TimelinePost(
       id: postData['id'] as String,
       title: postData['title'] as String? ?? '',
@@ -157,6 +178,8 @@ class TimelinePost {
       createdAt: createdAt,
       isLiked: postData['is_liked'] as bool? ?? false,
       isBookmarked: postData['is_bookmarked'] as bool? ?? false,
+      authorName: authorName,
+      authorAvatar: authorAvatar,
     );
   }
 }

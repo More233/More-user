@@ -251,7 +251,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
     }
   }
 
-  void _toggleFollow(String username) {
+  Future<void> _toggleFollow(String username) async {
     final clean = username.startsWith('@') ? username.substring(1) : username;
     final cleanLower = clean.toLowerCase();
     final isFollowing = !_followedUsernames.contains(cleanLower);
@@ -279,6 +279,36 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
         }
       }
     });
+
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser == null) return;
+
+      final targetProfile = await client
+          .from('profiles')
+          .select('id')
+          .eq('username', clean)
+          .maybeSingle();
+
+      if (targetProfile != null) {
+        final targetId = targetProfile['id'] as String;
+        if (isFollowing) {
+          await client.from('follows').upsert({
+            'follower_id': currentUser.id,
+            'following_id': targetId,
+          });
+        } else {
+          await client
+              .from('follows')
+              .delete()
+              .eq('follower_id', currentUser.id)
+              .eq('following_id', targetId);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error toggling follow in onboarding: $e");
+    }
   }
 
   void _toggleInvite(String username, String name) {

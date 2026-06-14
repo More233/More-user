@@ -48,19 +48,149 @@ class _TimelineScreenState extends State<TimelineScreen> {
     super.initState();
     _fetchPosts();
     _fetchUserProfile();
+    _fetchFollows();
     CollectionsManager().loadCollections();
+  }
+
+  Future<void> _fetchFollows() async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser == null) return;
+
+      final List<dynamic> response = await client
+          .from('follows')
+          .select('following_id, profiles!follows_following_id_fkey(username)')
+          .eq('follower_id', currentUser.id);
+
+      final List<String> followingUsernames = [];
+      for (var row in response) {
+        if (row['profiles'] != null && row['profiles']['username'] != null) {
+          followingUsernames.add(row['profiles']['username'] as String);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _followedUsernames.clear();
+          _followedUsernames.addAll(followingUsernames);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching follows: $e");
+    }
+  }
+
+  Future<void> _toggleFollow(String username, bool follow) async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser == null) return;
+
+      final profileResponse = await client
+          .from('profiles')
+          .select('id')
+          .eq('username', username)
+          .maybeSingle();
+
+      if (profileResponse == null) return;
+      final followingId = profileResponse['id'] as String;
+
+      if (follow) {
+        await client.from('follows').upsert({
+          'follower_id': currentUser.id,
+          'following_id': followingId,
+        });
+
+        await _createNotification(
+          receiverId: followingId,
+          type: 'follow',
+        );
+      } else {
+        await client
+            .from('follows')
+            .delete()
+            .eq('follower_id', currentUser.id)
+            .eq('following_id', followingId);
+      }
+    } catch (e) {
+      debugPrint("Error toggling follow: $e");
+    }
+  }
+
+  Future<void> _createNotification({
+    required String receiverId,
+    required String type,
+    String? postId,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser == null) return;
+      if (currentUser.id == receiverId) return;
+
+      await client.from('notifications').insert({
+        'sender_id': currentUser.id,
+        'receiver_id': receiverId,
+        'type': type,
+        'post_id': postId,
+        'metadata': metadata,
+      });
+    } catch (e) {
+      debugPrint("Error creating notification: $e");
+    }
   }
 
   Future<void> _fetchPosts() async {
     try {
       final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+
       final List<dynamic> response = await client
           .from('posts')
           .select()
           .order('created_at', ascending: false);
 
+      Set<String> likedPostIds = {};
+      if (currentUser != null) {
+        final likesResponse = await client
+            .from('post_likes')
+            .select('post_id')
+            .eq('user_id', currentUser.id);
+        likedPostIds = List<Map<String, dynamic>>.from(likesResponse)
+            .map((l) => l['post_id'] as String)
+            .toSet();
+      }
+
+      Set<String> bookmarkedPostIds = {};
+      if (currentUser != null) {
+        final collectionsResponse = await client
+            .from('collections')
+            .select('id')
+            .eq('user_id', currentUser.id);
+        final collectionIds = List<Map<String, dynamic>>.from(collectionsResponse)
+            .map((c) => c['id'] as String)
+            .toList();
+        if (collectionIds.isNotEmpty) {
+          final collectionPostsResponse = await client
+              .from('collection_posts')
+              .select('post_id')
+              .inFilter('collection_id', collectionIds);
+          bookmarkedPostIds = List<Map<String, dynamic>>.from(collectionPostsResponse)
+              .map((cp) => cp['post_id'] as String)
+              .toSet();
+        }
+      }
+
       final List<TimelinePost> fetchedPosts = response
-          .map((postData) => TimelinePost.fromMap(postData as Map<String, dynamic>))
+          .map((postData) {
+            final post = TimelinePost.fromMap(postData as Map<String, dynamic>);
+            return post.copyWith(
+              isLiked: likedPostIds.contains(post.id),
+              isBookmarked: bookmarkedPostIds.contains(post.id),
+            );
+          })
           .toList();
 
       if (mounted) {
@@ -229,15 +359,52 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
 
   // Toggle Like state
-  void _toggleLike(String postId) {
-    setState(() {
+  Future<void> _toggleLike(String postId) async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser == null) return;
+
       final index = _posts.indexWhere((p) => p.id == postId);
-      if (index != -1) {
-        final post = _posts[index];
-        post.isLiked = !post.isLiked;
-        post.likesCount += post.isLiked ? 1 : -1;
+      if (index == -1) return;
+      final post = _posts[index];
+      final isLikedNow = !post.isLiked;
+
+      setState(() {
+        post.isLiked = isLikedNow;
+        post.likesCount += isLikedNow ? 1 : -1;
+      });
+
+      final postResponse = await client
+          .from('posts')
+          .select('user_id')
+          .eq('id', postId)
+          .maybeSingle();
+
+      if (postResponse == null) return;
+      final authorId = postResponse['user_id'] as String;
+
+      if (isLikedNow) {
+        await client.from('post_likes').insert({
+          'post_id': postId,
+          'user_id': currentUser.id,
+        });
+
+        await _createNotification(
+          receiverId: authorId,
+          type: 'like',
+          postId: postId,
+        );
+      } else {
+        await client
+            .from('post_likes')
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', currentUser.id);
       }
-    });
+    } catch (e) {
+      debugPrint("Error toggling like: $e");
+    }
   }
 
   // Toggle Bookmark state (called by search/profile updates)
@@ -524,6 +691,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
                           followedUsernames: _followedUsernames,
                           onAvatarTapped: _onAvatarTapped,
                           openFollowFriends: _openFollowFriends,
+                          onLike: (post) => _toggleLike(post.id),
+                          onBookmark: _handleBookmarkTap,
+                          onComment: _openComments,
+                          onShare: _openShare,
                         ),
                 ),
               ],
@@ -701,6 +872,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 _followedUsernames.remove(username);
               }
             });
+            _toggleFollow(username, isFollowed);
           },
         ),
       ),
@@ -723,6 +895,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 _followedUsernames.remove(username);
               }
             });
+            _toggleFollow(username, isFollowed);
           },
         );
       },

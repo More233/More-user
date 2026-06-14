@@ -132,9 +132,9 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
     }
   }
 
-  void _checkCompletionAndNavigate() {
+  void _checkCompletionAndNavigate() async {
     if (_taskCompleted && _animationCompleted && mounted) {
-      Navigator.pushReplacement(
+      final result = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
           builder: (context) => RewardDialog(
@@ -144,6 +144,9 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
           ),
         ),
       );
+      if (result == true && mounted) {
+        Navigator.pop(context, true);
+      }
     }
   }
 

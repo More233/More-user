@@ -20,6 +20,7 @@ class CommentsBottomSheet extends StatefulWidget {
 
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final TextEditingController _commentController = TextEditingController();
+  String? _currentUserAvatar;
 
   List<Map<String, String>> _allProfiles = [
     {
@@ -54,6 +55,80 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     super.initState();
     _commentController.addListener(_onTextChanged);
     _fetchUsernamesFromDatabase();
+    _fetchCurrentUserProfile();
+    _fetchComments();
+  }
+
+  Future<void> _fetchCurrentUserProfile() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user != null) {
+        final data = await client
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', user.id)
+            .maybeSingle();
+        if (data != null && mounted) {
+          setState(() {
+            _currentUserAvatar = data['avatar_url'] as String?;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching current user profile: $e");
+    }
+  }
+
+  Future<void> _fetchComments() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('post_comments')
+          .select('*, author:profiles(username, avatar_url)')
+          .eq('post_id', widget.post.id)
+          .order('created_at', ascending: true);
+
+      final List<TimelineComment> fetched = [];
+      for (final row in response) {
+        final author = row['author'];
+        final authorName = author?['username'] as String? ?? 'unknown';
+        final authorAvatar = author?['avatar_url'] as String? ?? 'assets/Timeline/images/element.png';
+        final text = row['content'] as String? ?? '';
+        final createdAtStr = row['created_at'] as String?;
+        final createdAt = createdAtStr != null ? DateTime.tryParse(createdAtStr) : null;
+
+        String timeAgo = 'Just now';
+        if (createdAt != null) {
+          final difference = DateTime.now().difference(createdAt.toLocal());
+          if (difference.inMinutes < 1) {
+            timeAgo = 'Just now';
+          } else if (difference.inMinutes < 60) {
+            timeAgo = '${difference.inMinutes}m ago';
+          } else if (difference.inHours < 24) {
+            timeAgo = '${difference.inHours}h ago';
+          } else {
+            timeAgo = '${difference.inDays}d ago';
+          }
+        }
+
+        fetched.add(TimelineComment(
+          authorName: authorName,
+          authorAvatar: authorAvatar,
+          commentText: text,
+          timeAgo: timeAgo,
+        ));
+      }
+
+      if (mounted) {
+        setState(() {
+          widget.post.comments.clear();
+          widget.post.comments.addAll(fetched);
+          widget.post.commentsCount = fetched.length;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching comments: $e");
+    }
   }
 
   Future<void> _fetchUsernamesFromDatabase() async {
@@ -135,20 +210,62 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     });
   }
 
-  void _submitComment() {
+  void _submitComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
 
+    final client = Supabase.instance.client;
+    final currentUser = client.auth.currentUser;
+    if (currentUser == null) return;
+
+    final profileResponse = await client
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+    final username = profileResponse?['username'] as String? ?? 'unknown';
+    final avatar = profileResponse?['avatar_url'] as String? ?? 'assets/Timeline/images/element.png';
+
     final comment = TimelineComment(
-      authorName: 'sally.samer.3',
-      authorAvatar: 'assets/Timeline/images/element.png',
+      authorName: username,
+      authorAvatar: avatar,
       commentText: text,
       timeAgo: 'Just now',
     );
 
     widget.onCommentAdded(comment);
     _commentController.clear();
-    setState(() {}); // refresh the sheet view
+    setState(() {});
+
+    try {
+      await client.from('post_comments').insert({
+        'post_id': widget.post.id,
+        'user_id': currentUser.id,
+        'content': text,
+      });
+
+      final postResponse = await client
+          .from('posts')
+          .select('user_id')
+          .eq('id', widget.post.id)
+          .maybeSingle();
+
+      if (postResponse != null) {
+        final authorId = postResponse['user_id'] as String;
+        if (authorId != currentUser.id) {
+          await client.from('notifications').insert({
+            'sender_id': currentUser.id,
+            'receiver_id': authorId,
+            'type': 'comment',
+            'post_id': widget.post.id,
+            'metadata': {'comment': text},
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error saving comment: $e");
+    }
   }
 
   @override
@@ -327,11 +444,14 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Avatar
-          const CircleAvatar(
+          CircleAvatar(
             radius: 18,
-            backgroundImage: AssetImage(
-              'assets/Timeline/images/element.png',
-            ),
+            backgroundColor: Colors.grey[200],
+            backgroundImage: comment.authorAvatar.startsWith('http')
+                ? NetworkImage(comment.authorAvatar) as ImageProvider
+                : (comment.authorAvatar.isNotEmpty
+                    ? AssetImage(comment.authorAvatar)
+                    : const AssetImage('assets/Timeline/images/element.png')) as ImageProvider,
           ),
           const SizedBox(width: 12),
           // Details
@@ -457,11 +577,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         child: Row(
           children: [
             // Profile avatar
-            const CircleAvatar(
+            CircleAvatar(
               radius: 16,
-              backgroundImage: AssetImage(
-                'assets/Timeline/images/element.png',
-              ),
+              backgroundColor: Colors.grey[200],
+              backgroundImage: _currentUserAvatar != null && _currentUserAvatar!.isNotEmpty
+                  ? NetworkImage(_currentUserAvatar!) as ImageProvider
+                  : const AssetImage('assets/Timeline/images/element.png'),
             ),
             const SizedBox(width: 12),
             // TextField
