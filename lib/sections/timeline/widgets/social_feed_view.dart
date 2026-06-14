@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/timeline_post.dart';
+import '../helpers/story_tracker.dart';
 import 'story_viewer.dart';
 
 class SocialFeedView extends StatefulWidget {
@@ -43,6 +44,11 @@ class _SocialFeedViewState extends State<SocialFeedView> {
   @override
   void initState() {
     super.initState();
+    StoryTracker().init().then((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
     _fetchSocialFeed();
     _fetchStories();
   }
@@ -93,15 +99,19 @@ class _SocialFeedViewState extends State<SocialFeedView> {
         final username = user['username'] as String? ?? 'unknown';
         final avatarUrl = user['avatar_url'] as String?;
         final mediaUrl = row['media_url'] as String;
+        final createdAtStr = row['created_at'] as String;
+        final createdAt = DateTime.parse(createdAtStr);
 
         if (grouped.containsKey(uId)) {
           grouped[uId]!.mediaUrls.add(mediaUrl);
+          grouped[uId]!.createdTimes.add(createdAt);
         } else {
           grouped[uId] = UserStoryGroup(
             userId: uId,
             username: username,
             avatarUrl: avatarUrl,
             mediaUrls: [mediaUrl],
+            createdTimes: [createdAt],
           );
         }
       }
@@ -273,7 +283,7 @@ class _SocialFeedViewState extends State<SocialFeedView> {
   Widget build(BuildContext context) {
     final currentUserGroup = _storyGroups.firstWhere(
       (g) => g.userId == Supabase.instance.client.auth.currentUser?.id,
-      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: '', mediaUrls: []),
+      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: '', mediaUrls: [], createdTimes: []),
     );
     final hasOwnStory = currentUserGroup.userId.isNotEmpty;
 
@@ -323,7 +333,11 @@ class _SocialFeedViewState extends State<SocialFeedView> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: hasOwnStory ? const Color(0xFF7C57FC) : const Color(0xFFE9E9E9),
+                                  color: hasOwnStory
+                                      ? (StoryTracker().isGroupViewed(currentUserGroup.mediaUrls)
+                                          ? const Color(0xFFE9E9E9)
+                                          : const Color(0xFF7C57FC))
+                                      : const Color(0xFFE9E9E9),
                                   width: hasOwnStory ? 2 : 1,
                                 ),
                               ),
@@ -402,13 +416,18 @@ class _SocialFeedViewState extends State<SocialFeedView> {
                           Container(
                             width: 64,
                             height: 64,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF7C57FC), Color(0xFFFF57B9)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              gradient: StoryTracker().isGroupViewed(group.mediaUrls)
+                                  ? null
+                                  : const LinearGradient(
+                                      colors: [Color(0xFF7C57FC), Color(0xFFFF57B9)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                              border: StoryTracker().isGroupViewed(group.mediaUrls)
+                                  ? Border.all(color: const Color(0xFFE9E9E9), width: 2)
+                                  : null,
                             ),
                             padding: const EdgeInsets.all(2),
                             child: Container(
