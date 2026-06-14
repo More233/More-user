@@ -27,6 +27,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   
   // Audio playback simulation states
   String? _activeAudioId;
+  int _activeAudioDuration = 14;
   double _playbackProgress = 0.0;
   double _playbackSpeed = 1.0;
   Timer? _playbackTimer;
@@ -283,7 +284,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
       // Start/Resume
       _playbackTimer?.cancel();
       setState(() {
+        if (_activeAudioId != msgId) {
+          _playbackProgress = 0.0;
+        }
         _activeAudioId = msgId;
+        _activeAudioDuration = durationSeconds;
         if (_playbackProgress >= 1.0) {
           _playbackProgress = 0.0;
         }
@@ -316,10 +321,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
     // If actively playing, restart timer with new speed
     if (_activeAudioId != null) {
       _playbackTimer?.cancel();
-      // Find the message in DB to get correct duration is skipped for simplicity as we keep the timer running
       _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
         setState(() {
-          _playbackProgress += (0.1 * _playbackSpeed) / 14; // Assumed max 14s duration fallback
+          _playbackProgress += (0.1 * _playbackSpeed) / _activeAudioDuration;
           if (_playbackProgress >= 1.0) {
             _playbackProgress = 1.0;
             _playbackTimer?.cancel();
@@ -702,16 +706,24 @@ class _ConversationScreenState extends State<ConversationScreen> {
                                     onSubmitted: (val) => _sendMessage(),
                                   ),
                                 ),
-                                
-                                // Right voice mic recorder inside message field
-                                GestureDetector(
-                                  onLongPressStart: (_) => _startRecording(),
-                                  onLongPressEnd: (_) => _stopAndSendRecording(),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(4.0),
-                                    child: Icon(Icons.mic, color: Color(0xFF7C57FC), size: 24),
-                                  ),
-                                ),
+                                                                // Right voice mic recorder inside message field
+                                 GestureDetector(
+                                   onLongPressStart: (_) => _startRecording(),
+                                   onLongPressEnd: (_) => _stopAndSendRecording(),
+                                   onLongPressCancel: () => _stopAndSendRecording(),
+                                   onTap: () {
+                                     ScaffoldMessenger.of(context).showSnackBar(
+                                       const SnackBar(
+                                         content: Text("Hold to record voice message"),
+                                         duration: Duration(seconds: 2),
+                                       ),
+                                     );
+                                   },
+                                   child: const Padding(
+                                     padding: EdgeInsets.all(4.0),
+                                     child: Icon(Icons.mic, color: Color(0xFF7C57FC), size: 24),
+                                   ),
+                                 ),
                               ],
                             ),
                           ),

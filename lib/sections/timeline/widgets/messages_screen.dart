@@ -433,6 +433,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
   Widget _buildStoriesRow() {
     final followedList = _profilesList.where((p) => _localFollowed.contains(p['username'])).toList();
+    final currentUserProfile = _profilesList.firstWhere(
+      (p) => p['id'] == _currentUserId,
+      orElse: () => <String, dynamic>{},
+    );
+    final String? currentUserAvatarUrl = currentUserProfile['avatar_url'] as String?;
+    final String currentUserUsername = currentUserProfile['username'] ?? '';
 
     return SizedBox(
       height: 110,
@@ -455,12 +461,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         border: Border.all(color: const Color(0xFFE9E9E9), width: 1),
                       ),
                       padding: const EdgeInsets.all(2),
-                      child: const CircleAvatar(
+                      child: CircleAvatar(
                         radius: 30,
                         backgroundColor: Colors.grey,
-                        backgroundImage: AssetImage(
-                          'assets/Timeline/images/profile_image_1.png',
-                        ),
+                        backgroundImage: _getAvatarProvider(currentUserUsername, currentUserAvatarUrl),
                       ),
                     ),
                     Positioned(

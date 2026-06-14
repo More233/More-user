@@ -105,17 +105,6 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
       final List<UserCardInfo> suggestions = [];
       final List<UserCardInfo> contacts = [];
 
-      // Raw contacts database (names and usernames) fallback
-      final List<Map<String, String>> rawContacts = [
-        {'name': 'Maya Thompson', 'username': 'mayat', 'phone': '+15555551234'},
-        {'name': 'Jordan Marco', 'username': 'jordanmarco', 'phone': '+15555555678'},
-        {'name': 'Ava Johnson', 'username': 'avaj', 'phone': '+15555559012'},
-        {'name': 'Sarah Smith', 'username': 'sarahs', 'phone': '+15555553456'},
-        {'name': 'John Doe', 'username': 'johndoe', 'phone': '+15555557777'},
-        {'name': 'Jane Smith', 'username': 'janesmith', 'phone': '+15555558888'},
-        {'name': 'Alex Rivera', 'username': 'alexr', 'phone': '+15555559999'},
-      ];
-
       // Parse the profiles
       final List<Map<String, dynamic>> otherProfiles = [];
       for (final p in profilesData) {
@@ -236,39 +225,6 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
               name: name,
               username: isRegistered ? '@$username' : username,
               avatarPath: _getAvatarPath(username),
-              detailText: 'In your contacts',
-              isRegistered: isRegistered,
-              isFollowing: isFollowing,
-              isInvited: isInvited,
-            ),
-          );
-        }
-      } else {
-        // Fallback to raw contacts if no device contacts found
-        for (final rc in rawContacts) {
-          final rcName = rc['name']!;
-          final rcUsername = rc['username']!;
-          final rcPhone = rc['phone']!;
-
-          final match = otherProfiles.firstWhere(
-            (p) {
-              final pUsername = p['username'] as String? ?? '';
-              final pPhone = p['phone'] as String? ?? '';
-              return pUsername.toLowerCase() == rcUsername.toLowerCase() ||
-                     (rcPhone.isNotEmpty && pPhone.isNotEmpty && _normalizePhone(pPhone) == _normalizePhone(rcPhone));
-            },
-            orElse: () => {},
-          );
-
-          final isRegistered = match.isNotEmpty;
-          final isFollowing = isRegistered && _followedUsernames.contains(rcUsername.toLowerCase());
-          final isInvited = _invitedUsernames.contains(rcUsername.toLowerCase());
-
-          contacts.add(
-            UserCardInfo(
-              name: rcName,
-              username: '@$rcUsername',
-              avatarPath: _getAvatarPath(rcUsername),
               detailText: 'In your contacts',
               isRegistered: isRegistered,
               isFollowing: isFollowing,

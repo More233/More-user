@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 
 class SuggestedUser {
   final String name;
   final String username;
   final String subtitle;
-  final String avatarAsset;
+  final String? avatarUrl;
+  final String? avatarAsset;
   final bool isOnMore;
   final bool hasMutualFriends;
 
@@ -13,7 +17,8 @@ class SuggestedUser {
     required this.name,
     required this.username,
     required this.subtitle,
-    required this.avatarAsset,
+    this.avatarUrl,
+    this.avatarAsset,
     this.isOnMore = false,
     this.hasMutualFriends = false,
   });
@@ -38,68 +43,182 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
   String _searchQuery = '';
   late Set<String> _localFollowed;
 
-  final List<SuggestedUser> _allSuggestions = [
-    SuggestedUser(
-      name: 'Maya Thompson',
-      username: 'mayat',
-      subtitle: 'Recently at Bice Bottle Coffee',
-      avatarAsset: 'assets/Timeline/images/profile_image_1.png',
-      isOnMore: false,
-    ),
-    SuggestedUser(
-      name: 'Jordan Marco',
-      username: 'jordanmarco',
-      subtitle: '5 Mutual Friends',
-      avatarAsset: 'assets/Timeline/images/profile_image2.png',
-      hasMutualFriends: true,
-    ),
-    SuggestedUser(
-      name: 'Ava Johnson',
-      username: 'avaj',
-      subtitle: 'On More',
-      avatarAsset: 'assets/Timeline/images/avatar.png',
-      isOnMore: true,
-    ),
-    SuggestedUser(
-      name: 'karennne',
-      username: 'karennne',
-      subtitle: 'On More',
-      avatarAsset: 'assets/Timeline/images/element.png',
-      isOnMore: true,
-    ),
-  ];
-
-  final List<SuggestedUser> _contacts = [
-    SuggestedUser(
-      name: 'Maya Thompson',
-      username: 'mayat',
-      subtitle: 'In your contacts',
-      avatarAsset: 'assets/Timeline/images/profile_image_1.png',
-    ),
-    SuggestedUser(
-      name: 'Jordan Marco',
-      username: 'jordanmarco',
-      subtitle: 'In your contacts',
-      avatarAsset: 'assets/Timeline/images/profile_image2.png',
-    ),
-    SuggestedUser(
-      name: 'Ava Johnson',
-      username: 'avaj',
-      subtitle: 'In your contacts',
-      avatarAsset: 'assets/Timeline/images/avatar.png',
-    ),
-  ];
+  List<SuggestedUser> _allSuggestions = [];
+  List<SuggestedUser> _contacts = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _localFollowed = Set.from(widget.followedUsernames);
+    _fetchData();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  String _normalizePhone(String phone) {
+    return phone.replaceAll(RegExp(r'[^\d+]'), '');
+  }
+
+  String _getAvatarAsset(String username) {
+    final clean = username.startsWith('@') ? username.substring(1) : username;
+    final lower = clean.toLowerCase();
+    if (lower == 'mayat') {
+      return 'assets/Timeline/images/profile_image_1.png';
+    } else if (lower == 'jordanmarco') {
+      return 'assets/Timeline/images/profile_image2.png';
+    } else if (lower == 'avaj') {
+      return 'assets/Timeline/images/avatar.png';
+    } else {
+      return 'assets/Timeline/images/element.png';
+    }
+  }
+
+  ImageProvider _getAvatarProvider(String username, String? dbUrl) {
+    if (dbUrl != null && dbUrl.isNotEmpty) {
+      if (dbUrl.startsWith('http')) {
+        return NetworkImage(dbUrl);
+      } else {
+        return AssetImage(dbUrl);
+      }
+    }
+    return AssetImage(_getAvatarAsset(username));
+  }
+
+  Future<void> _fetchData() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final client = Supabase.instance.client;
+      final currentUserId = client.auth.currentUser?.id;
+
+      // 1. Fetch registered profiles from Supabase database
+      final List<dynamic> profilesData = await client.from('profiles').select();
+
+      final List<Map<String, dynamic>> otherProfiles = [];
+      for (final p in profilesData) {
+        final id = p['id'] as String;
+        if (id == currentUserId) continue;
+
+        final firstName = p['first_name'] as String? ?? '';
+        final lastName = p['last_name'] as String? ?? '';
+        final name = '$firstName $lastName'.trim();
+        final username = p['username'] as String? ?? '';
+        final phone = p['phone'] as String? ?? '';
+        final email = p['email'] as String? ?? '';
+        final avatarUrl = p['avatar_url'] as String?;
+
+        otherProfiles.add({
+          'id': id,
+          'name': name.isEmpty ? username : name,
+          'username': username,
+          'phone': phone,
+          'email': email,
+          'avatar_url': avatarUrl,
+        });
+      }
+
+      // 2. Suggestions list populated from Supabase database profiles (actual users)
+      final List<SuggestedUser> suggestions = [];
+      for (final p in otherProfiles) {
+        final username = p['username'] as String;
+        final name = p['name'] as String;
+        final avatarUrl = p['avatar_url'] as String?;
+
+        suggestions.add(SuggestedUser(
+          name: name,
+          username: username,
+          subtitle: 'On More',
+          avatarUrl: avatarUrl,
+          isOnMore: true,
+        ));
+      }
+
+      // 3. Fetch device contacts
+      List<Contact> deviceContacts = [];
+      try {
+        final status = await ph.Permission.contacts.status;
+        if (status.isGranted) {
+          deviceContacts = await FlutterContacts.getAll(
+            properties: {ContactProperty.phone, ContactProperty.email},
+          );
+        } else {
+          final requestStatus = await ph.Permission.contacts.request();
+          if (requestStatus.isGranted) {
+            deviceContacts = await FlutterContacts.getAll(
+              properties: {ContactProperty.phone, ContactProperty.email},
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint("Error fetching contacts: $e");
+      }
+
+      // 4. Match device contacts against database profiles to only display registered users
+      final List<SuggestedUser> matchedContacts = [];
+      if (deviceContacts.isNotEmpty) {
+        for (final dc in deviceContacts) {
+          final String dcName = dc.displayName ?? '';
+          final String dcPhone = dc.phones.isNotEmpty ? dc.phones.first.number : '';
+          final String dcEmail = dc.emails.isNotEmpty ? dc.emails.first.address : '';
+
+          if (dcPhone.isEmpty && dcEmail.isEmpty) continue;
+
+          final normalizedPhone = _normalizePhone(dcPhone);
+
+          final match = otherProfiles.firstWhere(
+            (p) {
+              final pPhone = p['phone'] as String? ?? '';
+              final pEmail = p['email'] as String? ?? '';
+              if (normalizedPhone.isNotEmpty && pPhone.isNotEmpty) {
+                if (_normalizePhone(pPhone) == normalizedPhone) return true;
+              }
+              if (dcEmail.isNotEmpty && pEmail.isNotEmpty) {
+                if (dcEmail.toLowerCase() == pEmail.toLowerCase()) return true;
+              }
+              return false;
+            },
+            orElse: () => {},
+          );
+
+          if (match.isNotEmpty) {
+            final String username = match['username'] as String;
+            final String name = dcName.isNotEmpty ? dcName : username;
+            final String? avatarUrl = match['avatar_url'] as String?;
+
+            matchedContacts.add(SuggestedUser(
+              name: name,
+              username: username,
+              subtitle: 'In your contacts',
+              avatarUrl: avatarUrl,
+              isOnMore: true,
+            ));
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _allSuggestions = suggestions;
+          _contacts = matchedContacts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error in _fetchData: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   List<SuggestedUser> _filterList(List<SuggestedUser> list) {
@@ -150,7 +269,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
         radius: 20,
-        backgroundImage: AssetImage(user.avatarAsset),
+        backgroundImage: _getAvatarProvider(user.username, user.avatarUrl),
       ),
       title: Text(
         user.name,
@@ -302,82 +421,103 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
 
             // Dynamic Scrollable Body
             Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Suggestions section
-                    if (filteredSuggestions.isNotEmpty) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Suggestions',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
+              child: _isLoading
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                      ),
+                    )
+                  : (filteredSuggestions.isEmpty && filteredContacts.isEmpty)
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Text(
+                              'No suggestions found',
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 16,
+                                color: const Color(0xFF82858C),
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                          Text(
-                            'See all',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF7C57FC),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: filteredSuggestions.length,
-                        itemBuilder: (context, index) {
-                          return _buildUserTile(filteredSuggestions[index]);
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                        )
+                      : SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Suggestions section
+                              if (filteredSuggestions.isNotEmpty) ...[
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Suggestions',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    Text(
+                                      'See all',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF7C57FC),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: filteredSuggestions.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildUserTile(filteredSuggestions[index]);
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+                              ],
 
-                    // Contacts section
-                    if (filteredContacts.isNotEmpty) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'From your contacts',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
+                              // Contacts section
+                              if (filteredContacts.isNotEmpty) ...[
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'From your contacts',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    Text(
+                                      'See all',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF7C57FC),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: filteredContacts.length,
+                                  itemBuilder: (context, index) {
+                                    return _buildUserTile(filteredContacts[index]);
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            ],
                           ),
-                          Text(
-                            'See all',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF7C57FC),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: filteredContacts.length,
-                        itemBuilder: (context, index) {
-                          return _buildUserTile(filteredContacts[index]);
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ],
-                ),
-              ),
+                        ),
             ),
           ],
         ),
