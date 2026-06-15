@@ -116,15 +116,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       if (image != null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Row(
-            children: [
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(width: 12),
-              Text("Uploading profile photo..."),
-            ],
-          )),
-        );
 
         final client = Supabase.instance.client;
         final user = client.auth.currentUser;
@@ -149,10 +140,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           setState(() {
             _avatarUrl = publicUrl;
           });
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Profile photo updated successfully!")),
-          );
           widget.onPostUpdated?.call();
         }
       }
