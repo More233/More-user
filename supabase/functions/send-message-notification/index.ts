@@ -1,7 +1,9 @@
+// @ts-ignore: Deno import
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// @ts-ignore: Deno import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0"
 
-serve(async (req) => {
+serve(async (req: Request) => {
   try {
     const { record } = await req.json()
     
@@ -11,9 +13,9 @@ serve(async (req) => {
     const messageType = record.message_type
     const content = record.content
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const firebaseServiceAccount = JSON.parse(Deno.env.get('FIREBASE_SERVICE_ACCOUNT') ?? '{}')
+    const supabaseUrl = (globalThis as any).Deno.env.get('SUPABASE_URL') ?? ''
+    const supabaseServiceRoleKey = (globalThis as any).Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const firebaseServiceAccount = JSON.parse((globalThis as any).Deno.env.get('FIREBASE_SERVICE_ACCOUNT') ?? '{}')
 
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
@@ -112,7 +114,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, response: responseData }), { status: 200 })
   } catch (error) {
     console.error('Error sending notification:', error)
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    return new Response(JSON.stringify({ error: errorMessage }), { status: 500 })
   }
 })
 

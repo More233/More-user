@@ -54,6 +54,10 @@
 	<string>This app requires access to your camera to take a photo for your check-in.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app requires access to your microphone to record voice messages in chat.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to location when open to show your position on the map.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to location when in the background to share real-time updates.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

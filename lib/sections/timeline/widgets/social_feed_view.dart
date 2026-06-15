@@ -1,12 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/timeline_post.dart';
 import '../helpers/story_tracker.dart';
 import 'story_viewer.dart';
+import 'story_composer_screen.dart';
 
 class SocialFeedView extends StatefulWidget {
   final String? currentUserAvatarUrl;
@@ -37,7 +36,6 @@ class SocialFeedView extends StatefulWidget {
 class _SocialFeedViewState extends State<SocialFeedView> {
   bool _showFindFriendsCard = true;
   bool _isLoading = true;
-  bool _uploadingStory = false;
   final List<TimelinePost> _socialPosts = [];
   final List<UserStoryGroup> _storyGroups = [];
 
@@ -101,10 +99,12 @@ class _SocialFeedViewState extends State<SocialFeedView> {
         final mediaUrl = row['media_url'] as String;
         final createdAtStr = row['created_at'] as String;
         final createdAt = DateTime.parse(createdAtStr);
+        final storyId = row['id'] as String;
 
         if (grouped.containsKey(uId)) {
           grouped[uId]!.mediaUrls.add(mediaUrl);
           grouped[uId]!.createdTimes.add(createdAt);
+          grouped[uId]!.storyIds.add(storyId);
         } else {
           grouped[uId] = UserStoryGroup(
             userId: uId,
@@ -112,6 +112,7 @@ class _SocialFeedViewState extends State<SocialFeedView> {
             avatarUrl: avatarUrl,
             mediaUrls: [mediaUrl],
             createdTimes: [createdAt],
+            storyIds: [storyId],
           );
         }
       }
@@ -213,77 +214,13 @@ class _SocialFeedViewState extends State<SocialFeedView> {
     }
   }
 
-  Future<void> _pickAndUploadStory() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1080,
-        maxHeight: 1920,
-        imageQuality: 80,
-      );
 
-      if (image == null) return;
-
-      setState(() {
-        _uploadingStory = true;
-      });
-
-      final client = Supabase.instance.client;
-      final currentUser = client.auth.currentUser;
-      if (currentUser == null) return;
-
-      final file = File(image.path);
-      final fileName = 'stories/${currentUser.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      // Upload file to Supabase storage
-      await client.storage.from('post-images').upload(
-        fileName,
-        file,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-      );
-
-      final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
-
-      // Insert story record in Supabase
-      await client.from('stories').insert({
-        'user_id': currentUser.id,
-        'media_url': publicUrl,
-        'expires_at': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
-      });
-
-      // Reload stories
-      await _fetchStories();
-
-      if (mounted) {
-        setState(() {
-          _uploadingStory = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Story posted successfully!"),
-            backgroundColor: Color(0xFF7C57FC),
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint("Error uploading story: $e");
-      if (mounted) {
-        setState(() {
-          _uploadingStory = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to upload story: $e")),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final currentUserGroup = _storyGroups.firstWhere(
       (g) => g.userId == Supabase.instance.client.auth.currentUser?.id,
-      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: '', mediaUrls: [], createdTimes: []),
+      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: '', mediaUrls: [], createdTimes: [], storyIds: []),
     );
     final hasOwnStory = currentUserGroup.userId.isNotEmpty;
 
@@ -324,7 +261,12 @@ class _SocialFeedViewState extends State<SocialFeedView> {
                                   ),
                                 ).then((_) => _fetchStories());
                               } else {
-                                _pickAndUploadStory();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const StoryComposerScreen(),
+                                  ),
+                                ).then((_) => _fetchStories());
                               }
                             },
                             child: Container(
@@ -342,12 +284,7 @@ class _SocialFeedViewState extends State<SocialFeedView> {
                                 ),
                               ),
                               padding: const EdgeInsets.all(2),
-                              child: _uploadingStory
-                                  ? const CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                                    )
-                                  : CircleAvatar(
+                              child: CircleAvatar(
                                       radius: 30,
                                       backgroundColor: Colors.grey[200],
                                       backgroundImage: widget.currentUserAvatarUrl != null &&
@@ -363,7 +300,14 @@ class _SocialFeedViewState extends State<SocialFeedView> {
                             right: 0,
                             bottom: 0,
                             child: GestureDetector(
-                              onTap: _pickAndUploadStory,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const StoryComposerScreen(),
+                                  ),
+                                ).then((_) => _fetchStories());
+                              },
                               child: Container(
                                 width: 20,
                                 height: 20,
