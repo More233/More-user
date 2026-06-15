@@ -234,9 +234,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       if (image == null) return;
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Uploading image...")),
-      );
 
       final client = Supabase.instance.client;
       final file = File(image.path);
@@ -258,7 +255,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         _scrollToBottom();
       }
     } catch (e) {
@@ -821,7 +817,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 padding: type == 'text'
                     ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
                     : type == 'image'
-                        ? const EdgeInsets.all(4)
+                        ? const EdgeInsets.all(2) // Reduced padding to minimize the border/stroke
                         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSent
@@ -867,15 +863,18 @@ class _ConversationScreenState extends State<ConversationScreen> {
                               alignment: Alignment.bottomRight,
                               children: [
                                 Container(
-                                  constraints: const BoxConstraints(maxHeight: 200),
+                                  constraints: const BoxConstraints(
+                                    maxHeight: 300,
+                                    maxWidth: 250,
+                                  ),
                                   child: Image.network(
                                     content,
-                                    width: 150,
+                                    width: 250,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                       return Container(
-                                        width: 150,
-                                        height: 150,
+                                        width: 250,
+                                        height: 200,
                                         color: Colors.grey[300],
                                         child: const Icon(Icons.broken_image, color: Colors.grey),
                                       );
@@ -957,8 +956,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
     final otherUsername = widget.otherProfile['username'] ?? '';
     final otherAvatar = widget.otherProfile['avatar_url'] as String?;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: Scaffold(
+        backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
@@ -1183,8 +1185,9 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildRecordingOverlay() {
     return Container(

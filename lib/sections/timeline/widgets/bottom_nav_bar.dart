@@ -98,24 +98,36 @@ class _NavItem extends StatelessWidget {
       );
     }
     if (label == 'Explore') {
-      return Icon(
-        isActive ? Icons.explore : Icons.explore_outlined,
-        size: 22,
-        color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+      return SvgPicture.asset(
+        'assets/Timeline/icons/explore_nav_icon.svg',
+        width: 22,
+        height: 22,
+        colorFilter: ColorFilter.mode(
+          isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+          BlendMode.srcIn,
+        ),
       );
     }
     if (label == 'Booking') {
-      return Icon(
-        isActive ? Icons.calendar_month : Icons.calendar_today_outlined,
-        size: 22,
-        color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+      return SvgPicture.asset(
+        'assets/Timeline/icons/booking_nav_icon.svg',
+        width: 22,
+        height: 22,
+        colorFilter: ColorFilter.mode(
+          isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+          BlendMode.srcIn,
+        ),
       );
     }
     if (label == 'Order') {
-      return Icon(
-        isActive ? Icons.shopping_bag : Icons.shopping_bag_outlined,
-        size: 22,
-        color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+      return SvgPicture.asset(
+        'assets/Timeline/icons/order_nav_icon.svg',
+        width: 22,
+        height: 22,
+        colorFilter: ColorFilter.mode(
+          isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+          BlendMode.srcIn,
+        ),
       );
     }
     return const Icon(Icons.help_outline);
