@@ -4,6 +4,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'follow_friends_bottom_sheet.dart';
 import 'conversation_screen.dart';
+import 'story_viewer.dart';
+import 'story_composer_screen.dart';
+import '../helpers/story_tracker.dart';
 
 class MessagesScreen extends StatefulWidget {
   final Set<String> followedUsernames;
@@ -25,6 +28,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
   List<Map<String, dynamic>> _threadsList = [];
   List<Map<String, dynamic>> _profilesList = [];
   List<Map<String, dynamic>> _searchResults = [];
+  final List<UserStoryGroup> _storyGroups = [];
   bool _isSearching = false;
   String _currentUserId = '';
   RealtimeChannel? _messagesSubscription;
@@ -34,6 +38,11 @@ class _MessagesScreenState extends State<MessagesScreen> {
   void initState() {
     super.initState();
     _localFollowed = Set.from(widget.followedUsernames);
+    StoryTracker().init().then((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
     _loadData();
     _subscribeToMessages();
   }
@@ -53,6 +62,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
       final currentUser = client.auth.currentUser;
       if (currentUser == null) return;
       _currentUserId = currentUser.id;
+
+      // Fetch active stories
+      await _fetchStories();
 
       // 1. Fetch all profiles to map user IDs to names/avatars/usernames
       final profilesResponse = await client.from('profiles').select();
@@ -123,6 +135,74 @@ class _MessagesScreenState extends State<MessagesScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchStories() async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser == null) return;
+
+      // 1. Fetch followed user IDs
+      final followsResponse = await client
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUser.id);
+
+      final userIds = List<Map<String, dynamic>>.from(followsResponse)
+          .map((f) => f['following_id'] as String)
+          .toList();
+
+      // Include current user's ID
+      userIds.add(currentUser.id);
+
+      // 2. Fetch active stories from Supabase where expires_at > now()
+      final storiesResponse = await client
+          .from('stories')
+          .select('*, user:profiles(id, username, first_name, last_name, avatar_url)')
+          .inFilter('user_id', userIds)
+          .gt('expires_at', DateTime.now().toIso8601String())
+          .order('created_at', ascending: true);
+
+      // 3. Group by user
+      final Map<String, UserStoryGroup> grouped = {};
+      for (var row in storiesResponse) {
+        final user = row['user'];
+        if (user == null) continue;
+
+        final uId = user['id'] as String;
+        final username = user['username'] as String? ?? 'unknown';
+        final avatarUrl = user['avatar_url'] as String?;
+        final mediaUrl = row['media_url'] as String;
+        final createdAtStr = row['created_at'] as String;
+        final createdAt = DateTime.parse(createdAtStr);
+        final storyId = row['id'] as String;
+
+        if (grouped.containsKey(uId)) {
+          grouped[uId]!.mediaUrls.add(mediaUrl);
+          grouped[uId]!.createdTimes.add(createdAt);
+          grouped[uId]!.storyIds.add(storyId);
+        } else {
+          grouped[uId] = UserStoryGroup(
+            userId: uId,
+            username: username,
+            avatarUrl: avatarUrl,
+            mediaUrls: [mediaUrl],
+            createdTimes: [createdAt],
+            storyIds: [storyId],
+          );
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _storyGroups.clear();
+          _storyGroups.addAll(grouped.values);
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching stories: $e");
     }
   }
 
@@ -432,7 +512,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
   }
 
   Widget _buildStoriesRow() {
-    final followedList = _profilesList.where((p) => _localFollowed.contains(p['username'])).toList();
+    final currentUserGroup = _storyGroups.firstWhere(
+      (g) => g.userId == _currentUserId,
+      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: '', mediaUrls: [], createdTimes: [], storyIds: []),
+    );
+    final hasOwnStory = currentUserGroup.userId.isNotEmpty;
+
     final currentUserProfile = _profilesList.firstWhere(
       (p) => p['id'] == _currentUserId,
       orElse: () => <String, dynamic>{},
@@ -446,41 +531,81 @@ class _MessagesScreenState extends State<MessagesScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          // Your Story (Abdallah)
+          // Your Story Bubble
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Column(
               children: [
                 Stack(
                   children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFE9E9E9), width: 1),
-                      ),
-                      padding: const EdgeInsets.all(2),
-                      child: CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.grey,
-                        backgroundImage: _getAvatarProvider(currentUserUsername, currentUserAvatarUrl),
+                    GestureDetector(
+                      onTap: () {
+                        if (hasOwnStory) {
+                          final index = _storyGroups.indexOf(currentUserGroup);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => StoryViewer(
+                                storyGroups: _storyGroups,
+                                initialGroupIndex: index,
+                              ),
+                            ),
+                          ).then((_) => _fetchStories());
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const StoryComposerScreen(),
+                            ),
+                          ).then((_) => _fetchStories());
+                        }
+                      },
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: hasOwnStory
+                                ? (StoryTracker().isGroupViewed(currentUserGroup.mediaUrls)
+                                    ? const Color(0xFFE9E9E9)
+                                    : const Color(0xFF7C57FC))
+                                : const Color(0xFFE9E9E9),
+                            width: hasOwnStory ? 2 : 1,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: _getAvatarProvider(currentUserUsername, currentUserAvatarUrl),
+                        ),
                       ),
                     ),
                     Positioned(
                       right: 0,
                       bottom: 0,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: const BoxDecoration(
-                          color: Colors.black,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 14,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const StoryComposerScreen(),
+                            ),
+                          ).then((_) => _fetchStories());
+                        },
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: const BoxDecoration(
+                            color: Colors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -499,27 +624,40 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ),
           ),
 
-          // Followed stories
-          ...followedList.map((profile) {
-            final username = profile['username'] ?? '';
-            final avatarUrl = profile['avatar_url'] as String?;
-
+          // Followed user stories
+          ..._storyGroups.where((g) => g.userId != _currentUserId).map((group) {
             return Padding(
               padding: const EdgeInsets.only(right: 16),
               child: GestureDetector(
-                onTap: () => _openConversation(profile),
+                onTap: () {
+                  final index = _storyGroups.indexOf(group);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StoryViewer(
+                        storyGroups: _storyGroups,
+                        initialGroupIndex: index,
+                      ),
+                    ),
+                  ).then((_) => _fetchStories());
+                },
                 child: Column(
                   children: [
                     Container(
                       width: 64,
                       height: 64,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF7C57FC), Color(0xFFFF57B9)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        gradient: StoryTracker().isGroupViewed(group.mediaUrls)
+                            ? null
+                            : const LinearGradient(
+                                colors: [Color(0xFF7C57FC), Color(0xFFFF57B9)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                        border: StoryTracker().isGroupViewed(group.mediaUrls)
+                            ? Border.all(color: const Color(0xFFE9E9E9), width: 2)
+                            : null,
                       ),
                       padding: const EdgeInsets.all(2),
                       child: Container(
@@ -530,13 +668,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         padding: const EdgeInsets.all(2),
                         child: CircleAvatar(
                           radius: 28,
-                          backgroundImage: _getAvatarProvider(username, avatarUrl),
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: _getAvatarProvider(group.username, group.avatarUrl),
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      username,
+                      group.username,
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 12,
                         color: const Color(0xFF5A5D67),

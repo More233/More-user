@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'models/timeline_post.dart';
 import 'widgets/timeline_post_card.dart';
 import 'widgets/comments_bottom_sheet.dart';
@@ -9,6 +10,7 @@ import 'widgets/share_bottom_sheet.dart';
 import 'widgets/save_to_list_bottom_sheet.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/collection_details_screen.dart';
+import '../auth/auth_flow_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   final List<TimelinePost> userPosts;
@@ -28,12 +30,252 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late List<TimelinePost> _posts;
 
   bool _collectionsLoading = true;
+  bool _profileLoading = true;
+  String _fullName = '';
+  String _username = '';
+  String? _avatarUrl;
+  int _followersCount = 0;
+  int _followingCount = 0;
+  int _postsCount = 0;
+  int _coins = 0;
 
   @override
   void initState() {
     super.initState();
     _posts = List.from(widget.userPosts);
     _loadCollections();
+    _fetchProfileData();
+  }
+
+  Future<void> _fetchProfileData() async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      if (currentUser == null) return;
+
+      // 1. Fetch profile info
+      final profile = await client
+          .from('profiles')
+          .select()
+          .eq('id', currentUser.id)
+          .maybeSingle();
+
+      if (profile != null) {
+        _fullName = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
+        _username = profile['username'] ?? '';
+        _avatarUrl = profile['avatar_url'] as String?;
+      }
+
+      // 2. Fetch followers count
+      final followersData = await client
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', currentUser.id);
+      _followersCount = (followersData as List).length;
+
+      // 3. Fetch following count
+      final followingData = await client
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUser.id);
+      _followingCount = (followingData as List).length;
+
+      // 4. Fetch posts count
+      final postsData = await client
+          .from('posts')
+          .select('id')
+          .eq('user_id', currentUser.id);
+      _postsCount = (postsData as List).length;
+
+      // 5. Coins calculation
+      _coins = _postsCount > 0 ? 300 : 0;
+
+      if (mounted) {
+        setState(() {
+          _profileLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching profile data: $e");
+      if (mounted) {
+        setState(() {
+          _profileLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 500,
+        maxHeight: 500,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Row(
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(width: 12),
+              Text("Uploading profile photo..."),
+            ],
+          )),
+        );
+
+        final client = Supabase.instance.client;
+        final user = client.auth.currentUser;
+        if (user == null) return;
+
+        final file = File(image.path);
+        final fileName = 'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        
+        await client.storage.from('post-images').upload(
+          fileName,
+          file,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+        );
+
+        final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
+
+        await client.from('profiles').update({
+          'avatar_url': publicUrl,
+        }).eq('id', user.id);
+
+        if (mounted) {
+          setState(() {
+            _avatarUrl = publicUrl;
+          });
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Profile photo updated successfully!")),
+          );
+          widget.onPostUpdated?.call();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error picking/uploading profile image: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update profile photo: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Container(
+            width: 286,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.only(top: 24, bottom: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Sign out of your account?',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF323232),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                // Sign Out Button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context, true),
+                  child: Container(
+                    width: 286,
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Sign Out',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFD80000),
+                      ),
+                    ),
+                  ),
+                ),
+                // Cancel Button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context, false),
+                  child: Container(
+                    width: 286,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF373737),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirm == true) {
+      try {
+        await Supabase.instance.client.auth.signOut();
+        if (!context.mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthFlowPage()),
+          (route) => false,
+        );
+      } catch (e) {
+        debugPrint("Error signing out: $e");
+      }
+    }
+  }
+
+  ImageProvider _getAvatarProvider(String username, String? dbUrl) {
+    if (dbUrl != null && dbUrl.isNotEmpty) {
+      if (dbUrl.startsWith('http')) {
+        return NetworkImage(dbUrl);
+      } else {
+        return AssetImage(dbUrl);
+      }
+    }
+    switch (username.toLowerCase()) {
+      case 'mayat':
+        return const AssetImage('assets/Timeline/images/profile_image_1.png');
+      case 'jordanmarco':
+        return const AssetImage('assets/Timeline/images/profile_image2.png');
+      case 'avaj':
+        return const AssetImage('assets/Timeline/images/avatar.png');
+      case 'karennne':
+        return const AssetImage('assets/Timeline/images/element.png');
+      default:
+        return const AssetImage('assets/Timeline/images/element.png');
+    }
   }
 
   Future<void> _loadCollections() async {
@@ -321,6 +563,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Colors.black,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            onPressed: () => _handleLogout(context),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -532,6 +780,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader(BuildContext context, int postsCount) {
+    if (_profileLoading) {
+      return const SizedBox(
+        height: 180,
+        child: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF7C57FC),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -539,10 +798,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             children: [
               // Avatar
-              const CircleAvatar(
-                radius: 40,
-                backgroundImage: AssetImage(
-                  'assets/Timeline/images/element.png',
+              GestureDetector(
+                onTap: _pickProfileImage,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: _getAvatarProvider(_username, _avatarUrl),
+                    ),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.black,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 20),
@@ -551,9 +832,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatItem('$postsCount', 'Posts'),
-                    _buildStatItem('250', 'Followers'),
-                    _buildStatItem('180', 'Following'),
+                    _buildStatItem('$_postsCount', 'Posts'),
+                    _buildStatItem('$_followersCount', 'Followers'),
+                    _buildStatItem('$_followingCount', 'Following'),
                   ],
                 ),
               ),
@@ -567,7 +848,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Abdallah Al-Awady',
+                  _fullName.isNotEmpty ? _fullName : 'No Name',
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -576,7 +857,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Coffee enthusiast & Explorer ☕️✨',
+                  _username.isNotEmpty ? '@$_username' : '',
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     color: const Color(0xFF3B3C4F),
@@ -606,7 +887,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '200 Coins',
+                      '$_coins Coins',
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,

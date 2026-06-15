@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:image_picker/image_picker.dart';
 import 'models/timeline_post.dart';
 import 'widgets/timeline_tab_bar.dart';
 import 'widgets/bottom_nav_bar.dart';
@@ -228,132 +226,20 @@ class _TimelineScreenState extends State<TimelineScreen> {
     }
   }
 
-  Future<void> _pickProfileImage() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 500,
-        maxHeight: 500,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Row(
-            children: [
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(width: 12),
-              Text("Uploading profile photo..."),
-            ],
-          )),
-        );
 
-        final client = Supabase.instance.client;
-        final user = client.auth.currentUser;
-        if (user == null) return;
-
-        final file = File(image.path);
-        final fileName = 'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        
-        await client.storage.from('post-images').upload(
-          fileName,
-          file,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-        );
-
-        final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
-
-        await client.from('profiles').update({
-          'avatar_url': publicUrl,
-        }).eq('id', user.id);
-
-        if (mounted) {
-          setState(() {
-            _currentUserAvatarUrl = publicUrl;
-          });
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Profile photo updated successfully!")),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint("Error picking/uploading profile image: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to update profile photo: $e")),
-        );
-      }
-    }
-  }
 
   void _onAvatarTapped() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCCCCCC),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: const Icon(Icons.person_outline, color: Color(0xFF7C57FC)),
-                title: Text(
-                  'View Profile',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ProfileScreen(
-                        userPosts: _posts,
-                        onPostUpdated: _fetchPosts,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.photo_library_outlined, color: Color(0xFF7C57FC)),
-                title: Text(
-                  'Change Profile Photo',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickProfileImage();
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileScreen(
+          userPosts: _posts,
+          onPostUpdated: () {
+            _fetchPosts();
+            _fetchUserProfile();
+          },
+        ),
+      ),
     );
   }
 

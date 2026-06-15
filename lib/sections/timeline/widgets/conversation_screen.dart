@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -322,22 +323,24 @@ class _ConversationScreenState extends State<ConversationScreen> {
         final amp = await _audioRecorder.getAmplitude();
         final db = amp.current; // usually from -160 to 0 (dB)
         
-        // Map db from [-50, 0] to [4.0, 24.0]
-        double targetHeight = 4.0;
-        if (db > -50) {
-          targetHeight = 4.0 + (50 + db) * (20.0 / 50.0);
+        // Normalize volume from [-60, 0] to [0.15, 1.0]
+        double volumeFactor = 0.15;
+        if (db > -60) {
+          volumeFactor = 0.15 + (60 + db) * (0.85 / 60.0);
         }
-        if (targetHeight > 24.0) targetHeight = 24.0;
+        if (volumeFactor > 1.0) volumeFactor = 1.0;
         
-        // Add random micro-variance for more natural movement (like WhatsApp)
-        final randomOffset = (DateTime.now().millisecond % 5) - 2.0; // -2 to +2
-        double finalHeight = targetHeight + randomOffset;
-        if (finalHeight < 4.0) finalHeight = 4.0;
-        if (finalHeight > 24.0) finalHeight = 24.0;
-
         setState(() {
-          _recordingWaveforms.removeAt(0);
-          _recordingWaveforms.add(finalHeight);
+          for (int i = 0; i < _recordingWaveforms.length; i++) {
+            // Generate a natural-looking bouncing wave using sine and random offsets
+            final time = DateTime.now().millisecondsSinceEpoch / 120.0;
+            final base = math.sin(time + i * 0.7).abs();
+            final noise = math.cos(time * 1.8 + i).abs() * 0.3;
+            double height = 4.0 + (base + noise) * 20.0 * volumeFactor;
+            if (height > 24.0) height = 24.0;
+            if (height < 4.0) height = 4.0;
+            _recordingWaveforms[i] = height;
+          }
         });
       } catch (e) {
         // Ignored
@@ -644,14 +647,15 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            if (isSent) ...[
-              const SizedBox(height: 2),
-              Icon(
+            const SizedBox(height: 2),
+            Opacity(
+              opacity: isSent ? 1.0 : 0.0,
+              child: Icon(
                 msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
                 size: 13,
-                color: msg['is_read'] == true ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                color: isSent ? (msg['is_read'] == true ? Colors.white : Colors.white.withValues(alpha: 0.6)) : Colors.transparent,
               ),
-            ],
+            ),
             const SizedBox(height: 2),
             Opacity(
               opacity: isCurrentPlaying ? 1.0 : 0.0,
@@ -683,6 +687,111 @@ class _ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
+  void _showDeleteMessageSheet(Map<String, dynamic> msg) {
+    final isMyMessage = msg['sender_id'] == widget.currentUserId;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 56,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC1C1C1),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Delete Message',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: SvgPicture.string(
+                  _deleteIconSvg,
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(Color(0xFFEF4444), BlendMode.srcIn),
+                ),
+                title: Text(
+                  'Delete for me',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF303030),
+                  ),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    final client = Supabase.instance.client;
+                    final List<dynamic> currentDeleted = msg['deleted_by'] as List<dynamic>? ?? [];
+                    if (!currentDeleted.contains(widget.currentUserId)) {
+                      final updatedDeleted = List<String>.from(currentDeleted)..add(widget.currentUserId);
+                      await client
+                          .from('chat_messages')
+                          .update({'deleted_by': updatedDeleted})
+                          .eq('id', msg['id']);
+                    }
+                  } catch (e) {
+                    debugPrint("Error deleting message for me: $e");
+                  }
+                },
+              ),
+              if (isMyMessage)
+                ListTile(
+                  leading: SvgPicture.string(
+                    _deleteIconSvg,
+                    width: 24,
+                    height: 24,
+                    colorFilter: const ColorFilter.mode(Color(0xFFEF4444), BlendMode.srcIn),
+                  ),
+                  title: Text(
+                    'Delete for everyone',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF303030),
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    try {
+                      final client = Supabase.instance.client;
+                      await client
+                          .from('chat_messages')
+                          .delete()
+                          .eq('id', msg['id']);
+                    } catch (e) {
+                      debugPrint("Error deleting message for everyone: $e");
+                    }
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildMessageBubble(Map<String, dynamic> msg) {
     final isSent = msg['sender_id'] == widget.currentUserId;
     final type = msg['message_type'] ?? 'text';
@@ -706,90 +815,95 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ],
           
           Flexible(
-            child: Container(
-              padding: type == 'text'
-                  ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
-                  : const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isSent
-                    ? const Color(0xFF7C57FC) // Sent purple bubble
-                    : const Color(0xFFF1F1F1), // Received grey bubble
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: isSent ? const Radius.circular(16) : const Radius.circular(4),
-                  bottomRight: isSent ? const Radius.circular(4) : const Radius.circular(16),
+            child: GestureDetector(
+              onLongPress: () => _showDeleteMessageSheet(msg),
+              child: Container(
+                padding: type == 'text'
+                    ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
+                    : type == 'image'
+                        ? const EdgeInsets.all(4)
+                        : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSent
+                      ? const Color(0xFF7C57FC) // Sent purple bubble
+                      : const Color(0xFFF1F1F1), // Received grey bubble
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(16),
+                    topRight: const Radius.circular(16),
+                    bottomLeft: isSent ? const Radius.circular(16) : const Radius.circular(4),
+                    bottomRight: isSent ? const Radius.circular(4) : const Radius.circular(16),
+                  ),
                 ),
-              ),
-              child: type == 'text'
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            content,
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              color: isSent ? Colors.white : const Color(0xFF303030),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              height: 1.4,
+                child: type == 'text'
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              content,
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                color: isSent ? Colors.white : const Color(0xFF303030),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
+                              ),
                             ),
                           ),
-                        ),
-                        if (isSent) ...[
-                          const SizedBox(width: 6),
-                          Icon(
-                            msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
-                            size: 14,
-                            color: msg['is_read'] == true ? Colors.white : Colors.white.withValues(alpha: 0.6),
-                          ),
+                          if (isSent) ...[
+                            const SizedBox(width: 6),
+                            Icon(
+                              msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
+                              size: 14,
+                              color: msg['is_read'] == true ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                            ),
+                          ],
                         ],
-                      ],
-                    )
-                  : type == 'image'
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Stack(
-                            alignment: Alignment.bottomRight,
-                            children: [
-                              Container(
-                                constraints: const BoxConstraints(maxHeight: 200),
-                                child: Image.network(
-                                  content,
-                                  width: 150,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 150,
-                                      height: 150,
-                                      color: Colors.grey[300],
-                                      child: const Icon(Icons.broken_image, color: Colors.grey),
-                                    );
-                                  },
-                                ),
-                              ),
-                              if (isSent)
-                                Positioned(
-                                  bottom: 6,
-                                  right: 6,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Icon(
-                                      msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
+                      )
+                    : type == 'image'
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Stack(
+                              alignment: Alignment.bottomRight,
+                              children: [
+                                Container(
+                                  constraints: const BoxConstraints(maxHeight: 200),
+                                  child: Image.network(
+                                    content,
+                                    width: 150,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 150,
+                                        height: 150,
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                      );
+                                    },
                                   ),
                                 ),
-                            ],
-                          ),
-                        )
-                      : _buildAudioWaveform(msg, isSent),
+                                if (isSent)
+                                  Positioned(
+                                    bottom: 6,
+                                    right: 6,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.4),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Icon(
+                                        msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          )
+                        : _buildAudioWaveform(msg, isSent),
+              ),
             ),
           ),
         ],
@@ -848,12 +962,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
         title: Row(
           children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.pop(context),
+              child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+            ),
+            const SizedBox(width: 8),
             CircleAvatar(
               radius: 18,
               backgroundImage: _getAvatarProvider(otherUsername, otherAvatar),
@@ -884,7 +1002,6 @@ class _ConversationScreenState extends State<ConversationScreen> {
             ),
           ],
         ),
-        // Dev simulation menu hidden in user app
       ),
       body: SafeArea(
         child: Column(
@@ -905,7 +1022,12 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final messages = snapshot.data!;
+                  final rawMessages = snapshot.data!;
+                  final messages = rawMessages.where((msg) {
+                    final List<dynamic>? deletedBy = msg['deleted_by'] as List<dynamic>?;
+                    if (deletedBy == null) return true;
+                    return !deletedBy.contains(widget.currentUserId);
+                  }).toList();
                   
                   _markMessagesAsRead();
                   
