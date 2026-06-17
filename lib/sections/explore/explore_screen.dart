@@ -50,6 +50,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final Map<String, BitmapDescriptor> _normalMarkerIcons = {};
   final Map<String, BitmapDescriptor> _selectedMarkerIcons = {};
   final Map<String, BitmapDescriptor> _heatmapMarkerIcons = {};
+  final Map<String, BitmapDescriptor> _networkIconsCache = {};
   bool _iconsLoaded = false;
 
   // Status Badge Overlay State
@@ -241,36 +242,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Future<BitmapDescriptor> _createCircleIcon(IconData iconData, Color color, {required bool isSelected, double scale = 1.0}) async {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
-    final double baseSize = isSelected ? 36.0 : 26.0;
-    final double size = baseSize * scale;
     
-    // Draw shadow
-    final Paint shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.25)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, (isSelected ? 3.0 : 1.5) * scale);
-    canvas.drawCircle(Offset(size / 2, size / 2), (size / 2 - 1.5 * scale), shadowPaint);
-
-    // Draw main colored circle
+    // Normal circle size matches Google's native POI diameter (28.0)
+    final double baseCircleRadius = isSelected ? 18.0 : 14.0;
+    final double circleRadius = baseCircleRadius * scale;
+    final double size = (circleRadius * 2) + 8.0; // add padding for border/drawings
+    
+    // Draw Main Circle (flat, no pointer, no shadow)
     final Paint paint = Paint()..color = color;
-    canvas.drawCircle(Offset(size / 2, size / 2), (size / 2 - 2 * scale), paint);
+    canvas.drawCircle(Offset(size / 2, size / 2), circleRadius, paint);
 
-    // Draw white border
+    // Draw thin White Border (1.0 width)
     final Paint borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = (isSelected ? 2.0 : 1.2) * scale;
-    canvas.drawCircle(Offset(size / 2, size / 2), (size / 2 - 2 * scale), borderPaint);
+      ..strokeWidth = (isSelected ? 1.5 : 1.0) * scale;
+    canvas.drawCircle(Offset(size / 2, size / 2), circleRadius, borderPaint);
 
-    // Draw thick outer glowing ring if selected
-    if (isSelected) {
-      final Paint glowPaint = Paint()
-        ..color = color.withValues(alpha: 0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5 * scale;
-      canvas.drawCircle(Offset(size / 2, size / 2), (size / 2 - 2 * scale), glowPaint);
-    }
-
-    // Draw white icon
+    // Draw White Icon (no shadow)
     final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
     textPainter.text = TextSpan(
       text: String.fromCharCode(iconData.codePoint),
@@ -298,6 +287,100 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (byteData == null) return BitmapDescriptor.defaultMarker;
     final Uint8List uint8list = byteData.buffer.asUint8List();
     return BitmapDescriptor.bytes(uint8list);
+  }
+
+  // Download, resize, color mask, and return dynamic network category marker
+  Future<BitmapDescriptor?> _downloadAndProcessNetworkIcon(String url, String? bgColorStr) async {
+    try {
+      final response = await http.get(Uri.parse(url), headers: _getHeaders());
+      if (response.statusCode != 200) {
+        debugPrint("Failed to download network icon from $url: ${response.statusCode}");
+        return null;
+      }
+      final Uint8List bytes = response.bodyBytes;
+
+      // Decode and resize Google's icon to 18x18 pixels to fit inside our 28px diameter circle
+      final ui.Codec codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: 18,
+        targetHeight: 18,
+      );
+      final ui.FrameInfo fi = await codec.getNextFrame();
+      final ui.Image iconImage = fi.image;
+
+      final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+      final Canvas canvas = Canvas(pictureRecorder);
+      
+      const double size = 38.0; // Compact canvas size matching native Google POIs
+      
+      // Parse background color
+      Color color = const Color(0xFFFF3B30); // Default Restaurant Red
+      if (bgColorStr != null && bgColorStr.startsWith('#')) {
+        final hex = bgColorStr.substring(1);
+        final intVal = int.tryParse(hex, radix: 16);
+        if (intVal != null) {
+          color = Color(0xFF000000 | intVal);
+        }
+      }
+
+      // 1. Draw Main Colored Circle (No teardrop pointer, no heavy shadow, clean flat look)
+      final Paint paint = Paint()..color = color;
+      canvas.drawCircle(const Offset(size / 2, size / 2), 14.0, paint);
+
+      // 2. Draw thin White Border (1.0 width)
+      final Paint borderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0;
+      canvas.drawCircle(const Offset(size / 2, size / 2), 14.0, borderPaint);
+
+      // 3. Draw white icon mask on top using BlendMode.srcIn
+      final Paint iconPaint = Paint()
+        ..colorFilter = const ColorFilter.mode(Colors.white, BlendMode.srcIn);
+      
+      canvas.drawImage(
+        iconImage,
+        const Offset(size / 2 - 9, size / 2 - 9),
+        iconPaint,
+      );
+
+      final ui.Image markerImage = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
+      final ByteData? markerByteData = await markerImage.toByteData(format: ui.ImageByteFormat.png);
+      if (markerByteData == null) return null;
+      return BitmapDescriptor.bytes(markerByteData.buffer.asUint8List());
+    } catch (e) {
+      debugPrint("Error creating network marker for $url: $e");
+      return null;
+    }
+  }
+
+  // Preloads network icons asynchronously and triggers rebuild when new icons are loaded
+  Future<void> _preloadNetworkIconsForPlaces(List<Map<String, dynamic>> places) async {
+    bool needsUpdate = false;
+    for (final place in places) {
+      final iconUrl = place['iconUrl'] as String?;
+      if (iconUrl == null || iconUrl.isEmpty) continue;
+      if (_networkIconsCache.containsKey(iconUrl)) continue;
+
+      final bgColor = place['iconBackgroundColor'] as String?;
+      final marker = await _downloadAndProcessNetworkIcon(iconUrl, bgColor);
+      if (marker != null) {
+        _networkIconsCache[iconUrl] = marker;
+        needsUpdate = true;
+      }
+    }
+    if (needsUpdate && mounted) {
+      setState(() {});
+    }
+  }
+
+  String? _getLegacyType(String? category) {
+    if (category == "Restaurant") return "restaurant";
+    if (category == "Coffee") return "cafe";
+    if (category == "Bakery") return "bakery";
+    if (category == "Bars") return "bar";
+    if (category == "Desserts") return "bakery";
+    return null;
   }
 
   IconData _getIconDataForType(String type) {
@@ -416,25 +499,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
       // 1. Search Query Filter
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
-        final nameMatches = (place['name'] as String).toLowerCase().contains(query);
-        final arMatches = (place['arabicName'] as String).toLowerCase().contains(query);
+        final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
+        final arMatches = (place['arabicName'] as String? ?? '').toLowerCase().contains(query);
         if (!nameMatches && !arMatches) return false;
       }
 
       // 2. Favorite Mode Filter
       if (_selectedMapTab == 3) {
-        if (_filterVisited && !place['isVisited']) return false;
-        if (_filterSaved && !place['isSaved']) return false;
+        if (_filterVisited && !(place['isVisited'] as bool? ?? false)) return false;
+        if (_filterSaved && !(place['isSaved'] as bool? ?? false)) return false;
         if (!_filterVisited && !_filterSaved) {
           // If neither filter is selected, show anything visited or saved
-          return place['isVisited'] || place['isSaved'];
+          return (place['isVisited'] as bool? ?? false) || (place['isSaved'] as bool? ?? false);
         }
         return true;
       }
 
       // 3. Category Filter
       if (_selectedCategory.isNotEmpty) {
-        final type = place['type'] as String;
+        final type = place['type'] as String? ?? 'Other';
         if (_selectedCategory == "Restaurant" && type != "Restaurant") return false;
         if (_selectedCategory == "Coffee" && type != "Coffee") return false;
         if (_selectedCategory == "Bakery" && type != "Bakery") return false;
@@ -457,10 +540,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     for (final place in filtered) {
       final isSelected = _selectedPlace != null && _selectedPlace!['id'] == place['id'];
-      final type = place['type'] as String;
+      final type = place['type'] as String? ?? 'Other';
+      final iconUrl = place['iconUrl'] as String?;
       
       BitmapDescriptor icon;
-      if (_iconsLoaded) {
+      if (iconUrl != null && _networkIconsCache.containsKey(iconUrl)) {
+        icon = _networkIconsCache[iconUrl]!;
+      } else if (_iconsLoaded) {
         if (_selectedMapTab == 2) {
           icon = _heatmapMarkerIcons[type] ?? _heatmapMarkerIcons['default']!;
         } else if (isSelected) {
@@ -476,7 +562,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
       markers.add(
         Marker(
-          markerId: MarkerId(place['id'] as String),
+          markerId: MarkerId(place['id']?.toString() ?? UniqueKey().toString()),
           position: LatLng((place['latitude'] as num? ?? 0.0).toDouble(), (place['longitude'] as num? ?? 0.0).toDouble()),
           icon: icon,
           onTap: () {
@@ -723,6 +809,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   _suggestionsResults = [];
                                   _isSearching = false;
                                 });
+                                if (results.isNotEmpty) {
+                                  _preloadNetworkIconsForPlaces(results);
+                                }
                               }
                             },
                             style: GoogleFonts.ibmPlexSansArabic(fontSize: 16),
@@ -890,9 +979,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 }
                                 _selectedPlace = suggestion;
                                 _searchQuery = "";
-                                _searchController.text = suggestion['name'] as String;
+                                _searchController.text = suggestion['name']?.toString() ?? '';
                                 _suggestionsResults = [];
                               });
+                              _preloadNetworkIconsForPlaces([suggestion]);
                               _mapController?.animateCamera(
                                 CameraUpdate.newLatLngZoom(
                                   LatLng((suggestion['latitude'] as num? ?? 0.0).toDouble(), (suggestion['longitude'] as num? ?? 0.0).toDouble()),
@@ -1167,6 +1257,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 _suggestionsResults = [];
                                 _isSearching = false;
                               });
+                              if (results.isNotEmpty) {
+                                _preloadNetworkIconsForPlaces(results);
+                              }
                             }
                           },
                           style: GoogleFonts.ibmPlexSansArabic(
@@ -1988,13 +2081,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _getActionIcon(place['actionType'] as String),
+                          _getActionIcon(place['actionType'] as String? ?? 'Order'),
                           color: Colors.white,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          place['actionType'] as String,
+                          place['actionType'] as String? ?? 'Order',
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -2020,7 +2113,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _handlePlaceAction(Map<String, dynamic> place) {
-    final String actionType = place['actionType'] as String;
+    final String actionType = place['actionType'] as String? ?? 'Order';
     if (actionType == 'check-in') {
       _openCheckInComposer(prefilledPlace: place);
     } else if (actionType == 'Book') {
@@ -2188,7 +2281,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final Map<String, String> headers = {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.iconMaskBaseUri,places.iconBackgroundColor',
         ..._getHeaders(),
       };
 
@@ -2247,6 +2340,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
               type = 'Airport';
             }
 
+            final iconMask = res['iconMaskBaseUri'] as String?;
+            final iconUrl = iconMask != null ? '$iconMask.png' : null;
+            final iconBackgroundColor = res['iconBackgroundColor'] as String?;
+
             places.add({
               'id': id,
               'name': name,
@@ -2263,6 +2360,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
               'imageUrl': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500',
               'isSaved': false,
               'isVisited': false,
+              'iconUrl': iconUrl,
+              'iconBackgroundColor': iconBackgroundColor,
+              'actionType': 'Order',
             });
           }
           return places;
@@ -2331,6 +2431,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
               'imageUrl': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500',
               'isSaved': false,
               'isVisited': false,
+              'iconUrl': res['icon'] as String?,
+              'iconBackgroundColor': res['icon_background_color'] as String?,
+              'actionType': 'Order',
             });
           }
           return places;
@@ -2350,7 +2453,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final Map<String, String> headers = {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.iconMaskBaseUri,places.iconBackgroundColor',
         ..._getHeaders(),
       };
 
@@ -2385,76 +2488,167 @@ class _ExploreScreenState extends State<ExploreScreen> {
         }
       };
 
-      final response = await http.post(
-        Uri.parse('https://places.googleapis.com/v1/places:searchNearby'),
-        headers: headers,
-        body: json.encode(body),
-      );
+      List<Map<String, dynamic>> places = [];
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['places'] != null) {
-          final List<dynamic> results = data['places'];
-          final List<Map<String, dynamic>> places = [];
-          for (final res in results) {
-            final id = res['id'] as String? ?? UniqueKey().toString();
-            final displayNameObj = res['displayName'] as Map<String, dynamic>?;
-            final name = displayNameObj?['text'] as String? ?? '';
-            final address = res['formattedAddress'] as String? ?? '';
-            final locationObj = res['location'] as Map<String, dynamic>?;
-            final plat = (locationObj?['latitude'] as num?)?.toDouble() ?? 0.0;
-            final plng = (locationObj?['longitude'] as num?)?.toDouble() ?? 0.0;
-            final types = res['types'] as List<dynamic>? ?? [];
+      // 1. Try New Places API searchNearby
+      try {
+        final response = await http.post(
+          Uri.parse('https://places.googleapis.com/v1/places:searchNearby'),
+          headers: headers,
+          body: json.encode(body),
+        );
 
-            final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
-            final double km = meters / 1000;
-            final String distanceStr = km < 1 
-                ? '${meters.toStringAsFixed(0)} m' 
-                : '${km.toStringAsFixed(1)} km';
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['places'] != null) {
+            final List<dynamic> results = data['places'];
+            for (final res in results) {
+              final id = res['id'] as String? ?? UniqueKey().toString();
+              final displayNameObj = res['displayName'] as Map<String, dynamic>?;
+              final name = displayNameObj?['text'] as String? ?? '';
+              final address = res['formattedAddress'] as String? ?? '';
+              final locationObj = res['location'] as Map<String, dynamic>?;
+              final plat = (locationObj?['latitude'] as num?)?.toDouble() ?? 0.0;
+              final plng = (locationObj?['longitude'] as num?)?.toDouble() ?? 0.0;
+              final types = res['types'] as List<dynamic>? ?? [];
 
-            String type = 'Other';
-            if (types.contains('restaurant') || types.contains('food')) {
-              type = 'Restaurant';
-            } else if (types.contains('cafe')) {
-              type = 'Coffee';
-            } else if (types.contains('bakery')) {
-              type = 'Bakery';
-            } else if (types.contains('bar')) {
-              type = 'Bars';
-            } else if (types.contains('park') || types.contains('tourist_attraction')) {
-              type = 'Park';
-            } else if (types.contains('airport')) {
-              type = 'Airport';
+              final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+              final double km = meters / 1000;
+              final String distanceStr = km < 1 
+                  ? '${meters.toStringAsFixed(0)} m' 
+                  : '${km.toStringAsFixed(1)} km';
+
+              String type = 'Other';
+              if (types.contains('restaurant') || types.contains('food')) {
+                type = 'Restaurant';
+              } else if (types.contains('cafe')) {
+                type = 'Coffee';
+              } else if (types.contains('bakery')) {
+                type = 'Bakery';
+              } else if (types.contains('bar')) {
+                type = 'Bars';
+              } else if (types.contains('park') || types.contains('tourist_attraction')) {
+                type = 'Park';
+              } else if (types.contains('airport')) {
+                type = 'Airport';
+              }
+
+              final iconMask = res['iconMaskBaseUri'] as String?;
+              final iconUrl = iconMask != null ? '$iconMask.png' : null;
+              final iconBackgroundColor = res['iconBackgroundColor'] as String?;
+
+              places.add({
+                'id': id,
+                'name': name,
+                'arabicName': name,
+                'address': address,
+                'latitude': plat,
+                'longitude': plng,
+                'distance': distanceStr,
+                'rating': 4.5,
+                'reviewsCount': 25,
+                'price': r'$$',
+                'peopleCount': 12,
+                'type': type,
+                'imageUrl': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500',
+                'isSaved': false,
+                'isVisited': false,
+                'iconUrl': iconUrl,
+                'iconBackgroundColor': iconBackgroundColor,
+                'actionType': 'Order',
+              });
             }
-
-            places.add({
-              'id': id,
-              'name': name,
-              'arabicName': name,
-              'address': address,
-              'latitude': plat,
-              'longitude': plng,
-              'distance': distanceStr,
-              'rating': 4.5,
-              'reviewsCount': 25,
-              'price': r'$$',
-              'peopleCount': 12,
-              'type': type,
-              'imageUrl': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500',
-              'isSaved': false,
-              'isVisited': false,
-            });
           }
-          if (places.isNotEmpty) {
-            setState(() {
-              _allPlaces.clear();
-              _allPlaces.addAll(places);
-            });
-            _initMarkerIcons(zoom: _lastRoundedZoom.toDouble());
-          }
+        } else {
+          debugPrint("Google Nearby Places API (New) failed with status ${response.statusCode}: ${response.body}");
         }
-      } else {
-        debugPrint("Google Nearby Places API failed with status ${response.statusCode}: ${response.body}");
+      } catch (e) {
+        debugPrint("Error with New searchNearby Places API: $e");
+      }
+
+      // 2. Fallback to Legacy Nearby Search if empty
+      if (places.isEmpty) {
+        debugPrint("No results from New searchNearby. Retrying with Legacy Nearby Search API...");
+        final legacyType = _getLegacyType(category);
+        String legacyUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+            '?location=$lat,$lng'
+            '&radius=5000'
+            '&key=$apiKey';
+        if (legacyType != null) {
+          legacyUrl += '&type=$legacyType';
+        }
+
+        final legacyResponse = await http.get(Uri.parse(legacyUrl), headers: _getHeaders());
+        if (legacyResponse.statusCode == 200) {
+          final data = json.decode(legacyResponse.body);
+          if (data['status'] == 'OK' && data['results'] != null) {
+            final List<dynamic> results = data['results'];
+            for (final res in results) {
+              final id = res['place_id'] as String? ?? UniqueKey().toString();
+              final name = res['name'] as String? ?? '';
+              final address = res['vicinity'] as String? ?? res['formatted_address'] as String? ?? '';
+              final geometry = res['geometry'] as Map<String, dynamic>?;
+              final locObj = geometry?['location'] as Map<String, dynamic>?;
+              final plat = (locObj?['lat'] as num?)?.toDouble() ?? 0.0;
+              final plng = (locObj?['lng'] as num?)?.toDouble() ?? 0.0;
+              final types = res['types'] as List<dynamic>? ?? [];
+
+              final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+              final double km = meters / 1000;
+              final String distanceStr = km < 1 
+                  ? '${meters.toStringAsFixed(0)} m' 
+                  : '${km.toStringAsFixed(1)} km';
+
+              String type = 'Other';
+              if (types.contains('restaurant') || types.contains('food')) {
+                type = 'Restaurant';
+              } else if (types.contains('cafe')) {
+                type = 'Coffee';
+              } else if (types.contains('bakery')) {
+                type = 'Bakery';
+              } else if (types.contains('bar')) {
+                type = 'Bars';
+              } else if (types.contains('park') || types.contains('tourist_attraction')) {
+                type = 'Park';
+              } else if (types.contains('airport')) {
+                type = 'Airport';
+              }
+
+              places.add({
+                'id': id,
+                'name': name,
+                'arabicName': name,
+                'address': address,
+                'latitude': plat,
+                'longitude': plng,
+                'distance': distanceStr,
+                'rating': 4.5,
+                'reviewsCount': 25,
+                'price': r'$$',
+                'peopleCount': 12,
+                'type': type,
+                'imageUrl': 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500',
+                'isSaved': false,
+                'isVisited': false,
+                'iconUrl': res['icon'] as String?,
+                'iconBackgroundColor': res['icon_background_color'] as String?,
+                'actionType': 'Order',
+              });
+            }
+          }
+        } else {
+          debugPrint("Google Legacy Nearby Search failed with status ${legacyResponse.statusCode}: ${legacyResponse.body}");
+        }
+      }
+
+      // 3. Populate places and start preloading network icons
+      if (places.isNotEmpty) {
+        setState(() {
+          _allPlaces.clear();
+          _allPlaces.addAll(places);
+        });
+        _initMarkerIcons(zoom: _lastRoundedZoom.toDouble());
+        _preloadNetworkIconsForPlaces(places);
       }
     } catch (e) {
       debugPrint("Error fetching nearby places on startup: $e");

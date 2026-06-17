@@ -42,7 +42,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   image: DecorationImage(
-                    image: NetworkImage(place['imageUrl'] as String),
+                    image: NetworkImage(place['imageUrl']?.toString() ?? 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500'),
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -140,7 +140,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          place['name'] as String,
+                          place['name']?.toString() ?? '',
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -150,7 +150,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        place['price'] as String,
+                        place['price']?.toString() ?? r'$$',
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -165,7 +165,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   Row(
                     children: [
                       Text(
-                        "${place['type']} • ${place['address']}",
+                        "${place['type'] ?? 'Other'} • ${place['address'] ?? ''}",
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 16,
                           color: const Color(0xFF82858C),
@@ -175,7 +175,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       const Icon(Icons.star, color: Colors.amber, size: 18),
                       const SizedBox(width: 4),
                       Text(
-                        "${place['rating']} (${place['reviewsCount']} reviews)",
+                        "${place['rating'] ?? '4.5'} (${place['reviewsCount'] ?? '25'} reviews)",
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -290,7 +290,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          "Maya, Ali, Omar and ${(place['peopleCount'] as int) - 3} others checked in here today.",
+                          "Maya, Ali, Omar and ${((place['peopleCount'] as num? ?? 12).toInt() - 3)} others checked in here today.",
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
                             color: const Color(0xFF6B7280),
@@ -337,7 +337,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        place['actionType'] as String,
+                        place['actionType'] as String? ?? 'Order',
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
