@@ -17,6 +17,7 @@ import 'widgets/social_feed_view.dart';
 import 'timeline_search_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import '../explore/explore_screen.dart';
 
 class TimelineScreen extends StatefulWidget {
   const TimelineScreen({super.key});
@@ -538,20 +539,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
+  Widget _buildBody() {
+    switch (_selectedNavIndex) {
+      case 0:
+        return Stack(
           children: [
-            // Main Content Layout
             Column(
               children: [
-                // Profile header with dynamic coin balance and page routes
                 _buildHeader(),
-                // Tab bar
                 const SizedBox(height: 4),
                 TimelineTabBar(
                   selectedIndex: _selectedTabIndex,
@@ -560,7 +555,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                // Feed list
                 Expanded(
                   child: _selectedTabIndex == 0
                       ? PersonalFeedView(
@@ -585,6 +579,181 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 ),
               ],
             ),
+            Positioned(
+              right: 16,
+              bottom: 130,
+              child: _buildFAB(),
+            ),
+            if (_isFirstCheckIn && _showCoachmark)
+              FabCoachmarkOverlay(
+                onTap: _startOnboardingFlow,
+              ),
+          ],
+        );
+      case 1:
+        return ExploreScreen(
+          userAvatarUrl: _currentUserAvatarUrl,
+          onBackToTimeline: () {
+            setState(() {
+              _selectedNavIndex = 0;
+            });
+          },
+        );
+      case 2:
+        return _buildBookingPlaceholder();
+      case 3:
+        return _buildOrderPlaceholder();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildBookingPlaceholder() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEDE6FC),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.calendar_month_outlined,
+              color: Color(0xFF7C57FC),
+              size: 48,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            "No Bookings Yet",
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF333333),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Explore places on the map to book your next dining experience, sports session, or hotel stay.",
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 14,
+              color: const Color(0xFF82858C),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedNavIndex = 1; // Go to Explore
+              });
+            },
+            child: Container(
+              height: 48,
+              width: 200,
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C57FC),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                "Explore Places",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderPlaceholder() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEDE6FC),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.shopping_bag_outlined,
+              color: Color(0xFF7C57FC),
+              size: 48,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            "No Active Orders",
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF333333),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Place orders at your favorite cafes and restaurants to view their status here.",
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 14,
+              color: const Color(0xFF82858C),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedNavIndex = 1; // Go to Explore
+              });
+            },
+            child: Container(
+              height: 48,
+              width: 200,
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C57FC),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                "Explore Places",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          children: [
+            // Body
+            Positioned.fill(
+              child: _buildBody(),
+            ),
             // Bottom navigation bar
             Positioned(
               left: 0,
@@ -597,17 +766,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 },
               ),
             ),
-            // FAB button
-            Positioned(
-              right: 16,
-              bottom: 130,
-              child: _buildFAB(),
-            ),
-            // Onboarding Coachmark Overlay
-            if (_isFirstCheckIn && _showCoachmark)
-              FabCoachmarkOverlay(
-                onTap: _startOnboardingFlow,
-              ),
           ],
         ),
       ),
