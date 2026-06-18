@@ -490,7 +490,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                               SvgPicture.asset(
                                 _isMultiSelect
                                     ? 'assets/Timeline/icons/cancel_01.svg'
-                                    : 'assets/Timeline/icons/frame_1948754838.svg',
+                                    : 'assets/Timeline/icons/select_multiple.svg',
                                 width: 16,
                                 height: 16,
                                 colorFilter: const ColorFilter.mode(Color(0xFF333333), BlendMode.srcIn),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'widgets/dynamic_place_image.dart';
 
 class PlaceDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> place;
@@ -17,11 +19,69 @@ class PlaceDetailsScreen extends StatefulWidget {
 
 class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   late bool _isSaved;
+  late String _imageUrl;
+  List<dynamic> _visitors = [];
 
   @override
   void initState() {
     super.initState();
     _isSaved = widget.place['isSaved'] as bool? ?? false;
+    _imageUrl = widget.place['imageUrl']?.toString() ?? 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500';
+    _visitors = List.from(widget.place['visitors'] as Iterable? ?? []);
+    _loadLatestPhoto();
+    _fetchRealVisitors();
+  }
+
+  Future<void> _loadLatestPhoto() async {
+    // Photos are preloaded on the explore screen using the Foursquare v2 explore endpoint
+    // to avoid credits_exhausted errors (402) on individual place details calls.
+  }
+
+  Future<void> _fetchRealVisitors() async {
+    final placeId = widget.place['id']?.toString();
+    if (placeId == null || placeId.isEmpty) return;
+
+    try {
+      final client = Supabase.instance.client;
+      final visitorsRes = await client
+          .from('posts')
+          .select('*, author:profiles(*)')
+          .eq('place_id', placeId)
+          .eq('is_private', false)
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      if (mounted) {
+        final list = List<Map<String, dynamic>>.from(visitorsRes as List);
+        final List<Map<String, dynamic>> parsedVisitors = [];
+        for (final v in list) {
+          final author = v['author'] as Map<String, dynamic>?;
+          if (author != null) {
+            final String name = '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim();
+            parsedVisitors.add({
+              'name': name.isEmpty ? 'Anonymous' : name,
+              'avatarUrl': author['avatar_url'] as String?,
+            });
+          }
+        }
+        
+        final seen = <String>{};
+        final uniqueVisitors = <Map<String, dynamic>>[];
+        for (final visitor in parsedVisitors) {
+          final name = visitor['name'] as String;
+          if (!seen.contains(name)) {
+            seen.add(name);
+            uniqueVisitors.add(visitor);
+          }
+        }
+
+        setState(() {
+          _visitors = uniqueVisitors;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching visitors in details screen: $e");
+    }
   }
 
   @override
@@ -37,15 +97,13 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           // 1. Hero Header Image Stack
           Stack(
             children: [
-              Container(
-                height: 300,
+              DynamicPlaceImage(
+                placeId: place['id']?.toString() ?? '',
+                placeName: place['name']?.toString() ?? '',
+                iconUrl: place['iconUrl']?.toString(),
+                imageUrl: _imageUrl,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: NetworkImage(place['imageUrl']?.toString() ?? 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                height: 300,
               ),
               // Fade Gradient overlay at bottom of image
               Positioned.fill(
@@ -249,57 +307,84 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   const Divider(height: 32, color: Color(0xFFE8E8E8)),
 
                   // Activity / Visitors
-                  Text(
-                    "Who's here now",
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF333333),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      // Avatars overlap
-                      SizedBox(
-                        width: 72,
-                        height: 32,
-                        child: Stack(
-                          children: [
-                            const CircleAvatar(
-                              radius: 16,
-                              backgroundImage: NetworkImage('https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100'),
-                            ),
-                            Positioned(
-                              left: 18,
-                              child: const CircleAvatar(
-                                radius: 16,
-                                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100'),
-                              ),
-                            ),
-                            Positioned(
-                              left: 36,
-                              child: const CircleAvatar(
-                                radius: 16,
-                                backgroundImage: NetworkImage('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100'),
-                              ),
-                            ),
-                          ],
-                        ),
+                  if (_visitors.isNotEmpty) ...[
+                    Text(
+                      "Who's here now",
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF333333),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "Maya, Ali, Omar and ${((place['peopleCount'] as num? ?? 12).toInt() - 3)} others checked in here today.",
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 14,
-                            color: const Color(0xFF6B7280),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        // Avatars overlap
+                        SizedBox(
+                          width: _visitors.length == 1 ? 32.0 : (_visitors.length == 2 ? 50.0 : 72.0),
+                          height: 32,
+                          child: Stack(
+                            children: List.generate(_visitors.length > 3 ? 3 : _visitors.length, (index) {
+                              final visitor = _visitors[index] as Map<String, dynamic>;
+                              final avatarUrl = visitor['avatarUrl'] as String?;
+                              
+                              Widget avatarChild;
+                              if (avatarUrl != null && avatarUrl.isNotEmpty) {
+                                avatarChild = CircleAvatar(
+                                  radius: 15,
+                                  backgroundImage: NetworkImage(avatarUrl),
+                                );
+                              } else {
+                                final initials = visitor['name'].toString().split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
+                                avatarChild = CircleAvatar(
+                                  radius: 15,
+                                  backgroundColor: const Color(0xFFEDE6FC),
+                                  child: Text(
+                                    initials.isNotEmpty ? initials : '?',
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF7C57FC)),
+                                  ),
+                                );
+                              }
+                              
+                              return Positioned(
+                                  left: index * 18.0,
+                                  child: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: Colors.white,
+                                    child: avatarChild,
+                                  ),
+                                );
+                            }),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Builder(
+                            builder: (context) {
+                              final visitorsList = List<Map<String, dynamic>>.from(_visitors);
+                              final int count = visitorsList.length;
+                              String text = '';
+                              if (count == 1) {
+                                text = '${visitorsList[0]['name']} checked in here today.';
+                              } else if (count == 2) {
+                                text = '${visitorsList[0]['name']} and ${visitorsList[1]['name']} checked in here today.';
+                              } else {
+                                text = '${visitorsList[0]['name']}, ${visitorsList[1]['name']} and ${count - 2} others checked in here today.';
+                              }
+                              return Text(
+                                text,
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  fontSize: 14,
+                                  color: const Color(0xFF6B7280),
+                                ),
+                              );
+                            }
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ],
               ),
             ),
@@ -337,7 +422,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        place['actionType'] as String? ?? 'Order',
+                        (place['actionType'] == 'check-in') ? 'Check-in' : (place['actionType'] as String? ?? 'Order'),
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

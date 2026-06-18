@@ -43,6 +43,9 @@ class TimelinePost {
   final DateTime? createdAt;
   final String? authorName;
   final String? authorAvatar;
+  final double? latitude;
+  final double? longitude;
+  final String? placeId;
 
   TimelinePost({
     required this.id,
@@ -65,6 +68,9 @@ class TimelinePost {
     this.createdAt,
     this.authorName,
     this.authorAvatar,
+    this.latitude,
+    this.longitude,
+    this.placeId,
   });
 
   TimelinePost copyWith({
@@ -88,6 +94,9 @@ class TimelinePost {
     DateTime? createdAt,
     String? authorName,
     String? authorAvatar,
+    double? latitude,
+    double? longitude,
+    String? placeId,
   }) {
     return TimelinePost(
       id: id ?? this.id,
@@ -110,6 +119,9 @@ class TimelinePost {
       createdAt: createdAt ?? this.createdAt,
       authorName: authorName ?? this.authorName,
       authorAvatar: authorAvatar ?? this.authorAvatar,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      placeId: placeId ?? this.placeId,
     );
   }
 
@@ -180,6 +192,9 @@ class TimelinePost {
       isBookmarked: postData['is_bookmarked'] as bool? ?? false,
       authorName: authorName,
       authorAvatar: authorAvatar,
+      latitude: (postData['latitude'] as num?)?.toDouble(),
+      longitude: (postData['longitude'] as num?)?.toDouble(),
+      placeId: postData['place_id'] as String?,
     );
   }
 }

@@ -110,9 +110,14 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
         'is_private': widget.newPost.isPrivate,
         'sticker_index': widget.newPost.stickerIndex,
         'tagged_friends': widget.newPost.taggedFriends,
+        'latitude': widget.newPost.latitude,
+        'longitude': widget.newPost.longitude,
+        'place_id': widget.newPost.placeId,
       }).select().single();
 
       final String insertedId = response['id'] as String;
+
+
 
       _savedPost = widget.newPost.copyWith(
         id: insertedId,
