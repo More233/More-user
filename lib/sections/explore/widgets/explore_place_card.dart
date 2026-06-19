@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'dynamic_place_image.dart';
 
 class ExplorePlaceCard extends StatelessWidget {
@@ -224,7 +225,7 @@ class ExplorePlaceCard extends StatelessWidget {
                       height: 44,
                       decoration: BoxDecoration(
                         color: const Color(0xFF7C57FC),
-                        borderRadius: BorderRadius.circular(100),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -264,17 +265,29 @@ class ExplorePlaceCard extends StatelessWidget {
                         onTap: () {
                           onSavedChanged(!(place['isSaved'] as bool? ?? false));
                         },
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            (place['isSaved'] as bool? ?? false) ? Icons.bookmark : Icons.bookmark_border,
-                            size: 16,
-                            color: const Color(0xFF7C57FC),
-                          ),
+                        child: Builder(
+                          builder: (context) {
+                            final bool isSaved = place['isSaved'] as bool? ?? false;
+                            final bool hasImage = place['imageUrl'] != null && place['imageUrl'].toString().isNotEmpty;
+                            return Container(
+                              width: 32,
+                              height: 32,
+                              alignment: Alignment.center,
+                              child: SvgPicture.asset(
+                                isSaved
+                                    ? 'assets/Timeline/icons/bookmark_02_1.svg'
+                                    : 'assets/Timeline/icons/bookmark_02.svg',
+                                width: 22,
+                                height: 22,
+                                colorFilter: ColorFilter.mode(
+                                  hasImage
+                                      ? Colors.white
+                                      : const Color(0xFF7C57FC),
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                            );
+                          }
                         ),
                       ),
                     ),
@@ -333,96 +346,121 @@ class ExplorePlaceCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-
-                      // Visitors list
-                      if (place['visitors'] != null && (place['visitors'] as List).isNotEmpty) ...[
-                        Row(
-                          children: [
-                            SizedBox(
-                              width: (place['visitors'] as List).length == 1
-                                  ? 20.0
-                                  : ((place['visitors'] as List).length == 2 ? 32.0 : 44.0),
-                              height: 20,
-                              child: Stack(
-                                children: List.generate(
-                                  (place['visitors'] as List).length > 3 ? 3 : (place['visitors'] as List).length,
-                                  (index) {
-                                    final visitor = (place['visitors'] as List)[index] as Map<String, dynamic>;
-                                    final avatarUrl = visitor['avatarUrl'] as String?;
-                                    Widget avatarChild;
-                                    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-                                      avatarChild = CircleAvatar(
-                                        radius: 9,
-                                        backgroundImage: NetworkImage(avatarUrl),
-                                      );
-                                    } else {
-                                      final initials = visitor['name']
-                                          .toString()
-                                          .split(' ')
-                                          .map((e) => e.isNotEmpty ? e[0] : '')
-                                          .take(2)
-                                          .join()
-                                          .toUpperCase();
-                                      avatarChild = CircleAvatar(
-                                        radius: 9,
-                                        backgroundColor: const Color(0xFFEDE6FC),
-                                        child: Text(
-                                          initials.isNotEmpty ? initials : '?',
-                                          style: const TextStyle(
-                                            fontSize: 7,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF7C57FC),
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    return Positioned(
-                                      left: index * 12.0,
-                                      child: CircleAvatar(
-                                        radius: 10,
-                                        backgroundColor: Colors.white,
-                                        child: avatarChild,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Builder(
-                                builder: (context) {
-                                  final visitors = List<Map<String, dynamic>>.from(place['visitors'] as List);
-                                  final int count = visitors.length;
-                                  String text = '';
-                                  if (count == 1) {
-                                    text = '${visitors[0]['name']} checked in here.';
-                                  } else if (count == 2) {
-                                    text = '${visitors[0]['name']} and ${visitors[1]['name']} checked in here.';
-                                  } else {
-                                    text = '${visitors[0]['name']}, ${visitors[1]['name']} and ${count - 2} others checked in here.';
-                                  }
-                                  return Text(
-                                    text,
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      fontSize: 12,
-                                      color: const Color(0xFF82858C),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
               ],
             ),
+
+            // Visitors list (moved below the row)
+            if (place['visitors'] != null && (place['visitors'] as List).isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Builder(
+                    builder: (context) {
+                      final visitors = List<Map<String, dynamic>>.from(place['visitors'] as List);
+                      final int total = visitors.length;
+                      final int countToShow = total > 3 ? 3 : total;
+                      return SizedBox(
+                        width: total == 1 ? 20.0 : (total == 2 ? 32.0 : 44.0),
+                        height: 20,
+                        child: Stack(
+                          children: List.generate(countToShow, (index) {
+                            if (total > 3 && index == 2) {
+                              return Positioned(
+                                left: index * 12.0,
+                                child: CircleAvatar(
+                                  radius: 10,
+                                  backgroundColor: Colors.white,
+                                  child: CircleAvatar(
+                                    radius: 9,
+                                    backgroundColor: const Color(0xFFEDE6FC),
+                                    child: Text(
+                                      '+${total - 2}',
+                                      style: const TextStyle(
+                                        fontSize: 7,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF7C57FC),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            
+                            final visitor = visitors[index];
+                            final avatarUrl = visitor['avatarUrl'] as String?;
+                            Widget avatarChild;
+                            if (avatarUrl != null && avatarUrl.isNotEmpty) {
+                              avatarChild = CircleAvatar(
+                                radius: 9,
+                                backgroundImage: NetworkImage(avatarUrl),
+                              );
+                            } else {
+                              final initials = visitor['name']
+                                  .toString()
+                                  .split(' ')
+                                  .map((e) => e.isNotEmpty ? e[0] : '')
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase();
+                              avatarChild = CircleAvatar(
+                                radius: 9,
+                                backgroundColor: const Color(0xFFEDE6FC),
+                                child: Text(
+                                  initials.isNotEmpty ? initials : '?',
+                                  style: const TextStyle(
+                                    fontSize: 7,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF7C57FC),
+                                  ),
+                                ),
+                              );
+                            }
+                            return Positioned(
+                              left: index * 12.0,
+                              child: CircleAvatar(
+                                radius: 10,
+                                backgroundColor: Colors.white,
+                                child: avatarChild,
+                              ),
+                            );
+                          }),
+                        ),
+                      );
+                    }
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        final visitors = List<Map<String, dynamic>>.from(place['visitors'] as List);
+                        final int count = visitors.length;
+                        String text = '';
+                        if (count == 1) {
+                          text = '${visitors[0]['name']} is here';
+                        } else if (count == 2) {
+                          text = '${visitors[0]['name']} and ${visitors[1]['name']} are here';
+                        } else {
+                          text = '${visitors[0]['name']}, ${visitors[1]['name']} and ${count - 2} others are here';
+                        }
+                        return Text(
+                          text,
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 13,
+                            color: const Color(0xFF636268),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Card Action Buttons
@@ -436,7 +474,7 @@ class ExplorePlaceCard extends StatelessWidget {
                       height: 48,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(100),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFF7C57FC), width: 1.5),
                       ),
                       alignment: Alignment.center,
@@ -468,7 +506,7 @@ class ExplorePlaceCard extends StatelessWidget {
                       height: 48,
                       decoration: BoxDecoration(
                         color: const Color(0xFF7C57FC),
-                        borderRadius: BorderRadius.circular(100),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
                             color: const Color(0xFF7C57FC).withValues(alpha: 0.3),

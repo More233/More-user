@@ -15,6 +15,7 @@ class ExploreSearchBar extends StatelessWidget {
   final ValueChanged<Map<String, dynamic>> onSuggestionTapped;
   final IconData Function(String) iconDataGetter;
   final double topPadding;
+  final VoidCallback? onFilterPressed;
 
   const ExploreSearchBar({
     super.key,
@@ -30,6 +31,7 @@ class ExploreSearchBar extends StatelessWidget {
     required this.onSuggestionTapped,
     required this.iconDataGetter,
     required this.topPadding,
+    this.onFilterPressed,
   });
 
   @override
@@ -84,9 +86,9 @@ class ExploreSearchBar extends StatelessWidget {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F6F8),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: const Color(0xFFEAEAEA)),
+                border: Border.all(color: const Color(0xFFE8E8E8)),
               ),
               child: TextField(
                 controller: searchController,
@@ -138,6 +140,34 @@ class ExploreSearchBar extends StatelessWidget {
               ),
             ),
           ),
+          if (onFilterPressed != null && (searchQuery.isNotEmpty || searchController.text.isNotEmpty)) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onFilterPressed,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFE8E8E8)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.tune,
+                  color: Color(0xFF82858C),
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

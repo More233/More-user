@@ -12,6 +12,7 @@ import 'services/explore_data_service.dart';
 import 'helpers/marker_generator.dart';
 import 'widgets/explore_place_card.dart';
 import 'widgets/explore_search_bar.dart';
+import 'widgets/explore_filter_sheet.dart';
 
 class ExploreScreen extends StatefulWidget {
   final VoidCallback onBackToTimeline;
@@ -46,6 +47,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _selectedCategory = ""; // "", "Restaurant", "Coffee", "Bakery", "Bars", "Desserts"
   bool _filterVisited = false;
   bool _filterSaved = false;
+  FilterState _filterState = FilterState();
   String _searchQuery = "";
   bool _isListView = false;
   List<Map<String, dynamic>> _suggestionsResults = [];
@@ -156,6 +158,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
+  void _openFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return ExploreFilterSheet(
+          initialState: _filterState,
+          onApply: (newState) {
+            setState(() {
+              _filterState = newState;
+              _filterVisited = newState.visited;
+              _filterSaved = newState.saved;
+              _selectedPlace = null;
+            });
+          },
+        );
+      },
+    );
+  }
+
   List<Map<String, dynamic>> _getFilteredPlaces() {
     return _allPlaces.where((place) {
       // 1. Search Query Filter
@@ -190,8 +213,54 @@ class _ExploreScreenState extends State<ExploreScreen> {
         return place['type'] == 'Ticket';
       }
 
+      // --- New Filter Sheet Filters ---
+      
+      // A. Distance Filter
+      if (_filterState.maxDistance != null) {
+        final double? dist = _parseDistance(place['distance'] as String?);
+        if (dist == null || dist > _filterState.maxDistance!) {
+          return false;
+        }
+      }
+
+      // B. Open Now Filter
+      if (_filterState.openNow) {
+        final openNow = place['openNow'] as bool? ?? true;
+        if (!openNow) return false;
+      }
+
+      // C. Rating Filter
+      if (_filterState.minRating != null) {
+        final rating = (place['rating'] as num? ?? 0.0).toDouble();
+        if (rating < _filterState.minRating!) return false;
+      }
+
+      // D. Price Filter
+      if (_filterState.priceRange != null) {
+        final price = place['price'] as String? ?? r'$$';
+        if (price != _filterState.priceRange) return false;
+      }
+
+      // E. Places Filters
+      if (_filterState.visited && !(place['isVisited'] as bool? ?? false)) return false;
+      if (_filterState.saved && !(place['isSaved'] as bool? ?? false)) return false;
+      if (_filterState.newToMe && (place['isVisited'] as bool? ?? false)) return false;
+      if (_filterState.onList && !(place['isSaved'] as bool? ?? false)) return false;
+
       return true;
     }).toList();
+  }
+
+  double? _parseDistance(String? distanceStr) {
+    if (distanceStr == null) return null;
+    final str = distanceStr.toLowerCase().trim();
+    if (str.contains('m') && !str.contains('k')) {
+      final numVal = double.tryParse(str.replaceAll('m', '').trim());
+      if (numVal != null) return numVal / 1000.0;
+    } else if (str.contains('km')) {
+      return double.tryParse(str.replaceAll('km', '').trim());
+    }
+    return null;
   }
 
   Set<Marker> _buildMarkers() {
@@ -496,6 +565,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   suggestions: _suggestionsResults,
                   userAvatarUrl: widget.userAvatarUrl,
                   onSearchChanged: _onSearchChanged,
+                  onFilterPressed: _openFilterBottomSheet,
                   onSearchSubmitted: (value) async {
                     if (value.trim().isNotEmpty) {
                       setState(() {
@@ -582,11 +652,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onFilterVisitedTapped: () {
                     setState(() {
                       _filterVisited = !_filterVisited;
+                      _filterState = _filterState.copyWith(visited: _filterVisited);
                     });
                   },
                   onFilterSavedTapped: () {
                     setState(() {
                       _filterSaved = !_filterSaved;
+                      _filterState = _filterState.copyWith(saved: _filterSaved);
                     });
                   },
                   topPadding: topPadding,
@@ -832,14 +904,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-
-              Expanded(
+                          Expanded(
                 child: Container(
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF5F6F8),
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(100),
+                    border: Border.all(color: const Color(0xFFE8E8E8)),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -879,7 +950,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               if (results.isNotEmpty) {
                                 _markerGenerator.preloadNetworkIconsForPlaces(results, () {
                                   if (mounted) setState(() {});
-                                });
+                                  });
                               }
                             }
                           },
@@ -933,26 +1004,29 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
               const SizedBox(width: 12),
 
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0xFFE8E8E8),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8,
+              GestureDetector(
+                onTap: _openFilterBottomSheet,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFE8E8E8),
+                      width: 1,
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.tune,
-                  color: Color(0xFF333333),
-                  size: 20,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.tune,
+                    color: Color(0xFF333333),
+                    size: 20,
+                  ),
                 ),
               ),
             ],
