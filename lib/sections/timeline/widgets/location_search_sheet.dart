@@ -7,29 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LocationSearchSheet extends StatefulWidget {
-  const LocationSearchSheet({super.key});
-
-  @override
-  State<LocationSearchSheet> createState() => _LocationSearchSheetState();
-}
-
-class _LocationSearchSheetState extends State<LocationSearchSheet> {
-  final TextEditingController _searchController = TextEditingController();
-
-  bool _isLoading = true;
-  bool _isSearching = false;
-  double _latitude = 29.378033; // Default Fayoum coordinates
-  double _longitude = 30.697478;
-  List<Map<String, dynamic>> _nearbyLocations = [];
-  List<Map<String, dynamic>> _filteredLocations = [];
-  String _searchQuery = '';
-  Timer? _debounce;
-  String? _apiErrorMessage;
-
-  static const String foursquareClientId = 'VIUPG0BG3P204YTVQM3BEIRZRHIWVOA3SSLFNCV0CWA43GOA';
-  static const String foursquareClientSecret = '0G2ZE1O4HWOD2B5IBX4ON4T4JJECCE5KXECWPTZ3QPQ1QLTZ';
-
-  static const List<Map<String, dynamic>> _locations = [
+  static const List<Map<String, dynamic>> locations = [
     {
       'name': 'Helnan Auberge El Fayoum Hotel',
       'address': 'Muhafazat al Fayyūm, Egypt',
@@ -136,6 +114,27 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     },
   ];
 
+  const LocationSearchSheet({super.key});
+
+  @override
+  State<LocationSearchSheet> createState() => _LocationSearchSheetState();
+}
+
+class _LocationSearchSheetState extends State<LocationSearchSheet> {
+  final TextEditingController _searchController = TextEditingController();
+
+  bool _isLoading = true;
+  bool _isSearching = false;
+  double _latitude = 29.378033; // Default Fayoum coordinates
+  double _longitude = 30.697478;
+  List<Map<String, dynamic>> _nearbyLocations = [];
+  List<Map<String, dynamic>> _filteredLocations = [];
+  String _searchQuery = '';
+  Timer? _debounce;
+  String? _apiErrorMessage;
+
+  static const String googlePlacesApiKey = 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug';
+
   @override
   void initState() {
     super.initState();
@@ -217,99 +216,37 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     await _fetchNearby(lat, lng);
   }
 
-  IconData _mapFoursquareCategoryToIconData(List<dynamic> categories) {
-    if (categories.isEmpty) return Icons.location_on_outlined;
-    final primary = categories.first;
-    final String name = (primary['name'] as String? ?? '').toLowerCase();
 
-    if (name.contains('restaurant') ||
-        name.contains('food') ||
-        name.contains('dining') ||
-        name.contains('diner') ||
-        name.contains('pizza') ||
-        name.contains('burger') ||
-        name.contains('steakhouse') ||
-        name.contains('sushi') ||
-        name.contains('bistro') ||
-        name.contains('grill') ||
-        name.contains('eatery')) {
-      return Icons.restaurant;
-    }
-    if (name.contains('coffee') ||
-        name.contains('cafe') ||
-        name.contains('espresso') ||
-        name.contains('tea room') ||
-        name.contains('coffe')) {
+  IconData _mapGooglePlaceTypesToIconData(List<dynamic> types) {
+    if (types.isEmpty) return Icons.location_on_outlined;
+    final typesLower = types.map((t) => (t as String).toLowerCase()).toList();
+
+    if (typesLower.contains('cafe') || typesLower.contains('coffee') || typesLower.contains('tea_room')) {
       return Icons.local_cafe;
     }
-    if (name.contains('bakery') ||
-        name.contains('donut') ||
-        name.contains('pastry') ||
-        name.contains('dessert') ||
-        name.contains('cake') ||
-        name.contains('sweet')) {
+    if (typesLower.contains('bakery') || typesLower.contains('patisserie') || typesLower.contains('dessert_shop') || typesLower.contains('cake_shop')) {
       return Icons.bakery_dining;
     }
-    if (name.contains('bar') ||
-        name.contains('pub') ||
-        name.contains('nightclub') ||
-        name.contains('lounge') ||
-        name.contains('brewery') ||
-        name.contains('distillery')) {
+    if (typesLower.contains('bar') || typesLower.contains('night_club') || typesLower.contains('pub') || typesLower.contains('brewery')) {
       return Icons.local_bar;
     }
-    if (name.contains('supermarket') ||
-        name.contains('grocery') ||
-        name.contains('market') ||
-        name.contains('convenience') ||
-        name.contains('mart')) {
-      return Icons.storefront;
-    }
-    if (name.contains('pharmacy') ||
-        name.contains('drugstore') ||
-        name.contains('chemist') ||
-        name.contains('hospital') ||
-        name.contains('clinic')) {
-      return Icons.local_pharmacy;
-    }
-    if (name.contains('hotel') ||
-        name.contains('motel') ||
-        name.contains('hostel') ||
-        name.contains('resort') ||
-        name.contains('lodging') ||
-        name.contains('inn')) {
-      return Icons.hotel;
-    }
-    if (name.contains('park') ||
-        name.contains('garden') ||
-        name.contains('playground') ||
-        name.contains('nature reserve')) {
-      return Icons.park;
-    }
-    if (name.contains('airport') || name.contains('terminal')) {
-      return Icons.local_airport;
-    }
-
-    final int id = primary['categoryCode'] as int? ??
-        (primary['id'] is int ? primary['id'] as int : 0);
-
-    if (id >= 13000 && id < 14000) {
+    if (typesLower.contains('restaurant') || typesLower.contains('meal_takeaway') || typesLower.contains('meal_delivery') || typesLower.contains('food')) {
       return Icons.restaurant;
     }
-    if (id >= 16000 && id < 17000) {
-      return Icons.park;
+    if (typesLower.contains('supermarket') || typesLower.contains('grocery_or_supermarket') || typesLower.contains('convenience_store') || typesLower.contains('department_store')) {
+      return Icons.storefront;
     }
-    if (id == 19009 || id == 19010) {
-      return Icons.local_airport;
+    if (typesLower.contains('pharmacy') || typesLower.contains('drugstore') || typesLower.contains('hospital') || typesLower.contains('doctor') || typesLower.contains('dentist')) {
+      return Icons.local_pharmacy;
     }
-    if (id >= 19014 && id <= 19027) {
+    if (typesLower.contains('lodging') || typesLower.contains('hotel') || typesLower.contains('resort')) {
       return Icons.hotel;
     }
-    if (id == 17069 || id == 17070) {
-      return Icons.shopping_bag;
+    if (typesLower.contains('park') || typesLower.contains('tourist_attraction') || typesLower.contains('museum') || typesLower.contains('zoo') || typesLower.contains('amusement_park')) {
+      return Icons.park;
     }
-    if (id == 11134) {
-      return Icons.local_hospital;
+    if (typesLower.contains('airport') || typesLower.contains('transit_station') || typesLower.contains('subway_station') || typesLower.contains('train_station') || typesLower.contains('bus_station')) {
+      return Icons.local_airport;
     }
     return Icons.location_on_outlined;
   }
@@ -320,102 +257,128 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
       _apiErrorMessage = null;
     });
 
+    final List<Map<String, dynamic>> places = [];
+
     try {
-      final String url = 'https://api.foursquare.com/v2/venues/explore'
-          '?ll=$lat,$lng'
+      final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+          '?location=$lat,$lng'
           '&radius=3000'
-          '&limit=20'
-          '&client_id=$foursquareClientId'
-          '&client_secret=$foursquareClientSecret'
-          '&v=20231010';
+          '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final responseObj = data['response'] as Map<String, dynamic>?;
-        final groups = responseObj?['groups'] as List<dynamic>? ?? [];
-        if (groups.isNotEmpty) {
-          final firstGroup = groups.first as Map<String, dynamic>;
-          final items = firstGroup['items'] as List<dynamic>? ?? [];
-          final List<Map<String, dynamic>> places = [];
-          for (final item in items) {
-            final venue = item['venue'] as Map<String, dynamic>?;
-            if (venue == null) continue;
+        final results = data['results'] as List<dynamic>? ?? [];
+        for (final item in results) {
+          final place = item as Map<String, dynamic>;
+          final id = place['place_id'] as String? ?? '';
+          final name = place['name'] as String? ?? '';
+          final geometry = place['geometry'] as Map<String, dynamic>?;
+          final locationObj = geometry?['location'] as Map<String, dynamic>?;
+          final plat = (locationObj?['lat'] as num?)?.toDouble() ?? 0.0;
+          final plng = (locationObj?['lng'] as num?)?.toDouble() ?? 0.0;
+          final address = place['vicinity'] as String? ?? place['formatted_address'] as String? ?? '';
+          final types = place['types'] as List<dynamic>? ?? [];
 
-            final id = venue['id'] as String? ?? '';
-            final name = venue['name'] as String? ?? '';
-            final location = venue['location'] as Map<String, dynamic>?;
-            final address = location?['address'] as String? ??
-                (location?['formattedAddress'] as List<dynamic>?)?.join(', ') ?? '';
-            final plat = (location?['lat'] as num?)?.toDouble() ?? 0.0;
-            final plng = (location?['lng'] as num?)?.toDouble() ?? 0.0;
-            final categories = venue['categories'] as List<dynamic>? ?? [];
+          final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+          final double km = meters / 1000;
+          final String distanceStr = km < 1
+              ? '${meters.toStringAsFixed(0)} m'
+              : '${km.toStringAsFixed(1)} km';
 
-            final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
-            final double km = meters / 1000;
-            final String distanceStr = km < 1
-                ? '${meters.toStringAsFixed(0)} m'
-                : '${km.toStringAsFixed(1)} km';
-
-            places.add({
-              'placeId': id,
-              'name': name,
-              'address': address,
-              'latitude': plat,
-              'longitude': plng,
-              'distance': distanceStr,
-              'icon': _mapFoursquareCategoryToIconData(categories),
-            });
-          }
-          setState(() {
-            _nearbyLocations = places;
-            _filteredLocations = places;
+          places.add({
+            'placeId': id,
+            'name': name,
+            'address': address,
+            'latitude': plat,
+            'longitude': plng,
+            'distance': distanceStr,
+            'icon': _mapGooglePlaceTypesToIconData(types),
           });
-        } else {
-          _apiErrorMessage = "Could not parse Foursquare places.";
-          _loadFallbackLocations();
         }
       } else {
-        _apiErrorMessage = "Foursquare API failed with status ${response.statusCode}";
-        _loadFallbackLocations();
+        _apiErrorMessage = "Google Places API failed with status ${response.statusCode}";
       }
     } catch (e) {
-      debugPrint("Error fetching nearby Foursquare places: $e");
+      debugPrint("Error fetching nearby Google places: $e");
       _apiErrorMessage = "Error: $e";
-      _loadFallbackLocations();
+    }
+
+    // Load custom venues from Supabase
+    try {
+      final client = Supabase.instance.client;
+      final double latMin = lat - 0.5;
+      final double latMax = lat + 0.5;
+      final double lngMin = lng - 0.5;
+      final double lngMax = lng + 0.5;
+
+      final venuesResponse = await client
+          .from('custom_venues')
+          .select('*')
+          .gte('latitude', latMin)
+          .lte('latitude', latMax)
+          .gte('longitude', lngMin)
+          .lte('longitude', lngMax);
+
+      final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
+      for (final res in venueResults) {
+        final id = res['id'] as String;
+        if (places.any((p) => p['placeId'] == id)) continue;
+
+        final plat = (res['latitude'] as num).toDouble();
+        final plng = (res['longitude'] as num).toDouble();
+        final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'placeId': id,
+          'name': res['name'] as String,
+          'address': res['address'] as String,
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'icon': _getIconForTypes([(res['category_name'] as String? ?? 'Other').toLowerCase()]),
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading nearby custom venues: $e");
+    }
+
+    // If places is still empty, load hardcoded fallback locations
+    if (places.isEmpty) {
+      for (final loc in LocationSearchSheet.locations) {
+        final plat = loc['latitude'] as double;
+        final plng = loc['longitude'] as double;
+        final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1
+            ? '${meters.toStringAsFixed(0)} m'
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'placeId': 'tapped_${loc['name'].hashCode}',
+          'name': loc['name'],
+          'address': loc['address'],
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'icon': loc['icon'] as IconData,
+        });
+      }
     }
 
     setState(() {
+      _nearbyLocations = places;
+      _filteredLocations = places;
       _isLoading = false;
     });
   }
 
-  void _loadFallbackLocations() {
-    final List<Map<String, dynamic>> fallback = [];
-    for (final loc in _locations) {
-      final plat = loc['latitude'] as double;
-      final plng = loc['longitude'] as double;
-      final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
-      final double km = meters / 1000;
-      final String distanceStr = km < 1
-          ? '${meters.toStringAsFixed(0)} m'
-          : '${km.toStringAsFixed(1)} km';
 
-      fallback.add({
-        'name': loc['name'],
-        'address': loc['address'],
-        'latitude': plat,
-        'longitude': plng,
-        'distance': distanceStr,
-        'icon': loc['icon'],
-      });
-    }
-    setState(() {
-      _nearbyLocations = fallback;
-      _filteredLocations = fallback;
-    });
-  }
 
   void _onSearchChanged(String query) {
     setState(() {
@@ -441,74 +404,121 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
       _apiErrorMessage = null;
     });
 
+    final List<Map<String, dynamic>> places = [];
+
     try {
-      final String url = 'https://api.foursquare.com/v2/venues/explore'
+      final String url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
           '?query=${Uri.encodeComponent(query)}'
-          '&ll=$_latitude,$_longitude'
+          '&location=$_latitude,$_longitude'
           '&radius=50000'
-          '&limit=20'
-          '&client_id=$foursquareClientId'
-          '&client_secret=$foursquareClientSecret'
-          '&v=20231010';
+          '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final responseObj = data['response'] as Map<String, dynamic>?;
-        final groups = responseObj?['groups'] as List<dynamic>? ?? [];
-        if (groups.isNotEmpty) {
-          final firstGroup = groups.first as Map<String, dynamic>;
-          final items = firstGroup['items'] as List<dynamic>? ?? [];
-          final List<Map<String, dynamic>> places = [];
-          for (final item in items) {
-            final venue = item['venue'] as Map<String, dynamic>?;
-            if (venue == null) continue;
+        final results = data['results'] as List<dynamic>? ?? [];
+        for (final item in results) {
+          final place = item as Map<String, dynamic>;
+          final id = place['place_id'] as String? ?? '';
+          final name = place['name'] as String? ?? '';
+          final geometry = place['geometry'] as Map<String, dynamic>?;
+          final locationObj = geometry?['location'] as Map<String, dynamic>?;
+          final plat = (locationObj?['lat'] as num?)?.toDouble() ?? 0.0;
+          final plng = (locationObj?['lng'] as num?)?.toDouble() ?? 0.0;
+          final address = place['formatted_address'] as String? ?? place['vicinity'] as String? ?? '';
+          final types = place['types'] as List<dynamic>? ?? [];
 
-            final id = venue['id'] as String? ?? '';
-            final name = venue['name'] as String? ?? '';
-            final location = venue['location'] as Map<String, dynamic>?;
-            final address = location?['address'] as String? ??
-                (location?['formattedAddress'] as List<dynamic>?)?.join(', ') ?? '';
-            final plat = (location?['lat'] as num?)?.toDouble() ?? 0.0;
-            final plng = (location?['lng'] as num?)?.toDouble() ?? 0.0;
-            final categories = venue['categories'] as List<dynamic>? ?? [];
+          final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
+          final double km = meters / 1000;
+          final String distanceStr = km < 1
+              ? '${meters.toStringAsFixed(0)} m'
+              : '${km.toStringAsFixed(1)} km';
 
-            final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
-            final double km = meters / 1000;
-            final String distanceStr = km < 1
-                ? '${meters.toStringAsFixed(0)} m'
-                : '${km.toStringAsFixed(1)} km';
-
-            places.add({
-              'placeId': id,
-              'name': name,
-              'address': address,
-              'latitude': plat,
-              'longitude': plng,
-              'distance': distanceStr,
-              'icon': _mapFoursquareCategoryToIconData(categories),
-            });
-          }
-          setState(() {
-            _filteredLocations = places;
+          places.add({
+            'placeId': id,
+            'name': name,
+            'address': address,
+            'latitude': plat,
+            'longitude': plng,
+            'distance': distanceStr,
+            'icon': _mapGooglePlaceTypesToIconData(types),
           });
         }
       } else {
-        setState(() {
-          _filteredLocations = [];
-          _apiErrorMessage = "Search failed: ${response.statusCode}";
+        _apiErrorMessage = "Google Places API failed with status ${response.statusCode}";
+      }
+    } catch (e) {
+      debugPrint("Error performing Google search: $e");
+      _apiErrorMessage = "Error: $e";
+    }
+
+    // Add Supabase custom venues matching search
+    try {
+      final client = Supabase.instance.client;
+      final venuesResponse = await client
+          .from('custom_venues')
+          .select('*')
+          .ilike('name', '%$query%')
+          .limit(10);
+
+      final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
+      for (final res in venueResults) {
+        final id = res['id'] as String;
+        if (places.any((p) => p['placeId'] == id)) continue;
+
+        final plat = (res['latitude'] as num).toDouble();
+        final plng = (res['longitude'] as num).toDouble();
+        final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'placeId': id,
+          'name': res['name'] as String,
+          'address': res['address'] as String,
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'icon': _getIconForTypes([(res['category_name'] as String? ?? 'Other').toLowerCase()]),
         });
       }
     } catch (e) {
-      debugPrint("Error performing Foursquare search: $e");
-      setState(() {
-        _filteredLocations = [];
-        _apiErrorMessage = "Error: $e";
-      });
+      debugPrint("Error searching custom venues in database: $e");
+    }
+
+    // Add local fallback locations matching search
+    final lowerQuery = query.toLowerCase();
+    for (final loc in LocationSearchSheet.locations) {
+      final name = loc['name'] as String;
+      final address = loc['address'] as String;
+      if (name.toLowerCase().contains(lowerQuery) || address.toLowerCase().contains(lowerQuery)) {
+        if (places.any((p) => p['name'] == name)) continue;
+
+        final plat = loc['latitude'] as double;
+        final plng = loc['longitude'] as double;
+        final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'placeId': 'tapped_${name.hashCode}',
+          'name': name,
+          'address': address,
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'icon': loc['icon'] as IconData,
+        });
+      }
     }
 
     setState(() {
+      _filteredLocations = places;
       _isSearching = false;
     });
   }
@@ -844,7 +854,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                                           ),
                                         ),
                                         subtitle: Text(
-                                          'إذا لم تجد المكان في نتائج البحث',
+                                          'إذا لم تجد المكان في البحث',
                                           style: GoogleFonts.ibmPlexSansArabic(
                                             fontSize: 14,
                                             color: const Color(0xFF82858C),

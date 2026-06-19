@@ -29,6 +29,20 @@ class CheckInComposerScreen extends StatefulWidget {
 }
 
 class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
+  static const String _mapStyleJson = '''
+[
+  {
+    "featureType": "poi",
+    "elementType": "labels",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  }
+]
+''';
+
   final TextEditingController _captionController = TextEditingController();
   String _locationName = "Helnan Auberge El Fayoum Hotel";
   String _locationAddress = "Muhafazat al Fayyūm, Egypt";
@@ -56,9 +70,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       _locationName = post.title;
       _locationAddress = post.locationAddress;
       _categoryName = post.categoryName;
-      final match = _locations.firstWhere(
+      final match = LocationSearchSheet.locations.firstWhere(
         (loc) => loc['name'] == post.title || loc['address'] == post.locationAddress,
-        orElse: () => _locations.first,
+        orElse: () => LocationSearchSheet.locations.first,
       );
       _latitude = match['latitude'] as double;
       _longitude = match['longitude'] as double;
@@ -325,6 +339,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                 width: double.infinity,
                 height: 220 + topPadding,
                 child: GoogleMap(
+                  style: _mapStyleJson,
                   initialCameraPosition: CameraPosition(
                     target: LatLng(_latitude, _longitude),
                     zoom: 15.0,
@@ -1207,112 +1222,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
     }
   }
 
-  static const List<Map<String, dynamic>> _locations = [
-    {
-      'name': 'Helnan Auberge El Fayoum Hotel',
-      'address': 'Muhafazat al Fayyūm, Egypt',
-      'latitude': 29.378033,
-      'longitude': 30.697478,
-      'distance': '0 km',
-      'icon': Icons.business,
-    },
-    {
-      'name': 'منطقة تجنيد وتعبئة الزقازيق',
-      'address': 'Al-Sharkia, Egypt',
-      'latitude': 30.587681,
-      'longitude': 31.482811,
-      'distance': '14 km',
-      'icon': Icons.check_circle_outline,
-    },
-    {
-      'name': 'الزقازيق',
-      'address': 'Al-Sharkia, Egypt',
-      'latitude': 30.587123,
-      'longitude': 31.502025,
-      'distance': '14 km',
-      'icon': Icons.location_on_outlined,
-    },
-    {
-      'name': 'El Sharqia Governorate',
-      'address': 'Al-Sharkia, Egypt',
-      'latitude': 30.732664,
-      'longitude': 31.714418,
-      'distance': '15 km',
-      'icon': Icons.business_outlined,
-    },
-    {
-      'name': 'مستشفى الأحرار',
-      'address': 'Zagazig, Al-Sharkia, Egypt',
-      'latitude': 30.573215,
-      'longitude': 31.481235,
-      'distance': '13 km',
-      'icon': Icons.add_box_outlined,
-    },
-    {
-      'name': 'El Sharqia Traffic Authority',
-      'address': 'Zagazig, Al-Sharkia, Egypt',
-      'latitude': 30.582312,
-      'longitude': 31.492145,
-      'distance': '15 km',
-      'icon': Icons.business_outlined,
-    },
-    {
-      'name': 'Belbeis Air Base',
-      'address': 'Zagazig Cairo Road, Belbeis, Egypt',
-      'latitude': 30.380252,
-      'longitude': 31.579482,
-      'distance': '6.9 km',
-      'icon': Icons.business_outlined,
-    },
-    {
-      'name': 'Belbeis Toll Booth',
-      'address': 'Belbeis, Al-Sharkia, Egypt',
-      'latitude': 30.410145,
-      'longitude': 31.564571,
-      'distance': '11 km',
-      'icon': Icons.location_on_outlined,
-    },
-    {
-      'name': 'كوبرى بردين',
-      'address': 'Bordein, Al-Sharkia, Egypt',
-      'latitude': 30.498124,
-      'longitude': 31.512345,
-      'distance': '6.9 km',
-      'icon': Icons.location_on_outlined,
-    },
-    {
-      'name': 'Oraby Sq',
-      'address': 'Zagazig, Al-Sharkia, Egypt',
-      'latitude': 30.587123,
-      'longitude': 31.501234,
-      'distance': '15 km',
-      'icon': Icons.location_on_outlined,
-    },
-    {
-      'name': 'مقر الإخوان المسلمين بمدينة بلبيس',
-      'address': 'Belbeis, Al-Sharkia, Egypt',
-      'latitude': 30.418234,
-      'longitude': 31.567123,
-      'distance': '5.8 km',
-      'icon': Icons.location_on_outlined,
-    },
-    {
-      'name': 'Burden Bridge',
-      'address': 'Bordein, Al-Sharkia, Egypt',
-      'latitude': 30.498567,
-      'longitude': 31.512987,
-      'distance': '6.3 km',
-      'icon': Icons.location_on_outlined,
-    },
-    {
-      'name': 'جامع سادات قريش',
-      'address': 'Belbeis, Al-Sharkia, Egypt',
-      'latitude': 30.417234,
-      'longitude': 31.566123,
-      'distance': '6.1 km',
-      'icon': Icons.location_on_outlined,
-    },
-  ];
+
 }
 
 class DashedBorderPainter extends CustomPainter {

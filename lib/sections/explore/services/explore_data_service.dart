@@ -3,10 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../timeline/widgets/location_search_sheet.dart';
 
 class ExploreDataService {
-  static const String foursquareClientId = 'VIUPG0BG3P204YTVQM3BEIRZRHIWVOA3SSLFNCV0CWA43GOA';
-  static const String foursquareClientSecret = '0G2ZE1O4HWOD2B5IBX4ON4T4JJECCE5KXECWPTZ3QPQ1QLTZ';
+  static const String googlePlacesApiKey = 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug';
 
   static const List<String> _coffeeImages = [
     'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500',
@@ -251,73 +251,241 @@ class ExploreDataService {
     };
   }
 
+  static String mapGooglePlaceTypesToType(List<dynamic> types) {
+    if (types.isEmpty) return 'Other';
+    final typesLower = types.map((t) => (t as String).toLowerCase()).toList();
+
+    if (typesLower.contains('cafe') || typesLower.contains('coffee') || typesLower.contains('tea_room')) {
+      return 'Coffee';
+    }
+    if (typesLower.contains('bakery') || typesLower.contains('patisserie') || typesLower.contains('dessert_shop') || typesLower.contains('cake_shop')) {
+      return 'Bakery';
+    }
+    if (typesLower.contains('bar') || typesLower.contains('night_club') || typesLower.contains('pub') || typesLower.contains('brewery')) {
+      return 'Bars';
+    }
+    if (typesLower.contains('restaurant') || typesLower.contains('meal_takeaway') || typesLower.contains('meal_delivery') || typesLower.contains('food')) {
+      return 'Restaurant';
+    }
+    if (typesLower.contains('supermarket') || typesLower.contains('grocery_or_supermarket') || typesLower.contains('convenience_store') || typesLower.contains('department_store')) {
+      return 'Supermarket';
+    }
+    if (typesLower.contains('pharmacy') || typesLower.contains('drugstore')) {
+      return 'Pharmacy';
+    }
+    if (typesLower.contains('lodging') || typesLower.contains('hotel') || typesLower.contains('resort')) {
+      return 'Hotel';
+    }
+    if (typesLower.contains('park') || typesLower.contains('tourist_attraction') || typesLower.contains('museum') || typesLower.contains('zoo') || typesLower.contains('amusement_park')) {
+      return 'Park';
+    }
+    if (typesLower.contains('airport') || typesLower.contains('transit_station') || typesLower.contains('subway_station') || typesLower.contains('train_station') || typesLower.contains('bus_station')) {
+      return 'Airport';
+    }
+    return 'Other';
+  }
+
+  static Map<String, dynamic> parseGooglePlace(
+    Map<String, dynamic> place,
+    double userLat,
+    double userLng,
+  ) {
+    final id = place['place_id'] as String? ?? '';
+    final name = place['name'] as String? ?? '';
+    
+    final geometry = place['geometry'] as Map<String, dynamic>?;
+    final locationObj = geometry?['location'] as Map<String, dynamic>?;
+    final plat = (locationObj?['lat'] as num?)?.toDouble() ?? userLat;
+    final plng = (locationObj?['lng'] as num?)?.toDouble() ?? userLng;
+    
+    final address = place['vicinity'] as String? ?? place['formatted_address'] as String? ?? '';
+    final types = place['types'] as List<dynamic>? ?? [];
+
+    final double meters = Geolocator.distanceBetween(userLat, userLng, plat, plng);
+    final double km = meters / 1000;
+    final String distanceStr = km < 1 
+        ? '${meters.toStringAsFixed(0)} m' 
+        : '${km.toStringAsFixed(1)} km';
+
+    final type = mapGooglePlaceTypesToType(types);
+
+    final ratingVal = (place['rating'] as num?)?.toDouble();
+    final double rating = ratingVal ?? 4.0;
+    final reviewsCount = (place['user_ratings_total'] as num?)?.toInt() ?? 5;
+
+    final photos = place['photos'] as List<dynamic>?;
+    String imageUrl = getPlaceholderUrl(type, id);
+    if (photos != null && photos.isNotEmpty) {
+      final photoRef = photos.first['photo_reference'] as String?;
+      if (photoRef != null && photoRef.isNotEmpty) {
+        imageUrl = 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=500&photo_reference=$photoRef&key=$googlePlacesApiKey';
+      }
+    }
+
+    return {
+      'id': id,
+      'name': name,
+      'arabicName': name,
+      'address': address,
+      'latitude': plat,
+      'longitude': plng,
+      'distance': distanceStr,
+      'rating': rating,
+      'reviewsCount': reviewsCount,
+      'price': r'$$',
+      'peopleCount': 0,
+      'type': type,
+      'imageUrl': imageUrl,
+      'isSaved': false,
+      'isVisited': false,
+      'iconUrl': null,
+      'actionType': 'check-in',
+      'isRegistered': false,
+      'visitors': <Map<String, dynamic>>[],
+    };
+  }
+
   static Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(double lat, double lng) async {
     try {
-      final String url = 'https://api.foursquare.com/v2/venues/explore'
-          '?ll=$lat,$lng'
+      final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+          '?location=$lat,$lng'
           '&radius=3000'
-          '&limit=40'
-          '&client_id=$foursquareClientId'
-          '&client_secret=$foursquareClientSecret'
-          '&v=20231010';
+          '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final responseObj = data['response'] as Map<String, dynamic>?;
-        final groups = responseObj?['groups'] as List<dynamic>? ?? [];
-        if (groups.isNotEmpty) {
-          final firstGroup = groups.first as Map<String, dynamic>;
-          final items = firstGroup['items'] as List<dynamic>? ?? [];
-          final List<Map<String, dynamic>> places = [];
-          for (final item in items) {
-            final venue = item['venue'] as Map<String, dynamic>?;
-            if (venue == null) continue;
-            places.add(parseFoursquareVenue(venue, lat, lng, item));
-          }
-          return places;
+        final results = data['results'] as List<dynamic>? ?? [];
+        final List<Map<String, dynamic>> places = [];
+        for (final item in results) {
+          final place = item as Map<String, dynamic>;
+          places.add(parseGooglePlace(place, lat, lng));
         }
+        return places;
       }
     } catch (e) {
-      debugPrint("Error fetching Foursquare nearby places: $e");
+      debugPrint("Error fetching Google nearby places: $e");
     }
     return [];
   }
 
   static Future<List<Map<String, dynamic>>> searchFoursquarePlaces(String query, double lat, double lng) async {
+    final List<Map<String, dynamic>> places = [];
     try {
-      final String url = 'https://api.foursquare.com/v2/venues/explore'
+      final String url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
           '?query=${Uri.encodeComponent(query)}'
-          '&ll=$lat,$lng'
+          '&location=$lat,$lng'
           '&radius=50000'
-          '&limit=20'
-          '&client_id=$foursquareClientId'
-          '&client_secret=$foursquareClientSecret'
-          '&v=20231010';
+          '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final responseObj = data['response'] as Map<String, dynamic>?;
-        final groups = responseObj?['groups'] as List<dynamic>? ?? [];
-        if (groups.isNotEmpty) {
-          final firstGroup = groups.first as Map<String, dynamic>;
-          final items = firstGroup['items'] as List<dynamic>? ?? [];
-          final List<Map<String, dynamic>> places = [];
-          for (final item in items) {
-            final venue = item['venue'] as Map<String, dynamic>?;
-            if (venue == null) continue;
-            places.add(parseFoursquareVenue(venue, lat, lng, item));
-          }
-          return places;
+        final results = data['results'] as List<dynamic>? ?? [];
+        for (final item in results) {
+          final place = item as Map<String, dynamic>;
+          places.add(parseGooglePlace(place, lat, lng));
         }
       }
     } catch (e) {
-      debugPrint("Error searching Foursquare Places: $e");
+      debugPrint("Error searching Google Places: $e");
     }
-    return [];
+
+    // Add Supabase custom venues matching search query
+    try {
+      final client = Supabase.instance.client;
+      final double latMin = lat - 1.5;
+      final double latMax = lat + 1.5;
+      final double lngMin = lng - 1.5;
+      final double lngMax = lng + 1.5;
+
+      final venuesResponse = await client
+          .from('custom_venues')
+          .select('*')
+          .ilike('name', '%$query%')
+          .gte('latitude', latMin)
+          .lte('latitude', latMax)
+          .gte('longitude', lngMin)
+          .lte('longitude', lngMax)
+          .limit(10);
+
+      final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
+      for (final res in venueResults) {
+        final id = res['id'] as String;
+        if (places.any((p) => p['id'] == id)) continue;
+
+        final plat = (res['latitude'] as num).toDouble();
+        final plng = (res['longitude'] as num).toDouble();
+        final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'id': id,
+          'name': res['name'] as String,
+          'arabicName': res['name'] as String,
+          'address': res['address'] as String,
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'rating': 4.5,
+          'reviewsCount': 5,
+          'price': r'$$',
+          'peopleCount': 3,
+          'type': res['category_name'] as String? ?? 'default',
+          'imageUrl': getPlaceholderUrl(res['category_name'] as String? ?? 'Other', id),
+          'isSaved': false,
+          'isVisited': false,
+          'actionType': 'check-in',
+          'isCustomVenue': true,
+        });
+      }
+    } catch (e) {
+      debugPrint("Error searching custom venues in database: $e");
+    }
+
+    // Fallback: search local hardcoded locations matching search query
+    final lowerQuery = query.toLowerCase();
+    for (final loc in LocationSearchSheet.locations) {
+      final name = loc['name'] as String;
+      final address = loc['address'] as String;
+      if (name.toLowerCase().contains(lowerQuery) || address.toLowerCase().contains(lowerQuery)) {
+        if (places.any((p) => p['name'] == name)) continue;
+
+        final plat = loc['latitude'] as double;
+        final plng = loc['longitude'] as double;
+        final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'id': 'tapped_${name.hashCode}',
+          'name': name,
+          'arabicName': name,
+          'address': address,
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'rating': 4.5,
+          'reviewsCount': 10,
+          'price': r'$$',
+          'peopleCount': 2,
+          'type': 'Other',
+          'imageUrl': getPlaceholderUrl('Other', name),
+          'isSaved': false,
+          'isVisited': false,
+          'actionType': 'check-in',
+        });
+      }
+    }
+
+    return places;
   }
 
   static Future<Map<String, dynamic>?> fetchPlaceDetails(
@@ -331,34 +499,21 @@ class ExploreDataService {
     Map<String, dynamic>? placeMap;
 
     try {
-      final String url = 'https://api.foursquare.com/v2/venues/explore'
-          '?ll=$defaultLat,$defaultLng'
-          '&radius=100'
-          '&limit=1'
-          '&client_id=$foursquareClientId'
-          '&client_secret=$foursquareClientSecret'
-          '&v=20231010';
+      final String url = 'https://maps.googleapis.com/maps/api/place/details/json'
+          '?place_id=$placeId'
+          '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final responseObj = data['response'] as Map<String, dynamic>?;
-        final groups = responseObj?['groups'] as List<dynamic>? ?? [];
-        if (groups.isNotEmpty) {
-          final firstGroup = groups.first as Map<String, dynamic>;
-          final items = firstGroup['items'] as List<dynamic>? ?? [];
-          if (items.isNotEmpty) {
-            final item = items.first as Map<String, dynamic>;
-            final venue = item['venue'] as Map<String, dynamic>?;
-            if (venue != null) {
-              placeMap = parseFoursquareVenue(venue, userLat, userLng, item);
-            }
-          }
+        final result = data['result'] as Map<String, dynamic>?;
+        if (result != null) {
+          placeMap = parseGooglePlace(result, userLat, userLng);
         }
       }
     } catch (e) {
-      debugPrint("Error fetching Foursquare place details fallback: $e");
+      debugPrint("Error fetching Google place details: $e");
     }
     
     if (placeMap == null) {
