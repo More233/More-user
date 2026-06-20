@@ -13,6 +13,11 @@ import 'helpers/marker_generator.dart';
 import 'widgets/explore_place_card.dart';
 import 'widgets/explore_search_bar.dart';
 import 'widgets/explore_filter_sheet.dart';
+import 'widgets/explore_list_view.dart';
+import 'widgets/explore_map_tabs.dart';
+import 'widgets/explore_view_toggle_pill.dart';
+
+
 
 class ExploreScreen extends StatefulWidget {
   final VoidCallback onBackToTimeline;
@@ -285,6 +290,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       
       BitmapDescriptor icon;
       final bool isManualTapped = place['id'].toString().startsWith('tapped_');
+      double anchorX = 0.5;
+      double anchorY = 1.0;
 
       if (isManualTapped) {
         icon = BitmapDescriptor.defaultMarkerWithHue(
@@ -292,6 +299,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
         );
       } else if (isCheckIn && authorAvatar != null && _markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
         icon = _markerGenerator.avatarMarkerCache[authorAvatar]!;
+      } else if (!isCheckIn && isSelected && _markerGenerator.customPlaceMarkersSelected.containsKey(place['id'].toString())) {
+        icon = _markerGenerator.customPlaceMarkersSelected[place['id'].toString()]!;
+        
+        final double finalScale = 1.1;
+        final double pinWidth = 27.75 * finalScale;
+        final double textWidth = 120.0;
+        final double spacing = 8.0;
+        final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
+        
+        final double pinDx = textWidth + spacing + 4.0;
+        final double pinDy = 4.0;
+        final double pinHeight = 30.833 * finalScale;
+        final double canvasHeight = pinHeight + 16.0;
+
+        anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
+        anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
       } else if (iconUrl != null &&
           (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
         icon = (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache)[iconUrl]!;
@@ -314,7 +337,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           markerId: MarkerId(place['id']?.toString() ?? UniqueKey().toString()),
           position: LatLng((place['latitude'] as num? ?? 0.0).toDouble(), (place['longitude'] as num? ?? 0.0).toDouble()),
           icon: icon,
-          anchor: const Offset(0.5, 1.0),
+          anchor: Offset(anchorX, anchorY),
           onTap: () {
             _selectPlaceAndLoadDetails(place);
             _mapController?.animateCamera(
@@ -408,7 +431,73 @@ class _ExploreScreenState extends State<ExploreScreen> {
         children: [
           if (_isListView) ...[
             Positioned.fill(
-              child: _buildListView(topPadding, navBarHeight),
+              child: ExploreListView(
+                topPadding: topPadding,
+                navBarHeight: navBarHeight,
+                filteredPlaces: _getFilteredPlaces(),
+                userAvatarUrl: widget.userAvatarUrl,
+                searchController: _searchController,
+                isSearching: _isSearching,
+                searchQuery: _searchQuery,
+                onBackToTimeline: widget.onBackToTimeline,
+                onFilterPressed: _openFilterBottomSheet,
+                onSearchChanged: _onSearchChanged,
+                onSearchSubmitted: (value) async {
+                  if (value.trim().isNotEmpty) {
+                    setState(() {
+                      _isSearching = true;
+                    });
+                    final lat = _userLocation?.latitude ?? 24.7136;
+                    final lng = _userLocation?.longitude ?? 46.6753;
+                    final results = await ExploreDataService.searchFoursquarePlaces(value, lat, lng);
+                    setState(() {
+                      if (results.isNotEmpty) {
+                        _allPlaces = results;
+                        _selectedPlace = results.first;
+                        _mapController?.animateCamera(
+                          CameraUpdate.newLatLngZoom(
+                            LatLng((results.first['latitude'] as num? ?? 0.0).toDouble(), (results.first['longitude'] as num? ?? 0.0).toDouble()),
+                            15.0,
+                          ),
+                        );
+                      }
+                      _suggestionsResults = [];
+                      _isSearching = false;
+                    });
+                    if (results.isNotEmpty) {
+                      _markerGenerator.preloadNetworkIconsForPlaces(results, () {
+                        if (mounted) setState(() {});
+                      });
+                      _markerGenerator.preloadPlaceMarkers(results, () {
+                        if (mounted) setState(() {});
+                      });
+                    }
+                  }
+                },
+                onPlaceActionTriggered: _handlePlaceAction,
+                onCategoryTapped: (category) {
+                  final bool isSelected = _selectedCategory == category;
+                  setState(() {
+                    _selectedCategory = isSelected ? "" : category;
+                    _selectedPlace = null;
+                    _isListView = false;
+                  });
+
+                  final lat = _userLocation?.latitude ?? 24.7136;
+                  final lng = _userLocation?.longitude ?? 46.6753;
+                  _fetchNearbyPlaces(lat, lng, category: _selectedCategory);
+                },
+                selectedCategory: _selectedCategory,
+                onClearSearch: () {
+                  setState(() {
+                    _searchQuery = "";
+                    _searchController.clear();
+                    _suggestionsResults = [];
+                    _selectedPlace = null;
+                    _isListView = false;
+                  });
+                },
+              ),
             ),
           ] else ...[
             Positioned.fill(
@@ -529,24 +618,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 bottom: overlaysBottom + (_selectedPlace != null ? 140 : 0),
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF7C57FC).withValues(alpha: 0.9),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(100),
+                      border: Border.all(
+                        color: const Color(0xFFE8E8E8),
+                        width: 1,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
                     child: Text(
                       _statusMessage,
                       style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 14,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: const Color(0xFF4B5563),
                       ),
                     ),
                   ),
@@ -721,6 +814,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               _markerGenerator.preloadNetworkIconsForPlaces([suggestion], () {
                                 if (mounted) setState(() {});
                               });
+                              _markerGenerator.preloadPlaceMarkers([suggestion], () {
+                                if (mounted) setState(() {});
+                              });
                               _mapController?.animateCamera(
                                 CameraUpdate.newLatLngZoom(
                                   LatLng((suggestion['latitude'] as num? ?? 0.0).toDouble(), (suggestion['longitude'] as num? ?? 0.0).toDouble()),
@@ -774,46 +870,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ),
                     ),
 
-                    Container(
-                      height: 56,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(100),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildPillTabItem(
-                            index: 0,
-                            iconPath: 'assets/explore/earth.svg',
-                          ),
-                          const SizedBox(width: 8),
-                          _buildPillTabItem(
-                            index: 1,
-                            iconPath: '',
-                            iconData: Icons.explore_outlined,
-                          ),
-                          const SizedBox(width: 8),
-                          _buildPillTabItem(
-                            index: 2,
-                            iconPath: '',
-                            iconData: Icons.sensors,
-                          ),
-                          const SizedBox(width: 8),
-                          _buildPillTabItem(
-                            index: 3,
-                            iconPath: 'assets/explore/favourite.svg',
-                          ),
-                        ],
-                      ),
+                    ExploreMapTabs(
+                      selectedMapTab: _selectedMapTab,
+                      onTabChanged: (index) {
+                        setState(() {
+                          _selectedMapTab = index;
+                          _selectedPlace = null;
+                        });
+                        
+                        String msg = "";
+                        if (index == 0) msg = "Discover";
+                        if (index == 1) msg = "Plans";
+                        if (index == 2) msg = "Live Now";
+                        if (index == 3) msg = "My Places";
+                        _triggerStatusBadge(msg);
+                      },
                     ),
 
                     GestureDetector(
@@ -855,7 +926,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
               right: 0,
               bottom: controlsBottom,
               child: Center(
-                child: _buildViewTogglePill(),
+                child: ExploreViewTogglePill(
+                  isListView: _isListView,
+                  onViewChanged: (isList) {
+                    setState(() {
+                      _isListView = isList;
+                    });
+                  },
+                ),
               ),
             ),
         ],
@@ -863,438 +941,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  Widget _buildListView(double topPadding, double navBarHeight) {
-    final filteredPlaces = _getFilteredPlaces();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: EdgeInsets.only(
-            top: topPadding + 12,
-            bottom: 12,
-            left: 16,
-            right: 16,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              bottom: BorderSide(
-                color: Color(0xFFF0F0F0),
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  widget.onBackToTimeline();
-                },
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: DecorationImage(
-                      image: widget.userAvatarUrl != null
-                          ? NetworkImage(widget.userAvatarUrl!)
-                          : const AssetImage('assets/Timeline/images/element.png') as ImageProvider,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ),
-                          Expanded(
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(100),
-                    border: Border.all(color: const Color(0xFFE8E8E8)),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.search,
-                        color: Color(0xFF82858C),
-                        size: 22,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: _onSearchChanged,
-                          onSubmitted: (value) async {
-                            if (value.trim().isNotEmpty) {
-                              setState(() {
-                                _isSearching = true;
-                              });
-                              final lat = _userLocation?.latitude ?? 24.7136;
-                              final lng = _userLocation?.longitude ?? 46.6753;
-                              final results = await ExploreDataService.searchFoursquarePlaces(value, lat, lng);
-                              setState(() {
-                                if (results.isNotEmpty) {
-                                  _allPlaces = results;
-                                  _selectedPlace = results.first;
-                                  _mapController?.animateCamera(
-                                    CameraUpdate.newLatLngZoom(
-                                      LatLng((results.first['latitude'] as num? ?? 0.0).toDouble(), (results.first['longitude'] as num? ?? 0.0).toDouble()),
-                                      15.0,
-                                    ),
-                                  );
-                                }
-                                _suggestionsResults = [];
-                                _isSearching = false;
-                              });
-                              if (results.isNotEmpty) {
-                                _markerGenerator.preloadNetworkIconsForPlaces(results, () {
-                                  if (mounted) setState(() {});
-                                  });
-                              }
-                            }
-                          },
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 16,
-                            color: const Color(0xFF333333),
-                          ),
-                          decoration: InputDecoration(
-                            hintText: "Find a place",
-                            hintStyle: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              color: const Color(0xBF3B3C4F),
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ),
-                      if (_isSearching)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 8),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                            ),
-                          ),
-                        )
-                      else if (_searchQuery.isNotEmpty)
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _searchQuery = "";
-                              _searchController.clear();
-                              _suggestionsResults = [];
-                              _selectedPlace = null;
-                              _isListView = false;
-                            });
-                          },
-                          child: const Icon(
-                            Icons.close,
-                            color: Color(0xFF82858C),
-                            size: 18,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
 
-              GestureDetector(
-                onTap: _openFilterBottomSheet,
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFE8E8E8),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.tune,
-                    color: Color(0xFF333333),
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
 
-        Container(
-          height: 54,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-          ),
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              _buildCategoryPill("Restaurant", Icons.restaurant),
-              const SizedBox(width: 8),
-              _buildCategoryPill("Coffee", Icons.local_cafe),
-              const SizedBox(width: 8),
-              _buildCategoryPill("Bakery", Icons.breakfast_dining),
-              const SizedBox(width: 8),
-              _buildCategoryPill("Bars", Icons.local_bar),
-              const SizedBox(width: 8),
-              _buildCategoryPill("Desserts", Icons.icecream),
-            ],
-          ),
-        ),
 
-        Expanded(
-          child: Container(
-            color: const Color(0xFFFAFAFA),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                Text(
-                  "${filteredPlaces.length} results are found",
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A1A2E),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView.builder(
-                    padding: EdgeInsets.only(bottom: navBarHeight + 80),
-                    itemCount: filteredPlaces.length,
-                    itemBuilder: (context, index) {
-                      final place = filteredPlaces[index];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PlaceDetailsScreen(
-                                place: place,
-                                onActionTriggered: () => _handlePlaceAction(place),
-                              ),
-                            ),
-                          );
-                        },
-                        child: ExploreListPlaceCard(place: place),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildViewTogglePill() {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(
-          color: const Color(0xFFE8E8E8),
-          width: 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _isListView = false;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(
-                color: !_isListView ? const Color(0xFFEDE6FC) : Colors.transparent,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.map_outlined,
-                    size: 18,
-                    color: !_isListView ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Map",
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 14,
-                      fontWeight: !_isListView ? FontWeight.w600 : FontWeight.normal,
-                      color: !_isListView ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _isListView = true;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(
-                color: _isListView ? const Color(0xFFEDE6FC) : Colors.transparent,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.list_alt,
-                    size: 18,
-                    color: _isListView ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "List",
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 14,
-                      fontWeight: _isListView ? FontWeight.w600 : FontWeight.normal,
-                      color: _isListView ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryPill(String category, IconData icon) {
-    final bool isSelected = _selectedCategory == category;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedCategory = isSelected ? "" : category;
-          _selectedPlace = null;
-          _isListView = false;
-        });
-
-        final lat = _userLocation?.latitude ?? 24.7136;
-        final lng = _userLocation?.longitude ?? 46.6753;
-        _fetchNearbyPlaces(lat, lng, category: _selectedCategory);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF7C57FC) : Colors.white,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: isSelected ? Colors.transparent : const Color(0xFFE8E8E8),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : const Color(0xFF333333),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              category,
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : const Color(0xFF333333),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPillTabItem({
-    required int index,
-    required String iconPath,
-    IconData? iconData,
-  }) {
-    final bool isActive = _selectedMapTab == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedMapTab = index;
-          _selectedPlace = null;
-        });
-        
-        String msg = "";
-        if (index == 0) msg = "Globe";
-        if (index == 1) msg = "Events";
-        if (index == 2) msg = "Live Now";
-        if (index == 3) msg = "My Places";
-        _triggerStatusBadge(msg);
-      },
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFEDE6FC) : Colors.transparent,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: iconData != null
-            ? Icon(
-                iconData,
-                size: 22,
-                color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-              )
-            : SvgPicture.asset(
-                iconPath,
-                width: 22,
-                height: 22,
-                colorFilter: ColorFilter.mode(
-                  isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-                  BlendMode.srcIn,
-                ),
-              ),
-      ),
-    );
-  }
 
   void _selectPlaceAndLoadDetails(Map<String, dynamic> place) {
     setState(() {
@@ -1332,6 +981,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
             }
           });
           _markerGenerator.preloadNetworkIconsForPlaces([fullPlace], () {
+            if (mounted) setState(() {});
+          });
+          _markerGenerator.preloadPlaceMarkers([fullPlace], () {
             if (mounted) setState(() {});
           });
         }
@@ -1378,6 +1030,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           CameraUpdate.newLatLng(latLng),
         );
         _markerGenerator.preloadNetworkIconsForPlaces([place], () {
+          if (mounted) setState(() {});
+        });
+        _markerGenerator.preloadPlaceMarkers([place], () {
           if (mounted) setState(() {});
         });
         return;
@@ -1492,6 +1147,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         });
 
         _markerGenerator.preloadNetworkIconsForPlaces(foursquarePlaces, () {
+          if (mounted) setState(() {});
+        });
+        _markerGenerator.preloadPlaceMarkers(foursquarePlaces, () {
           if (mounted) setState(() {});
         });
         await _markerGenerator.preloadCheckInAvatars(checkins, () {

@@ -14,6 +14,8 @@ class MarkerGenerator {
   final Map<String, BitmapDescriptor> networkIconsSelectedCache = {};
   final Map<String, BitmapDescriptor> avatarMarkerCache = {};
   final Map<String, Uint8List> iconBytesCache = {};
+  final Map<String, BitmapDescriptor> customPlaceMarkersNormal = {};
+  final Map<String, BitmapDescriptor> customPlaceMarkersSelected = {};
   bool iconsLoaded = false;
 
   Future<BitmapDescriptor> createTeardropIcon(
@@ -471,5 +473,206 @@ class MarkerGenerator {
       await createUserAvatarMarker(avatarUrl);
     }
     onUpdate();
+  }
+
+  void clearPlaceMarkersCache() {
+    customPlaceMarkersNormal.clear();
+    customPlaceMarkersSelected.clear();
+  }
+
+  Future<void> preloadPlaceMarkers(
+    List<Map<String, dynamic>> places,
+    VoidCallback onUpdate,
+  ) async {
+    bool needsUpdate = false;
+    for (final place in places) {
+      final String id = place['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      
+      if (!customPlaceMarkersNormal.containsKey(id)) {
+        final normalMarker = await createMarkerWithLabel(place: place, isSelected: false);
+        customPlaceMarkersNormal[id] = normalMarker;
+        needsUpdate = true;
+      }
+      
+      if (!customPlaceMarkersSelected.containsKey(id)) {
+        final selectedMarker = await createMarkerWithLabel(place: place, isSelected: true);
+        customPlaceMarkersSelected[id] = selectedMarker;
+        needsUpdate = true;
+      }
+    }
+    if (needsUpdate) {
+      onUpdate();
+    }
+  }
+
+  Future<BitmapDescriptor> createMarkerWithLabel({
+    required Map<String, dynamic> place,
+    required bool isSelected,
+  }) async {
+    final String name = place['name']?.toString() ?? '';
+    final type = place['type']?.toString() ?? 'Other';
+    final double rating = (place['rating'] as num?)?.toDouble() ?? 4.0;
+    final int peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
+    final String price = place['price']?.toString() ?? r'$$';
+
+    final IconData iconData = getIconDataForType(type);
+    final Color color = getMarkerColor(type);
+
+    final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+    final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+
+    final double finalScale = isSelected ? 1.1 : 0.9;
+    final double pinWidth = 27.75 * finalScale;
+    final double pinHeight = 30.833 * finalScale;
+    
+    // Text block dimensions
+    final double textWidth = 120.0;
+    final double spacing = 8.0;
+    final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
+    final double canvasHeight = pinHeight + 16.0;
+
+    canvas.scale(dpr);
+
+    // Pin is on the right
+    final double pinDx = textWidth + spacing + 4.0;
+    final double pinDy = 4.0;
+
+    // 1. Draw Teardrop Pin
+    final Path path = Path();
+    path.moveTo(pinDx + 13.875 * finalScale, pinDy);
+    path.cubicTo(
+      pinDx + 21.538 * finalScale,
+      pinDy,
+      pinDx + 27.75 * finalScale,
+      pinDy + 6.13575 * finalScale,
+      pinDx + 27.75 * finalScale,
+      pinDy + 13.7041 * finalScale,
+    );
+    path.cubicTo(
+      pinDx + 27.7497 * finalScale,
+      pinDy + 21.2724 * finalScale,
+      pinDx + 19.078 * finalScale,
+      pinDy + 30.833 * finalScale,
+      pinDx + 13.875 * finalScale,
+      pinDy + 30.833 * finalScale,
+    );
+    path.cubicTo(
+      pinDx + 8.67197 * finalScale,
+      pinDy + 30.833 * finalScale,
+      pinDx + 0.000303757 * finalScale,
+      pinDy + 21.2724 * finalScale,
+      pinDx,
+      pinDy + 13.7041 * finalScale,
+    );
+    path.cubicTo(
+      pinDx,
+      pinDy + 6.13575 * finalScale,
+      pinDx + 6.21205 * finalScale,
+      pinDy,
+      pinDx + 13.875 * finalScale,
+      pinDy,
+    );
+    path.close();
+
+    final Paint paint = Paint()..color = color;
+    canvas.drawPath(path, paint);
+
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2 * finalScale;
+    canvas.drawPath(path, borderPaint);
+
+    // Draw Icon inside Teardrop
+    final TextPainter iconPainter = TextPainter(textDirection: TextDirection.ltr);
+    iconPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: 12.0 * finalScale,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: Colors.white,
+      ),
+    );
+    iconPainter.layout();
+    iconPainter.paint(
+      canvas,
+      Offset(
+        pinDx + 13.875 * finalScale - iconPainter.width / 2,
+        pinDy + 13.7041 * finalScale - iconPainter.height / 2,
+      ),
+    );
+
+    // 2. Draw Text Details on the Left
+    // Line 1: Name
+    final TextPainter namePainter = TextPainter(
+      textDirection: TextDirection.rtl, // Since name can be Arabic
+      textAlign: TextAlign.right,
+      maxLines: 1,
+      ellipsis: '...',
+    );
+    namePainter.text = TextSpan(
+      text: name,
+      style: TextStyle(
+        fontSize: 12.0,
+        fontWeight: FontWeight.bold,
+        color: color,
+      ),
+    );
+    namePainter.layout(maxWidth: textWidth);
+
+    // Line 2: Check-ins count
+    final TextPainter visitorsPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.right,
+    );
+    visitorsPainter.text = TextSpan(
+      text: "$peopleCount people here",
+      style: TextStyle(
+        fontSize: 10.0,
+        fontWeight: FontWeight.w500,
+        color: color,
+      ),
+    );
+    visitorsPainter.layout(maxWidth: textWidth);
+
+    // Line 3: Price & Rating
+    final TextPainter ratingPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.right,
+    );
+    ratingPainter.text = TextSpan(
+      text: "$price. ★(${rating.toStringAsFixed(1)})",
+      style: TextStyle(
+        fontSize: 10.0,
+        fontWeight: FontWeight.w500,
+        color: color,
+      ),
+    );
+    ratingPainter.layout(maxWidth: textWidth);
+
+    // Paint the texts aligned vertically and next to the pin
+    double currentY = pinDy;
+    namePainter.paint(canvas, Offset(textWidth - namePainter.width, currentY));
+    currentY += namePainter.height + 1.0;
+    
+    visitorsPainter.paint(canvas, Offset(textWidth - visitorsPainter.width, currentY));
+    currentY += visitorsPainter.height + 1.0;
+
+    ratingPainter.paint(canvas, Offset(textWidth - ratingPainter.width, currentY));
+
+    // Convert Canvas to Image
+    final ui.Image image = await pictureRecorder.endRecording().toImage(
+      (canvasWidth * dpr).toInt(),
+      (canvasHeight * dpr).toInt(),
+    );
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return BitmapDescriptor.defaultMarker;
+    final Uint8List uint8list = byteData.buffer.asUint8List();
+    return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
   }
 }

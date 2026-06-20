@@ -315,10 +315,16 @@ class ExploreDataService {
 
     final photos = place['photos'] as List<dynamic>?;
     String imageUrl = getPlaceholderUrl(type, id);
+    final List<String> photoUrls = [];
     if (photos != null && photos.isNotEmpty) {
-      final photoRef = photos.first['photo_reference'] as String?;
-      if (photoRef != null && photoRef.isNotEmpty) {
-        imageUrl = 'https://maps.googleapis.com/maps/api/place/photo?maxwidth=500&photo_reference=$photoRef&key=$googlePlacesApiKey';
+      for (final photo in photos) {
+        final photoRef = photo['photo_reference'] as String?;
+        if (photoRef != null && photoRef.isNotEmpty) {
+          photoUrls.add('https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=$photoRef&key=$googlePlacesApiKey');
+        }
+      }
+      if (photoUrls.isNotEmpty) {
+        imageUrl = photoUrls.first;
       }
     }
 
@@ -336,6 +342,7 @@ class ExploreDataService {
       'peopleCount': 0,
       'type': type,
       'imageUrl': imageUrl,
+      'photos': photoUrls,
       'isSaved': false,
       'isVisited': false,
       'iconUrl': null,
