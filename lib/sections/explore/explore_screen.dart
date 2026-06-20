@@ -362,6 +362,46 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return null;
   }
 
+  bool _isProminentPlace(Map<String, dynamic> place) {
+    if (place['isCheckIn'] == true) return true;
+    final String id = place['id']?.toString() ?? '';
+    if (id.startsWith('tapped_') || id.startsWith('swarm_')) return true;
+    if (place['isCustomVenue'] == true || place['isRegistered'] == true) return true;
+
+    final String type = place['type'] as String? ?? '';
+    final String typeLower = type.toLowerCase();
+    if (typeLower.contains('airport') ||
+        typeLower.contains('hotel') ||
+        typeLower.contains('park') ||
+        typeLower.contains('ticket')) {
+      return true;
+    }
+
+    final String name = (place['name'] as String? ?? '').toLowerCase();
+    final String address = (place['address'] as String? ?? '').toLowerCase();
+    if (name.contains('tower') || name.contains('mall') || name.contains('center') || name.contains('plaza') ||
+        name.contains('برج') || name.contains('مول') || name.contains('مركز') || name.contains('بلازا') || name.contains('ساحة')) {
+      return true;
+    }
+    if (address.contains('highway') || address.contains('road') || address.contains('main') ||
+        address.contains('طريق') || address.contains('رئيسي') || address.contains('سريع')) {
+      return true;
+    }
+
+    if (address.contains('alley') || address.contains('lane') || address.contains('side') ||
+        address.contains('زقاق') || address.contains('حارة') || address.contains('فرعي')) {
+      return false;
+    }
+
+    final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+    final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
+    if (rating >= 4.4 && reviewsCount >= 10) {
+      return true;
+    }
+
+    return false;
+  }
+
   Set<Marker> _buildMarkers() {
     final filtered = _getFilteredPlaces();
     final Set<Marker> markers = {};
@@ -391,44 +431,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
       double anchorX = 0.5;
       double anchorY = 1.0;
 
+      final bool isProminent = _isProminentPlace(place);
+      final bool showAsPin = isSelected || isProminent || _currentZoom >= 15.0;
+
       if (isManualTapped) {
         icon = BitmapDescriptor.defaultMarkerWithHue(
           isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed,
         );
       } else if (isCheckIn && authorAvatar != null && _markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
         icon = _markerGenerator.avatarMarkerCache[authorAvatar]!;
-      } else if (!isCheckIn && (isSelected || _currentZoom >= 15.0) && normalCustomCache.containsKey(place['id'].toString())) {
-        if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
-          icon = selectedCustomCache[place['id'].toString()]!;
-        } else {
-          icon = normalCustomCache[place['id'].toString()]!;
-        }
+      } else if (showAsPin) {
+        final bool showCustomLabel = (isSelected || _currentZoom >= 15.0) && normalCustomCache.containsKey(place['id'].toString());
         
-        final double finalScale = isSelected ? 1.1 : 0.9;
-        final double pinWidth = 27.75 * finalScale;
-        final double textWidth = 120.0;
-        final double spacing = 8.0;
-        final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
-        
-        final double pinDx = textWidth + spacing + 4.0;
-        final double pinDy = 4.0;
-        final double pinHeight = 30.833 * finalScale;
-        final double canvasHeight = pinHeight + 16.0;
-
-        anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
-        anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
-      } else if (iconUrl != null &&
-          (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
-        icon = (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache)[iconUrl]!;
-      } else if (_markerGenerator.iconsLoaded) {
-        if (_currentZoom < 15.0) {
-          if (_selectedMapTab == 2) {
-            icon = _markerGenerator.heatmapDotIcons[type] ?? _markerGenerator.heatmapDotIcons['default']!;
+        if (showCustomLabel) {
+          if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
+            icon = selectedCustomCache[place['id'].toString()]!;
           } else {
-            icon = _markerGenerator.dotMarkerIcons[type] ?? _markerGenerator.dotMarkerIcons['default']!;
+            icon = normalCustomCache[place['id'].toString()]!;
           }
-          anchorX = 0.5;
-          anchorY = 0.5;
+          
+          final double finalScale = isSelected ? 1.1 : 0.9;
+          final double pinWidth = 27.75 * finalScale;
+          final double textWidth = 120.0;
+          final double spacing = 8.0;
+          final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
+          
+          final double pinDx = textWidth + spacing + 4.0;
+          final double pinDy = 4.0;
+          final double pinHeight = 30.833 * finalScale;
+          final double canvasHeight = pinHeight + 16.0;
+
+          anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
+          anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
         } else {
           if (_selectedMapTab == 2) {
             if (_markerGenerator.heatmapCircleIcons.containsKey(type)) {
@@ -436,16 +470,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
             } else {
               icon = _markerGenerator.heatmapCircleIcons['default'] ??
                   _markerGenerator.heatmapMarkerIcons[type] ??
-                  _markerGenerator.heatmapMarkerIcons['default']!;
+                  _markerGenerator.heatmapMarkerIcons['default'] ??
+                  BitmapDescriptor.defaultMarker;
             }
             anchorX = 0.5;
             anchorY = 0.5;
           } else if (isSelected) {
-            icon = _markerGenerator.selectedMarkerIcons[type] ?? _markerGenerator.selectedMarkerIcons['default']!;
+            icon = _markerGenerator.selectedMarkerIcons[type] ?? _markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
           } else {
-            icon = _markerGenerator.normalMarkerIcons[type] ?? _markerGenerator.normalMarkerIcons['default']!;
+            icon = _markerGenerator.normalMarkerIcons[type] ?? _markerGenerator.normalMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
           }
         }
+      } else if (iconUrl != null &&
+          (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
+        icon = (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache)[iconUrl]!;
+      } else if (_markerGenerator.iconsLoaded) {
+        if (_selectedMapTab == 2) {
+          icon = _markerGenerator.heatmapDotIcons[type] ?? _markerGenerator.heatmapDotIcons['default'] ?? BitmapDescriptor.defaultMarker;
+        } else {
+          icon = _markerGenerator.dotMarkerIcons[type] ?? _markerGenerator.dotMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+        }
+        anchorX = 0.5;
+        anchorY = 0.5;
       } else {
         icon = BitmapDescriptor.defaultMarkerWithHue(
           isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed,
@@ -1104,7 +1150,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         _markerGenerator.preloadNetworkIconsForPlaces(foursquarePlaces, () {
           if (mounted) setState(() {});
         });
-        _markerGenerator.preloadPlaceMarkers(foursquarePlaces, () {
+        final List<Map<String, dynamic>> allPlacesToPreload = [...foursquarePlaces, ...customVenues];
+        _markerGenerator.preloadPlaceMarkers(allPlacesToPreload, () {
           if (mounted) setState(() {});
         });
         await _markerGenerator.preloadCheckInAvatars(checkins, () {
