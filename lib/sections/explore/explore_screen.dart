@@ -16,6 +16,7 @@ import 'widgets/explore_filter_sheet.dart';
 import 'widgets/explore_list_view.dart';
 import 'widgets/explore_map_tabs.dart';
 import 'widgets/explore_view_toggle_pill.dart';
+import 'explore_search_screen.dart';
 
 
 
@@ -55,10 +56,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   FilterState _filterState = FilterState();
   String _searchQuery = "";
   bool _isListView = false;
-  List<Map<String, dynamic>> _suggestionsResults = [];
   bool _isSearching = false;
   Timer? _debounceTimer;
   int _lastRoundedZoom = 13;
+  double _currentZoom = 13.0;
   final TextEditingController _searchController = TextEditingController();
 
   final LatLng _currentCameraPosition = const LatLng(24.7136, 46.6753); // Default Riyadh
@@ -75,6 +76,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Timer? _statusBadgeTimer;
 
   List<Map<String, dynamic>> _allPlaces = [];
+  final List<Map<String, dynamic>> _recentPlaces = [];
   LatLng? _lastFetchedLocation;
 
   @override
@@ -184,6 +186,92 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  void _openSearchScreen() async {
+    final lat = _userLocation?.latitude ?? 24.7136;
+    final lng = _userLocation?.longitude ?? 46.6753;
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExploreSearchScreen(
+          userLat: lat,
+          userLng: lng,
+          recentPlaces: _recentPlaces,
+          onRecentPlaceAdded: (place) {
+            setState(() {
+              if (!_recentPlaces.any((p) => p['id'] == place['id'])) {
+                _recentPlaces.insert(0, place);
+              }
+            });
+          },
+          filterState: {
+            'visited': _filterState.visited,
+            'saved': _filterState.saved,
+            'priceLevel': _filterState.priceRange ?? 'Any',
+            'ratingMin': _filterState.minRating ?? 0.0,
+            'openNow': _filterState.openNow,
+          },
+          onFilterStateChanged: (updatedFilters) {
+            setState(() {
+              _filterState = _filterState.copyWith(
+                visited: updatedFilters['visited'] as bool?,
+                saved: updatedFilters['saved'] as bool?,
+                openNow: updatedFilters['openNow'] as bool?,
+                minRating: () => updatedFilters['ratingMin'] as double?,
+                priceRange: () => updatedFilters['priceLevel'] == 'Any' ? null : updatedFilters['priceLevel'] as String?,
+              );
+              _filterVisited = _filterState.visited;
+              _filterSaved = _filterState.saved;
+            });
+          },
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      if (result['type'] == 'place') {
+        final place = result['place'] as Map<String, dynamic>;
+        setState(() {
+          if (!_allPlaces.any((p) => p['id'] == place['id'])) {
+            _allPlaces.add(place);
+          }
+          _searchQuery = "";
+          _searchController.text = place['name']?.toString() ?? '';
+        });
+        _selectPlaceAndLoadDetails(place);
+        _markerGenerator.preloadNetworkIconsForPlaces([place], () {
+          if (mounted) setState(() {});
+        });
+        _markerGenerator.preloadPlaceMarkers([place], () {
+          if (mounted) setState(() {});
+        });
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng((place['latitude'] as num? ?? 0.0).toDouble(), (place['longitude'] as num? ?? 0.0).toDouble()),
+            15.0,
+          ),
+        );
+      } else if (result['type'] == 'current_location') {
+        if (_userLocation != null) {
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLngZoom(
+              LatLng(_userLocation!.latitude, _userLocation!.longitude),
+              15.0,
+            ),
+          );
+        }
+      } else if (result['type'] == 'category') {
+        final category = result['category'] as String;
+        final bool isSelected = _selectedCategory == category;
+        setState(() {
+          _selectedCategory = isSelected ? "" : category;
+          _selectedPlace = null;
+          _isListView = false;
+        });
+        _fetchNearbyPlaces(lat, lng, category: _selectedCategory);
+      }
+    }
+  }
+
   List<Map<String, dynamic>> _getFilteredPlaces() {
     return _allPlaces.where((place) {
       // 1. Search Query Filter
@@ -216,6 +304,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
       // 4. Ticket Mode Filter
       if (_selectedMapTab == 1) {
         return place['type'] == 'Ticket';
+      }
+
+      // 5. Heatmap Mode Filter: only show places with check-ins
+      if (_selectedMapTab == 2) {
+        final peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
+        if (peopleCount <= 0) return false;
       }
 
       // --- New Filter Sheet Filters ---
@@ -281,6 +375,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       }
     }
 
+    final bool useHeatmapStyle = _selectedMapTab == 2;
+    final normalCustomCache = useHeatmapStyle ? _markerGenerator.customPlaceMarkersNormalHeatmap : _markerGenerator.customPlaceMarkersNormal;
+    final selectedCustomCache = useHeatmapStyle ? _markerGenerator.customPlaceMarkersSelectedHeatmap : _markerGenerator.customPlaceMarkersSelected;
+
     for (final place in placesToDraw) {
       final isSelected = _selectedPlace != null && _selectedPlace!['id'] == place['id'];
       final type = place['type'] as String? ?? 'Other';
@@ -299,10 +397,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
         );
       } else if (isCheckIn && authorAvatar != null && _markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
         icon = _markerGenerator.avatarMarkerCache[authorAvatar]!;
-      } else if (!isCheckIn && isSelected && _markerGenerator.customPlaceMarkersSelected.containsKey(place['id'].toString())) {
-        icon = _markerGenerator.customPlaceMarkersSelected[place['id'].toString()]!;
+      } else if (!isCheckIn && (isSelected || _currentZoom >= 15.0) && normalCustomCache.containsKey(place['id'].toString())) {
+        if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
+          icon = selectedCustomCache[place['id'].toString()]!;
+        } else {
+          icon = normalCustomCache[place['id'].toString()]!;
+        }
         
-        final double finalScale = 1.1;
+        final double finalScale = isSelected ? 1.1 : 0.9;
         final double pinWidth = 27.75 * finalScale;
         final double textWidth = 120.0;
         final double spacing = 8.0;
@@ -319,12 +421,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
           (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
         icon = (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache)[iconUrl]!;
       } else if (_markerGenerator.iconsLoaded) {
-        if (_selectedMapTab == 2) {
-          icon = _markerGenerator.heatmapMarkerIcons[type] ?? _markerGenerator.heatmapMarkerIcons['default']!;
-        } else if (isSelected) {
-          icon = _markerGenerator.selectedMarkerIcons[type] ?? _markerGenerator.selectedMarkerIcons['default']!;
+        if (_currentZoom < 15.0) {
+          if (_selectedMapTab == 2) {
+            icon = _markerGenerator.heatmapDotIcons[type] ?? _markerGenerator.heatmapDotIcons['default']!;
+          } else {
+            icon = _markerGenerator.dotMarkerIcons[type] ?? _markerGenerator.dotMarkerIcons['default']!;
+          }
+          anchorX = 0.5;
+          anchorY = 0.5;
         } else {
-          icon = _markerGenerator.normalMarkerIcons[type] ?? _markerGenerator.normalMarkerIcons['default']!;
+          if (_selectedMapTab == 2) {
+            if (_markerGenerator.heatmapCircleIcons.containsKey(type)) {
+              icon = _markerGenerator.heatmapCircleIcons[type]!;
+            } else {
+              icon = _markerGenerator.heatmapCircleIcons['default'] ??
+                  _markerGenerator.heatmapMarkerIcons[type] ??
+                  _markerGenerator.heatmapMarkerIcons['default']!;
+            }
+            anchorX = 0.5;
+            anchorY = 0.5;
+          } else if (isSelected) {
+            icon = _markerGenerator.selectedMarkerIcons[type] ?? _markerGenerator.selectedMarkerIcons['default']!;
+          } else {
+            icon = _markerGenerator.normalMarkerIcons[type] ?? _markerGenerator.normalMarkerIcons['default']!;
+          }
         }
       } else {
         icon = BitmapDescriptor.defaultMarkerWithHue(
@@ -356,57 +476,41 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (_selectedMapTab != 2) return {};
 
     final Set<Circle> circles = {};
-    
-    final List<LatLng> centers = [
-      const LatLng(24.7136, 46.6753),
-      const LatLng(24.7212, 46.6823),
-      const LatLng(24.7812, 46.6890),
-      const LatLng(24.7512, 46.6990),
-      const LatLng(24.8112, 46.7223),
-      const LatLng(24.8412, 46.5912),
-    ];
+    final List<Map<String, dynamic>> filtered = _getFilteredPlaces();
 
-    for (int i = 0; i < centers.length; i++) {
-      final center = centers[i];
-      final prefix = 'heat_$i';
+    for (final place in filtered) {
+      final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
+      final double lng = (place['longitude'] as num? ?? 0.0).toDouble();
+      final int peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
+      if (peopleCount <= 0) continue;
+
+      final String placeId = place['id']?.toString() ?? UniqueKey().toString();
       
+      // Calculate dynamic radius scaling based on crowd count
+      final double baseRadius = 80.0 + (peopleCount * 40.0).clamp(0.0, 400.0);
+
+      // Draw 3 concentric glowing purple circles to create a beautiful heatmap gradient effect
       circles.add(Circle(
-        circleId: CircleId('${prefix}_outer'),
-        center: center,
-        radius: 1800,
-        fillColor: const Color(0xFF7C57FC).withValues(alpha: 0.04),
-        strokeWidth: 0,
-      ));
-      
-      circles.add(Circle(
-        circleId: CircleId('${prefix}_teal'),
-        center: center,
-        radius: 1300,
-        fillColor: const Color(0xFF00E5FF).withValues(alpha: 0.08),
+        circleId: CircleId('${placeId}_heat_outer'),
+        center: LatLng(lat, lng),
+        radius: baseRadius * 1.5,
+        fillColor: const Color(0xFF7C57FC).withValues(alpha: 0.05),
         strokeWidth: 0,
       ));
 
       circles.add(Circle(
-        circleId: CircleId('${prefix}_green'),
-        center: center,
-        radius: 900,
-        fillColor: const Color(0xFF00C853).withValues(alpha: 0.12),
+        circleId: CircleId('${placeId}_heat_mid'),
+        center: LatLng(lat, lng),
+        radius: baseRadius * 1.0,
+        fillColor: const Color(0xFF7C57FC).withValues(alpha: 0.10),
         strokeWidth: 0,
       ));
 
       circles.add(Circle(
-        circleId: CircleId('${prefix}_yellow'),
-        center: center,
-        radius: 550,
-        fillColor: const Color(0xFFFFA000).withValues(alpha: 0.18),
-        strokeWidth: 0,
-      ));
-
-      circles.add(Circle(
-        circleId: CircleId('${prefix}_core'),
-        center: center,
-        radius: 280,
-        fillColor: const Color(0xFFFF3D00).withValues(alpha: 0.25),
+        circleId: CircleId('${placeId}_heat_core'),
+        center: LatLng(lat, lng),
+        radius: baseRadius * 0.5,
+        fillColor: const Color(0xFF7C57FC).withValues(alpha: 0.20),
         strokeWidth: 0,
       ));
     }
@@ -441,7 +545,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 searchQuery: _searchQuery,
                 onBackToTimeline: widget.onBackToTimeline,
                 onFilterPressed: _openFilterBottomSheet,
-                onSearchChanged: _onSearchChanged,
+                onSearchChanged: (_) {},
                 onSearchSubmitted: (value) async {
                   if (value.trim().isNotEmpty) {
                     setState(() {
@@ -461,7 +565,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                         );
                       }
-                      _suggestionsResults = [];
                       _isSearching = false;
                     });
                     if (results.isNotEmpty) {
@@ -492,11 +595,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   setState(() {
                     _searchQuery = "";
                     _searchController.clear();
-                    _suggestionsResults = [];
                     _selectedPlace = null;
                     _isListView = false;
                   });
                 },
+                onSearchTap: _openSearchScreen,
               ),
             ),
           ] else ...[
@@ -516,8 +619,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   }
                 },
                 onCameraMove: (position) {
+                  final double oldZoom = _currentZoom;
+                  _currentZoom = position.zoom;
+
+                  final bool crossedThreshold = (oldZoom < 15.0 && _currentZoom >= 15.0) ||
+                                                (oldZoom >= 15.0 && _currentZoom < 15.0);
+
                   final int roundedZoom = position.zoom.round();
-                  if (roundedZoom != _lastRoundedZoom) {
+                  if (roundedZoom != _lastRoundedZoom || crossedThreshold) {
                     _lastRoundedZoom = roundedZoom;
                     _markerGenerator.initMarkerIcons(
                       zoom: position.zoom,
@@ -525,6 +634,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         if (mounted) setState(() {});
                       },
                     );
+                    if (crossedThreshold) {
+                      setState(() {});
+                    }
                   }
                 },
                 zoomControlsEnabled: false,
@@ -653,71 +765,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 right: 0,
                 child: ExploreSearchBar(
                   searchController: _searchController,
-                  isSearching: _isSearching,
-                  searchQuery: _searchQuery,
-                  suggestions: _suggestionsResults,
+                  isSearching: false,
+                  searchQuery: "",
+                  suggestions: const [],
                   userAvatarUrl: widget.userAvatarUrl,
-                  onSearchChanged: _onSearchChanged,
-                  onFilterPressed: _openFilterBottomSheet,
-                  onSearchSubmitted: (value) async {
-                    if (value.trim().isNotEmpty) {
-                      setState(() {
-                        _isSearching = true;
-                      });
-                      final lat = _userLocation?.latitude ?? 24.7136;
-                      final lng = _userLocation?.longitude ?? 46.6753;
-                      final results = await ExploreDataService.searchFoursquarePlaces(value, lat, lng);
-                      setState(() {
-                        if (results.isNotEmpty) {
-                          _allPlaces = results;
-                        }
-                        _suggestionsResults = [];
-                        _isSearching = false;
-                      });
-                      if (results.isNotEmpty) {
-                        _selectPlaceAndLoadDetails(results.first);
-                        _mapController?.animateCamera(
-                          CameraUpdate.newLatLngZoom(
-                            LatLng((results.first['latitude'] as num? ?? 0.0).toDouble(), (results.first['longitude'] as num? ?? 0.0).toDouble()),
-                            15.0,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  onClearSearch: () {
-                    setState(() {
-                      _searchQuery = "";
-                      _searchController.clear();
-                      _suggestionsResults = [];
-                      _selectedPlace = null;
-                      _isListView = false;
-                    });
-                  },
+                  onSearchChanged: (_) {},
+                  onSearchSubmitted: (_) {},
+                  onClearSearch: () {},
                   onBackToTimeline: widget.onBackToTimeline,
-                  onSuggestionTapped: (suggestion) {
-                    setState(() {
-                      if (!_allPlaces.any((p) => p['id'] == suggestion['id'])) {
-                        _allPlaces.add(suggestion);
-                      }
-                      _searchQuery = "";
-                      _searchController.text = suggestion['name']?.toString() ?? '';
-                      _suggestionsResults = [];
-                    });
-                    _selectPlaceAndLoadDetails(suggestion);
-                    _markerGenerator.preloadNetworkIconsForPlaces([suggestion], () {
-                      if (mounted) setState(() {});
-                    });
-                    _mapController?.animateCamera(
-                      CameraUpdate.newLatLngZoom(
-                        LatLng((suggestion['latitude'] as num? ?? 0.0).toDouble(), (suggestion['longitude'] as num? ?? 0.0).toDouble()),
-                        15.0,
-                      ),
-                    );
-                    FocusScope.of(context).unfocus();
-                  },
+                  onSuggestionTapped: (_) {},
                   iconDataGetter: (type) => _markerGenerator.getIconDataForType(type),
                   topPadding: topPadding,
+                  onTap: _openSearchScreen,
                 ),
               ),
 
@@ -758,80 +817,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
               ),
 
-            if (_searchQuery.isNotEmpty && _suggestionsResults.isNotEmpty)
-              Positioned(
-                top: topPadding + 76,
-                left: 16,
-                right: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 250),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        padding: EdgeInsets.zero,
-                        itemCount: _suggestionsResults.length,
-                        itemBuilder: (context, index) {
-                          final suggestion = _suggestionsResults[index];
-                          return ListTile(
-                            leading: Icon(
-                              _markerGenerator.getIconDataForType(suggestion['type'] as String? ?? 'Other'),
-                              color: const Color(0xFF7C57FC),
-                            ),
-                            title: Text(
-                              suggestion['name'] as String? ?? '',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            subtitle: Text(
-                              suggestion['address'] as String? ?? '',
-                              style: GoogleFonts.ibmPlexSansArabic(fontSize: 12),
-                            ),
-                            onTap: () {
-                              setState(() {
-                                if (!_allPlaces.any((p) => p['id'] == suggestion['id'])) {
-                                  _allPlaces.add(suggestion);
-                                }
-                                _searchQuery = "";
-                                _searchController.text = suggestion['name']?.toString() ?? '';
-                                _suggestionsResults = [];
-                              });
-                              _selectPlaceAndLoadDetails(suggestion);
-                              _markerGenerator.preloadNetworkIconsForPlaces([suggestion], () {
-                                if (mounted) setState(() {});
-                              });
-                              _markerGenerator.preloadPlaceMarkers([suggestion], () {
-                                if (mounted) setState(() {});
-                              });
-                              _mapController?.animateCamera(
-                                CameraUpdate.newLatLngZoom(
-                                  LatLng((suggestion['latitude'] as num? ?? 0.0).toDouble(), (suggestion['longitude'] as num? ?? 0.0).toDouble()),
-                                  15.0,
-                                ),
-                              );
-                              FocusScope.of(context).unfocus();
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+
 
             if (!showCategoryResultsMode)
               Positioned(
@@ -1080,38 +1066,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  Future<void> _onSearchChanged(String query) async {
-    setState(() {
-      _searchQuery = query;
-    });
 
-    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      _fetchSuggestions(query);
-    });
-  }
-
-  Future<void> _fetchSuggestions(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _suggestionsResults = [];
-      });
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    final lat = _userLocation?.latitude ?? 24.7136;
-    final lng = _userLocation?.longitude ?? 46.6753;
-    final results = await ExploreDataService.searchFoursquarePlaces(query, lat, lng);
-
-    setState(() {
-      _suggestionsResults = results;
-      _isSearching = false;
-    });
-  }
 
   Future<void> _fetchNearbyPlaces(double lat, double lng, {String? category}) async {
     try {

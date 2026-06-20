@@ -16,6 +16,7 @@ class ExploreSearchBar extends StatelessWidget {
   final IconData Function(String) iconDataGetter;
   final double topPadding;
   final VoidCallback? onFilterPressed;
+  final VoidCallback? onTap;
 
   const ExploreSearchBar({
     super.key,
@@ -32,6 +33,7 @@ class ExploreSearchBar extends StatelessWidget {
     required this.iconDataGetter,
     required this.topPadding,
     this.onFilterPressed,
+    this.onTap,
   });
 
   @override
@@ -94,6 +96,8 @@ class ExploreSearchBar extends StatelessWidget {
                 controller: searchController,
                 onChanged: onSearchChanged,
                 onSubmitted: onSearchSubmitted,
+                readOnly: onTap != null,
+                onTap: onTap,
                 style: GoogleFonts.ibmPlexSansArabic(fontSize: 16),
                 decoration: InputDecoration(
                   hintText: "Find a place",

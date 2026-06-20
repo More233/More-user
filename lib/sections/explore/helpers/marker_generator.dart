@@ -9,13 +9,22 @@ import 'package:http/http.dart' as http;
 class MarkerGenerator {
   final Map<String, BitmapDescriptor> normalMarkerIcons = {};
   final Map<String, BitmapDescriptor> selectedMarkerIcons = {};
+  /// Large colored circle icons with white icon inside (Live Now / heatmap mode, zoom >= 15)
+  final Map<String, BitmapDescriptor> heatmapCircleIcons = {};
+  /// Compact teardrop icons for heatmap fallback
   final Map<String, BitmapDescriptor> heatmapMarkerIcons = {};
+  /// Small colored dot markers for far zoom (< 15)
+  final Map<String, BitmapDescriptor> dotMarkerIcons = {};
+  /// Small dots in each type's color for heatmap far zoom
+  final Map<String, BitmapDescriptor> heatmapDotIcons = {};
   final Map<String, BitmapDescriptor> networkIconsNormalCache = {};
   final Map<String, BitmapDescriptor> networkIconsSelectedCache = {};
   final Map<String, BitmapDescriptor> avatarMarkerCache = {};
   final Map<String, Uint8List> iconBytesCache = {};
   final Map<String, BitmapDescriptor> customPlaceMarkersNormal = {};
   final Map<String, BitmapDescriptor> customPlaceMarkersSelected = {};
+  final Map<String, BitmapDescriptor> customPlaceMarkersNormalHeatmap = {};
+  final Map<String, BitmapDescriptor> customPlaceMarkersSelectedHeatmap = {};
   bool iconsLoaded = false;
 
   Future<BitmapDescriptor> createTeardropIcon(
@@ -107,6 +116,118 @@ class MarkerGenerator {
     final ui.Image image = await pictureRecorder.endRecording().toImage(
       (width * dpr).toInt(),
       (height * dpr).toInt(),
+    );
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return BitmapDescriptor.defaultMarker;
+    final Uint8List uint8list = byteData.buffer.asUint8List();
+    return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
+  }
+
+  /// Small dot for far-zoom view
+  Future<BitmapDescriptor> createCircularDotIcon(
+    Color color, {
+    double scale = 1.0,
+  }) async {
+    final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+    final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+
+    final double radius = 7.0 * scale;
+    final double width = (radius * 2) + 4.0;
+    final double height = (radius * 2) + 4.0;
+
+    canvas.scale(dpr);
+
+    final double cx = radius + 2.0;
+    final double cy = radius + 2.0;
+
+    // Subtle shadow
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.12)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+    canvas.drawCircle(Offset(cx, cy + 1.0), radius, shadowPaint);
+
+    // Fill
+    final Paint fillPaint = Paint()..color = color;
+    canvas.drawCircle(Offset(cx, cy), radius, fillPaint);
+
+    // White border
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5 * scale;
+    canvas.drawCircle(Offset(cx, cy), radius, borderPaint);
+
+    final ui.Image image = await pictureRecorder.endRecording().toImage(
+      (width * dpr).toInt(),
+      (height * dpr).toInt(),
+    );
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return BitmapDescriptor.defaultMarker;
+    final Uint8List uint8list = byteData.buffer.asUint8List();
+    return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
+  }
+
+  /// Large circle icon with white icon inside — used for Live Now / heatmap close zoom (Figma 32px style)
+  Future<BitmapDescriptor> createLiveNowCircleIcon(
+    IconData iconData,
+    Color color, {
+    double scale = 1.0,
+  }) async {
+    final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+    final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+
+    // Figma size: 32px circle. We scale it.
+    final double radius = 16.0 * scale;
+    final double size = (radius * 2) + 6.0;
+
+    canvas.scale(dpr);
+
+    final double cx = radius + 3.0;
+    final double cy = radius + 3.0;
+
+    // Outer glow ring (semi-transparent)
+    final Paint glowPaint = Paint()
+      ..color = color.withValues(alpha: 0.20)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx, cy), radius + 4.0, glowPaint);
+
+    // Fill circle
+    final Paint fillPaint = Paint()..color = color;
+    canvas.drawCircle(Offset(cx, cy), radius, fillPaint);
+
+    // White border
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5 * scale;
+    canvas.drawCircle(Offset(cx, cy), radius, borderPaint);
+
+    // White icon inside
+    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: 14.0 * scale,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: Colors.white,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(cx - textPainter.width / 2, cy - textPainter.height / 2),
+    );
+
+    final ui.Image image = await pictureRecorder.endRecording().toImage(
+      (size * dpr).toInt(),
+      (size * dpr).toInt(),
     );
     final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     if (byteData == null) return BitmapDescriptor.defaultMarker;
@@ -275,30 +396,62 @@ class MarkerGenerator {
   }
 
   IconData getIconDataForType(String type) {
-    if (type == 'Restaurant') return Icons.restaurant;
-    if (type == 'Coffee') return Icons.local_cafe;
-    if (type == 'Park') return Icons.park;
-    if (type == 'Ticket') return Icons.local_activity;
-    if (type == 'Airport') return Icons.local_airport;
-    if (type == 'Bars') return Icons.local_bar;
-    if (type == 'Pharmacy') return Icons.local_pharmacy;
-    if (type == 'Hotel') return Icons.king_bed;
-    if (type == 'Supermarket') return Icons.storefront;
-    if (type == 'Bakery') return Icons.bakery_dining;
+    final String t = type.toLowerCase().trim();
+    if (t.contains('restaurant') || t.contains('food') || t.contains('dining')) return Icons.restaurant;
+    if (t.contains('coffee') || t.contains('cafe') || t.contains('café')) return Icons.local_cafe;
+    if (t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') || t.contains('pastry')) return Icons.cake;
+    if (t.contains('bar') || t.contains('pub') || t.contains('club')) return Icons.local_bar;
+    if (t.contains('airport') || t.contains('flight') || t.contains('plane')) return Icons.local_airport;
+    if (t.contains('hotel') || t.contains('motel') || t.contains('resort') || t.contains('bed')) return Icons.king_bed;
+    if (t.contains('supermarket') || t.contains('shopping') || t.contains('mall') || t.contains('store') || t.contains('shop')) return Icons.storefront;
+    if (t.contains('bakery') || t.contains('bread') || t.contains('mkhbazat')) return Icons.bakery_dining;
+    if (t.contains('ticket') || t.contains('event') || t.contains('activity') || t.contains('show')) return Icons.local_activity;
+    if (t.contains('park') || t.contains('garden') || t.contains('playground')) return Icons.park;
+    if (t.contains('pharmacy') || t.contains('hospital') || t.contains('clinic')) return Icons.local_pharmacy;
     return Icons.location_on;
   }
 
   Color getMarkerColor(String type) {
-    if (type == 'Restaurant') return const Color(0xFF7C57FC); // Purple
-    if (type == 'Coffee') return const Color(0xFFE96D2B); // Orange/Brown
-    if (type == 'Park') return const Color(0xFF017346); // Green
-    if (type == 'Ticket') return const Color(0xFF7C57FC); // Purple
-    if (type == 'Airport') return const Color(0xFF3649E1); // Blue
-    if (type == 'Bars') return const Color(0xFF7C57FC); // Purple
-    if (type == 'Pharmacy') return const Color(0xFF5A5D67); // Grey
-    if (type == 'Hotel') return const Color(0xFF3649E1); // Blue
-    if (type == 'Supermarket') return const Color(0xFF3649E1); // Blue
-    if (type == 'Bakery') return const Color(0xFFCB3D8D); // Pink
+    final String t = type.toLowerCase().trim();
+    if (t.contains('restaurant') || t.contains('food') || t.contains('dining')) {
+      return const Color(0xFFE96D2B); // Orange
+    }
+    if (t.contains('coffee') || t.contains('cafe') || t.contains('café') || t.contains('local_cafe')) {
+      return const Color(0xFFE96D2B); // Orange
+    }
+    if (t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') || t.contains('pastry')) {
+      return const Color(0xFFE96D2B); // Orange
+    }
+    if (t.contains('bar') || t.contains('pub') || t.contains('club') || t.contains('nightlife')) {
+      return const Color(0xFFE96D2B); // Orange
+    }
+    
+    if (t.contains('airport') || t.contains('flight') || t.contains('plane')) {
+      return const Color(0xFF3649E1); // Blue
+    }
+    if (t.contains('hotel') || t.contains('booking') || t.contains('motel') || t.contains('resort') || t.contains('stay') || t.contains('bed')) {
+      return const Color(0xFF3649E1); // Blue
+    }
+    if (t.contains('supermarket') || t.contains('shopping') || t.contains('mall') || t.contains('store') || t.contains('shop')) {
+      return const Color(0xFF3649E1); // Blue
+    }
+    
+    if (t.contains('bakery') || t.contains('mkhbazat') || t.contains('bread')) {
+      return const Color(0xFF7C57FC); // Purple/Violet
+    }
+    
+    if (t.contains('ticket') || t.contains('event') || t.contains('activity') || t.contains('show')) {
+      return const Color(0xFFCB3D8D); // Pink
+    }
+    
+    if (t.contains('park') || t.contains('garden') || t.contains('playground')) {
+      return const Color(0xFF017346); // Green
+    }
+    
+    if (t.contains('pharmacy') || t.contains('hospital') || t.contains('clinic')) {
+      return const Color(0xFF5A5D67); // Grey
+    }
+    
     return const Color(0xFF5A5D67); // Grey default
   }
 
@@ -340,6 +493,21 @@ class MarkerGenerator {
           const Color(0xFF7C57FC),
           isSelected: false,
           scale: scale,
+        );
+        dotMarkerIcons[type] = await createCircularDotIcon(
+          color,
+          scale: scale * 0.9,
+        );
+        // Live Now close-zoom: large circle icon in each type's own color (not all purple)
+        heatmapCircleIcons[type] = await createLiveNowCircleIcon(
+          iconData,
+          color,
+          scale: scale,
+        );
+        // Live Now far-zoom: small dot in each type's own color
+        heatmapDotIcons[type] = await createCircularDotIcon(
+          color,
+          scale: scale * 0.9,
         );
       }
 
@@ -489,15 +657,27 @@ class MarkerGenerator {
       final String id = place['id']?.toString() ?? '';
       if (id.isEmpty) continue;
       
+      // Standard custom markers
       if (!customPlaceMarkersNormal.containsKey(id)) {
         final normalMarker = await createMarkerWithLabel(place: place, isSelected: false);
         customPlaceMarkersNormal[id] = normalMarker;
         needsUpdate = true;
       }
-      
       if (!customPlaceMarkersSelected.containsKey(id)) {
         final selectedMarker = await createMarkerWithLabel(place: place, isSelected: true);
         customPlaceMarkersSelected[id] = selectedMarker;
+        needsUpdate = true;
+      }
+
+      // Heatmap custom markers (All purple)
+      if (!customPlaceMarkersNormalHeatmap.containsKey(id)) {
+        final normalMarker = await createMarkerWithLabel(place: place, isSelected: false, isHeatmap: true);
+        customPlaceMarkersNormalHeatmap[id] = normalMarker;
+        needsUpdate = true;
+      }
+      if (!customPlaceMarkersSelectedHeatmap.containsKey(id)) {
+        final selectedMarker = await createMarkerWithLabel(place: place, isSelected: true, isHeatmap: true);
+        customPlaceMarkersSelectedHeatmap[id] = selectedMarker;
         needsUpdate = true;
       }
     }
@@ -509,6 +689,7 @@ class MarkerGenerator {
   Future<BitmapDescriptor> createMarkerWithLabel({
     required Map<String, dynamic> place,
     required bool isSelected,
+    bool isHeatmap = false,
   }) async {
     final String name = place['name']?.toString() ?? '';
     final type = place['type']?.toString() ?? 'Other';
@@ -517,7 +698,7 @@ class MarkerGenerator {
     final String price = place['price']?.toString() ?? r'$$';
 
     final IconData iconData = getIconDataForType(type);
-    final Color color = getMarkerColor(type);
+    final Color color = isHeatmap ? const Color(0xFF7C57FC) : getMarkerColor(type);
 
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
@@ -607,11 +788,11 @@ class MarkerGenerator {
       ),
     );
 
-    // 2. Draw Text Details on the Left
-    // Line 1: Name
+    // 2. Draw Text Details on the Left — directly (no white pill background)
+    // Prepare texts
     final TextPainter namePainter = TextPainter(
-      textDirection: TextDirection.rtl, // Since name can be Arabic
-      textAlign: TextAlign.right,
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.center,
       maxLines: 1,
       ellipsis: '...',
     );
@@ -625,15 +806,15 @@ class MarkerGenerator {
     );
     namePainter.layout(maxWidth: textWidth);
 
-    // Line 2: Check-ins count
+    // Line 2: People count  (e.g. "29 people here")
     final TextPainter visitorsPainter = TextPainter(
       textDirection: TextDirection.ltr,
-      textAlign: TextAlign.right,
+      textAlign: TextAlign.center,
     );
     visitorsPainter.text = TextSpan(
-      text: "$peopleCount people here",
+      text: peopleCount > 0 ? "$peopleCount people here" : "",
       style: TextStyle(
-        fontSize: 10.0,
+        fontSize: 9.5,
         fontWeight: FontWeight.w500,
         color: color,
       ),
@@ -643,27 +824,67 @@ class MarkerGenerator {
     // Line 3: Price & Rating
     final TextPainter ratingPainter = TextPainter(
       textDirection: TextDirection.ltr,
-      textAlign: TextAlign.right,
+      textAlign: TextAlign.center,
     );
     ratingPainter.text = TextSpan(
-      text: "$price. ★(${rating.toStringAsFixed(1)})",
-      style: TextStyle(
-        fontSize: 10.0,
-        fontWeight: FontWeight.w500,
-        color: color,
-      ),
+      children: [
+        TextSpan(
+          text: price,
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+        if (price.isNotEmpty)
+          TextSpan(
+            text: ' . ',
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        const TextSpan(
+          text: '★',
+          style: TextStyle(
+            fontSize: 9.5,
+            color: Color(0xFFFFC107),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        TextSpan(
+          text: '(${rating.toStringAsFixed(1)})',
+          style: TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
     );
     ratingPainter.layout(maxWidth: textWidth);
 
-    // Paint the texts aligned vertically and next to the pin
-    double currentY = pinDy;
-    namePainter.paint(canvas, Offset(textWidth - namePainter.width, currentY));
-    currentY += namePainter.height + 1.0;
-    
-    visitorsPainter.paint(canvas, Offset(textWidth - visitorsPainter.width, currentY));
-    currentY += visitorsPainter.height + 1.0;
+    // Position text area vertically centered relative to pin
+    final double textHeight = namePainter.height +
+        (peopleCount > 0 ? visitorsPainter.height + 2.0 : 0.0) +
+        ratingPainter.height +
+        2.0;
+    final double textTop = pinDy + (pinHeight / 2) - (textHeight / 2);
+    final double textLeft = 4.0;
 
-    ratingPainter.paint(canvas, Offset(textWidth - ratingPainter.width, currentY));
+    // Paint the texts directly onto the canvas
+    double currentY = textTop;
+
+    namePainter.paint(canvas, Offset(textLeft, currentY));
+    currentY += namePainter.height + 2.0;
+
+    if (peopleCount > 0) {
+      visitorsPainter.paint(canvas, Offset(textLeft, currentY));
+      currentY += visitorsPainter.height + 2.0;
+    }
+
+    ratingPainter.paint(canvas, Offset(textLeft, currentY));
 
     // Convert Canvas to Image
     final ui.Image image = await pictureRecorder.endRecording().toImage(

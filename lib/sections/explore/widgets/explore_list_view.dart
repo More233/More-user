@@ -19,6 +19,7 @@ class ExploreListView extends StatelessWidget {
   final Function(String) onCategoryTapped;
   final String selectedCategory;
   final VoidCallback onClearSearch;
+  final VoidCallback? onSearchTap;
 
   const ExploreListView({
     super.key,
@@ -37,6 +38,7 @@ class ExploreListView extends StatelessWidget {
     required this.onCategoryTapped,
     required this.selectedCategory,
     required this.onClearSearch,
+    this.onSearchTap,
   });
 
   @override
@@ -101,6 +103,8 @@ class ExploreListView extends StatelessWidget {
                           controller: searchController,
                           onChanged: onSearchChanged,
                           onSubmitted: onSearchSubmitted,
+                          readOnly: onSearchTap != null,
+                          onTap: onSearchTap,
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 16,
                             color: const Color(0xFF333333),
