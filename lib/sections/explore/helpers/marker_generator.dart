@@ -714,6 +714,121 @@ class MarkerGenerator {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
 
+    if (isHeatmap) {
+      // Swarm design: Circle icon at top (purple fill, white icon, glow ring),
+      // and text (place name + visitors count) centered directly below it.
+      final double finalScale = isSelected ? 1.1 : 0.9;
+      final double radius = 16.0 * finalScale;
+      final double glowRadius = radius + 4.0;
+      
+      final double canvasWidth = 150.0;
+      final double cx = canvasWidth / 2;
+      final double cy = glowRadius + 4.0; // Top circle center
+
+      // Prepare texts
+      final TextPainter namePainter = TextPainter(
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        ellipsis: '...',
+      );
+      namePainter.text = TextSpan(
+        text: name,
+        style: TextStyle(
+          fontSize: 12.0,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          shadows: [
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.black.withValues(alpha: 0.8),
+              offset: const Offset(1.0, 1.0),
+            ),
+          ],
+        ),
+      );
+      namePainter.layout(maxWidth: canvasWidth - 16.0);
+
+      final String visitorsText = peopleCount == 1 ? "1 person here" : "$peopleCount people here";
+      final TextPainter visitorsPainter = TextPainter(
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+      );
+      visitorsPainter.text = TextSpan(
+        text: visitorsText,
+        style: TextStyle(
+          fontSize: 10.0,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFFC0A6FF), // Soft purple highlight
+          shadows: [
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.black.withValues(alpha: 0.8),
+              offset: const Offset(1.0, 1.0),
+            ),
+          ],
+        ),
+      );
+      visitorsPainter.layout(maxWidth: canvasWidth - 16.0);
+
+      final double textSpacing = 4.0;
+      final double textTop = cy + glowRadius + 6.0;
+      final double canvasHeight = textTop + namePainter.height + textSpacing + visitorsPainter.height + 8.0;
+
+      canvas.scale(dpr);
+
+      // 1. Draw Glow Ring
+      final Paint glowPaint = Paint()
+        ..color = const Color(0xFF7C57FC).withValues(alpha: 0.25)
+        ..style = PaintingStyle.fill;
+      canvas.drawCircle(Offset(cx, cy), glowRadius, glowPaint);
+
+      // 2. Draw Fill Circle
+      final Paint fillPaint = Paint()..color = const Color(0xFF7C57FC);
+      canvas.drawCircle(Offset(cx, cy), radius, fillPaint);
+
+      // 3. Draw White Border
+      final Paint borderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5 * finalScale;
+      canvas.drawCircle(Offset(cx, cy), radius, borderPaint);
+
+      // 4. Draw White Icon inside
+      final TextPainter iconPainter = TextPainter(textDirection: TextDirection.ltr);
+      iconPainter.text = TextSpan(
+        text: String.fromCharCode(iconData.codePoint),
+        style: TextStyle(
+          fontSize: 14.0 * finalScale,
+          fontFamily: iconData.fontFamily,
+          package: iconData.fontPackage,
+          color: Colors.white,
+        ),
+      );
+      iconPainter.layout();
+      iconPainter.paint(
+        canvas,
+        Offset(cx - iconPainter.width / 2, cy - iconPainter.height / 2),
+      );
+
+      // 5. Paint texts centered below the circle icon
+      namePainter.paint(canvas, Offset(cx - namePainter.width / 2, textTop));
+      visitorsPainter.paint(
+        canvas,
+        Offset(cx - visitorsPainter.width / 2, textTop + namePainter.height + textSpacing),
+      );
+
+      final ui.Image image = await pictureRecorder.endRecording().toImage(
+        (canvasWidth * dpr).toInt(),
+        (canvasHeight * dpr).toInt(),
+      );
+      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return BitmapDescriptor.defaultMarker;
+      final Uint8List uint8list = byteData.buffer.asUint8List();
+      return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
+    }
+
     final double finalScale = isSelected ? 1.1 : 0.9;
     final double pinWidth = 27.75 * finalScale;
     final double pinHeight = 30.833 * finalScale;

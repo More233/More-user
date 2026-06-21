@@ -261,7 +261,7 @@ class ExploreDataService {
       'isSaved': false,
       'isVisited': false,
       'iconUrl': iconUrl,
-      'actionType': 'check-in',
+      'actionType': getActionTypeForPlaceType(type),
       'isRegistered': false,
       'visitors': <Map<String, dynamic>>[],
     };
@@ -371,14 +371,14 @@ class ExploreDataService {
       'rating': rating,
       'reviewsCount': reviewsCount,
       'price': r'$$',
-      'peopleCount': 0,
+      'peopleCount': calculateSimulatedBusyness(id, reviewsCount),
       'type': type,
       'imageUrl': imageUrl,
       'photos': photoUrls,
       'isSaved': false,
       'isVisited': false,
       'iconUrl': null,
-      'actionType': 'check-in',
+      'actionType': getActionTypeForPlaceType(type),
       'isRegistered': false,
       'visitors': <Map<String, dynamic>>[],
       'website': website,
@@ -481,7 +481,7 @@ class ExploreDataService {
           'imageUrl': getPlaceholderUrl(res['category_name'] as String? ?? 'Other', id),
           'isSaved': false,
           'isVisited': false,
-          'actionType': 'check-in',
+          'actionType': getActionTypeForPlaceType(res['category_name'] as String? ?? 'Other'),
           'isCustomVenue': true,
         });
       }
@@ -521,7 +521,7 @@ class ExploreDataService {
           'imageUrl': getPlaceholderUrl('Other', name),
           'isSaved': false,
           'isVisited': false,
-          'actionType': 'check-in',
+          'actionType': getActionTypeForPlaceType('Other'),
         });
       }
     }
@@ -581,7 +581,7 @@ class ExploreDataService {
         'isSaved': false,
         'isVisited': false,
         'iconUrl': null,
-        'actionType': 'check-in',
+        'actionType': getActionTypeForPlaceType('Other'),
         'isRegistered': false,
         'visitors': <Map<String, dynamic>>[],
         'website': null,
@@ -728,7 +728,7 @@ class ExploreDataService {
           'imageUrl': getPlaceholderUrl(res['category_name'] as String? ?? 'Other', res['id'] as String? ?? ''),
           'isSaved': false,
           'isVisited': false,
-          'actionType': 'check-in',
+          'actionType': getActionTypeForPlaceType(res['category_name'] as String? ?? 'Other'),
           'isCustomVenue': true,
         });
       }
@@ -788,6 +788,71 @@ class ExploreDataService {
     } catch (e) {
       debugPrint("Error fetching visitors for non-foursquare place $placeId: $e");
       return place;
+    }
+  }
+
+  static int calculateSimulatedBusyness(String placeId, int reviewsCount) {
+    // 1. Generate a stable hash from the place ID
+    final int hash = placeId.hashCode.abs();
+    
+    // Only simulate crowd for ~20% of popular venues to keep map clean (Swarm-style crowd density)
+    if ((hash % 10) >= 2) {
+      return 0;
+    }
+    
+    // 2. Get current hour of the day
+    final int hour = DateTime.now().hour;
+    
+    // 3. Compute scale factor based on the hour (busier in the afternoon and evening)
+    double hourScale = 0.1;
+    if (hour >= 6 && hour < 11) {
+      hourScale = 0.2 + (hour - 6) * 0.06; // 0.2 to 0.5
+    } else if (hour >= 11 && hour < 15) {
+      hourScale = 0.8 - (hour - 11) * 0.05; // 0.8 to 0.6
+    } else if (hour >= 15 && hour < 17) {
+      hourScale = 0.5 + (hour - 15) * 0.05; // 0.5 to 0.6
+    } else if (hour >= 17 && hour < 22) {
+      hourScale = 0.8 + (hour - 17) * 0.04; // 0.8 to 1.0
+    } else if (hour >= 22) {
+      hourScale = 0.7 - (hour - 22) * 0.2; // 0.7 to 0.3
+    } else {
+      // 00:00 - 06:00
+      hourScale = 0.1;
+    }
+
+    // 4. Base count on reviewsCount (more reviews = more popular)
+    final int reviewsBracket = reviewsCount > 500 
+        ? 15 
+        : reviewsCount > 200 
+            ? 12 
+            : reviewsCount > 50 
+                ? 9 
+                : reviewsCount > 10 
+                    ? 6 
+                    : 3;
+                    
+    // 5. Add some stable variation using the hash
+    final int hashVariation = hash % 5; // 0 to 4
+    
+    final double rawPeopleCount = (reviewsBracket + hashVariation) * hourScale;
+    
+    final int peopleCount = rawPeopleCount.round();
+    return peopleCount < 2 ? (reviewsCount > 0 ? 2 : 0) : peopleCount;
+  }
+
+  static String getActionTypeForPlaceType(String type) {
+    final t = type.toLowerCase().trim();
+    if (t == 'hotel' || t == 'ticket') {
+      return 'Book';
+    } else if (t == 'restaurant' ||
+        t == 'bakery' ||
+        t == 'coffee' ||
+        t == 'bars' ||
+        t == 'supermarket' ||
+        t == 'pharmacy') {
+      return 'Order';
+    } else {
+      return 'check-in';
     }
   }
 }

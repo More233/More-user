@@ -273,42 +273,9 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                                 child: CameraPreview(_cameraController!),
                               ),
                             )
-                          : Container(
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Color(0xFF1A1A1A), Color(0xFF0D0D0D)],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                              ),
-                              child: Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Dotted arrow SVG
-                                    Opacity(
-                                      opacity: 0.15,
-                                      child: SvgPicture.asset(
-                                        'assets/Timeline/icons/dotted_arrow.svg',
-                                        width: 120,
-                                        height: 120,
-                                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      "TAP TO CAPTURE",
-                                      style: GoogleFonts.ibmPlexSansArabic(
-                                        color: Colors.white38,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                           : Container(
+                               color: Colors.black,
+                             ),
                     ),
                     
                     // Close / Cancel Button (Top Right, simple 'X' icon with no circular background)

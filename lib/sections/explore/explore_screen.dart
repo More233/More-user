@@ -10,6 +10,7 @@ import '../timeline/widgets/check_in_composer_screen.dart';
 import 'place_details_screen.dart';
 import 'services/explore_data_service.dart';
 import 'helpers/marker_generator.dart';
+import 'helpers/bookmark_tracker.dart';
 import 'widgets/explore_place_card.dart';
 import 'widgets/explore_search_bar.dart';
 import 'widgets/explore_filter_sheet.dart';
@@ -82,6 +83,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void initState() {
     super.initState();
+    BookmarkTracker().init().then((_) {
+      if (mounted) {
+        setState(() {
+          final existingIds = _allPlaces.map((p) => p['id'].toString()).toSet();
+          final savedPlaces = BookmarkTracker().getBookmarkedPlaces();
+          for (final sp in savedPlaces) {
+            final spIdStr = sp['id'].toString();
+            if (!existingIds.contains(spIdStr)) {
+              _allPlaces.add(sp);
+            }
+          }
+        });
+      }
+    });
     _getUserLocation();
     _markerGenerator.initMarkerIcons(
       zoom: 13.0,
@@ -230,14 +245,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (result != null && mounted) {
       if (result['type'] == 'place') {
         final place = result['place'] as Map<String, dynamic>;
+        final updatedPlace = Map<String, dynamic>.from(place);
+        updatedPlace['isSaved'] = BookmarkTracker().isBookmarked(place['id'].toString());
         setState(() {
-          if (!_allPlaces.any((p) => p['id'] == place['id'])) {
-            _allPlaces.add(place);
+          final idx = _allPlaces.indexWhere((p) => p['id'].toString() == updatedPlace['id'].toString());
+          if (idx == -1) {
+            _allPlaces.add(updatedPlace);
+          } else {
+            _allPlaces[idx] = updatedPlace;
           }
           _searchQuery = "";
-          _searchController.text = place['name']?.toString() ?? '';
+          _searchController.text = updatedPlace['name']?.toString() ?? '';
         });
-        _selectPlaceAndLoadDetails(place);
+        _selectPlaceAndLoadDetails(updatedPlace);
         _markerGenerator.preloadNetworkIconsForPlaces([place], () {
           if (mounted) setState(() {});
         });
@@ -292,8 +312,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
         return true;
       }
 
-      // 3. Category Filter
-      if (_selectedCategory.isNotEmpty) {
+      // 3. Category Filter (only active on Discover tab)
+      if (_selectedMapTab == 0 && _selectedCategory.isNotEmpty) {
         final type = place['type'] as String? ?? 'Other';
         if (_selectedCategory == "Restaurant" && type != "Restaurant") return false;
         if (_selectedCategory == "Coffee" && type != "Coffee") return false;
@@ -303,19 +323,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
       // 4. Ticket Mode (Plans) Filter
       if (_selectedMapTab == 1) {
-        final type = (place['type'] as String? ?? '').toLowerCase();
-        final name = (place['name'] as String? ?? '').toLowerCase();
-        return type == 'ticket' ||
-            type.contains('cinema') ||
-            type.contains('theater') ||
-            type.contains('movie') ||
-            type.contains('museum') ||
-            type.contains('entertainment') ||
-            name.contains('cinema') ||
-            name.contains('theater') ||
-            name.contains('movie') ||
-            name.contains('museum') ||
-            name.contains('entertainment');
+        return place['actionType'] == 'Book';
       }
 
       // 5. Heatmap Mode Filter: only show places with check-ins
@@ -444,7 +452,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       double anchorY = 1.0;
 
       final bool isProminent = _isProminentPlace(place);
-      final bool showAsPin = isSelected || isProminent || _currentZoom >= 15.0;
+      final bool showAsPin = useHeatmapStyle ? true : (isSelected || isProminent || _currentZoom >= 15.0);
 
       if (isManualTapped) {
         icon = BitmapDescriptor.defaultMarkerWithHue(
@@ -453,7 +461,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       } else if (isCheckIn && authorAvatar != null && _markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
         icon = _markerGenerator.avatarMarkerCache[authorAvatar]!;
       } else if (showAsPin) {
-        final bool showCustomLabel = (isSelected || _currentZoom >= 15.0) && normalCustomCache.containsKey(place['id'].toString());
+        final bool showCustomLabel = (isSelected || _currentZoom >= 15.0 || useHeatmapStyle) && normalCustomCache.containsKey(place['id'].toString());
         
         if (showCustomLabel) {
           if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
@@ -462,19 +470,32 @@ class _ExploreScreenState extends State<ExploreScreen> {
             icon = normalCustomCache[place['id'].toString()]!;
           }
           
-          final double finalScale = isSelected ? 1.1 : 0.9;
-          final double pinWidth = 27.75 * finalScale;
-          final double textWidth = 120.0;
-          final double spacing = 8.0;
-          final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
-          
-          final double pinDx = textWidth + spacing + 4.0;
-          final double pinDy = 4.0;
-          final double pinHeight = 30.833 * finalScale;
-          final double canvasHeight = pinHeight + 16.0;
+          if (useHeatmapStyle) {
+            final double finalScale = isSelected ? 1.1 : 0.9;
+            final double radius = 16.0 * finalScale;
+            final double glowRadius = radius + 4.0;
+            final double cy = glowRadius + 4.0;
+            final double textTop = cy + glowRadius + 6.0;
+            // Approximate height matching createMarkerWithLabel (name = 15, visitors = 13)
+            final double canvasHeight = textTop + 15.0 + 4.0 + 13.0 + 8.0;
+            
+            anchorX = 0.5;
+            anchorY = cy / canvasHeight;
+          } else {
+            final double finalScale = isSelected ? 1.1 : 0.9;
+            final double pinWidth = 27.75 * finalScale;
+            final double textWidth = 120.0;
+            final double spacing = 8.0;
+            final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
+            
+            final double pinDx = textWidth + spacing + 4.0;
+            final double pinDy = 4.0;
+            final double pinHeight = 30.833 * finalScale;
+            final double canvasHeight = pinHeight + 16.0;
 
-          anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
-          anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
+            anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
+            anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
+          }
         } else {
           if (_selectedMapTab == 2) {
             if (_markerGenerator.heatmapCircleIcons.containsKey(type)) {
@@ -614,11 +635,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     final results = await ExploreDataService.searchFoursquarePlaces(value, lat, lng);
                     setState(() {
                       if (results.isNotEmpty) {
-                        _allPlaces = results;
-                        _selectedPlace = results.first;
+                        _allPlaces = results.map((r) {
+                          final updated = Map<String, dynamic>.from(r);
+                          updated['isSaved'] = BookmarkTracker().isBookmarked(r['id'].toString());
+                          return updated;
+                        }).toList();
+                        _selectedPlace = _allPlaces.first;
                         _mapController?.animateCamera(
                           CameraUpdate.newLatLngZoom(
-                            LatLng((results.first['latitude'] as num? ?? 0.0).toDouble(), (results.first['longitude'] as num? ?? 0.0).toDouble()),
+                            LatLng((_allPlaces.first['latitude'] as num? ?? 0.0).toDouble(), (_allPlaces.first['longitude'] as num? ?? 0.0).toDouble()),
                             15.0,
                           ),
                         );
@@ -754,6 +779,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         _allPlaces[idx]['isSaved'] = val;
                       }
                     });
+                    BookmarkTracker().setBookmarked(_selectedPlace!, val);
                   },
                   onActionTriggered: () => _handlePlaceAction(_selectedPlace!),
                   onViewPressed: () {
@@ -1176,12 +1202,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
           Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
             final pid = p['id'].toString();
             final updated = Map<String, dynamic>.from(p);
-            if (placeVisitorCounts.containsKey(pid)) {
+            updated['isSaved'] = BookmarkTracker().isBookmarked(pid);
+            if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
               updated['peopleCount'] = placeVisitorCounts[pid];
               updated['visitors'] = placeVisitorsMap[pid];
-              updated['reviewsCount'] = placeVisitorCounts[pid];
             } else {
-              updated['peopleCount'] = 0;
+              final originalReviewsCount = (p['reviewsCount'] as num?)?.toInt() ?? 5;
+              updated['peopleCount'] = ExploreDataService.calculateSimulatedBusyness(pid, originalReviewsCount);
               updated['visitors'] = <Map<String, dynamic>>[];
             }
             return updated;
@@ -1215,6 +1242,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
               if (index != -1) {
                 _allPlaces[index] = updatePlaceData(_allPlaces[index]);
               }
+            }
+          }
+
+          // Also insert all locally bookmarked places if not already in _allPlaces
+          final savedPlaces = BookmarkTracker().getBookmarkedPlaces();
+          for (final sp in savedPlaces) {
+            final spIdStr = sp['id'].toString();
+            if (!existingIds.contains(spIdStr)) {
+              _allPlaces.add(sp);
             }
           }
         });
