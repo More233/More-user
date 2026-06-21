@@ -250,6 +250,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
       backgroundColor: Colors.white,
       body: Column(
         children: [
+          Container(
+            height: topPadding,
+            color: Colors.white,
+          ),
           // Viewfinder Card (rounded corners, expands to fill space, touching left/right screen edges)
           Expanded(
             child: Padding(
@@ -309,7 +313,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                     
                     // Close / Cancel Button (Top Right, simple 'X' icon with no circular background)
                     Positioned(
-                      top: topPadding > 0 ? topPadding + 16 : 20,
+                      top: 16,
                       right: 20,
                       child: GestureDetector(
                         onTap: () => Navigator.pop(context),

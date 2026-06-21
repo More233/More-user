@@ -440,7 +440,15 @@ class MarkerGenerator {
       return const Color(0xFF7C57FC); // Purple/Violet
     }
     
-    if (t.contains('ticket') || t.contains('event') || t.contains('activity') || t.contains('show')) {
+    if (t.contains('ticket') ||
+        t.contains('event') ||
+        t.contains('activity') ||
+        t.contains('show') ||
+        t.contains('cinema') ||
+        t.contains('theater') ||
+        t.contains('movie') ||
+        t.contains('museum') ||
+        t.contains('entertainment')) {
       return const Color(0xFFCB3D8D); // Pink
     }
     
@@ -501,12 +509,12 @@ class MarkerGenerator {
         // Live Now close-zoom: large circle icon in each type's own color (not all purple)
         heatmapCircleIcons[type] = await createLiveNowCircleIcon(
           iconData,
-          color,
+          const Color(0xFF7C57FC),
           scale: scale,
         );
         // Live Now far-zoom: small dot in each type's own color
         heatmapDotIcons[type] = await createCircularDotIcon(
-          color,
+          const Color(0xFF7C57FC),
           scale: scale * 0.9,
         );
       }

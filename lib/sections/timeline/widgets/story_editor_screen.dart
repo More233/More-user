@@ -276,6 +276,66 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     );
   }
 
+  void _showMoreOptionsSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1F1F1F),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "More Options",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.download_rounded, color: Colors.white),
+                title: Text(
+                  "Save Image",
+                  style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Image saved to gallery")),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.share_rounded, color: Colors.white),
+                title: Text(
+                  "Share with Friends",
+                  style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Sharing options opened")),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _publishStory() async {
     setState(() {
       _isPublishing = true;
@@ -351,256 +411,315 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
+      backgroundColor: Colors.white,
+      body: Column(
         children: [
-          // 1. Full screen image preview
-          Positioned.fill(
-            child: Image.file(
-              File(widget.imagePath),
-              fit: BoxFit.cover,
-            ),
+          Container(
+            height: topPadding,
+            color: Colors.white,
           ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Stack(
+                children: [
+                  // 1. Full screen image preview inside the ClipRRect card
+                  Positioned.fill(
+                    child: Image.file(
+                      File(widget.imagePath),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
 
-          // 2. Overlays Stack (draggable elements)
-          Positioned.fill(
-            child: Stack(
-              children: _overlays.map((item) {
-                return Positioned(
-                  left: item.position.dx,
-                  top: item.position.dy,
-                  child: GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() {
-                        item.position = Offset(
-                          item.position.dx + details.delta.dx,
-                          item.position.dy + details.delta.dy,
-                        );
-                      });
-                    },
+                  // 2. Overlays Stack (draggable elements)
+                  Positioned.fill(
                     child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        _buildOverlayWidget(item),
-                        // Remove button on top-right of overlay
-                        Positioned(
-                          top: -12,
-                          right: -12,
+                      children: _overlays.map((item) {
+                        return Positioned(
+                          left: item.position.dx,
+                          top: item.position.dy,
                           child: GestureDetector(
-                            onTap: () {
+                            onPanUpdate: (details) {
                               setState(() {
-                                _overlays.removeWhere((o) => o.id == item.id);
+                                item.position = Offset(
+                                  item.position.dx + details.delta.dx,
+                                  item.position.dy + details.delta.dy,
+                                );
                               });
                             },
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              padding: const EdgeInsets.all(4),
-                              child: const Icon(Icons.close, size: 12, color: Colors.black),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                _buildOverlayWidget(item),
+                                // Remove button on top-right of overlay
+                                Positioned(
+                                  top: -12,
+                                  right: -12,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _overlays.removeWhere((o) => o.id == item.id);
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      padding: const EdgeInsets.all(4),
+                                      child: const Icon(Icons.close, size: 12, color: Colors.black),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  // 3. Top left back button
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Colors.black38,
+                          shape: BoxShape.circle,
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          // 3. Top controls bar
-          Positioned(
-            top: topPadding + 16,
-            left: 16,
-            right: 16,
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.black38,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.close, color: Colors.white, size: 24),
-                  ),
-                ),
-                const Spacer(),
-                // Text overlay button
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isEditingText = true;
-                    });
-                    _textOverlayFocus.requestFocus();
-                  },
-                  child: _buildIconButton('assets/Timeline/icons/text_font.svg'),
-                ),
-                const SizedBox(width: 12),
-                // Music overlay button
-                GestureDetector(
-                  onTap: _showMusicDrawer,
-                  child: _buildIconButton('assets/Timeline/icons/music_note_03.svg'),
-                ),
-                const SizedBox(width: 12),
-                // Mention overlay button
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isEditingMention = true;
-                    });
-                    _mentionFocus.requestFocus();
-                  },
-                  child: _buildIconButton('assets/Timeline/icons/at.svg'),
-                ),
-                const SizedBox(width: 12),
-                // Sticker overlay button
-                GestureDetector(
-                  onTap: _showStickersDrawer,
-                  child: _buildIconButton('assets/Timeline/icons/smile_outline.svg'),
-                ),
-              ],
-            ),
-          ),
-
-          // 4. Custom text overlay input
-          if (_isEditingText) ...[
-            Positioned.fill(
-              child: Container(
-                color: Colors.black87,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextField(
-                      controller: _textOverlayController,
-                      focusNode: _textOverlayFocus,
-                      style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontSize: 24),
-                      textAlign: TextAlign.center,
-                      decoration: const InputDecoration(
-                        hintText: "Type something...",
-                        hintStyle: TextStyle(color: Colors.white30),
-                        border: InputBorder.none,
+                        child: SvgPicture.asset(
+                          'assets/Timeline/icons/arrow_left_01.svg',
+                          width: 24,
+                          height: 24,
+                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                        ),
                       ),
-                      onSubmitted: (_) => _onTextSubmit(),
                     ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C57FC)),
-                      onPressed: _onTextSubmit,
-                      child: Text("Done", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+                  ),
 
-          // 5. Custom mention overlay input
-          if (_isEditingMention) ...[
-            Positioned.fill(
-              child: Container(
-                color: Colors.black87,
-                padding: EdgeInsets.fromLTRB(24, topPadding + 64, 24, 24),
-                child: Column(
-                  children: [
-                    Row(
+                  // 4. Editing tools Column on the right side
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _mentionController,
-                            focusNode: _mentionFocus,
-                            style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontSize: 20),
-                            decoration: const InputDecoration(
-                              hintText: "@mention someone...",
-                              hintStyle: TextStyle(color: Colors.white30),
-                              border: InputBorder.none,
-                            ),
-                            onChanged: _updateMentionSuggestions,
-                            onSubmitted: (_) => _onMentionSubmit(),
-                          ),
+                        // Text overlay button
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isEditingText = true;
+                            });
+                            _textOverlayFocus.requestFocus();
+                          },
+                          child: _buildIconButton('assets/Timeline/icons/text_font.svg'),
                         ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C57FC)),
-                          onPressed: _onMentionSubmit,
-                          child: Text("Done", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white)),
+                        const SizedBox(height: 12),
+                        // Sticker overlay button
+                        GestureDetector(
+                          onTap: _showStickersDrawer,
+                          child: _buildIconButton('assets/Timeline/icons/smile.svg'),
+                        ),
+                        const SizedBox(height: 12),
+                        // Music overlay button
+                        GestureDetector(
+                          onTap: _showMusicDrawer,
+                          child: _buildIconButton('assets/Timeline/icons/music_note_03.svg'),
+                        ),
+                        const SizedBox(height: 12),
+                        // Mention overlay button
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isEditingMention = true;
+                            });
+                            _mentionFocus.requestFocus();
+                          },
+                          child: _buildIconButton('assets/Timeline/icons/at.svg'),
+                        ),
+                        const SizedBox(height: 12),
+                        // More options button (three dots)
+                        GestureDetector(
+                          onTap: _showMoreOptionsSheet,
+                          child: _buildIconButton('assets/Timeline/icons/post_options.svg'),
                         ),
                       ],
                     ),
-                    const Divider(color: Colors.white24),
-                    // Suggestions list
-                    if (_mentionSuggestions.isNotEmpty)
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _mentionSuggestions.length,
-                          itemBuilder: (context, index) {
-                            final user = _mentionSuggestions[index];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                radius: 18,
-                                backgroundImage: user['avatar_url'] != null
-                                    ? NetworkImage(user['avatar_url'])
-                                    : null,
+                  ),
+
+                  // 5. Custom text overlay input
+                  if (_isEditingText) ...[
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black87,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextField(
+                              controller: _textOverlayController,
+                              focusNode: _textOverlayFocus,
+                              style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontSize: 24),
+                              textAlign: TextAlign.center,
+                              decoration: const InputDecoration(
+                                hintText: "Type something...",
+                                hintStyle: TextStyle(color: Colors.white30),
+                                border: InputBorder.none,
                               ),
-                              title: Text(
-                                user['username'] ?? '',
-                                style: GoogleFonts.ibmPlexSansArabic(color: Colors.white),
-                              ),
-                              onTap: () {
-                                setState(() {
-                                  _mentionController.text = '@${user['username']}';
-                                });
-                                _onMentionSubmit();
-                              },
-                            );
-                          },
+                              onSubmitted: (_) => _onTextSubmit(),
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C57FC)),
+                              onPressed: _onTextSubmit,
+                              child: Text("Done", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white)),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
                   ],
-                ),
+
+                  // 6. Custom mention overlay input
+                  if (_isEditingMention) ...[
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black87,
+                        padding: const EdgeInsets.fromLTRB(24, 64, 24, 24),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _mentionController,
+                                    focusNode: _mentionFocus,
+                                    style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontSize: 20),
+                                    decoration: const InputDecoration(
+                                      hintText: "@mention someone...",
+                                      hintStyle: TextStyle(color: Colors.white30),
+                                      border: InputBorder.none,
+                                    ),
+                                    onChanged: _updateMentionSuggestions,
+                                    onSubmitted: (_) => _onMentionSubmit(),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C57FC)),
+                                  onPressed: _onMentionSubmit,
+                                  child: Text("Done", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                            const Divider(color: Colors.white24),
+                            // Suggestions list
+                            if (_mentionSuggestions.isNotEmpty)
+                              Expanded(
+                                child: ListView.builder(
+                                  itemCount: _mentionSuggestions.length,
+                                  itemBuilder: (context, index) {
+                                    final user = _mentionSuggestions[index];
+                                    return ListTile(
+                                      leading: CircleAvatar(
+                                        radius: 18,
+                                        backgroundImage: user['avatar_url'] != null
+                                            ? NetworkImage(user['avatar_url'])
+                                            : null,
+                                      ),
+                                      title: Text(
+                                        user['username'] ?? '',
+                                        style: GoogleFonts.ibmPlexSansArabic(color: Colors.white),
+                                      ),
+                                      onTap: () {
+                                        setState(() {
+                                          _mentionController.text = '@${user['username']}';
+                                        });
+                                        _onMentionSubmit();
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-          ],
-
-          // 6. Bottom action bar (Publish Story / Discard)
-          Positioned(
-            bottom: bottomPadding > 0 ? bottomPadding + 16 : 24,
-            left: 24,
-            right: 24,
+          ),
+          // 7. White Bottom Action Bar
+          Container(
+            color: Colors.white,
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: bottomPadding > 0 ? bottomPadding + 12 : 16,
+            ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _publishStory,
-                    child: Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF7C57FC),
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF7C57FC).withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: _isPublishing
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(
-                              "Your Story",
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                // Close Friends Button
+                GestureDetector(
+                  onTap: _publishStory,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+                      borderRadius: BorderRadius.circular(999),
                     ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/Timeline/icons/star_circle.svg',
+                          width: 24,
+                          height: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Close Friends",
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            color: const Color(0xFF464646),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Send Button
+                GestureDetector(
+                  onTap: _publishStory,
+                  child: Container(
+                    width: 52,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF7C57FC),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    alignment: Alignment.center,
+                    child: _isPublishing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : SvgPicture.asset(
+                            'assets/Timeline/icons/sent.svg',
+                            width: 24,
+                            height: 24,
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          ),
                   ),
                 ),
               ],

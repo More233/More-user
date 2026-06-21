@@ -361,42 +361,7 @@ class _ExploreSearchScreenState extends State<ExploreSearchScreen> {
                   ],
                 ),
                 
-                if (_searchQuery.isEmpty) ...[
-                  const SizedBox(height: 12),
-                  // Current Location button
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context, {
-                        'type': 'current_location',
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.my_location,
-                            color: Color(0xFF7C57FC),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            "Current Location",
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1A1A2E),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                // Current Location button removed
               ],
             ),
           ),

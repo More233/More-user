@@ -29,7 +29,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: 186,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: similarPlaces.length,
@@ -81,7 +81,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
   }) {
     return Container(
       width: 180,
-      margin: const EdgeInsets.only(right: 12),
+      margin: const EdgeInsets.only(right: 12, bottom: 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),

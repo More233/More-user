@@ -301,9 +301,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
         if (_selectedCategory == "Bars" && type != "Bars") return false;
       }
 
-      // 4. Ticket Mode Filter
+      // 4. Ticket Mode (Plans) Filter
       if (_selectedMapTab == 1) {
-        return place['type'] == 'Ticket';
+        final type = (place['type'] as String? ?? '').toLowerCase();
+        final name = (place['name'] as String? ?? '').toLowerCase();
+        return type == 'ticket' ||
+            type.contains('cinema') ||
+            type.contains('theater') ||
+            type.contains('movie') ||
+            type.contains('museum') ||
+            type.contains('entertainment') ||
+            name.contains('cinema') ||
+            name.contains('theater') ||
+            name.contains('movie') ||
+            name.contains('museum') ||
+            name.contains('entertainment');
       }
 
       // 5. Heatmap Mode Filter: only show places with check-ins
@@ -1126,23 +1138,83 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final supabaseResults = results[1] as Map<String, dynamic>;
       final checkins = supabaseResults['checkins'] as List<Map<String, dynamic>>;
       final customVenues = supabaseResults['customVenues'] as List<Map<String, dynamic>>;
+      final postsRaw = supabaseResults['postsRaw'] as List<dynamic>? ?? [];
+
+      // Calculate real check-in counts (unique visitors) per place_id
+      final placeVisitorCounts = <String, int>{};
+      final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
+      final placeSeenUser = <String, Set<String>>{};
+
+      for (final postObj in postsRaw) {
+        final post = postObj as Map<String, dynamic>;
+        final placeId = post['place_id']?.toString();
+        if (placeId != null && placeId.isNotEmpty) {
+          final author = post['author'] as Map<String, dynamic>?;
+          final authorName = author != null ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim() : 'Anonymous';
+          final authorAvatar = author?['avatar_url'] as String?;
+          
+          placeSeenUser.putIfAbsent(placeId, () => <String>{});
+          if (!placeSeenUser[placeId]!.contains(authorName)) {
+            placeSeenUser[placeId]!.add(authorName);
+            
+            placeVisitorsMap.putIfAbsent(placeId, () => <Map<String, dynamic>>[]).add({
+              'name': authorName,
+              'avatarUrl': authorAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+            });
+          }
+        }
+      }
+
+      placeSeenUser.forEach((placeId, users) {
+        placeVisitorCounts[placeId] = users.length;
+      });
 
       if (mounted) {
         setState(() {
-          final existingIds = _allPlaces.map((p) => p['id']).toSet();
+          final existingIds = _allPlaces.map((p) => p['id'].toString()).toSet();
+          
+          Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
+            final pid = p['id'].toString();
+            final updated = Map<String, dynamic>.from(p);
+            if (placeVisitorCounts.containsKey(pid)) {
+              updated['peopleCount'] = placeVisitorCounts[pid];
+              updated['visitors'] = placeVisitorsMap[pid];
+              updated['reviewsCount'] = placeVisitorCounts[pid];
+            } else {
+              updated['peopleCount'] = 0;
+              updated['visitors'] = <Map<String, dynamic>>[];
+            }
+            return updated;
+          }
+
           for (final p in foursquarePlaces) {
-            if (!existingIds.contains(p['id'])) {
-              _allPlaces.add(p);
+            final updated = updatePlaceData(p);
+            final pidStr = p['id'].toString();
+            if (!existingIds.contains(pidStr)) {
+              _allPlaces.add(updated);
+            } else {
+              final index = _allPlaces.indexWhere((x) => x['id'].toString() == pidStr);
+              if (index != -1) {
+                _allPlaces[index] = updatePlaceData(_allPlaces[index]);
+              }
             }
           }
           for (final c in checkins) {
-            if (!existingIds.contains(c['id'])) {
+            final cidStr = c['id'].toString();
+            if (!existingIds.contains(cidStr)) {
               _allPlaces.add(c);
             }
           }
           for (final v in customVenues) {
-            if (!existingIds.contains(v['id'])) {
-              _allPlaces.add(v);
+            final updated = updatePlaceData(v);
+            final vidStr = v['id'].toString();
+            if (!existingIds.contains(vidStr)) {
+              _allPlaces.add(updated);
+            } else {
+              final index = _allPlaces.indexWhere((x) => x['id'].toString() == vidStr);
+              if (index != -1) {
+                _allPlaces[index] = updatePlaceData(_allPlaces[index]);
+              }
             }
           }
         });

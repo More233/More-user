@@ -96,6 +96,22 @@ class ExploreDataService {
     final cat = categories.first;
     final String name = (cat['name'] as String? ?? '').toLowerCase();
 
+    if (name.contains('cinema') ||
+        name.contains('theater') ||
+        name.contains('movie') ||
+        name.contains('museum') ||
+        name.contains('entertainment') ||
+        name.contains('ticket') ||
+        name.contains('event') ||
+        name.contains('show') ||
+        name.contains('art gallery') ||
+        name.contains('aquarium') ||
+        name.contains('zoo') ||
+        name.contains('stadium') ||
+        name.contains('theme park')) {
+      return 'Ticket';
+    }
+
     if (name.contains('restaurant') ||
         name.contains('food') ||
         name.contains('dining') ||
@@ -255,6 +271,19 @@ class ExploreDataService {
     if (types.isEmpty) return 'Other';
     final typesLower = types.map((t) => (t as String).toLowerCase()).toList();
 
+    if (typesLower.contains('movie_theater') ||
+        typesLower.contains('museum') ||
+        typesLower.contains('art_gallery') ||
+        typesLower.contains('stadium') ||
+        typesLower.contains('amusement_park') ||
+        typesLower.contains('zoo') ||
+        typesLower.contains('aquarium') ||
+        typesLower.contains('bowling_alley') ||
+        typesLower.contains('casino') ||
+        typesLower.contains('theater')) {
+      return 'Ticket';
+    }
+
     if (typesLower.contains('cafe') || typesLower.contains('coffee') || typesLower.contains('tea_room')) {
       return 'Coffee';
     }
@@ -328,6 +357,9 @@ class ExploreDataService {
       }
     }
 
+    final website = place['website'] as String?;
+    final phone = place['formatted_phone_number'] as String?;
+
     return {
       'id': id,
       'name': name,
@@ -349,6 +381,8 @@ class ExploreDataService {
       'actionType': 'check-in',
       'isRegistered': false,
       'visitors': <Map<String, dynamic>>[],
+      'website': website,
+      'phone': phone,
     };
   }
 
@@ -550,6 +584,8 @@ class ExploreDataService {
         'actionType': 'check-in',
         'isRegistered': false,
         'visitors': <Map<String, dynamic>>[],
+        'website': null,
+        'phone': null,
       };
     }
 
@@ -601,6 +637,7 @@ class ExploreDataService {
   static Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng) async {
     final List<Map<String, dynamic>> checkins = [];
     final List<Map<String, dynamic>> customVenues = [];
+    List<Map<String, dynamic>> postResults = [];
 
     try {
       final client = Supabase.instance.client;
@@ -619,7 +656,7 @@ class ExploreDataService {
           .gte('longitude', lngMin)
           .lte('longitude', lngMax);
 
-      final postResults = List<Map<String, dynamic>>.from(postsResponse as List);
+      postResults = List<Map<String, dynamic>>.from(postsResponse as List);
       for (final res in postResults) {
         final author = res['author'] as Map<String, dynamic>?;
         final authorName = author != null ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim() : 'Anonymous';
@@ -686,7 +723,7 @@ class ExploreDataService {
           'rating': 4.5,
           'reviewsCount': 5,
           'price': r'$$',
-          'peopleCount': 3,
+          'peopleCount': 0,
           'type': res['category_name'] as String? ?? 'default',
           'imageUrl': getPlaceholderUrl(res['category_name'] as String? ?? 'Other', res['id'] as String? ?? ''),
           'isSaved': false,
@@ -699,7 +736,11 @@ class ExploreDataService {
       debugPrint("Error fetching Supabase checkins and venues: $e");
     }
 
-    return {'checkins': checkins, 'customVenues': customVenues};
+    return {
+      'checkins': checkins,
+      'customVenues': customVenues,
+      'postsRaw': postResults,
+    };
   }
 
   static Future<Map<String, dynamic>?> fetchVisitorsForNonFoursquare(Map<String, dynamic> place) async {
