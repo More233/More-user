@@ -74,7 +74,7 @@ class ExploreListView extends StatelessWidget {
                     image: DecorationImage(
                       image: userAvatarUrl != null
                           ? NetworkImage(userAvatarUrl!)
-                          : const AssetImage('assets/Timeline/images/element.png') as ImageProvider,
+                          : const AssetImage('assets/home/images/element.png') as ImageProvider,
                       fit: BoxFit.cover,
                     ),
                   ),

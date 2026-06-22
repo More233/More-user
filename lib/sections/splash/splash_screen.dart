@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../permissions/permissions_page.dart';
-import '../timeline/timeline_screen.dart';
+import '../home/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           if (profile != null && profile['username'] != null) {
             // Logged in with completed profile
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const TimelineScreen()),
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
             );
             return;
           } else {

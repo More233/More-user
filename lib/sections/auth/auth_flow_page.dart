@@ -8,7 +8,7 @@ import 'steps/basic_info_step.dart';
 import 'steps/birthday_step.dart';
 import 'steps/interests_step.dart';
 import 'steps/add_friends_step.dart';
-import '../timeline/timeline_screen.dart';
+import '../home/home_screen.dart';
 
 enum AuthStep {
   splash,
@@ -48,7 +48,7 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
           if (profile != null && profile['username'] != null) {
             // User already has a completed profile -> go directly to TimelineScreen
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const TimelineScreen()),
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
             );
             return;
           }
@@ -166,7 +166,7 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const TimelineScreen()),
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
         );
       }
     } on PostgrestException catch (e) {

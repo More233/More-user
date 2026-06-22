@@ -1,12 +1,12 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../timeline/widgets/check_in_composer_screen.dart';
+import '../home/widgets/check_in_composer_screen.dart';
 import 'place_details_screen.dart';
 import 'services/explore_data_service.dart';
 import 'helpers/marker_generator.dart';
@@ -18,10 +18,10 @@ import 'widgets/explore_list_view.dart';
 import 'widgets/explore_map_tabs.dart';
 import 'widgets/explore_view_toggle_pill.dart';
 import 'explore_search_screen.dart';
+import 'models/explore_state.dart';
+import 'view_models/explore_view_model.dart';
 
-
-
-class ExploreScreen extends StatefulWidget {
+class ExploreScreen extends ConsumerStatefulWidget {
   final VoidCallback onBackToTimeline;
   final String? userAvatarUrl;
   const ExploreScreen({
@@ -31,10 +31,10 @@ class ExploreScreen extends StatefulWidget {
   });
 
   @override
-  State<ExploreScreen> createState() => _ExploreScreenState();
+  ConsumerState<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-class _ExploreScreenState extends State<ExploreScreen> {
+class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   static const String _mapStyleJson = '''
 [
   {
@@ -50,25 +50,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 ''';
 
   GoogleMapController? _mapController;
-  int _selectedMapTab = 0; // 0: Globe, 1: Ticket, 2: Heatmap, 3: Favorite
-  String _selectedCategory = ""; // "", "Restaurant", "Coffee", "Bakery", "Bars", "Desserts"
-  bool _filterVisited = false;
-  bool _filterSaved = false;
-  FilterState _filterState = FilterState();
-  String _searchQuery = "";
-  bool _isListView = false;
-  bool _isSearching = false;
-  Timer? _debounceTimer;
   int _lastRoundedZoom = 13;
   double _currentZoom = 13.0;
   final TextEditingController _searchController = TextEditingController();
-
-  final LatLng _currentCameraPosition = const LatLng(24.7136, 46.6753); // Default Riyadh
-  LatLng? _userLocation;
-
-  // Selected place state
-  Map<String, dynamic>? _selectedPlace;
-
   final MarkerGenerator _markerGenerator = MarkerGenerator();
 
   // Status Badge Overlay State
@@ -76,28 +60,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _statusMessage = "";
   Timer? _statusBadgeTimer;
 
-  List<Map<String, dynamic>> _allPlaces = [];
-  final List<Map<String, dynamic>> _recentPlaces = [];
-  LatLng? _lastFetchedLocation;
-
   @override
   void initState() {
     super.initState();
-    BookmarkTracker().init().then((_) {
-      if (mounted) {
-        setState(() {
-          final existingIds = _allPlaces.map((p) => p['id'].toString()).toSet();
-          final savedPlaces = BookmarkTracker().getBookmarkedPlaces();
-          for (final sp in savedPlaces) {
-            final spIdStr = sp['id'].toString();
-            if (!existingIds.contains(spIdStr)) {
-              _allPlaces.add(sp);
-            }
-          }
-        });
-      }
+    Future.microtask(() {
+      ref.read(exploreViewModelProvider.notifier).init();
     });
-    _getUserLocation();
     _markerGenerator.initMarkerIcons(
       zoom: 13.0,
       onUpdate: () {
@@ -112,7 +80,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void dispose() {
     _statusBadgeTimer?.cancel();
     _searchController.dispose();
-    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -131,112 +98,61 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
   }
 
-  Future<void> _getUserLocation() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint("Location services are disabled.");
-        _fetchNearbyPlaces(24.7136, 46.6753);
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
-        Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.medium,
-          timeLimit: const Duration(seconds: 5),
-        );
-        if (mounted) {
-          setState(() {
-            _userLocation = LatLng(position.latitude, position.longitude);
-          });
-          if (_mapController != null) {
-            _mapController!.animateCamera(
-              CameraUpdate.newLatLngZoom(_userLocation!, 15.0),
-            );
-          }
-          _fetchNearbyPlaces(position.latitude, position.longitude);
-        }
-      } else {
-        _fetchNearbyPlaces(24.7136, 46.6753);
-      }
-    } catch (e) {
-      debugPrint("Error getting location: $e");
-      _fetchNearbyPlaces(24.7136, 46.6753);
-    }
-  }
-
-  void _animateToUserLocation() {
-    if (_userLocation != null) {
+  void _animateToUserLocation(LatLng? location) {
+    if (location != null) {
       _mapController?.animateCamera(
         CameraUpdate.newCameraPosition(
-          CameraPosition(target: _userLocation!, zoom: 15.0),
+          CameraPosition(target: location, zoom: 15.0),
         ),
       );
     }
   }
 
-  void _openFilterBottomSheet() {
+  void _openFilterBottomSheet(ExploreState state) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return ExploreFilterSheet(
-          initialState: _filterState,
+          initialState: state.filterState,
           onApply: (newState) {
-            setState(() {
-              _filterState = newState;
-              _filterVisited = newState.visited;
-              _filterSaved = newState.saved;
-              _selectedPlace = null;
-            });
+            ref.read(exploreViewModelProvider.notifier).updateFilterState(newState);
           },
         );
       },
     );
   }
 
-  void _openSearchScreen() async {
-    final lat = _userLocation?.latitude ?? 24.7136;
-    final lng = _userLocation?.longitude ?? 46.6753;
+  void _openSearchScreen(ExploreState state) async {
+    final lat = state.userLocation?.latitude ?? 24.7136;
+    final lng = state.userLocation?.longitude ?? 46.6753;
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (context) => ExploreSearchScreen(
           userLat: lat,
           userLng: lng,
-          recentPlaces: _recentPlaces,
+          recentPlaces: state.recentPlaces,
           onRecentPlaceAdded: (place) {
-            setState(() {
-              if (!_recentPlaces.any((p) => p['id'] == place['id'])) {
-                _recentPlaces.insert(0, place);
-              }
-            });
+            ref.read(exploreViewModelProvider.notifier).addRecentPlace(place);
           },
           filterState: {
-            'visited': _filterState.visited,
-            'saved': _filterState.saved,
-            'priceLevel': _filterState.priceRange ?? 'Any',
-            'ratingMin': _filterState.minRating ?? 0.0,
-            'openNow': _filterState.openNow,
+            'visited': state.filterState.visited,
+            'saved': state.filterState.saved,
+            'priceLevel': state.filterState.priceRange ?? 'Any',
+            'ratingMin': state.filterState.minRating ?? 0.0,
+            'openNow': state.filterState.openNow,
           },
           onFilterStateChanged: (updatedFilters) {
-            setState(() {
-              _filterState = _filterState.copyWith(
-                visited: updatedFilters['visited'] as bool?,
-                saved: updatedFilters['saved'] as bool?,
-                openNow: updatedFilters['openNow'] as bool?,
-                minRating: () => updatedFilters['ratingMin'] as double?,
-                priceRange: () => updatedFilters['priceLevel'] == 'Any' ? null : updatedFilters['priceLevel'] as String?,
-              );
-              _filterVisited = _filterState.visited;
-              _filterSaved = _filterState.saved;
-            });
+            final updatedState = state.filterState.copyWith(
+              visited: updatedFilters['visited'] as bool?,
+              saved: updatedFilters['saved'] as bool?,
+              openNow: updatedFilters['openNow'] as bool?,
+              minRating: () => updatedFilters['ratingMin'] as double?,
+              priceRange: () => updatedFilters['priceLevel'] == 'Any' ? null : updatedFilters['priceLevel'] as String?,
+            );
+            ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
           },
         ),
       ),
@@ -247,17 +163,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
         final place = result['place'] as Map<String, dynamic>;
         final updatedPlace = Map<String, dynamic>.from(place);
         updatedPlace['isSaved'] = BookmarkTracker().isBookmarked(place['id'].toString());
-        setState(() {
-          final idx = _allPlaces.indexWhere((p) => p['id'].toString() == updatedPlace['id'].toString());
-          if (idx == -1) {
-            _allPlaces.add(updatedPlace);
-          } else {
-            _allPlaces[idx] = updatedPlace;
-          }
-          _searchQuery = "";
-          _searchController.text = updatedPlace['name']?.toString() ?? '';
-        });
-        _selectPlaceAndLoadDetails(updatedPlace);
+        
+        final list = List<Map<String, dynamic>>.from(state.allPlaces);
+        final idx = list.indexWhere((p) => p['id'].toString() == updatedPlace['id'].toString());
+        if (idx == -1) {
+          list.add(updatedPlace);
+        } else {
+          list[idx] = updatedPlace;
+        }
+        ref.read(exploreViewModelProvider.notifier).updateAllPlacesManual(list);
+        ref.read(exploreViewModelProvider.notifier).updateSearchQuery("");
+        _searchController.text = updatedPlace['name']?.toString() ?? '';
+        
+        ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(updatedPlace);
         _markerGenerator.preloadNetworkIconsForPlaces([place], () {
           if (mounted) setState(() {});
         });
@@ -271,100 +189,86 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
         );
       } else if (result['type'] == 'current_location') {
-        if (_userLocation != null) {
+        if (state.userLocation != null) {
           _mapController?.animateCamera(
             CameraUpdate.newLatLngZoom(
-              LatLng(_userLocation!.latitude, _userLocation!.longitude),
+              LatLng(state.userLocation!.latitude, state.userLocation!.longitude),
               15.0,
             ),
           );
         }
       } else if (result['type'] == 'category') {
         final category = result['category'] as String;
-        final bool isSelected = _selectedCategory == category;
-        setState(() {
-          _selectedCategory = isSelected ? "" : category;
-          _selectedPlace = null;
-          _isListView = false;
-        });
-        _fetchNearbyPlaces(lat, lng, category: _selectedCategory);
+        final bool isSelected = state.selectedCategory == category;
+        ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
+        ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
       }
     }
   }
 
-  List<Map<String, dynamic>> _getFilteredPlaces() {
-    return _allPlaces.where((place) {
-      // 1. Search Query Filter
-      if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
+  List<Map<String, dynamic>> _getFilteredPlaces(ExploreState state) {
+    return state.allPlaces.where((place) {
+      if (state.searchQuery.isNotEmpty) {
+        final query = state.searchQuery.toLowerCase();
         final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
         final arMatches = (place['arabicName'] as String? ?? '').toLowerCase().contains(query);
         if (!nameMatches && !arMatches) return false;
       }
 
-      // 2. Favorite Mode Filter
-      if (_selectedMapTab == 3) {
-        if (_filterVisited && !(place['isVisited'] as bool? ?? false)) return false;
-        if (_filterSaved && !(place['isSaved'] as bool? ?? false)) return false;
-        if (!_filterVisited && !_filterSaved) {
+      if (state.selectedMapTab == 3) {
+        final filterVisited = state.filterState.visited;
+        final filterSaved = state.filterState.saved;
+        if (filterVisited && !(place['isVisited'] as bool? ?? false)) return false;
+        if (filterSaved && !(place['isSaved'] as bool? ?? false)) return false;
+        if (!filterVisited && !filterSaved) {
           return (place['isVisited'] as bool? ?? false) || (place['isSaved'] as bool? ?? false);
         }
         return true;
       }
 
-      // 3. Category Filter (only active on Discover tab)
-      if (_selectedMapTab == 0 && _selectedCategory.isNotEmpty) {
+      if (state.selectedMapTab == 0 && state.selectedCategory.isNotEmpty) {
         final type = place['type'] as String? ?? 'Other';
-        if (_selectedCategory == "Restaurant" && type != "Restaurant") return false;
-        if (_selectedCategory == "Coffee" && type != "Coffee") return false;
-        if (_selectedCategory == "Bakery" && type != "Bakery") return false;
-        if (_selectedCategory == "Bars" && type != "Bars") return false;
+        if (state.selectedCategory == "Restaurant" && type != "Restaurant") return false;
+        if (state.selectedCategory == "Coffee" && type != "Coffee") return false;
+        if (state.selectedCategory == "Bakery" && type != "Bakery") return false;
+        if (state.selectedCategory == "Bars" && type != "Bars") return false;
       }
 
-      // 4. Ticket Mode (Plans) Filter
-      if (_selectedMapTab == 1) {
+      if (state.selectedMapTab == 1) {
         return place['actionType'] == 'Book';
       }
 
-      // 5. Heatmap Mode Filter: only show places with check-ins
-      if (_selectedMapTab == 2) {
+      if (state.selectedMapTab == 2) {
         final peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
         if (peopleCount <= 0) return false;
       }
-
-      // --- New Filter Sheet Filters ---
       
-      // A. Distance Filter
-      if (_filterState.maxDistance != null) {
+      if (state.filterState.maxDistance != null) {
         final double? dist = _parseDistance(place['distance'] as String?);
-        if (dist == null || dist > _filterState.maxDistance!) {
+        if (dist == null || dist > state.filterState.maxDistance!) {
           return false;
         }
       }
 
-      // B. Open Now Filter
-      if (_filterState.openNow) {
+      if (state.filterState.openNow) {
         final openNow = place['openNow'] as bool? ?? true;
         if (!openNow) return false;
       }
 
-      // C. Rating Filter
-      if (_filterState.minRating != null) {
+      if (state.filterState.minRating != null) {
         final rating = (place['rating'] as num? ?? 0.0).toDouble();
-        if (rating < _filterState.minRating!) return false;
+        if (rating < state.filterState.minRating!) return false;
       }
 
-      // D. Price Filter
-      if (_filterState.priceRange != null) {
+      if (state.filterState.priceRange != null) {
         final price = place['price'] as String? ?? r'$$';
-        if (price != _filterState.priceRange) return false;
+        if (price != state.filterState.priceRange) return false;
       }
 
-      // E. Places Filters
-      if (_filterState.visited && !(place['isVisited'] as bool? ?? false)) return false;
-      if (_filterState.saved && !(place['isSaved'] as bool? ?? false)) return false;
-      if (_filterState.newToMe && (place['isVisited'] as bool? ?? false)) return false;
-      if (_filterState.onList && !(place['isSaved'] as bool? ?? false)) return false;
+      if (state.filterState.visited && !(place['isVisited'] as bool? ?? false)) return false;
+      if (state.filterState.saved && !(place['isSaved'] as bool? ?? false)) return false;
+      if (state.filterState.newToMe && (place['isVisited'] as bool? ?? false)) return false;
+      if (state.filterState.onList && !(place['isSaved'] as bool? ?? false)) return false;
 
       return true;
     }).toList();
@@ -422,25 +326,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return false;
   }
 
-  Set<Marker> _buildMarkers() {
-    final filtered = _getFilteredPlaces();
+  Set<Marker> _buildMarkers(ExploreState state, List<Map<String, dynamic>> filtered) {
     final Set<Marker> markers = {};
-
     final List<Map<String, dynamic>> placesToDraw = List.from(filtered);
 
-    if (_selectedPlace != null) {
-      final selectedId = _selectedPlace!['id'];
+    if (state.selectedPlace != null) {
+      final selectedId = state.selectedPlace!['id'];
       if (!placesToDraw.any((p) => p['id'] == selectedId)) {
-        placesToDraw.add(_selectedPlace!);
+        placesToDraw.add(state.selectedPlace!);
       }
     }
 
-    final bool useHeatmapStyle = _selectedMapTab == 2;
+    final bool useHeatmapStyle = state.selectedMapTab == 2;
     final normalCustomCache = useHeatmapStyle ? _markerGenerator.customPlaceMarkersNormalHeatmap : _markerGenerator.customPlaceMarkersNormal;
     final selectedCustomCache = useHeatmapStyle ? _markerGenerator.customPlaceMarkersSelectedHeatmap : _markerGenerator.customPlaceMarkersSelected;
 
     for (final place in placesToDraw) {
-      final isSelected = _selectedPlace != null && _selectedPlace!['id'] == place['id'];
+      final isSelected = state.selectedPlace != null && state.selectedPlace!['id'] == place['id'];
       final type = place['type'] as String? ?? 'Other';
       final iconUrl = place['iconUrl'] as String?;
       final isCheckIn = place['isCheckIn'] as bool? ?? false;
@@ -476,7 +378,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             final double glowRadius = radius + 4.0;
             final double cy = glowRadius + 4.0;
             final double textTop = cy + glowRadius + 6.0;
-            // Approximate height matching createMarkerWithLabel (name = 15, visitors = 13)
             final double canvasHeight = textTop + 15.0 + 4.0 + 13.0 + 8.0;
             
             anchorX = 0.5;
@@ -497,7 +398,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
           }
         } else {
-          if (_selectedMapTab == 2) {
+          if (state.selectedMapTab == 2) {
             if (_markerGenerator.heatmapCircleIcons.containsKey(type)) {
               icon = _markerGenerator.heatmapCircleIcons[type]!;
             } else {
@@ -518,7 +419,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
         icon = (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache)[iconUrl]!;
       } else if (_markerGenerator.iconsLoaded) {
-        if (_selectedMapTab == 2) {
+        if (state.selectedMapTab == 2) {
           icon = _markerGenerator.heatmapDotIcons[type] ?? _markerGenerator.heatmapDotIcons['default'] ?? BitmapDescriptor.defaultMarker;
         } else {
           icon = _markerGenerator.dotMarkerIcons[type] ?? _markerGenerator.dotMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
@@ -538,7 +439,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           icon: icon,
           anchor: Offset(anchorX, anchorY),
           onTap: () {
-            _selectPlaceAndLoadDetails(place);
+            ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
             _mapController?.animateCamera(
               CameraUpdate.newLatLng(
                 LatLng((place['latitude'] as num? ?? 0.0).toDouble(), (place['longitude'] as num? ?? 0.0).toDouble()),
@@ -551,11 +452,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return markers;
   }
 
-  Set<Circle> _buildHeatmapCircles() {
-    if (_selectedMapTab != 2) return {};
+  Set<Circle> _buildHeatmapCircles(ExploreState state, List<Map<String, dynamic>> filtered) {
+    if (state.selectedMapTab != 2) return {};
 
     final Set<Circle> circles = {};
-    final List<Map<String, dynamic>> filtered = _getFilteredPlaces();
 
     for (final place in filtered) {
       final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
@@ -564,11 +464,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (peopleCount <= 0) continue;
 
       final String placeId = place['id']?.toString() ?? UniqueKey().toString();
-      
-      // Calculate dynamic radius scaling based on crowd count
       final double baseRadius = 80.0 + (peopleCount * 40.0).clamp(0.0, 400.0);
 
-      // Draw 3 concentric glowing purple circles to create a beautiful heatmap gradient effect
       circles.add(Circle(
         circleId: CircleId('${placeId}_heat_outer'),
         center: LatLng(lat, lng),
@@ -599,6 +496,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(exploreViewModelProvider);
+    final filteredPlaces = _getFilteredPlaces(state);
+
     final double topPadding = MediaQuery.of(context).padding.top;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
     
@@ -606,83 +506,48 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final double controlsBottom = navBarHeight + 24;
     final double overlaysBottom = controlsBottom + 56 + 12;
 
-    final bool showCategoryResultsMode = _selectedCategory.isNotEmpty || _searchQuery.isNotEmpty || _searchController.text.trim().isNotEmpty;
+    final bool showCategoryResultsMode = state.selectedCategory.isNotEmpty ||
+        state.searchQuery.isNotEmpty ||
+        _searchController.text.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          if (_isListView) ...[
+          if (state.isListView) ...[
             Positioned.fill(
               child: ExploreListView(
                 topPadding: topPadding,
                 navBarHeight: navBarHeight,
-                filteredPlaces: _getFilteredPlaces(),
+                filteredPlaces: filteredPlaces,
                 userAvatarUrl: widget.userAvatarUrl,
                 searchController: _searchController,
-                isSearching: _isSearching,
-                searchQuery: _searchQuery,
+                isSearching: state.isSearching,
+                searchQuery: state.searchQuery,
                 onBackToTimeline: widget.onBackToTimeline,
-                onFilterPressed: _openFilterBottomSheet,
+                onFilterPressed: () => _openFilterBottomSheet(state),
                 onSearchChanged: (_) {},
                 onSearchSubmitted: (value) async {
                   if (value.trim().isNotEmpty) {
-                    setState(() {
-                      _isSearching = true;
-                    });
-                    final lat = _userLocation?.latitude ?? 24.7136;
-                    final lng = _userLocation?.longitude ?? 46.6753;
-                    final results = await ExploreDataService.searchFoursquarePlaces(value, lat, lng);
-                    setState(() {
-                      if (results.isNotEmpty) {
-                        _allPlaces = results.map((r) {
-                          final updated = Map<String, dynamic>.from(r);
-                          updated['isSaved'] = BookmarkTracker().isBookmarked(r['id'].toString());
-                          return updated;
-                        }).toList();
-                        _selectedPlace = _allPlaces.first;
-                        _mapController?.animateCamera(
-                          CameraUpdate.newLatLngZoom(
-                            LatLng((_allPlaces.first['latitude'] as num? ?? 0.0).toDouble(), (_allPlaces.first['longitude'] as num? ?? 0.0).toDouble()),
-                            15.0,
-                          ),
-                        );
-                      }
-                      _isSearching = false;
-                    });
-                    if (results.isNotEmpty) {
-                      _markerGenerator.preloadNetworkIconsForPlaces(results, () {
-                        if (mounted) setState(() {});
-                      });
-                      _markerGenerator.preloadPlaceMarkers(results, () {
-                        if (mounted) setState(() {});
-                      });
-                    }
+                    await ref.read(exploreViewModelProvider.notifier).searchPlaces(value);
                   }
                 },
                 onPlaceActionTriggered: _handlePlaceAction,
                 onCategoryTapped: (category) {
-                  final bool isSelected = _selectedCategory == category;
-                  setState(() {
-                    _selectedCategory = isSelected ? "" : category;
-                    _selectedPlace = null;
-                    _isListView = false;
-                  });
-
-                  final lat = _userLocation?.latitude ?? 24.7136;
-                  final lng = _userLocation?.longitude ?? 46.6753;
-                  _fetchNearbyPlaces(lat, lng, category: _selectedCategory);
+                  final bool isSelected = state.selectedCategory == category;
+                  ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
+                  final lat = state.userLocation?.latitude ?? 24.7136;
+                  final lng = state.userLocation?.longitude ?? 46.6753;
+                  ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
                 },
-                selectedCategory: _selectedCategory,
+                selectedCategory: state.selectedCategory,
                 onClearSearch: () {
-                  setState(() {
-                    _searchQuery = "";
-                    _searchController.clear();
-                    _selectedPlace = null;
-                    _isListView = false;
-                  });
+                  ref.read(exploreViewModelProvider.notifier).updateSearchQuery("");
+                  _searchController.clear();
+                  ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
+                  ref.read(exploreViewModelProvider.notifier).updateListView(false);
                 },
-                onSearchTap: _openSearchScreen,
+                onSearchTap: () => _openSearchScreen(state),
               ),
             ),
           ] else ...[
@@ -690,14 +555,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: GoogleMap(
                 style: _mapStyleJson,
                 initialCameraPosition: CameraPosition(
-                  target: _currentCameraPosition,
+                  target: const LatLng(24.7136, 46.6753),
                   zoom: 13.0,
                 ),
                 onMapCreated: (controller) {
                   _mapController = controller;
-                  if (_userLocation != null) {
+                  if (state.userLocation != null) {
                     _mapController!.animateCamera(
-                      CameraUpdate.newLatLngZoom(_userLocation!, 13.0),
+                      CameraUpdate.newLatLngZoom(state.userLocation!, 13.0),
                     );
                   }
                 },
@@ -724,17 +589,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 },
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
-                myLocationEnabled: _userLocation != null,
+                myLocationEnabled: state.userLocation != null,
                 myLocationButtonEnabled: false,
-                markers: _buildMarkers(),
-                circles: _buildHeatmapCircles(),
+                markers: _buildMarkers(state, filteredPlaces),
+                circles: _buildHeatmapCircles(state, filteredPlaces),
                 onTap: (latLng) {
-                  setState(() {
-                    _selectedPlace = null;
-                  });
+                  ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
                 },
                 onLongPress: (latLng) {
-                  _onMapTapped(latLng);
+                  _onMapTapped(latLng, state);
                 },
                 onCameraIdle: () {
                   if (_mapController != null) {
@@ -743,19 +606,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
                         (bounds.northeast.longitude + bounds.southwest.longitude) / 2,
                       );
-                      if (_lastFetchedLocation == null) {
-                        _lastFetchedLocation = center;
-                        _fetchNearbyPlaces(center.latitude, center.longitude);
+                      if (state.lastFetchedLocation == null) {
+                        ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude);
                       } else {
                         final distance = Geolocator.distanceBetween(
-                          _lastFetchedLocation!.latitude,
-                          _lastFetchedLocation!.longitude,
+                          state.lastFetchedLocation!.latitude,
+                          state.lastFetchedLocation!.longitude,
                           center.latitude,
                           center.longitude,
                         );
                         if (distance > 1500) {
-                          _lastFetchedLocation = center;
-                          _fetchNearbyPlaces(center.latitude, center.longitude);
+                          ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude);
                         }
                       }
                     });
@@ -764,37 +625,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
             ),
 
-            if (_selectedPlace != null)
+            if (state.selectedPlace != null)
               Positioned(
                 left: 16,
                 right: 16,
                 bottom: overlaysBottom,
                 child: ExplorePlaceCard(
-                  place: _selectedPlace!,
+                  place: state.selectedPlace!,
                   onSavedChanged: (val) {
-                    setState(() {
-                      _selectedPlace!['isSaved'] = val;
-                      final idx = _allPlaces.indexWhere((p) => p['id'] == _selectedPlace!['id']);
-                      if (idx != -1) {
-                        _allPlaces[idx]['isSaved'] = val;
-                      }
-                    });
-                    BookmarkTracker().setBookmarked(_selectedPlace!, val);
+                    ref.read(exploreViewModelProvider.notifier).toggleBookmark(state.selectedPlace!, val);
                   },
-                  onActionTriggered: () => _handlePlaceAction(_selectedPlace!),
+                  onActionTriggered: () => _handlePlaceAction(state.selectedPlace!),
                   onViewPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => PlaceDetailsScreen(
-                          place: _selectedPlace!,
-                          onActionTriggered: () => _handlePlaceAction(_selectedPlace!),
+                          place: state.selectedPlace!,
+                          onActionTriggered: () => _handlePlaceAction(state.selectedPlace!),
                         ),
                       ),
                     );
                   },
                   onInteractionPressed: () {
-                    final authorName = _selectedPlace!['authorName'] as String? ?? 'Anonymous';
+                    final authorName = state.selectedPlace!['authorName'] as String? ?? 'Anonymous';
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
@@ -811,7 +665,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: overlaysBottom + (_selectedPlace != null ? 140 : 0),
+                bottom: overlaysBottom + (state.selectedPlace != null ? 140 : 0),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -842,7 +696,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
               ),
 
-            if (_selectedMapTab != 2)
+            if (state.selectedMapTab != 2)
               Positioned(
                 top: 0,
                 left: 0,
@@ -860,48 +714,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onSuggestionTapped: (_) {},
                   iconDataGetter: (type) => _markerGenerator.getIconDataForType(type),
                   topPadding: topPadding,
-                  onTap: _openSearchScreen,
+                  onTap: () => _openSearchScreen(state),
                 ),
               ),
 
-            if (_selectedMapTab != 2)
+            if (state.selectedMapTab != 2)
               Positioned(
                 top: topPadding + 80,
                 left: 0,
                 right: 0,
                 child: ExploreCategoryFilters(
-                  selectedMapTab: _selectedMapTab,
-                  selectedCategory: _selectedCategory,
-                  filterVisited: _filterVisited,
-                  filterSaved: _filterSaved,
+                  selectedMapTab: state.selectedMapTab,
+                  selectedCategory: state.selectedCategory,
+                  filterVisited: state.filterState.visited,
+                  filterSaved: state.filterState.saved,
                   onCategoryTapped: (category) {
-                    final bool isSelected = _selectedCategory == category;
-                    setState(() {
-                      _selectedCategory = isSelected ? "" : category;
-                      _selectedPlace = null;
-                      _isListView = false;
-                    });
-                    final lat = _userLocation?.latitude ?? 24.7136;
-                    final lng = _userLocation?.longitude ?? 46.6753;
-                    _fetchNearbyPlaces(lat, lng, category: _selectedCategory);
+                    final bool isSelected = state.selectedCategory == category;
+                    ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
+                    final lat = state.userLocation?.latitude ?? 24.7136;
+                    final lng = state.userLocation?.longitude ?? 46.6753;
+                    ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
                   },
                   onFilterVisitedTapped: () {
-                    setState(() {
-                      _filterVisited = !_filterVisited;
-                      _filterState = _filterState.copyWith(visited: _filterVisited);
-                    });
+                    final updatedState = state.filterState.copyWith(visited: !state.filterState.visited);
+                    ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
                   },
                   onFilterSavedTapped: () {
-                    setState(() {
-                      _filterSaved = !_filterSaved;
-                      _filterState = _filterState.copyWith(saved: _filterSaved);
-                    });
+                    final updatedState = state.filterState.copyWith(saved: !state.filterState.saved);
+                    ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
                   },
                   topPadding: topPadding,
                 ),
               ),
-
-
 
             if (!showCategoryResultsMode)
               Positioned(
@@ -912,7 +756,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     GestureDetector(
-                      onTap: _animateToUserLocation,
+                      onTap: () => _animateToUserLocation(state.userLocation),
                       child: Container(
                         width: 56,
                         height: 56,
@@ -941,13 +785,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
 
                     ExploreMapTabs(
-                      selectedMapTab: _selectedMapTab,
+                      selectedMapTab: state.selectedMapTab,
                       onTabChanged: (index) {
-                        setState(() {
-                          _selectedMapTab = index;
-                          _selectedPlace = null;
-                        });
-                        
+                        ref.read(exploreViewModelProvider.notifier).updateMapTab(index);
                         String msg = "";
                         if (index == 0) msg = "Discover";
                         if (index == 1) msg = "Plans";
@@ -990,18 +830,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
           ],
 
-          if (_selectedPlace == null && (_isListView || showCategoryResultsMode))
+          if (state.selectedPlace == null && (state.isListView || showCategoryResultsMode))
             Positioned(
               left: 0,
               right: 0,
               bottom: controlsBottom,
               child: Center(
                 child: ExploreViewTogglePill(
-                  isListView: _isListView,
+                  isListView: state.isListView,
                   onViewChanged: (isList) {
-                    setState(() {
-                      _isListView = isList;
-                    });
+                    ref.read(exploreViewModelProvider.notifier).updateListView(isList);
                   },
                 ),
               ),
@@ -1011,77 +849,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-
-
-
-
-  void _selectPlaceAndLoadDetails(Map<String, dynamic> place) {
-    setState(() {
-      _selectedPlace = place;
-    });
-
-    final String placeId = place['id'].toString();
-    final String name = place['name'] as String? ?? '';
-    final double plat = (place['latitude'] as num?)?.toDouble() ?? 0.0;
-    final double plng = (place['longitude'] as num?)?.toDouble() ?? 0.0;
-
-    final bool isFoursquare = !placeId.startsWith('tapped_') &&
-                              !placeId.startsWith('swarm_') &&
-                              place['isCheckIn'] != true &&
-                              place['isCustomVenue'] != true;
-
-    final double userLat = _userLocation?.latitude ?? plat;
-    final double userLng = _userLocation?.longitude ?? plng;
-
-    if (isFoursquare) {
-      ExploreDataService.fetchPlaceDetails(
-        placeId,
-        name,
-        plat,
-        plng,
-        userLat,
-        userLng,
-      ).then((fullPlace) {
-        if (fullPlace != null && mounted && _selectedPlace?['id'] == placeId) {
-          setState(() {
-            _selectedPlace = fullPlace;
-            final idx = _allPlaces.indexWhere((p) => p['id'] == placeId);
-            if (idx != -1) {
-              _allPlaces[idx] = fullPlace;
-            }
-          });
-          _markerGenerator.preloadNetworkIconsForPlaces([fullPlace], () {
-            if (mounted) setState(() {});
-          });
-          _markerGenerator.preloadPlaceMarkers([fullPlace], () {
-            if (mounted) setState(() {});
-          });
-        }
-      });
-    } else {
-      ExploreDataService.fetchVisitorsForNonFoursquare(place).then((updatedPlace) {
-        if (updatedPlace != null && mounted && _selectedPlace?['id'] == placeId) {
-          setState(() {
-            _selectedPlace = updatedPlace;
-            final idx = _allPlaces.indexWhere((p) => p['id'] == placeId);
-            if (idx != -1) {
-              _allPlaces[idx] = updatedPlace;
-            }
-          });
-        }
-      });
-    }
-  }
-
-  Future<void> _onMapTapped(LatLng latLng) async {
+  Future<void> _onMapTapped(LatLng latLng, ExploreState state) async {
     FocusScope.of(context).unfocus();
-    
-    setState(() {
-      _selectedPlace = null;
-    });
+    ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
 
-    final double userLat = _userLocation?.latitude ?? latLng.latitude;
-    final double userLng = _userLocation?.longitude ?? latLng.longitude;
+    final double userLat = state.userLocation?.latitude ?? latLng.latitude;
+    final double userLng = state.userLocation?.longitude ?? latLng.longitude;
 
     try {
       final place = await ExploreDataService.fetchPlaceDetails(
@@ -1093,9 +866,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         userLng,
       );
       if (place != null && place['id'].toString().isNotEmpty && !place['id'].toString().startsWith('tapped_') && mounted) {
-        setState(() {
-          _selectedPlace = place;
-        });
+        ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(place);
         _mapController?.animateCamera(
           CameraUpdate.newLatLng(latLng),
         );
@@ -1141,133 +912,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     debugPrint("No POI found. Dropping manual fallback pin.");
 
     if (mounted) {
-      setState(() {
-        _selectedPlace = fallbackPlace;
-      });
+      ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(fallbackPlace);
       _mapController?.animateCamera(
         CameraUpdate.newLatLng(latLng),
       );
-    }
-  }
-
-
-
-  Future<void> _fetchNearbyPlaces(double lat, double lng, {String? category}) async {
-    try {
-      _lastFetchedLocation = LatLng(lat, lng);
-      final results = await Future.wait([
-        ExploreDataService.fetchNearbyFoursquarePlaces(lat, lng),
-        ExploreDataService.fetchSupabaseCheckinsAndVenues(lat, lng),
-      ]);
-
-      final foursquarePlaces = results[0] as List<Map<String, dynamic>>;
-      final supabaseResults = results[1] as Map<String, dynamic>;
-      final checkins = supabaseResults['checkins'] as List<Map<String, dynamic>>;
-      final customVenues = supabaseResults['customVenues'] as List<Map<String, dynamic>>;
-      final postsRaw = supabaseResults['postsRaw'] as List<dynamic>? ?? [];
-
-      // Calculate real check-in counts (unique visitors) per place_id
-      final placeVisitorCounts = <String, int>{};
-      final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
-      final placeSeenUser = <String, Set<String>>{};
-
-      for (final postObj in postsRaw) {
-        final post = postObj as Map<String, dynamic>;
-        final placeId = post['place_id']?.toString();
-        if (placeId != null && placeId.isNotEmpty) {
-          final author = post['author'] as Map<String, dynamic>?;
-          final authorName = author != null ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim() : 'Anonymous';
-          final authorAvatar = author?['avatar_url'] as String?;
-          
-          placeSeenUser.putIfAbsent(placeId, () => <String>{});
-          if (!placeSeenUser[placeId]!.contains(authorName)) {
-            placeSeenUser[placeId]!.add(authorName);
-            
-            placeVisitorsMap.putIfAbsent(placeId, () => <Map<String, dynamic>>[]).add({
-              'name': authorName,
-              'avatarUrl': authorAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-            });
-          }
-        }
-      }
-
-      placeSeenUser.forEach((placeId, users) {
-        placeVisitorCounts[placeId] = users.length;
-      });
-
-      if (mounted) {
-        setState(() {
-          final existingIds = _allPlaces.map((p) => p['id'].toString()).toSet();
-          
-          Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
-            final pid = p['id'].toString();
-            final updated = Map<String, dynamic>.from(p);
-            updated['isSaved'] = BookmarkTracker().isBookmarked(pid);
-            if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
-              updated['peopleCount'] = placeVisitorCounts[pid];
-              updated['visitors'] = placeVisitorsMap[pid];
-            } else {
-              final originalReviewsCount = (p['reviewsCount'] as num?)?.toInt() ?? 5;
-              updated['peopleCount'] = ExploreDataService.calculateSimulatedBusyness(pid, originalReviewsCount);
-              updated['visitors'] = <Map<String, dynamic>>[];
-            }
-            return updated;
-          }
-
-          for (final p in foursquarePlaces) {
-            final updated = updatePlaceData(p);
-            final pidStr = p['id'].toString();
-            if (!existingIds.contains(pidStr)) {
-              _allPlaces.add(updated);
-            } else {
-              final index = _allPlaces.indexWhere((x) => x['id'].toString() == pidStr);
-              if (index != -1) {
-                _allPlaces[index] = updatePlaceData(_allPlaces[index]);
-              }
-            }
-          }
-          for (final c in checkins) {
-            final cidStr = c['id'].toString();
-            if (!existingIds.contains(cidStr)) {
-              _allPlaces.add(c);
-            }
-          }
-          for (final v in customVenues) {
-            final updated = updatePlaceData(v);
-            final vidStr = v['id'].toString();
-            if (!existingIds.contains(vidStr)) {
-              _allPlaces.add(updated);
-            } else {
-              final index = _allPlaces.indexWhere((x) => x['id'].toString() == vidStr);
-              if (index != -1) {
-                _allPlaces[index] = updatePlaceData(_allPlaces[index]);
-              }
-            }
-          }
-
-          // Also insert all locally bookmarked places if not already in _allPlaces
-          final savedPlaces = BookmarkTracker().getBookmarkedPlaces();
-          for (final sp in savedPlaces) {
-            final spIdStr = sp['id'].toString();
-            if (!existingIds.contains(spIdStr)) {
-              _allPlaces.add(sp);
-            }
-          }
-        });
-
-        _markerGenerator.preloadNetworkIconsForPlaces(foursquarePlaces, () {
-          if (mounted) setState(() {});
-        });
-        final List<Map<String, dynamic>> allPlacesToPreload = [...foursquarePlaces, ...customVenues];
-        _markerGenerator.preloadPlaceMarkers(allPlacesToPreload, () {
-          if (mounted) setState(() {});
-        });
-        await _markerGenerator.preloadCheckInAvatars(checkins, () {
-          if (mounted) setState(() {});
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching nearby places: $e");
     }
   }
 

@@ -77,7 +77,7 @@ class ExploreSearchBar extends StatelessWidget {
                 backgroundImage: userAvatarUrl != null
                     ? NetworkImage(userAvatarUrl!) as ImageProvider
                     : const AssetImage(
-                        'assets/Timeline/images/element.png',
+                        'assets/home/images/element.png',
                       ),
               ),
             ),

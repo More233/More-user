@@ -46,11 +46,13 @@ serve(async (req: Request) => {
     // 3. Get sender's name and avatar
     const { data: senderProfile } = await supabase
       .from('profiles')
-      .select('full_name, avatar_url')
+      .select('first_name, last_name, avatar_url')
       .eq('id', senderId)
       .single()
 
-    const senderName = senderProfile?.full_name ?? 'Someone'
+    const firstName = senderProfile?.first_name ?? ''
+    const lastName = senderProfile?.last_name ?? ''
+    const senderName = `${firstName} ${lastName}`.trim() || 'Someone'
     const senderAvatar = senderProfile?.avatar_url ?? ''
 
     // 4. Construct body text

@@ -10,7 +10,7 @@ import 'widgets/place_details_check_in_section.dart';
 import 'widgets/place_details_rating_section.dart';
 import 'widgets/place_details_tips_section.dart';
 import 'widgets/place_details_similar_places_section.dart';
-import '../timeline/widgets/check_in_composer_screen.dart';
+import '../home/widgets/check_in_composer_screen.dart';
 import 'helpers/bookmark_tracker.dart';
 
 

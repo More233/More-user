@@ -156,7 +156,7 @@ class ExplorePlaceCard extends StatelessWidget {
                   backgroundColor: const Color(0xFFF3F4F6),
                   backgroundImage: authorAvatar != null && authorAvatar.isNotEmpty
                       ? NetworkImage(authorAvatar)
-                      : const AssetImage('assets/Timeline/images/element.png') as ImageProvider,
+                      : const AssetImage('assets/home/images/element.png') as ImageProvider,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -275,8 +275,8 @@ class ExplorePlaceCard extends StatelessWidget {
                               alignment: Alignment.center,
                               child: SvgPicture.asset(
                                 isSaved
-                                    ? 'assets/Timeline/icons/bookmark_02_1.svg'
-                                    : 'assets/Timeline/icons/bookmark_02.svg',
+                                    ? 'assets/home/icons/bookmark_02_1.svg'
+                                    : 'assets/home/icons/bookmark_02.svg',
                                 width: 22,
                                 height: 22,
                                 colorFilter: ColorFilter.mode(

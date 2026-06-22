@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'sections/splash/splash_screen.dart';
 import 'services/notification_service.dart';
 
@@ -14,7 +15,7 @@ void main() async {
   // Initialize push notifications (fail-safe)
   await NotificationService().initialize();
 
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {

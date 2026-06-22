@@ -1,0 +1,720 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../models/timeline_post.dart';
+import '../models/collection_model.dart';
+import '../models/collections_state.dart';
+import '../view_models/collections_view_model.dart';
+
+class SaveToListBottomSheet extends ConsumerStatefulWidget {
+  final TimelinePost post;
+  final Function(bool) onSavedStateChanged;
+
+  const SaveToListBottomSheet({
+    super.key,
+    required this.post,
+    required this.onSavedStateChanged,
+  });
+
+  @override
+  ConsumerState<SaveToListBottomSheet> createState() => _SaveToListBottomSheetState();
+}
+
+class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
+  bool _isNewCollectionView = false;
+  final TextEditingController _collectionNameController = TextEditingController();
+  bool _isSaveButtonEnabled = false;
+
+  Widget _buildCoverImage(String? path, {
+    double size = 48,
+    CategoryIconType? categoryIcon,
+    bool isCollection = false,
+  }) {
+    final bool isPlaceholder = path == null || path.endsWith('sa.png');
+
+    if (isPlaceholder) {
+      if (isCollection) {
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2EEFC),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.folder_rounded,
+              color: Color(0xFF7C57FC),
+              size: 24,
+            ),
+          ),
+        );
+      } else {
+        Color bgColor;
+        Color iconColor;
+        String iconSvg;
+
+        switch (categoryIcon) {
+          case CategoryIconType.coffee:
+            bgColor = const Color(0xFFFDF6EC);
+            iconColor = const Color(0xFFE6A23C);
+            iconSvg = 'assets/home/icons/coffee_02.svg';
+            break;
+          case CategoryIconType.camera:
+            bgColor = const Color(0xFFFFF0F5);
+            iconColor = const Color(0xFFFF5B9D);
+            iconSvg = 'assets/home/icons/camera_01_1.svg';
+            break;
+          case CategoryIconType.building:
+          default:
+            bgColor = const Color(0xFFF2EEFC);
+            iconColor = const Color(0xFF7C57FC);
+            iconSvg = 'assets/home/icons/building_05.svg';
+            break;
+        }
+
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: SvgPicture.asset(
+              iconSvg,
+              width: size * 0.5,
+              height: size * 0.5,
+              colorFilter: ColorFilter.mode(
+                iconColor,
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          width: size,
+          height: size,
+          color: Colors.grey[200],
+          child: const Icon(Icons.broken_image, color: Colors.grey),
+        ),
+      );
+    }
+    final isAsset = !path.startsWith('/') && !path.startsWith('file:');
+    if (isAsset) {
+      return Image.asset(
+        path,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      );
+    } else {
+      return Image.file(
+        File(path),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _collectionNameController.addListener(_updateSaveButtonState);
+    Future.microtask(() {
+      ref.read(collectionsViewModelProvider.notifier).init();
+    });
+  }
+
+  @override
+  void dispose() {
+    _collectionNameController.removeListener(_updateSaveButtonState);
+    _collectionNameController.dispose();
+    super.dispose();
+  }
+
+  void _updateSaveButtonState() {
+    final isNotEmpty = _collectionNameController.text.trim().isNotEmpty;
+    if (_isSaveButtonEnabled != isNotEmpty) {
+      setState(() {
+        _isSaveButtonEnabled = isNotEmpty;
+      });
+    }
+  }
+
+  void _showUnsaveConfirmation() {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        backgroundColor: Colors.white,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+              child: Text(
+                'Remove from Saved and\nCollections?',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Removing this will also remove it from all collections',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 14,
+                  color: const Color(0xFF6D6D6D),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            InkWell(
+              onTap: () async {
+                Navigator.pop(dialogCtx);
+                final notifier = ref.read(collectionsViewModelProvider.notifier);
+                final state = ref.read(collectionsViewModelProvider);
+                try {
+                  final savedCol = state.collections.firstWhere(
+                    (c) => c.name.toLowerCase() == 'saved',
+                    orElse: () => CollectionModel(id: '', name: '', postIds: []),
+                  );
+                  if (savedCol.id.isNotEmpty) {
+                    await notifier.removePostFromCollection(savedCol.id, widget.post.id);
+                  }
+                  await notifier.removePostFromAllCollections(widget.post.id);
+                  await notifier.updatePostBookmarkState(widget.post.id, false);
+                  widget.post.isBookmarked = false;
+                  widget.onSavedStateChanged(false);
+                } catch (e) {
+                  debugPrint("Error unsaving post: $e");
+                } finally {
+                  if (mounted) {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                alignment: Alignment.center,
+                child: Text(
+                  'Remove from saved',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFD80000),
+                  ),
+                ),
+              ),
+            ),
+            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            InkWell(
+              onTap: () => Navigator.pop(dialogCtx),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                alignment: Alignment.center,
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF6D6D6D),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleSavedTile(bool save) async {
+    final notifier = ref.read(collectionsViewModelProvider.notifier);
+    final state = ref.read(collectionsViewModelProvider);
+    try {
+      final savedColId = await notifier.getOrCreateSavedCollection();
+      if (save) {
+        await notifier.addPostToCollection(savedColId, widget.post.id);
+        await notifier.updatePostBookmarkState(widget.post.id, true);
+        widget.post.isBookmarked = true;
+        widget.onSavedStateChanged(true);
+      } else {
+        await notifier.removePostFromCollection(savedColId, widget.post.id);
+        bool inOther = false;
+        for (final col in state.collections) {
+          if (col.name.toLowerCase() != 'saved' && col.postIds.contains(widget.post.id)) {
+            inOther = true;
+            break;
+          }
+        }
+        if (!inOther) {
+          await notifier.updatePostBookmarkState(widget.post.id, false);
+          widget.post.isBookmarked = false;
+          widget.onSavedStateChanged(false);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error toggling saved tile: $e");
+    }
+  }
+
+  Widget _buildMainView(CollectionsState colState) {
+    final postImage = widget.post.imageUrl;
+    
+    final savedCol = colState.collections.firstWhere(
+      (c) => c.name.toLowerCase() == 'saved',
+      orElse: () => CollectionModel(id: '', name: '', postIds: []),
+    );
+    final isSavedInSaved = savedCol.postIds.contains(widget.post.id);
+
+    final customCollections = colState.collections
+        .where((c) => c.name.toLowerCase() != 'saved')
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 56,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC1C1C1),
+                borderRadius: BorderRadius.circular(100),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Center(
+            child: Text(
+              'Save to list',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1A1A2E),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: _buildCoverImage(
+                postImage,
+                size: 48,
+                categoryIcon: widget.post.categoryIcon,
+                isCollection: true,
+              ),
+            ),
+            title: Text(
+              'Saved',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            subtitle: Text(
+              'Private',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 12,
+                color: const Color(0xFF82858C),
+              ),
+            ),
+            trailing: IconButton(
+              icon: SvgPicture.asset(
+                isSavedInSaved
+                    ? 'assets/home/icons/bookmark_02.svg'
+                    : 'assets/home/icons/bookmark_02_1.svg',
+                width: 24,
+                height: 24,
+                colorFilter: ColorFilter.mode(
+                  isSavedInSaved ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
+                  BlendMode.srcIn,
+                ),
+              ),
+              onPressed: () {
+                if (isSavedInSaved) {
+                  _showUnsaveConfirmation();
+                } else {
+                  _toggleSavedTile(true);
+                }
+              },
+            ),
+            onTap: () {
+              if (isSavedInSaved) {
+                _showUnsaveConfirmation();
+              } else {
+                _toggleSavedTile(true);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          const SizedBox(height: 16),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Collections',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isNewCollectionView = true;
+                    _collectionNameController.clear();
+                  });
+                },
+                child: Text(
+                  'New Collection',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF7C57FC),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          customCollections.isEmpty
+              ? Container(
+                  height: 100,
+                  alignment: Alignment.center,
+                  child: Text(
+                    'No collections yet',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 14,
+                      color: const Color(0xFF82858C),
+                    ),
+                  ),
+                )
+              : Container(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.3,
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: customCollections.length,
+                    itemBuilder: (context, index) {
+                      final col = customCollections[index];
+                      final notifier = ref.read(collectionsViewModelProvider.notifier);
+                      final inCollection = notifier.isPostInCollection(col.id, widget.post.id);
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: _buildCoverImage(
+                            col.coverImageUrl,
+                            size: 48,
+                            isCollection: true,
+                          ),
+                        ),
+                        title: Text(
+                          col.name,
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Private',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 12,
+                            color: const Color(0xFF82858C),
+                          ),
+                        ),
+                        trailing: GestureDetector(
+                          onTap: () async {
+                            try {
+                              if (inCollection) {
+                                await notifier.removePostFromCollection(col.id, widget.post.id);
+                                bool inOther = false;
+                                for (final c in colState.collections) {
+                                  if (c.postIds.contains(widget.post.id)) {
+                                    inOther = true;
+                                    break;
+                                  }
+                                }
+                                if (!inOther) {
+                                  await notifier.updatePostBookmarkState(widget.post.id, false);
+                                  widget.post.isBookmarked = false;
+                                  widget.onSavedStateChanged(false);
+                                }
+                              } else {
+                                await notifier.addPostToCollection(col.id, widget.post.id);
+                                if (!widget.post.isBookmarked) {
+                                  await notifier.updatePostBookmarkState(widget.post.id, true);
+                                  widget.post.isBookmarked = true;
+                                  widget.onSavedStateChanged(true);
+                                }
+                              }
+                            } catch (e) {
+                              debugPrint("Error toggling custom collection: $e");
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: SvgPicture.asset(
+                              inCollection
+                                  ? 'assets/home/icons/checkmark_circle_01.svg'
+                                  : 'assets/home/icons/add_circle.svg',
+                              width: 28,
+                              height: 28,
+                              colorFilter: ColorFilter.mode(
+                                inCollection ? const Color(0xFF5D5D5D) : const Color(0xFF82858C),
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ),
+                        ),
+                        onTap: () async {
+                          try {
+                            if (inCollection) {
+                              await notifier.removePostFromCollection(col.id, widget.post.id);
+                              bool inOther = false;
+                              for (final c in colState.collections) {
+                                if (c.postIds.contains(widget.post.id)) {
+                                  inOther = true;
+                                  break;
+                                }
+                              }
+                              if (!inOther) {
+                                await notifier.updatePostBookmarkState(widget.post.id, false);
+                                widget.post.isBookmarked = false;
+                                widget.onSavedStateChanged(false);
+                              }
+                            } else {
+                              await notifier.addPostToCollection(col.id, widget.post.id);
+                              if (!widget.post.isBookmarked) {
+                                await notifier.updatePostBookmarkState(widget.post.id, true);
+                                widget.post.isBookmarked = true;
+                                widget.onSavedStateChanged(true);
+                              }
+                            }
+                          } catch (e) {
+                            debugPrint("Error toggling custom collection: $e");
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewCollectionForm(CollectionsState colState) {
+    final postImage = widget.post.imageUrl;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 56,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC1C1C1),
+                borderRadius: BorderRadius.circular(100),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isNewCollectionView = false;
+                  });
+                },
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    color: const Color(0xFF82858C),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Text(
+                'New Collection',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              GestureDetector(
+                onTap: _isSaveButtonEnabled
+                    ? () async {
+                        final name = _collectionNameController.text.trim();
+                        final notifier = ref.read(collectionsViewModelProvider.notifier);
+                        try {
+                          await notifier.addCollection(name, postImage);
+                          
+                          // Look up the newly created collection ID
+                          final updatedState = ref.read(collectionsViewModelProvider);
+                          final newCol = updatedState.collections.firstWhere((c) => c.name == name);
+                          await notifier.addPostToCollection(newCol.id, widget.post.id);
+
+                          if (!widget.post.isBookmarked) {
+                            await notifier.updatePostBookmarkState(widget.post.id, true);
+                            widget.post.isBookmarked = true;
+                            widget.onSavedStateChanged(true);
+                          }
+                        } catch (e) {
+                          debugPrint("Error creating new collection: $e");
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isNewCollectionView = false;
+                            });
+                          }
+                        }
+                      }
+                    : null,
+                child: Text(
+                  'Save',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _isSaveButtonEnabled
+                        ? const Color(0xFF7C57FC)
+                        : const Color(0xFF82858C).withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _buildCoverImage(
+                postImage,
+                size: 200,
+                categoryIcon: widget.post.categoryIcon,
+                isCollection: false,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          Text(
+            'Collection name',
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6F6F6),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextField(
+              controller: _collectionNameController,
+              style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Add a collection name',
+                hintStyle: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 14,
+                  color: const Color(0xFF82858C),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final colState = ref.watch(collectionsViewModelProvider);
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.only(bottom: bottomInset),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+        ),
+        child: colState.isLoading
+            ? const SizedBox(
+                height: 250,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF7C57FC),
+                  ),
+                ),
+              )
+            : AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: _isNewCollectionView ? _buildNewCollectionForm(colState) : _buildMainView(colState),
+              ),
+      ),
+    );
+  }
+}
