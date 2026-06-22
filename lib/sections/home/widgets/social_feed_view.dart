@@ -437,30 +437,30 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
   Widget _buildSocialPostCard(TimelinePost post) {
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE8E8E8),
-            width: 0.8,
-          ),
-        ),
-      ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: post.authorAvatar != null && post.authorAvatar!.isNotEmpty
-                    ? (post.authorAvatar!.startsWith('http')
-                        ? NetworkImage(post.authorAvatar!)
-                        : AssetImage(post.authorAvatar!)) as ImageProvider
-                    : const AssetImage('assets/home/images/avatar_placeholder.png'),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.grey[200],
+            backgroundImage: post.authorAvatar != null && post.authorAvatar!.isNotEmpty
+                ? (post.authorAvatar!.startsWith('http')
+                    ? NetworkImage(post.authorAvatar!)
+                    : AssetImage(post.authorAvatar!)) as ImageProvider
+                : const AssetImage('assets/home/images/avatar_placeholder.png'),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Color(0xFFE8E8E8),
+                    width: 0.8,
+                  ),
+                ),
               ),
-              const SizedBox(width: 12),
-              Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -468,8 +468,8 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                       Text(
                         post.authorName ?? 'unknown',
                         style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                           color: Colors.black,
                         ),
                       ),
@@ -477,131 +477,131 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                       Text(
                         '•  ${post.postTime}',
                         style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: const Color(0xFF82858C),
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () {},
+                        child: const Icon(
+                          Icons.more_vert,
+                          color: Color(0xFF82858C),
+                          size: 20,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {},
-                child: const Icon(
-                  Icons.more_vert,
-                  color: Color(0xFF82858C),
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (post.description.isNotEmpty) ...[
-            Text(
-              post.description,
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                color: const Color(0xFF221F26),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-          if (post.locationAddress.isNotEmpty) ...[
-            Row(
-              children: [
-                SvgPicture.asset(
-                  'assets/home/icons/location_01.svg',
-                  width: 16,
-                  height: 16,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF7C57FC),
-                    BlendMode.srcIn,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    post.locationAddress,
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: const Color(0xFF82858C),
+                  const SizedBox(height: 6),
+                  if (post.description.isNotEmpty) ...[
+                    Text(
+                      post.description,
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 13.5,
+                        color: const Color(0xFF221F26),
+                        height: 1.4,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 8),
+                ],
+                if (post.locationAddress.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      SvgPicture.asset(
+                        'assets/home/icons/location_01.svg',
+                        width: 14,
+                        height: 14,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF7C57FC),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          post.locationAddress,
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF82858C),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (post.imageUrl != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      post.imageUrl!,
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 180,
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                Row(
+                  children: [
+                    _EngagementButton(
+                      iconPath: 'assets/home/icons/like_icon.svg',
+                      count: post.likesCount,
+                      active: post.isLiked,
+                      onTap: () {
+                        ref.read(socialFeedViewModelProvider.notifier).toggleLikeLocal(post.id);
+                        widget.onLike?.call(post);
+                      },
+                    ),
+                    const SizedBox(width: 24),
+                    _EngagementButton(
+                      iconPath: 'assets/home/icons/comment_icon.svg',
+                      count: post.commentsCount,
+                      active: false,
+                      onTap: () => widget.onComment?.call(post),
+                    ),
+                    const SizedBox(width: 24),
+                    _EngagementButton(
+                      iconPath: 'assets/home/icons/share_icon_1.svg',
+                      count: 0,
+                      active: false,
+                      onTap: () => widget.onShare?.call(post),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () {
+                        ref.read(socialFeedViewModelProvider.notifier).toggleBookmarkLocal(post.id);
+                        widget.onBookmark?.call(post);
+                      },
+                      child: SvgPicture.asset(
+                        'assets/home/icons/bookmark_icon.svg',
+                        width: 18,
+                        height: 18,
+                        colorFilter: ColorFilter.mode(
+                          post.isBookmarked ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 16),
               ],
             ),
-            const SizedBox(height: 12),
-          ],
-          if (post.imageUrl != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                post.imageUrl!,
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 200,
-                  color: Colors.grey[200],
-                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            children: [
-              _EngagementButton(
-                iconPath: 'assets/home/icons/like_icon.svg',
-                count: post.likesCount,
-                active: post.isLiked,
-                onTap: () {
-                  ref.read(socialFeedViewModelProvider.notifier).toggleLikeLocal(post.id);
-                  widget.onLike?.call(post);
-                },
-              ),
-              const SizedBox(width: 16),
-              _EngagementButton(
-                iconPath: 'assets/home/icons/comment_icon.svg',
-                count: post.commentsCount,
-                active: false,
-                onTap: () => widget.onComment?.call(post),
-              ),
-              const SizedBox(width: 16),
-              _EngagementButton(
-                iconPath: 'assets/home/icons/share_icon_1.svg',
-                count: 0,
-                active: false,
-                onTap: () => widget.onShare?.call(post),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {
-                  ref.read(socialFeedViewModelProvider.notifier).toggleBookmarkLocal(post.id);
-                  widget.onBookmark?.call(post);
-                },
-                child: SvgPicture.asset(
-                  'assets/home/icons/bookmark_icon.svg',
-                  width: 20,
-                  height: 20,
-                  colorFilter: ColorFilter.mode(
-                    post.isBookmarked ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-            ],
           ),
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }
 
 class _EngagementButton extends StatelessWidget {
@@ -626,19 +626,19 @@ class _EngagementButton extends StatelessWidget {
         children: [
           SvgPicture.asset(
             iconPath,
-            width: 20,
-            height: 20,
+            width: 18,
+            height: 18,
             colorFilter: ColorFilter.mode(
               active ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
               BlendMode.srcIn,
             ),
           ),
           if (count > 0) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Text(
               '$count',
               style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: active ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
               ),
