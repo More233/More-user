@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -33,6 +33,13 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
   @override
   void initState() {
     super.initState();
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.black,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ));
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 5),
@@ -69,6 +76,13 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
 
   @override
   void dispose() {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ));
     _animationController.dispose();
     _textController.dispose();
     _focusNode.dispose();
@@ -533,7 +547,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF1F1F1F)),
+                  leading: SvgPicture.asset(
+                    'assets/home/icons/add_circle.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: const ColorFilter.mode(Color(0xFF1F1F1F), BlendMode.srcIn),
+                  ),
                   title: Text(
                     "Add to Story",
                     style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF1F1F1F), fontWeight: FontWeight.w600),
@@ -549,10 +568,15 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  leading: SvgPicture.asset(
+                    'assets/home/icons/delete_03.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: const ColorFilter.mode(Color(0xFFE53935), BlendMode.srcIn),
+                  ),
                   title: Text(
                     "Delete Story",
-                    style: GoogleFonts.ibmPlexSansArabic(color: Colors.red, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFFE53935), fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -560,7 +584,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.close, color: Colors.grey),
+                  leading: SvgPicture.asset(
+                    'assets/home/icons/cancel_01.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                  ),
                   title: Text(
                     "Cancel",
                     style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
@@ -832,7 +861,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
         'assets/home/icons/user_multiple.svg',
         width: 24,
         height: 24,
-        colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
       );
     }
     
@@ -852,7 +881,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 1.5),
+                border: Border.all(color: Colors.black, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.1),
@@ -877,7 +906,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
 
   Widget _buildOwnerBottomBar(BuildContext context, String currentStoryId, String currentMediaUrl, StoryViewState storyState) {
     return Container(
-      color: Colors.white,
+      color: Colors.black,
       padding: EdgeInsets.fromLTRB(
         16,
         12,
@@ -897,7 +926,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
               'assets/home/icons/like_icon.svg',
               width: 24,
               height: 24,
-              colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
             label: "Highlight",
             onTap: () => _showHighlightBottomSheet(context, currentMediaUrl),
@@ -907,7 +936,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
               'assets/home/icons/sent.svg',
               width: 24,
               height: 24,
-              colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
             label: "Send",
             onTap: () => _showSendBottomSheet(context),
@@ -917,7 +946,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
               'assets/home/icons/at.svg',
               width: 24,
               height: 24,
-              colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
+              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
             ),
             label: "Mention",
             onTap: () => _showMentionBottomSheet(context),
@@ -925,7 +954,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
           _buildBottomBarItem(
             icon: SvgPicture.string(
               '''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 7H20M4 12H20M4 17H20" stroke="#5A5D67" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M4 7H20M4 12H20M4 17H20" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
               </svg>''',
               width: 24,
               height: 24,
@@ -963,7 +992,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
             Text(
               label,
               style: GoogleFonts.ibmPlexSansArabic(
-                color: const Color(0xFF5A5D67),
+                color: Colors.white70,
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
               ),
@@ -1068,7 +1097,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
         : (78.0 + MediaQuery.of(context).padding.bottom);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black,
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
@@ -1175,15 +1204,11 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                     top: 0,
                     left: 0,
                     right: 0,
-                    child: ClipRRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 2.65, sigmaY: 2.65),
-                        child: Container(
-                          color: const Color(0x4D989898),
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                               Row(
                                 children: List.generate(
                                   currentGroup.mediaUrls.length,
@@ -1308,8 +1333,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                             ],
                           ),
                         ),
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -1407,7 +1430,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
               left: 0,
               right: 0,
               child: Container(
-                color: Colors.white,
+                color: Colors.black,
                 padding: EdgeInsets.fromLTRB(
                   16,
                   12,
@@ -1422,19 +1445,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                       child: Container(
                         height: 54,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.circular(27),
                           border: Border.all(
-                            color: const Color(0xFFEFEFEF),
+                            color: Colors.white.withValues(alpha: 0.35),
                             width: 1.0,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         padding: const EdgeInsets.only(left: 16, right: 6),
                         child: Row(
@@ -1444,13 +1460,13 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                 controller: _textController,
                                 focusNode: _focusNode,
                                 style: GoogleFonts.ibmPlexSansArabic(
-                                  color: const Color(0xFF1F1F1F),
+                                  color: Colors.white,
                                   fontSize: 14,
                                 ),
                                 decoration: InputDecoration(
                                   hintText: "Send Message",
                                   hintStyle: GoogleFonts.ibmPlexSansArabic(
-                                    color: const Color(0xFF737373),
+                                    color: Colors.white.withValues(alpha: 0.5),
                                     fontSize: 14,
                                   ),
                                   border: InputBorder.none,
@@ -1487,6 +1503,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                           'assets/home/icons/sent.svg',
                                           width: 24,
                                           height: 24,
+                                          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                         ),
                                       ),
                               ),

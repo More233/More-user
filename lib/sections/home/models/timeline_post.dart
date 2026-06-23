@@ -75,6 +75,58 @@ class TimelinePost {
     this.placeId,
   });
 
+  List<String> get imageUrls {
+    if (imageUrl == null || imageUrl!.isEmpty) return [];
+    return imageUrl!.split(',');
+  }
+
+  String get shortLocationAddress {
+    if (locationAddress.isEmpty) return '';
+    
+    // Split by comma (standard and Arabic)
+    List<String> parts = locationAddress.split(RegExp(r'[,،]'));
+    String primary = parts.first.trim();
+    
+    // If the primary part contains a dash "-", let's check if we should split by it
+    if (primary.contains('-')) {
+      final dashParts = primary.split('-');
+      if (dashParts.first.trim().isNotEmpty) {
+        primary = dashParts.first.trim();
+      }
+    }
+    
+    // If the resulting string is still extremely long, truncate it
+    if (primary.length > 35) {
+      return '${primary.substring(0, 32)}...';
+    }
+    
+    return primary;
+  }
+
+  String get shortTitle {
+    if (title.isEmpty) return '';
+    
+    // Split by comma (standard and Arabic)
+    List<String> parts = title.split(RegExp(r'[,،]'));
+    String primary = parts.first.trim();
+    
+    // If the primary part contains a dash "-", let's check if we should split by it
+    if (primary.contains('-')) {
+      final dashParts = primary.split('-');
+      if (dashParts.first.trim().isNotEmpty) {
+        primary = dashParts.first.trim();
+      }
+    }
+    
+    // If the resulting string is still extremely long, truncate it
+    if (primary.length > 35) {
+      return '${primary.substring(0, 32)}...';
+    }
+    
+    return primary;
+  }
+
+
   TimelinePost copyWith({
     String? id,
     String? title,

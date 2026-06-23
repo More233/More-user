@@ -88,14 +88,24 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
       final currentUserId = client.auth.currentUser?.id;
       if (currentUserId == null) throw Exception("No authenticated user");
 
-      // Upload image if selected and is not an asset
+      // Upload all selected images
       String? publicImageUrl;
       if (widget.selectedImages.isNotEmpty) {
-        final localPath = widget.selectedImages.first;
-        if (localPath.startsWith('assets/')) {
-          publicImageUrl = localPath;
-        } else {
-          publicImageUrl = await _uploadImage(localPath);
+        final List<String> uploadedUrls = [];
+        for (final localPath in widget.selectedImages) {
+          if (localPath.startsWith('assets/')) {
+            uploadedUrls.add(localPath);
+          } else if (localPath.startsWith('http://') || localPath.startsWith('https://')) {
+            uploadedUrls.add(localPath);
+          } else {
+            final publicUrl = await _uploadImage(localPath);
+            if (publicUrl != null) {
+              uploadedUrls.add(publicUrl);
+            }
+          }
+        }
+        if (uploadedUrls.isNotEmpty) {
+          publicImageUrl = uploadedUrls.join(',');
         }
       }
 

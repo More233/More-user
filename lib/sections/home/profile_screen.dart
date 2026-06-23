@@ -529,8 +529,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     // Collect all image URLs from posts for the photo grid
     final photos = _posts
-        .where((post) => post.imageUrl != null)
-        .map((post) => post.imageUrl!)
+        .expand((post) => post.imageUrls)
         .toList();
 
     return Scaffold(

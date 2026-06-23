@@ -80,8 +80,8 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       _isPrivate = post.isPrivate;
       _selectedStickerIndex = post.stickerIndex;
       _isStickerTrayOpen = post.stickerIndex != -1;
-      if (post.imageUrl != null) {
-        _selectedImages = [post.imageUrl!];
+      if (post.imageUrl != null && post.imageUrl!.isNotEmpty) {
+        _selectedImages = List<String>.from(post.imageUrls);
       }
       _taggedFriends = post.taggedFriends.map((name) => {'name': name}).toList();
     } else if (widget.prefilledPlace != null) {
@@ -508,7 +508,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       visitorCount: 1,
       postTime: 'Today • Just now',
       description: caption,
-      imageUrl: _selectedImages.isNotEmpty ? _selectedImages.first : null,
+      imageUrl: _selectedImages.isNotEmpty ? _selectedImages.join(',') : null,
       likesCount: 0,
       commentsCount: 0,
       categoryIcon: iconType,
@@ -547,22 +547,28 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
 
     try {
       final client = Supabase.instance.client;
-      String? finalImageUrl = _selectedImages.isNotEmpty ? _selectedImages.first : null;
+      final List<String> uploadedUrls = [];
 
-      // If it's a local file path, upload it to storage
-      if (finalImageUrl != null && (finalImageUrl.startsWith('/') || finalImageUrl.startsWith('file:'))) {
-        final user = client.auth.currentUser;
-        if (user != null) {
-          final file = File(finalImageUrl);
-          final fileName = 'posts/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await client.storage.from('post-images').upload(
-            fileName,
-            file,
-            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-          );
-          finalImageUrl = client.storage.from('post-images').getPublicUrl(fileName);
+      for (final imgPath in _selectedImages) {
+        if (imgPath.startsWith('http://') || imgPath.startsWith('https://') || imgPath.startsWith('assets/')) {
+          uploadedUrls.add(imgPath);
+        } else if (imgPath.startsWith('/') || imgPath.startsWith('file:')) {
+          final user = client.auth.currentUser;
+          if (user != null) {
+            final file = File(imgPath);
+            final fileName = 'posts/${user.id}_${DateTime.now().millisecondsSinceEpoch}_${imgPath.split('/').last}';
+            await client.storage.from('post-images').upload(
+              fileName,
+              file,
+              fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+            );
+            final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
+            uploadedUrls.add(publicUrl);
+          }
         }
       }
+
+      final String? finalImageUrl = uploadedUrls.isNotEmpty ? uploadedUrls.join(',') : null;
 
       await client.from('posts').update({
         'description': caption,

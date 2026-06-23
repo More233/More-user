@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/timeline_post.dart';
+import 'post_image_slider.dart';
 
 class TimelinePostCard extends StatelessWidget {
   final TimelinePost post;
@@ -114,9 +114,13 @@ class TimelinePostCard extends StatelessWidget {
           // Time row
           _buildTimeRow(),
           // Optional image
-          if (post.imageUrl != null) ...[
+          if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _buildImage(),
+            PostImageSlider(
+              imageUrls: post.imageUrls,
+              height: 172,
+              width: 264,
+            ),
           ],
           // Optional caption
           if (post.description.isNotEmpty) ...[
@@ -144,7 +148,7 @@ class TimelinePostCard extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            post.title,
+            post.shortTitle,
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 16,
               fontWeight: FontWeight.w500,
@@ -251,7 +255,7 @@ class TimelinePostCard extends StatelessWidget {
         const _DotSeparator(),
         Flexible(
           child: Text(
-            post.locationAddress,
+            post.shortLocationAddress,
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 14,
               fontWeight: FontWeight.w400,
@@ -306,50 +310,6 @@ class TimelinePostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImage() {
-    final path = post.imageUrl!;
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          path,
-          width: 264,
-          height: 172,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Container(
-            width: 264,
-            height: 172,
-            color: Colors.grey[200],
-            child: const Icon(Icons.broken_image, color: Colors.grey),
-          ),
-        ),
-      );
-    }
-    final isAsset = !path.startsWith('/') && !path.startsWith('file:');
-    
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: isAsset
-          ? Image.asset(
-              path,
-              width: 264,
-              height: 172,
-              fit: BoxFit.cover,
-            )
-          : Image.file(
-              File(path),
-              width: 264,
-              height: 172,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: 264,
-                height: 172,
-                color: Colors.grey[200],
-                child: const Icon(Icons.broken_image, color: Colors.grey),
-              ),
-            ),
-    );
-  }
 
   Widget _buildEngagementRow() {
     return Row(

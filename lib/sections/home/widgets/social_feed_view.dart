@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -7,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../helpers/story_tracker.dart';
 import '../models/timeline_post.dart';
+import 'post_image_slider.dart';
 import '../models/user_story_group.dart';
 import '../view_models/social_feed_view_model.dart';
 import 'story_composer_screen.dart';
@@ -77,287 +77,307 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
     return RefreshIndicator(
       onRefresh: () => ref.read(socialFeedViewModelProvider.notifier).refreshFeed(),
       color: const Color(0xFF7C57FC),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 165,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                // Create story card (current user)
-                Container(
-                  width: 110,
-                  height: 150,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: hasOwnStory
-                      ? BoxDecoration(
-                          borderRadius: BorderRadius.circular(15),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C57FC), Color(0xFFFF45B5), Color(0xFFFF805D)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        )
-                      : null,
-                  padding: hasOwnStory ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
-                      color: Colors.white,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
-                      child: Stack(
-                        children: [
-                          // Background image: first story image or user's profile image
-                          Positioned.fill(
-                            child: Container(
-                              color: Colors.grey[300],
-                              child: hasOwnStory && currentUserGroup.mediaUrls.isNotEmpty
-                                  ? Image.network(
-                                      currentUserGroup.mediaUrls.first,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => const Center(
-                                        child: Icon(Icons.broken_image, color: Colors.grey),
+      child: state.isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF7C57FC),
+              ),
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 120),
+              itemCount: 1 + (state.socialPosts.isEmpty ? 1 : state.socialPosts.length),
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        height: 165,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          children: [
+                            // Create story card (current user)
+                            Container(
+                              width: 110,
+                              height: 150,
+                              margin: const EdgeInsets.only(right: 12),
+                              decoration: hasOwnStory
+                                  ? BoxDecoration(
+                                      borderRadius: BorderRadius.circular(15),
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF7C57FC), Color(0xFFFF45B5), Color(0xFFFF805D)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       ),
                                     )
-                                  : widget.currentUserAvatarUrl != null &&
-                                          widget.currentUserAvatarUrl!.isNotEmpty
-                                      ? (widget.currentUserAvatarUrl!.startsWith('http')
-                                          ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
-                                          : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
-                                      : const Image(
-                                          image: AssetImage('assets/home/images/avatar_placeholder.png'),
-                                          fit: BoxFit.cover,
-                                        ),
-                            ),
-                          ),
-                          // Overlay
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.black.withValues(alpha: hasOwnStory ? 0.45 : 0.35),
-                                    Colors.transparent,
-                                  ],
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
+                                  : null,
+                              padding: hasOwnStory ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
+                                  color: Colors.white,
                                 ),
-                              ),
-                            ),
-                          ),
-                          // InkWell for taps
-                          Positioned.fill(
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  if (hasOwnStory) {
-                                    final index = state.storyGroups.indexOf(currentUserGroup);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => StoryViewer(
-                                          storyGroups: state.storyGroups,
-                                          initialGroupIndex: index,
-                                        ),
-                                      ),
-                                    ).then((_) => ref.read(socialFeedViewModelProvider.notifier).refreshFeed());
-                                  } else {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const StoryComposerScreen(),
-                                      ),
-                                    ).then((_) => ref.read(socialFeedViewModelProvider.notifier).refreshFeed());
-                                  }
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
+                                  child: Stack(
                                     children: [
-                                      const SizedBox(height: 24),
-                                      // Center: white circle with plus icon (only if no active story)
-                                      if (!hasOwnStory)
-                                        Container(
-                                          width: 32,
-                                          height: 32,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.add,
-                                            color: Color(0xFF7C57FC),
-                                            size: 20,
-                                          ),
-                                        )
-                                      else
-                                        const SizedBox.shrink(),
-                                      // Bottom label
-                                      Text(
-                                        hasOwnStory ? 'Your Story' : 'Create a story',
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          fontSize: 11,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
+                                      // Background image: first story image or user's profile image
+                                      Positioned.fill(
+                                        child: Container(
+                                          color: Colors.grey[300],
+                                          child: hasOwnStory && currentUserGroup.mediaUrls.isNotEmpty
+                                              ? Image.network(
+                                                  currentUserGroup.mediaUrls.first,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                                                    'assets/home/images/element.png',
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                )
+                                              : (widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
+                                                  ? (widget.currentUserAvatarUrl!.startsWith('http')
+                                                      ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
+                                                      : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
+                                                  : Image.asset(
+                                                      'assets/home/images/avatar_placeholder.png',
+                                                      fit: BoxFit.cover,
+                                                    )),
                                         ),
-                                        textAlign: TextAlign.center,
+                                      ),
+                                      // Dark overlay
+                                      Positioned.fill(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                              colors: [
+                                                Colors.transparent,
+                                                Colors.black.withValues(alpha: hasOwnStory ? 0.45 : 0.35),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // Content: Avatar + Name + Plus Icon
+                                      Positioned.fill(
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              if (hasOwnStory) {
+                                                final index = state.storyGroups.indexOf(currentUserGroup);
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => StoryViewer(
+                                                      storyGroups: state.storyGroups,
+                                                      initialGroupIndex: index,
+                                                    ),
+                                                  ),
+                                                );
+                                              } else {
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => const StoryComposerScreen(),
+                                                  ),
+                                                ).then((val) {
+                                                  if (val == true) {
+                                                    ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
+                                                  }
+                                                });
+                                              }
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.all(8.0),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  // Center: white circle with plus icon (only if no active story)
+                                                  if (!hasOwnStory)
+                                                    Align(
+                                                      alignment: Alignment.topLeft,
+                                                      child: Container(
+                                                        width: 24,
+                                                        height: 24,
+                                                        decoration: const BoxDecoration(
+                                                          color: Colors.white,
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.add,
+                                                          color: Color(0xFF7C57FC),
+                                                          size: 16,
+                                                        ),
+                                                      ),
+                                                    )
+                                                  else
+                                                    const SizedBox.shrink(),
+                                                  // Bottom: text
+                                                  Text(
+                                                    hasOwnStory ? 'Your Story' : 'Create a story',
+                                                    style: GoogleFonts.ibmPlexSansArabic(
+                                                      fontSize: 11,
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Friends story cards
-                ...state.storyGroups.where((g) => g.userId != currentUserId).map((group) {
-                  final hasViewed = StoryTracker().isGroupViewed(group.mediaUrls);
-                  final firstMediaUrl = group.mediaUrls.isNotEmpty ? group.mediaUrls.first : '';
-                  return Container(
-                    width: 110,
-                    height: 150,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Stack(
-                      children: [
-                        // Background: first story media image
-                        Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              color: Colors.grey[200],
-                              child: firstMediaUrl.isNotEmpty
-                                  ? (firstMediaUrl.startsWith('http')
-                                      ? Image.network(firstMediaUrl, fit: BoxFit.cover)
-                                      : Image.asset(firstMediaUrl, fit: BoxFit.cover))
-                                  : const Image(
-                                      image: AssetImage('assets/home/images/avatar_placeholder.png'),
-                                      fit: BoxFit.cover,
-                                    ),
-                            ),
-                          ),
-                        ),
-                        // Dark overlay gradient (top and bottom)
-                        Positioned.fill(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.35),
-                                    Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.35),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  stops: const [0.0, 0.4, 1.0],
+                            // Friends story cards
+                            ...state.storyGroups.where((g) => g.userId != currentUserId).map((group) {
+                              final hasViewed = StoryTracker().isGroupViewed(group.mediaUrls);
+                              return Container(
+                                width: 110,
+                                height: 150,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(15),
+                                  gradient: hasViewed
+                                      ? null
+                                      : const LinearGradient(
+                                          colors: [Color(0xFF7C57FC), Color(0xFFFF45B5), Color(0xFFFF805D)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
                                 ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // InkWell for taps
-                        Positioned.fill(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: () {
-                                final index = state.storyGroups.indexOf(group);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => StoryViewer(
-                                      storyGroups: state.storyGroups,
-                                      initialGroupIndex: index,
+                                padding: hasViewed ? EdgeInsets.zero : const EdgeInsets.all(2.5),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
+                                    color: Colors.white,
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
+                                    child: Stack(
+                                      children: [
+                                        // Background: first story media image
+                                        Positioned.fill(
+                                          child: Container(
+                                            color: Colors.grey[300],
+                                            child: group.mediaUrls.isNotEmpty
+                                                ? Image.network(
+                                                    group.mediaUrls.first,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                                                      'assets/home/images/element.png',
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  )
+                                                : Image.asset(
+                                                    'assets/home/images/element.png',
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                          ),
+                                        ),
+                                        // Dark overlay
+                                        Positioned.fill(
+                                          child: Container(
+                                            color: Colors.black.withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                        // Tap target & display overlay
+                                        Positioned.fill(
+                                          child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              onTap: () {
+                                                final index = state.storyGroups.indexOf(group);
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => StoryViewer(
+                                                      storyGroups: state.storyGroups,
+                                                      initialGroupIndex: index,
+                                                    ),
+                                                  ),
+                                                ).then((_) {
+                                                  setState(() {}); // Refresh border colors after viewing
+                                                });
+                                              },
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(8.0),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    // Top-left: User avatar with colorful border
+                                                    Container(
+                                                      width: 32,
+                                                      height: 32,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        border: Border.all(
+                                                          color: hasViewed ? const Color(0xFFE9E9E9) : const Color(0xFF7C57FC),
+                                                          width: 2,
+                                                        ),
+                                                      ),
+                                                      padding: const EdgeInsets.all(1.5),
+                                                      child: CircleAvatar(
+                                                        radius: 14,
+                                                        backgroundColor: Colors.grey[200],
+                                                        backgroundImage: group.avatarUrl != null && group.avatarUrl!.isNotEmpty
+                                                            ? (group.avatarUrl!.startsWith('http')
+                                                                ? NetworkImage(group.avatarUrl!)
+                                                                : AssetImage(group.avatarUrl!)) as ImageProvider
+                                                            : const AssetImage('assets/home/images/avatar_placeholder.png'),
+                                                      ),
+                                                    ),
+                                                    // Bottom: Username
+                                                    Text(
+                                                      group.username,
+                                                      style: GoogleFonts.ibmPlexSansArabic(
+                                                        fontSize: 11,
+                                                        color: Colors.white,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ).then((_) => ref.read(socialFeedViewModelProvider.notifier).refreshFeed());
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    // Top-left: User avatar with colorful border
-                                    Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: hasViewed ? const Color(0xFFE9E9E9) : const Color(0xFF7C57FC),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      padding: const EdgeInsets.all(1.5),
-                                      child: CircleAvatar(
-                                        radius: 14,
-                                        backgroundColor: Colors.grey[200],
-                                        backgroundImage: group.avatarUrl != null && group.avatarUrl!.isNotEmpty
-                                            ? (group.avatarUrl!.startsWith('http')
-                                                ? NetworkImage(group.avatarUrl!)
-                                                : AssetImage(group.avatarUrl!)) as ImageProvider
-                                            : const AssetImage('assets/home/images/avatar_placeholder.png'),
-                                      ),
-                                    ),
-                                    // Bottom: Username
-                                    Text(
-                                      group.username,
-                                      style: GoogleFonts.ibmPlexSansArabic(
-                                        fontSize: 11,
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
                                 ),
-                              ),
-                            ),
-                          ),
+                              );
+                            }),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (widget.followedUsernames.isEmpty && state.showFindFriendsCard)
+                        _buildFindFriendsCard(),
+                    ],
                   );
-                }),
-              ],
+                }
+
+                if (state.socialPosts.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                return _buildSocialPostCard(state.socialPosts[index - 1]);
+              },
             ),
-          ),
-          const SizedBox(height: 12),
-          if (widget.followedUsernames.isEmpty && state.showFindFriendsCard)
-            _buildFindFriendsCard(),
-          Expanded(
-            child: state.isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF7C57FC),
-                    ),
-                  )
-                : (state.socialPosts.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 120),
-                        itemCount: state.socialPosts.length,
-                        itemBuilder: (context, index) {
-                          return _buildSocialPostCard(state.socialPosts[index]);
-                        },
-                      )),
-          ),
-        ],
-      ),
     );
   }
 
@@ -736,7 +756,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          post.locationAddress,
+                          post.shortLocationAddress,
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
@@ -750,51 +770,11 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                   ),
                   const SizedBox(height: 10),
                 ],
-                if (post.imageUrl != null) ...[
-                  Builder(
-                    builder: (context) {
-                      final path = post.imageUrl!;
-                      if (path.startsWith('http://') || path.startsWith('https://')) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            path,
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              height: 180,
-                              width: double.infinity,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.broken_image, color: Colors.grey),
-                            ),
-                          ),
-                        );
-                      }
-                      final isAsset = !path.startsWith('/') && !path.startsWith('file:');
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: isAsset
-                            ? Image.asset(
-                                path,
-                                height: 180,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              )
-                            : Image.file(
-                                File(path),
-                                height: 180,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  height: 180,
-                                  width: double.infinity,
-                                  color: Colors.grey[200],
-                                  child: const Icon(Icons.broken_image, color: Colors.grey),
-                                ),
-                              ),
-                      );
-                    },
+                if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
+                  PostImageSlider(
+                    imageUrls: post.imageUrls,
+                    height: 180,
+                    width: double.infinity,
                   ),
                   const SizedBox(height: 12),
                 ],

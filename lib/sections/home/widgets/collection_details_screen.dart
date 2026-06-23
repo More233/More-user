@@ -252,7 +252,15 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
         actions: [
           if (isCustomCollection)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Color(0xFF82858C)),
+              icon: SvgPicture.asset(
+                'assets/home/icons/delete_03_1.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF82858C),
+                  BlendMode.srcIn,
+                ),
+              ),
               onPressed: _confirmDeleteCollection,
             ),
         ],
@@ -307,8 +315,8 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
                       },
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: post.imageUrl != null
-                            ? _buildGridImage(post.imageUrl!)
+                        child: post.imageUrls.isNotEmpty
+                            ? _buildGridImage(post.imageUrls.first)
                             : _buildTextGridPlaceholder(post),
                       ),
                     );
@@ -587,8 +595,8 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
             itemBuilder: (context, index) {
               final post = widget.posts[index];
               return Center(
-                child: post.imageUrl != null
-                    ? _buildViewerImage(post.imageUrl!)
+                child: post.imageUrls.isNotEmpty
+                    ? _buildViewerImage(post.imageUrls.first)
                     : _buildTextPostCardViewer(post),
               );
             },
