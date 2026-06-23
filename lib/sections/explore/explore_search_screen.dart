@@ -242,7 +242,10 @@ class _ExploreSearchScreenState extends State<ExploreSearchScreen> {
   Widget build(BuildContext context) {
     final double topPadding = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         children: [
@@ -490,6 +493,7 @@ class _ExploreSearchScreenState extends State<ExploreSearchScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 }

@@ -341,6 +341,12 @@ class TimelinePostCard extends StatelessWidget {
               width: 264,
               height: 172,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: 264,
+                height: 172,
+                color: Colors.grey[200],
+                child: const Icon(Icons.broken_image, color: Colors.grey),
+              ),
             ),
     );
   }

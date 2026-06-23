@@ -118,7 +118,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
       final PermissionState ps = await PhotoManager.requestPermissionExtend();
       if (ps.isAuth) {
         List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
-          type: RequestType.common,
+          type: RequestType.image,
         );
         if (albums.isNotEmpty) {
           final int count = await albums[0].assetCountAsync;

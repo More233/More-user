@@ -45,7 +45,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       final PermissionState ps = await PhotoManager.requestPermissionExtend();
       if (ps.isAuth) {
         List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
-          type: RequestType.common,
+          type: RequestType.image,
         );
         
         final List<AssetPathEntity> validAlbums = [];

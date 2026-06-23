@@ -279,7 +279,10 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -436,6 +439,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

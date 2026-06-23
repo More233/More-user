@@ -43,6 +43,7 @@ class TimelinePost {
   final DateTime? createdAt;
   final String? authorName;
   final String? authorAvatar;
+  final String? authorId;
   final double? latitude;
   final double? longitude;
   final String? placeId;
@@ -68,6 +69,7 @@ class TimelinePost {
     this.createdAt,
     this.authorName,
     this.authorAvatar,
+    this.authorId,
     this.latitude,
     this.longitude,
     this.placeId,
@@ -94,6 +96,7 @@ class TimelinePost {
     DateTime? createdAt,
     String? authorName,
     String? authorAvatar,
+    String? authorId,
     double? latitude,
     double? longitude,
     String? placeId,
@@ -119,6 +122,7 @@ class TimelinePost {
       createdAt: createdAt ?? this.createdAt,
       authorName: authorName ?? this.authorName,
       authorAvatar: authorAvatar ?? this.authorAvatar,
+      authorId: authorId ?? this.authorId,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       placeId: placeId ?? this.placeId,
@@ -161,6 +165,7 @@ class TimelinePost {
     final authorProfile = postData['author'];
     String? authorName;
     String? authorAvatar;
+    String? authorId;
     if (authorProfile != null) {
       final firstName = authorProfile['first_name'] as String? ?? '';
       final lastName = authorProfile['last_name'] as String? ?? '';
@@ -169,6 +174,9 @@ class TimelinePost {
         authorName = authorProfile['username'] as String?;
       }
       authorAvatar = authorProfile['avatar_url'] as String?;
+      authorId = authorProfile['id'] as String?;
+    } else {
+      authorId = postData['user_id'] as String?;
     }
 
     return TimelinePost(
@@ -192,6 +200,7 @@ class TimelinePost {
       isBookmarked: postData['is_bookmarked'] as bool? ?? false,
       authorName: authorName,
       authorAvatar: authorAvatar,
+      authorId: authorId,
       latitude: (postData['latitude'] as num?)?.toDouble(),
       longitude: (postData['longitude'] as num?)?.toDouble(),
       placeId: postData['place_id'] as String?,

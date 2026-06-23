@@ -141,70 +141,76 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.65,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.65,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          // Drag Handle
-          const SizedBox(height: 12),
-          Container(
-            width: 48,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFC8C8C8),
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Title
-          Text(
-            'Share with friends',
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Search Input
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: [
+            // Drag Handle
+            const SizedBox(height: 12),
+            Container(
+              width: 48,
+              height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFF6F6F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.search, color: Color(0xFF82858C), size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                      decoration: InputDecoration(
-                        hintText: 'Search by name or username',
-                        hintStyle: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
-                          color: const Color(0xFF82858C),
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      onChanged: _onSearchChanged,
-                    ),
-                  ),
-                ],
+                color: const Color(0xFFC8C8C8),
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-          ),
+            const SizedBox(height: 16),
+            // Title
+            Text(
+              'Share with friends',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Search Input
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, color: Color(0xFF82858C), size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15,
+                          color: const Color(0xFF1F242E),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search by name or username',
+                          hintStyle: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 15,
+                            color: const Color(0xFF9CA3AF),
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onChanged: _onSearchChanged,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 12),
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
           // Friends List
@@ -315,6 +321,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
           ),
         ],
       ),
+    ),
     );
   }
 }

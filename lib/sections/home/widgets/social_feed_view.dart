@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,6 +11,7 @@ import '../models/user_story_group.dart';
 import '../view_models/social_feed_view_model.dart';
 import 'story_composer_screen.dart';
 import 'story_viewer.dart';
+import 'check_in_composer_screen.dart';
 
 class SocialFeedView extends ConsumerStatefulWidget {
   final String? currentUserAvatarUrl;
@@ -468,7 +470,121 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
     );
   }
 
+  void _editPost(TimelinePost post) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckInComposerScreen(
+          editPost: post,
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
+    }
+  }
+
+  void _confirmDeletePost(TimelinePost post) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Container(
+            width: 286,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.only(top: 24, bottom: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Delete this check-in?',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF323232),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                // Delete Button
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deletePost(post.id);
+                  },
+                  child: Container(
+                    width: 286,
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Delete',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFD80000),
+                      ),
+                    ),
+                  ),
+                ),
+                // Cancel Button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 286,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF373737),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deletePost(String postId) async {
+    try {
+      final client = Supabase.instance.client;
+      await client.from('posts').delete().eq('id', postId);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Check-in deleted successfully."),
+            backgroundColor: Color(0xFF7C57FC),
+          ),
+        );
+        ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
+      }
+    } catch (e) {
+      debugPrint("Error deleting post: $e");
+    }
+  }
+
   Widget _buildSocialPostCard(TimelinePost post) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
       child: Row(
@@ -516,14 +632,81 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         ),
                       ),
                       const Spacer(),
-                      GestureDetector(
-                        onTap: () {},
-                        child: const Icon(
-                          Icons.more_vert,
-                          color: Color(0xFF82858C),
-                          size: 20,
+                      if (post.authorId == currentUserId)
+                        PopupMenuButton<String>(
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: Color(0xFF82858C),
+                            size: 20,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 141),
+                          color: const Color(0x99131116),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              _editPost(post);
+                            } else if (value == 'delete') {
+                              _confirmDeletePost(post);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem<String>(
+                              value: 'edit',
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/home/icons/edit_02.svg',
+                                    width: 20,
+                                    height: 20,
+                                    colorFilter: const ColorFilter.mode(
+                                      Colors.white,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Edit',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'delete',
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/home/icons/delete_03_1.svg',
+                                    width: 20,
+                                    height: 20,
+                                    colorFilter: const ColorFilter.mode(
+                                      Color(0xFFDF0000),
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Delete',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      color: Color(0xFFDF0000),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -568,19 +751,50 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                   const SizedBox(height: 10),
                 ],
                 if (post.imageUrl != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      post.imageUrl!,
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 180,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                      ),
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final path = post.imageUrl!;
+                      if (path.startsWith('http://') || path.startsWith('https://')) {
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            path,
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              height: 180,
+                              width: double.infinity,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.broken_image, color: Colors.grey),
+                            ),
+                          ),
+                        );
+                      }
+                      final isAsset = !path.startsWith('/') && !path.startsWith('file:');
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: isAsset
+                            ? Image.asset(
+                                path,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.file(
+                                File(path),
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  height: 180,
+                                  width: double.infinity,
+                                  color: Colors.grey[200],
+                                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                                ),
+                              ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                 ],

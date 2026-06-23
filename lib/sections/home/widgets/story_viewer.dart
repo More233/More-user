@@ -1717,62 +1717,70 @@ class _StorySendSheetContentState extends State<_StorySendSheetContent> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
         ),
-      ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + keyboardPadding + 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E5EA),
-              borderRadius: BorderRadius.circular(2.5),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + keyboardPadding + 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5E5EA),
+                borderRadius: BorderRadius.circular(2.5),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "Send",
-            style: GoogleFonts.ibmPlexSansArabic(
-              color: Colors.black,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 16),
+            Text(
+              "Send",
+              style: GoogleFonts.ibmPlexSansArabic(
+                color: Colors.black,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F7),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.search, color: Colors.grey, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    onChanged: _onSearchChanged,
-                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: "Search",
-                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
-                      border: InputBorder.none,
-                      isDense: true,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, color: Color(0xFF82858C), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      onChanged: _onSearchChanged,
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 15,
+                        color: const Color(0xFF1F242E),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Search",
+                        hintStyle: GoogleFonts.ibmPlexSansArabic(
+                          color: const Color(0xFF9CA3AF),
+                          fontSize: 15,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 16),
           if (_isLoading)
             const Padding(
@@ -1865,7 +1873,7 @@ class _StorySendSheetContentState extends State<_StorySendSheetContent> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 54,
             child: ElevatedButton(
               onPressed: _selectedUsernames.isEmpty
                   ? null
@@ -1893,14 +1901,15 @@ class _StorySendSheetContentState extends State<_StorySendSheetContent> {
                 "Send",
                 style: GoogleFonts.ibmPlexSansArabic(
                   color: _selectedUsernames.isEmpty ? const Color(0xFF8E8E93) : Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -2043,62 +2052,70 @@ class _StoryMentionSheetContentState extends State<_StoryMentionSheetContent> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
         ),
-      ),
-      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + keyboardPadding + 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E5EA),
-              borderRadius: BorderRadius.circular(2.5),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + keyboardPadding + 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE5E5EA),
+                borderRadius: BorderRadius.circular(2.5),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "Mentions",
-            style: GoogleFonts.ibmPlexSansArabic(
-              color: Colors.black,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 16),
+            Text(
+              "Mentions",
+              style: GoogleFonts.ibmPlexSansArabic(
+                color: Colors.black,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F7),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.search, color: Colors.grey, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    onChanged: _onSearchChanged,
-                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                    decoration: InputDecoration(
-                      hintText: "Search",
-                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
-                      border: InputBorder.none,
-                      isDense: true,
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search, color: Color(0xFF82858C), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      onChanged: _onSearchChanged,
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 15,
+                        color: const Color(0xFF1F242E),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: "Search",
+                        hintStyle: GoogleFonts.ibmPlexSansArabic(
+                          color: const Color(0xFF9CA3AF),
+                          fontSize: 15,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 16),
           if (_isLoading)
             const Padding(
@@ -2191,7 +2208,7 @@ class _StoryMentionSheetContentState extends State<_StoryMentionSheetContent> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 54,
             child: ElevatedButton(
               onPressed: _selectedUsernames.isEmpty
                   ? null
@@ -2220,14 +2237,15 @@ class _StoryMentionSheetContentState extends State<_StoryMentionSheetContent> {
                 "Add",
                 style: GoogleFonts.ibmPlexSansArabic(
                   color: _selectedUsernames.isEmpty ? const Color(0xFF8E8E93) : Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
         ],
       ),
+    ),
     );
   }
 }
