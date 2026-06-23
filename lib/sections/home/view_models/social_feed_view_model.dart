@@ -125,10 +125,7 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
           .map((f) => f['following_id'] as String)
           .toList();
 
-      if (followingIds.isEmpty) {
-        state = state.copyWith(socialPosts: []);
-        return;
-      }
+      followingIds.add(_currentUserId!);
 
       final fetchedPosts = await _postRepository.fetchSocialFeed(
         userId: _currentUserId!,

@@ -792,323 +792,29 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
 
   void _showSendBottomSheet(BuildContext context) {
     _animationController.stop();
-    final friends = [
-      {'username': 'karennne', 'name': 'Karen', 'avatar': 'assets/home/images/avatar_female.png'},
-      {'username': 'Sam_TD', 'name': 'Sam', 'avatar': 'assets/home/images/avatar_male.png'},
-      {'username': 'kieron_d', 'name': 'Kieron', 'avatar': 'assets/home/images/avatar.png'},
-      {'username': 'craig_love', 'name': 'Craig Love', 'avatar': 'assets/home/images/profile_image2.png'},
-    ];
-    final sentSet = <String>{};
-    String searchQuery = "";
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final filteredFriends = friends.where((f) {
-              final query = searchQuery.toLowerCase();
-              return f['username']!.toLowerCase().contains(query) ||
-                  f['name']!.toLowerCase().contains(query);
-            }).toList();
-            
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
-              padding: EdgeInsets.fromLTRB(
-                20,
-                12,
-                20,
-                MediaQuery.of(context).padding.bottom + MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5EA),
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Send",
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.black,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F2F7),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.search, color: Colors.grey, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            onChanged: (val) {
-                              setSheetState(() {
-                                searchQuery = val;
-                              });
-                            },
-                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: "Search",
-                              hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
-                              border: InputBorder.none,
-                              isDense: true,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (filteredFriends.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        "No friends found",
-                        style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
-                      ),
-                    )
-                  else
-                    Flexible(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: filteredFriends.length,
-                        itemBuilder: (context, index) {
-                          final f = filteredFriends[index];
-                          final username = f['username']!;
-                          final name = f['name']!;
-                          final avatar = f['avatar']!;
-                          final isSent = sentSet.contains(username);
-                          
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor: Colors.grey[200],
-                                  backgroundImage: AssetImage(avatar),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        name,
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          color: const Color(0xFF1F1F1F),
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      Text(
-                                        "@$username",
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () {
-                                    setSheetState(() {
-                                      if (isSent) {
-                                        sentSet.remove(username);
-                                      } else {
-                                        sentSet.add(username);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text("Story sent to @$username!"),
-                                            backgroundColor: const Color(0xFF7C57FC),
-                                            duration: const Duration(seconds: 1),
-                                          ),
-                                        );
-                                      }
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 72,
-                                    height: 32,
-                                    decoration: BoxDecoration(
-                                      color: isSent ? Colors.white : const Color(0xFF7C57FC),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: isSent
-                                          ? Border.all(color: const Color(0xFFD3D3D3), width: 1)
-                                          : null,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      isSent ? "Sent" : "Send",
-                                      style: GoogleFonts.ibmPlexSansArabic(
-                                        color: isSent ? const Color(0xFF5A5D67) : Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
+        return _StorySendSheetContent(
+          onDismissed: () {},
         );
       },
-    );
+    ).then((_) {
+      _animationController.forward();
+    });
   }
 
   void _showMentionBottomSheet(BuildContext context) {
     _animationController.stop();
-    final suggested = [
-      {'username': 'karennne', 'name': 'Karen', 'avatar': 'assets/home/images/avatar_female.png'},
-      {'username': 'Sam_TD', 'name': 'Sam', 'avatar': 'assets/home/images/avatar_male.png'},
-      {'username': 'kieron_d', 'name': 'Kieron', 'avatar': 'assets/home/images/avatar.png'},
-    ];
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: EdgeInsets.fromLTRB(
-            20,
-            12,
-            20,
-            MediaQuery.of(context).padding.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5EA),
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                "Mentions",
-                style: GoogleFonts.ibmPlexSansArabic(
-                  color: Colors.black,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: suggested.length,
-                itemBuilder: (context, index) {
-                  final s = suggested[index];
-                  final username = s['username']!;
-                  final name = s['name']!;
-                  final avatar = s['avatar']!;
-                  
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: AssetImage(avatar),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: GoogleFonts.ibmPlexSansArabic(
-                                  color: const Color(0xFF1F1F1F),
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                "@$username",
-                                style: GoogleFonts.ibmPlexSansArabic(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Mentioned @$username in this story!"),
-                                backgroundColor: const Color(0xFF7C57FC),
-                                duration: const Duration(milliseconds: 1500),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF2F2F7),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              "Tag",
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                color: const Color(0xFF7C57FC),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
+        return _StoryMentionSheetContent(
+          onDismissed: () {},
         );
       },
     ).then((_) {
@@ -1867,6 +1573,660 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                   fit: BoxFit.contain,
                 ),
         ),
+      ),
+    );
+  }
+}
+
+
+class _StorySendSheetContent extends StatefulWidget {
+  final VoidCallback onDismissed;
+  const _StorySendSheetContent({required this.onDismissed});
+
+  @override
+  State<_StorySendSheetContent> createState() => _StorySendSheetContentState();
+}
+
+class _StorySendSheetContentState extends State<_StorySendSheetContent> {
+  List<Map<String, String>> _allFriends = [];
+  List<Map<String, String>> _filteredFriends = [];
+  final Set<String> _selectedUsernames = {};
+  bool _isLoading = true;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRealUsers();
+  }
+
+  Future<void> _loadRealUsers() async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUserId = client.auth.currentUser?.id;
+      if (currentUserId == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final followingResponse = await client
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUserId);
+
+      final followersResponse = await client
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', currentUserId);
+
+      final List<String> userIds = [];
+      for (var row in followingResponse) {
+        final id = row['following_id'] as String?;
+        if (id != null) userIds.add(id);
+      }
+      for (var row in followersResponse) {
+        final id = row['follower_id'] as String?;
+        if (id != null) userIds.add(id);
+      }
+
+      final Map<String, Map<String, String>> usersMap = {};
+
+      void addProfile(dynamic row) {
+        if (row == null) return;
+        final id = row['id'] as String?;
+        if (id == null || id == currentUserId) return;
+        final username = row['username'] as String? ?? '';
+        final firstName = row['first_name'] as String? ?? '';
+        final lastName = row['last_name'] as String? ?? '';
+        final avatarUrl = row['avatar_url'] as String? ?? '';
+        final name = '$firstName $lastName'.trim();
+        usersMap[id] = {
+          'id': id,
+          'name': name.isNotEmpty ? name : username,
+          'username': username,
+          'avatar': avatarUrl,
+        };
+      }
+
+      if (userIds.isNotEmpty) {
+        final profilesResponse = await client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .inFilter('id', userIds);
+
+        for (var row in profilesResponse) {
+          addProfile(row);
+        }
+      }
+
+      if (usersMap.length < 5) {
+        final fallbackResponse = await client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .neq('id', currentUserId)
+            .limit(20);
+
+        for (var row in fallbackResponse) {
+          addProfile(row);
+        }
+      }
+
+      setState(() {
+        _allFriends = usersMap.values.toList();
+        _filteredFriends = _allFriends;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error loading real users for story send sheet: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+
+      if (query.trim().isEmpty) {
+        _filteredFriends = _allFriends;
+      } else {
+        _filteredFriends = _allFriends
+            .where((friend) =>
+                friend['name']!.toLowerCase().contains(query.toLowerCase()) ||
+                friend['username']!.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  ImageProvider _getAvatarProvider(String? avatarUrl) {
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      if (avatarUrl.startsWith('http')) {
+        return NetworkImage(avatarUrl);
+      } else {
+        return AssetImage(avatarUrl);
+      }
+    }
+    return const AssetImage('assets/home/images/avatar_female.png');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + keyboardPadding + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 5,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5E5EA),
+              borderRadius: BorderRadius.circular(2.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Send",
+            style: GoogleFonts.ibmPlexSansArabic(
+              color: Colors.black,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.search, color: Colors.grey, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    onChanged: _onSearchChanged,
+                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: "Search",
+                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 36),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF7C57FC),
+                ),
+              ),
+            )
+          else if (_filteredFriends.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                "No friends found",
+                style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
+              ),
+            )
+          else
+            Flexible(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _filteredFriends.length,
+                  itemBuilder: (context, index) {
+                    final f = _filteredFriends[index];
+                    final username = f['username']!;
+                    final name = f['name']!;
+                    final avatar = f['avatar'];
+                    final isSelected = _selectedUsernames.contains(username);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: _getAvatarProvider(avatar),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: const Color(0xFF1F1F1F),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  "@$username",
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Checkbox(
+                            value: isSelected,
+                            activeColor: const Color(0xFF7C57FC),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            onChanged: (bool? val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selectedUsernames.add(username);
+                                } else {
+                                  _selectedUsernames.remove(username);
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _selectedUsernames.isEmpty
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Story sent successfully to ${_selectedUsernames.length} friend(s)!",
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                          ),
+                          backgroundColor: const Color(0xFF7C57FC),
+                        ),
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C57FC),
+                disabledBackgroundColor: const Color(0xFFE5E5EA),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                "Send",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  color: _selectedUsernames.isEmpty ? const Color(0xFF8E8E93) : Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoryMentionSheetContent extends StatefulWidget {
+  final VoidCallback onDismissed;
+  const _StoryMentionSheetContent({required this.onDismissed});
+
+  @override
+  State<_StoryMentionSheetContent> createState() => _StoryMentionSheetContentState();
+}
+
+class _StoryMentionSheetContentState extends State<_StoryMentionSheetContent> {
+  List<Map<String, String>> _allFriends = [];
+  List<Map<String, String>> _filteredFriends = [];
+  final Set<String> _selectedUsernames = {};
+  bool _isLoading = true;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRealUsers();
+  }
+
+  Future<void> _loadRealUsers() async {
+    try {
+      final client = Supabase.instance.client;
+      final currentUserId = client.auth.currentUser?.id;
+      if (currentUserId == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final followingResponse = await client
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUserId);
+
+      final followersResponse = await client
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', currentUserId);
+
+      final List<String> userIds = [];
+      for (var row in followingResponse) {
+        final id = row['following_id'] as String?;
+        if (id != null) userIds.add(id);
+      }
+      for (var row in followersResponse) {
+        final id = row['follower_id'] as String?;
+        if (id != null) userIds.add(id);
+      }
+
+      final Map<String, Map<String, String>> usersMap = {};
+
+      void addProfile(dynamic row) {
+        if (row == null) return;
+        final id = row['id'] as String?;
+        if (id == null || id == currentUserId) return;
+        final username = row['username'] as String? ?? '';
+        final firstName = row['first_name'] as String? ?? '';
+        final lastName = row['last_name'] as String? ?? '';
+        final avatarUrl = row['avatar_url'] as String? ?? '';
+        final name = '$firstName $lastName'.trim();
+        usersMap[id] = {
+          'id': id,
+          'name': name.isNotEmpty ? name : username,
+          'username': username,
+          'avatar': avatarUrl,
+        };
+      }
+
+      if (userIds.isNotEmpty) {
+        final profilesResponse = await client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .inFilter('id', userIds);
+
+        for (var row in profilesResponse) {
+          addProfile(row);
+        }
+      }
+
+      if (usersMap.length < 5) {
+        final fallbackResponse = await client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .neq('id', currentUserId)
+            .limit(20);
+
+        for (var row in fallbackResponse) {
+          addProfile(row);
+        }
+      }
+
+      setState(() {
+        _allFriends = usersMap.values.toList();
+        _filteredFriends = _allFriends;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error loading real users for story mention sheet: $e");
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+
+      if (query.trim().isEmpty) {
+        _filteredFriends = _allFriends;
+      } else {
+        _filteredFriends = _allFriends
+            .where((friend) =>
+                friend['name']!.toLowerCase().contains(query.toLowerCase()) ||
+                friend['username']!.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  ImageProvider _getAvatarProvider(String? avatarUrl) {
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      if (avatarUrl.startsWith('http')) {
+        return NetworkImage(avatarUrl);
+      } else {
+        return AssetImage(avatarUrl);
+      }
+    }
+    return const AssetImage('assets/home/images/avatar_female.png');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + keyboardPadding + 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 36,
+            height: 5,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5E5EA),
+              borderRadius: BorderRadius.circular(2.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Mentions",
+            style: GoogleFonts.ibmPlexSansArabic(
+              color: Colors.black,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.search, color: Colors.grey, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    onChanged: _onSearchChanged,
+                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: "Search",
+                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 36),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF7C57FC),
+                ),
+              ),
+            )
+          else if (_filteredFriends.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                "No friends found",
+                style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
+              ),
+            )
+          else
+            Flexible(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _filteredFriends.length,
+                  itemBuilder: (context, index) {
+                    final f = _filteredFriends[index];
+                    final username = f['username']!;
+                    final name = f['name']!;
+                    final avatar = f['avatar'];
+                    final isSelected = _selectedUsernames.contains(username);
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: _getAvatarProvider(avatar),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: const Color(0xFF1F1F1F),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  "@$username",
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Checkbox(
+                            value: isSelected,
+                            activeColor: const Color(0xFF7C57FC),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            onChanged: (bool? val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selectedUsernames.add(username);
+                                } else {
+                                  _selectedUsernames.remove(username);
+                                }
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _selectedUsernames.isEmpty
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      final listStr = _selectedUsernames.map((u) => "@$u").join(", ");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Mentioned $listStr in this story!",
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                          ),
+                          backgroundColor: const Color(0xFF7C57FC),
+                        ),
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C57FC),
+                disabledBackgroundColor: const Color(0xFFE5E5EA),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                "Add",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  color: _selectedUsernames.isEmpty ? const Color(0xFF8E8E93) : Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

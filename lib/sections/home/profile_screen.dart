@@ -83,12 +83,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           .eq('follower_id', currentUser.id);
       _followingCount = (followingData as List).length;
 
-      // 4. Fetch posts count
-      final postsData = await client
+      // 4. Fetch posts
+      final postsResponse = await client
           .from('posts')
-          .select('id')
-          .eq('user_id', currentUser.id);
-      _postsCount = (postsData as List).length;
+          .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
+          .eq('user_id', currentUser.id)
+          .order('created_at', ascending: false);
+
+      final List<TimelinePost> userPostsList = [];
+      for (var row in postsResponse as List) {
+        userPostsList.add(TimelinePost.fromMap(row as Map<String, dynamic>));
+      }
+      _posts = userPostsList;
+      _postsCount = userPostsList.length;
 
       // 5. Coins calculation
       _coins = _postsCount > 0 ? 300 : 0;
@@ -379,7 +386,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (result == true) {
       widget.onPostUpdated?.call();
-      setState(() {});
+      _fetchProfileData();
     }
   }
 
@@ -470,6 +477,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) {
         setState(() {
           _posts.removeWhere((p) => p.id == postId);
+          _postsCount = _posts.length;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

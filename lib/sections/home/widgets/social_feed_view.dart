@@ -344,7 +344,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                       color: Color(0xFF7C57FC),
                     ),
                   )
-                : (widget.followedUsernames.isEmpty || state.socialPosts.isEmpty
+                : (state.socialPosts.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
                         padding: const EdgeInsets.only(bottom: 120),

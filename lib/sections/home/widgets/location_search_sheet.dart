@@ -263,6 +263,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
       final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
           '?location=$lat,$lng'
           '&radius=3000'
+          '&language=en'
           '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));
@@ -411,6 +412,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
           '?query=${Uri.encodeComponent(query)}'
           '&location=$_latitude,$_longitude'
           '&radius=50000'
+          '&language=en'
           '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));

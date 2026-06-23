@@ -8,6 +8,7 @@ import 'models/timeline_post.dart';
 import 'models/timeline_state.dart';
 import 'view_models/timeline_view_model.dart';
 import 'view_models/collections_view_model.dart';
+import 'view_models/social_feed_view_model.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
@@ -142,6 +143,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (result == true) {
       ref.read(timelineViewModelProvider.notifier).loadPosts();
       ref.read(timelineViewModelProvider.notifier).completeFirstCheckIn();
+      ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
     }
   }
 
