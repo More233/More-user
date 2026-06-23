@@ -38,11 +38,16 @@ class CollectionsViewModel extends StateNotifier<CollectionsState> {
     }
   }
 
-  Future<void> addCollection(String name, String? coverImageUrl) async {
+  Future<void> addCollection(String name, String? coverImageUrl, {List<String> sharedUserIds = const []}) async {
     if (_currentUserId == null) return;
     state = state.copyWith(isLoading: true);
     try {
-      await collectionRepository.createCollection(_currentUserId!, name, coverImageUrl);
+      await collectionRepository.createCollection(
+        _currentUserId!,
+        name,
+        coverImageUrl,
+        sharedUserIds: sharedUserIds,
+      );
       await loadCollections();
     } catch (e) {
       debugPrint("Error adding collection: $e");

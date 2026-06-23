@@ -51,6 +51,11 @@ class CollectionRepositoryImpl implements CollectionRepository {
           }
         }
 
+        final sharedIdsRaw = colData['shared_user_ids'] as List?;
+        final List<String> sharedUserIds = sharedIdsRaw != null
+            ? List<String>.from(sharedIdsRaw.map((id) => id.toString()))
+            : [];
+
         collections.add(
           CollectionModel(
             id: colId,
@@ -58,6 +63,7 @@ class CollectionRepositoryImpl implements CollectionRepository {
             coverImageUrl: coverUrl,
             postIds: postIds,
             isPrivate: isPrivate,
+            sharedUserIds: sharedUserIds,
           ),
         );
       }
@@ -69,11 +75,12 @@ class CollectionRepositoryImpl implements CollectionRepository {
   }
 
   @override
-  Future<void> createCollection(String userId, String name, String? coverImageUrl) async {
+  Future<void> createCollection(String userId, String name, String? coverImageUrl, {List<String> sharedUserIds = const []}) async {
     await client.from('collections').insert({
       'name': name,
       'cover_image_url': coverImageUrl,
       'user_id': userId,
+      'shared_user_ids': sharedUserIds,
     });
   }
 

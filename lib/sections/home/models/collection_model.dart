@@ -4,6 +4,7 @@ class CollectionModel {
   final String? coverImageUrl;
   final List<String> postIds;
   final bool isPrivate;
+  final List<String> sharedUserIds;
 
   CollectionModel({
     required this.id,
@@ -11,6 +12,7 @@ class CollectionModel {
     this.coverImageUrl,
     required this.postIds,
     this.isPrivate = true,
+    this.sharedUserIds = const [],
   });
 
   CollectionModel copyWith({
@@ -19,6 +21,7 @@ class CollectionModel {
     String? Function()? coverImageUrl,
     List<String>? postIds,
     bool? isPrivate,
+    List<String>? sharedUserIds,
   }) {
     return CollectionModel(
       id: id ?? this.id,
@@ -26,6 +29,7 @@ class CollectionModel {
       coverImageUrl: coverImageUrl != null ? coverImageUrl() : this.coverImageUrl,
       postIds: postIds ?? this.postIds,
       isPrivate: isPrivate ?? this.isPrivate,
+      sharedUserIds: sharedUserIds ?? this.sharedUserIds,
     );
   }
 }

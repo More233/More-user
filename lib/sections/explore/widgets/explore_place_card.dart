@@ -20,13 +20,25 @@ class ExplorePlaceCard extends StatelessWidget {
   });
 
   static String _getStickerEmoji(int index) {
-    if (index == 0) return "📍";
-    if (index == 1) return "🔥";
-    if (index == 2) return "🎉";
-    if (index == 3) return "🍕";
-    if (index == 4) return "☕";
+    if (index == 1) return "❤️";
+    if (index == 2) return "🍺";
+    if (index == 3) return "👏";
+    if (index == 4) return "👍";
     if (index == 5) return "🔥";
     if (index == 6) return "😍";
+    if (index == 7) return "➕";
+    
+    if (index >= 8) {
+      final customIndex = index - 8;
+      final customStickers = [
+        '🥳', '😎', '⛈️', '❤️', '🐸', '🔥', '👋', '👍', '🍺', '⏰', '🚗', '🚕',
+        '💄', '🧻', '🖼️', '💊', '⚾', '🚫', '🏁', '🥧', '🩹', '🛍️', '🍻', '🌲',
+        '🛒', '🌵', '👮', '🛟', '🍦', '🥯', '🐶', '🕴️', '👠', '🥾', '🦕', '🏛️'
+      ];
+      if (customIndex < customStickers.length) {
+        return customStickers[customIndex];
+      }
+    }
     return "📍";
   }
 

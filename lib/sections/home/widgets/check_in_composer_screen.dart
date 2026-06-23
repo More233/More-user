@@ -179,6 +179,288 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
     },
   ];
 
+  // Master list of custom stickers with Zenly-style illustrated concepts represented by emojis
+  final List<Map<String, String>> _allStickers = [
+    {'name': 'Newbie', 'emoji': '🥳'},
+    {'name': 'Sunny', 'emoji': '😎'},
+    {'name': 'Stormy', 'emoji': '⛈️'},
+    {'name': 'Heart Container', 'emoji': '❤️'},
+    {'name': 'Leap Day William', 'emoji': '🐸'},
+    {'name': 'Fiery', 'emoji': '🔥'},
+    {'name': 'Oh Hey', 'emoji': '👋'},
+    {'name': 'Yea', 'emoji': '👍'},
+    {'name': 'Beer?', 'emoji': '🍺'},
+    {'name': 'ETA?', 'emoji': '⏰'},
+    {'name': 'Vroom Vroom', 'emoji': '🚗'},
+    {'name': 'Cabbie', 'emoji': '🚕'},
+    {'name': 'Rouge', 'emoji': '💄'},
+    {'name': 'T. P. Rolls', 'emoji': '🧻'},
+    {'name': 'Lisa', 'emoji': '🖼️'},
+    {'name': 'Side Effects', 'emoji': '💊'},
+    {'name': 'Slugger', 'emoji': '⚾'},
+    {'name': 'Do Not Disturb', 'emoji': '🚫'},
+    {'name': 'Victory Lap', 'emoji': '🏁'},
+    {'name': 'Old Glory', 'emoji': '🥧'},
+    {'name': 'Sticky Situation', 'emoji': '🩹'},
+    {'name': 'Baggs', 'emoji': '🛍️'},
+    {'name': 'Prost!', 'emoji': '🍻'},
+    {'name': 'The Great Outdoors', 'emoji': '🌲'},
+    {'name': 'Retail Therapy', 'emoji': '🛒'},
+    {'name': 'Spike', 'emoji': '🌵'},
+    {'name': 'Parker', 'emoji': '👮'},
+    {'name': 'Swimmies', 'emoji': '🛟'},
+    {'name': 'iScream', 'emoji': '🍦'},
+    {'name': 'Schmear', 'emoji': '🥯'},
+    {'name': 'Dog\'s Best Friend', 'emoji': '🐶'},
+    {'name': 'Manny Quin', 'emoji': '🕴️'},
+    {'name': 'Sole Mate', 'emoji': '👠'},
+    {'name': 'Trailblazer', 'emoji': '🥾'},
+    {'name': 'Nessie', 'emoji': '🦕'},
+    {'name': 'Opa', 'emoji': '🏛️'},
+  ];
+
+  Widget _buildStickerContainer(Map<String, dynamic> sticker, bool isSelected) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
+          width: isSelected ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(4),
+      child: sticker['type'] == 'svg'
+          ? SvgPicture.asset(
+              sticker['path'],
+              fit: BoxFit.contain,
+            )
+          : sticker['type'] == 'emoji'
+              ? Center(
+                  child: Text(
+                    sticker['emoji'] ?? '',
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                )
+              : Image.asset(
+                  sticker['path'],
+                  fit: BoxFit.contain,
+                ),
+    );
+  }
+
+  void _showSearchStickersBottomSheet() {
+    FocusScope.of(context).unfocus();
+    String searchQuery = "";
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filtered = _allStickers.where((s) {
+              final query = searchQuery.toLowerCase();
+              return s['name']!.toLowerCase().contains(query);
+            }).toList();
+            
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                12,
+                20,
+                MediaQuery.of(context).padding.bottom + MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E5EA),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 40),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            "Stickers",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              color: const Color(0xFF1F1F1F),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF2F2F7),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.close,
+                            color: Color(0xFF1F1F1F),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F2F7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, color: Colors.grey, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            onChanged: (val) {
+                              setSheetState(() {
+                                searchQuery = val;
+                              });
+                            },
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 15, color: Colors.black),
+                            decoration: InputDecoration(
+                              hintText: "Search stickers",
+                              hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 15),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? Center(
+                            child: Text(
+                              "No stickers found",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                color: Colors.grey,
+                                fontSize: 15,
+                              ),
+                            ),
+                          )
+                        : GridView.builder(
+                            padding: const EdgeInsets.only(bottom: 20),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.8,
+                            ),
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final item = filtered[index];
+                              final name = item['name']!;
+                              final emoji = item['emoji']!;
+                              
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _selectStickerFromSearch(name, emoji);
+                                },
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: const Color(0xFFE8E8E8),
+                                          width: 1.5,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.08),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        emoji,
+                                        style: const TextStyle(fontSize: 32),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      name,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        color: const Color(0xFF5A5D67),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _selectStickerFromSearch(String name, String emoji) {
+    final masterIndex = _allStickers.indexWhere((s) => s['name'] == name);
+    if (masterIndex != -1) {
+      final dbIndex = 8 + masterIndex;
+      setState(() {
+        _selectedStickerIndex = dbIndex;
+        _isStickerTrayOpen = true;
+      });
+    }
+  }
+
   void _openGallery() async {
     final List<String>? result = await Navigator.push(
       context,
@@ -488,7 +770,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       clipBehavior: Clip.hardEdge,
                       decoration: const BoxDecoration(),
                       width: _isStickerTrayOpen
-                          ? ((40.0 + 8.0) * (_stickers.length - 1) - 8.0).clamp(
+                          ? ((40.0 + 8.0) * (8 + (_selectedStickerIndex >= 8 ? 1 : 0)) - 8.0).clamp(
                               0.0,
                               MediaQuery.of(context).size.width - 80.0,
                             )
@@ -502,18 +784,59 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                           duration: const Duration(milliseconds: 200),
                           opacity: _isStickerTrayOpen ? 1.0 : 0.0,
                           child: Row(
-                            children: List.generate(_stickers.length - 1, (index) {
-                              final actualIndex = index + 1;
-                              final sticker = _stickers[actualIndex];
-                              final bool isSelected = _selectedStickerIndex == actualIndex;
-
-                              return Padding(
-                                padding: EdgeInsets.only(right: index == _stickers.length - 2 ? 0 : 8.0),
-                                child: GestureDetector(
+                            children: () {
+                              final List<Widget> trayItems = [];
+                              
+                              // 1. Default stickers (indices 1 to 7)
+                              for (int i = 1; i <= 7; i++) {
+                                final sticker = _stickers[i];
+                                final bool isSelected = _selectedStickerIndex == i;
+                                trayItems.add(
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8.0),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedStickerIndex = isSelected ? -1 : i;
+                                        });
+                                      },
+                                      child: _buildStickerContainer(sticker, isSelected),
+                                    ),
+                                  ),
+                                );
+                              }
+                              
+                              // 2. Custom sticker (index >= 8) if selected
+                              if (_selectedStickerIndex >= 8) {
+                                final customIndex = _selectedStickerIndex - 8;
+                                if (customIndex >= 0 && customIndex < _allStickers.length) {
+                                  final customSticker = _allStickers[customIndex];
+                                  final stickerMap = {
+                                    'type': 'emoji',
+                                    'emoji': customSticker['emoji'],
+                                    'name': customSticker['name'],
+                                  };
+                                  trayItems.add(
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8.0),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedStickerIndex = -1;
+                                          });
+                                        },
+                                        child: _buildStickerContainer(stickerMap, true),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                              
+                              // 3. Search button
+                              trayItems.add(
+                                GestureDetector(
                                   onTap: () {
-                                    setState(() {
-                                      _selectedStickerIndex = isSelected ? -1 : actualIndex;
-                                    });
+                                    _showSearchStickersBottomSheet();
                                   },
                                   child: Container(
                                     width: 40,
@@ -522,10 +845,8 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                       color: Colors.white,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: isSelected
-                                            ? const Color(0xFF7C57FC)
-                                            : const Color(0xFFE8E8E8),
-                                        width: isSelected ? 2 : 1,
+                                        color: const Color(0xFFE8E8E8),
+                                        width: 1,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
@@ -535,20 +856,18 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                         ),
                                       ],
                                     ),
-                                    padding: const EdgeInsets.all(4),
-                                    child: sticker['type'] == 'svg'
-                                        ? SvgPicture.asset(
-                                            sticker['path'],
-                                            fit: BoxFit.contain,
-                                          )
-                                        : Image.asset(
-                                            sticker['path'],
-                                            fit: BoxFit.contain,
-                                          ),
+                                    padding: const EdgeInsets.all(10),
+                                    child: const Icon(
+                                      Icons.search,
+                                      color: Color(0xFF5A5D67),
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               );
-                            }),
+                              
+                              return trayItems;
+                            }(),
                           ),
                         ),
                       ),

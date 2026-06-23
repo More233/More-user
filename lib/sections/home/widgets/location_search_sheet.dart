@@ -523,144 +523,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     });
   }
 
-  void _showAddCustomPlaceDialog() {
-    final TextEditingController nameController = TextEditingController();
-    String selectedCategory = 'Restaurant';
-    final categories = ['Restaurant', 'Coffee', 'Hotel', 'Park', 'Supermarket', 'Bakery', 'Other'];
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (sbContext, setStateDialog) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Text(
-                'إضافة مكان مخصص',
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-                textAlign: TextAlign.right,
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 15),
-                    decoration: InputDecoration(
-                      hintText: 'اسم المكان',
-                      hintStyle: GoogleFonts.ibmPlexSansArabic(fontSize: 15),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedCategory,
-                    items: categories.map((cat) {
-                      return DropdownMenuItem<String>(
-                        value: cat,
-                        child: Text(
-                          cat,
-                          style: GoogleFonts.ibmPlexSansArabic(fontSize: 15),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setStateDialog(() {
-                          selectedCategory = val;
-                        });
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'التصنيف',
-                      labelStyle: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: Text(
-                    'إلغاء',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7C57FC),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () async {
-                    final name = nameController.text.trim();
-                    if (name.isEmpty) return;
-
-                    try {
-                      final client = Supabase.instance.client;
-                      final response = await client.from('custom_venues').insert({
-                        'name': name,
-                        'address': 'موقع مخصص',
-                        'latitude': _latitude,
-                        'longitude': _longitude,
-                        'category_name': selectedCategory,
-                        'created_by': client.auth.currentUser?.id,
-                      }).select().single();
-
-                      final loc = {
-                        'placeId': response['id'] as String,
-                        'name': response['name'] as String,
-                        'address': response['address'] as String,
-                        'latitude': (response['latitude'] as num).toDouble(),
-                        'longitude': (response['longitude'] as num).toDouble(),
-                        'distance': '0 m',
-                        'icon': _getIconForTypes([selectedCategory.toLowerCase()]),
-                      };
-
-                      if (dialogContext.mounted && mounted) {
-                        Navigator.pop(dialogContext); // Close dialog
-                        Navigator.pop(context, loc); // Return selected place to composer
-                      }
-                    } catch (e) {
-                      debugPrint("Error creating custom venue: $e");
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Failed to save custom place: $e")),
-                        );
-                      }
-                    }
-                  },
-                  child: Text(
-                    'حفظ',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -825,59 +688,20 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                               FocusScope.of(context).unfocus();
                             },
                             child: _filteredLocations.isEmpty
-                                ? ListView(
-                                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                                    children: [
-                                      ListTile(
-                                        onTap: () {
-                                          _showAddCustomPlaceDialog();
-                                        },
-                                        leading: Container(
-                                          width: 36,
-                                          height: 36,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFEDE6FC),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.add,
-                                            color: Color(0xFF7C57FC),
-                                            size: 20,
-                                          ),
-                                        ),
-                                        title: Text(
-                                          'أضف مكاناً مخصصاً...',
-                                          style: GoogleFonts.ibmPlexSansArabic(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF7C57FC),
-                                          ),
-                                        ),
-                                        subtitle: Text(
-                                          'إذا لم تجد المكان في البحث',
-                                          style: GoogleFonts.ibmPlexSansArabic(
-                                            fontSize: 14,
-                                            color: const Color(0xFF82858C),
-                                          ),
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 40),
+                                      child: Text(
+                                        'No places found',
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          fontSize: 16,
+                                          color: const Color(0xFF82858C),
                                         ),
                                       ),
-                                      const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                                      Center(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 40),
-                                          child: Text(
-                                            'No places found',
-                                            style: GoogleFonts.ibmPlexSansArabic(
-                                              fontSize: 16,
-                                              color: const Color(0xFF82858C),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   )
                                 : ListView.separated(
-                                    itemCount: _filteredLocations.length + 1,
+                                    itemCount: _filteredLocations.length,
                                     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                                     padding: const EdgeInsets.symmetric(vertical: 8),
                                     separatorBuilder: (context, index) => const Divider(
@@ -886,42 +710,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                                       color: Color(0xFFF3F4F6),
                                     ),
                                     itemBuilder: (context, index) {
-                                      if (index == 0) {
-                                        return ListTile(
-                                          onTap: () {
-                                            _showAddCustomPlaceDialog();
-                                          },
-                                          leading: Container(
-                                            width: 36,
-                                            height: 36,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFFEDE6FC),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.add,
-                                              color: Color(0xFF7C57FC),
-                                              size: 20,
-                                            ),
-                                          ),
-                                          title: Text(
-                                            'أضف مكاناً مخصصاً...',
-                                            style: GoogleFonts.ibmPlexSansArabic(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF7C57FC),
-                                            ),
-                                          ),
-                                          subtitle: Text(
-                                            'إذا لم تجد المكان في نتائج البحث',
-                                            style: GoogleFonts.ibmPlexSansArabic(
-                                              fontSize: 14,
-                                              color: const Color(0xFF82858C),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      final loc = _filteredLocations[index - 1];
+                                      final loc = _filteredLocations[index];
                                       return ListTile(
                                         onTap: () {
                                           FocusScope.of(context).unfocus();

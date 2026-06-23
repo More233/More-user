@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/timeline_post.dart';
 import '../models/collection_model.dart';
 import '../models/collections_state.dart';
@@ -24,8 +25,14 @@ class SaveToListBottomSheet extends ConsumerStatefulWidget {
 
 class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
   bool _isNewCollectionView = false;
+  bool _isAddPeopleView = false;
   final TextEditingController _collectionNameController = TextEditingController();
   bool _isSaveButtonEnabled = false;
+  
+  final Set<String> _selectedSharedUserIds = {};
+  List<Map<String, dynamic>> _profilesList = [];
+  bool _isLoadingProfiles = true;
+  String _addPeopleSearchQuery = "";
 
   Widget _buildCoverImage(String? path, {
     double size = 48,
@@ -135,6 +142,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
     _collectionNameController.addListener(_updateSaveButtonState);
     Future.microtask(() {
       ref.read(collectionsViewModelProvider.notifier).init();
+      _loadProfiles();
     });
   }
 
@@ -143,6 +151,100 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
     _collectionNameController.removeListener(_updateSaveButtonState);
     _collectionNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadProfiles() async {
+    try {
+      final res = await Supabase.instance.client.from('profiles').select();
+      if (mounted) {
+        setState(() {
+          _profilesList = List<Map<String, dynamic>>.from(res);
+          _isLoadingProfiles = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading profiles: $e");
+      if (mounted) {
+        setState(() => _isLoadingProfiles = false);
+      }
+    }
+  }
+
+  Widget _buildOverlappingSharedAvatars(List<String> userIds, {double size = 24}) {
+    if (userIds.isEmpty) return const SizedBox.shrink();
+    
+    final List<Map<String, dynamic>> matchingProfiles = [];
+    for (final id in userIds) {
+      final profile = _profilesList.firstWhere(
+        (p) => p['id'] == id,
+        orElse: () => <String, dynamic>{},
+      );
+      if (profile.isNotEmpty) {
+        matchingProfiles.add(profile);
+      }
+    }
+    
+    if (matchingProfiles.isEmpty) return const SizedBox.shrink();
+    
+    final displayProfiles = matchingProfiles.take(3).toList();
+    return SizedBox(
+      width: size + (displayProfiles.length - 1) * (size * 0.5),
+      height: size,
+      child: Stack(
+        children: List.generate(displayProfiles.length, (index) {
+          final p = displayProfiles[index];
+          final avatarUrl = p['avatar_url'] as String?;
+          
+          return Positioned(
+            left: index * (size * 0.5),
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? (avatarUrl.startsWith('http')
+                        ? Image.network(avatarUrl, fit: BoxFit.cover)
+                        : Image.asset(avatarUrl, fit: BoxFit.cover))
+                    : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  String _formatSharedNames(List<String> userIds) {
+    if (userIds.isEmpty) return "Private";
+    
+    final List<String> names = [];
+    for (final id in userIds) {
+      final profile = _profilesList.firstWhere(
+        (p) => p['id'] == id,
+        orElse: () => <String, dynamic>{},
+      );
+      if (profile.isNotEmpty) {
+        final fName = profile['first_name'] as String? ?? '';
+        final name = fName.isNotEmpty ? fName : (profile['username'] as String? ?? 'User');
+        names.add(name);
+      }
+    }
+    
+    if (names.isEmpty) return "Shared";
+    if (names.length == 1) return "with ${names[0]}";
+    if (names.length == 2) return "with ${names[0]} and ${names[1]}";
+    return "with ${names[0]} and ${names.length - 1} others";
   }
 
   void _updateSaveButtonState() {
@@ -400,6 +502,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                   setState(() {
                     _isNewCollectionView = true;
                     _collectionNameController.clear();
+                    _selectedSharedUserIds.clear();
                   });
                 },
                 child: Text(
@@ -429,7 +532,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                 )
               : Container(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.3,
+                    maxHeight: MediaQuery.of(context).size.height * 0.35,
                   ),
                   child: ListView.builder(
                     shrinkWrap: true,
@@ -438,6 +541,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                       final col = customCollections[index];
                       final notifier = ref.read(collectionsViewModelProvider.notifier);
                       final inCollection = notifier.isPostInCollection(col.id, widget.post.id);
+                      final isShared = col.sharedUserIds.isNotEmpty;
 
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -457,12 +561,25 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                             color: Colors.black,
                           ),
                         ),
-                        subtitle: Text(
-                          'Private',
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 12,
-                            color: const Color(0xFF82858C),
-                          ),
+                        subtitle: Row(
+                          children: [
+                            if (isShared) ...[
+                              _buildOverlappingSharedAvatars(col.sharedUserIds, size: 16),
+                              const SizedBox(width: 6),
+                            ] else ...[
+                              const Icon(Icons.lock_outline, size: 12, color: Color(0xFF82858C)),
+                              const SizedBox(width: 4),
+                            ],
+                            Text(
+                              isShared
+                                  ? _formatSharedNames(col.sharedUserIds)
+                                  : 'Private',
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 12,
+                                color: const Color(0xFF82858C),
+                              ),
+                            ),
+                          ],
                         ),
                         trailing: GestureDetector(
                           onTap: () async {
@@ -514,10 +631,10 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                               await notifier.removePostFromCollection(col.id, widget.post.id);
                               bool inOther = false;
                               for (final c in colState.collections) {
-                                if (c.postIds.contains(widget.post.id)) {
-                                  inOther = true;
-                                  break;
-                                }
+                                  if (c.postIds.contains(widget.post.id)) {
+                                    inOther = true;
+                                    break;
+                                  }
                               }
                               if (!inOther) {
                                 await notifier.updatePostBookmarkState(widget.post.id, false);
@@ -547,6 +664,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
 
   Widget _buildNewCollectionForm(CollectionsState colState) {
     final postImage = widget.post.imageUrl;
+    final isShared = _selectedSharedUserIds.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -598,7 +716,11 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                         final name = _collectionNameController.text.trim();
                         final notifier = ref.read(collectionsViewModelProvider.notifier);
                         try {
-                          await notifier.addCollection(name, postImage);
+                          await notifier.addCollection(
+                            name,
+                            postImage,
+                            sharedUserIds: _selectedSharedUserIds.toList(),
+                          );
                           
                           // Look up the newly created collection ID
                           final updatedState = ref.read(collectionsViewModelProvider);
@@ -616,6 +738,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                           if (mounted) {
                             setState(() {
                               _isNewCollectionView = false;
+                              _selectedSharedUserIds.clear();
                             });
                           }
                         }
@@ -641,7 +764,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
               borderRadius: BorderRadius.circular(16),
               child: _buildCoverImage(
                 postImage,
-                size: 200,
+                size: 150,
                 categoryIcon: widget.post.categoryIcon,
                 isCollection: false,
               ),
@@ -679,6 +802,237 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
             ),
           ),
           const SizedBox(height: 16),
+          
+          // Shared Friends Entry Point
+          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.people_outline, color: Color(0xFF5A5D67)),
+            title: Text(
+              'Add people to collection',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            subtitle: Row(
+              children: [
+                if (isShared) ...[
+                  _buildOverlappingSharedAvatars(_selectedSharedUserIds.toList(), size: 16),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  isShared
+                      ? _formatSharedNames(_selectedSharedUserIds.toList())
+                      : 'Save to a collection together',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 12,
+                    color: const Color(0xFF82858C),
+                  ),
+                ),
+              ],
+            ),
+            trailing: const Icon(Icons.chevron_right, color: Color(0xFF82858C)),
+            onTap: () {
+              setState(() {
+                _isAddPeopleView = true;
+                _addPeopleSearchQuery = "";
+              });
+            },
+          ),
+          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddPeopleView() {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final otherProfiles = _profilesList.where((p) => p['id'] != currentUser?.id).toList();
+    final filteredProfiles = otherProfiles.where((p) {
+      final query = _addPeopleSearchQuery.toLowerCase();
+      final username = (p['username'] as String? ?? '').toLowerCase();
+      final firstName = (p['first_name'] as String? ?? '').toLowerCase();
+      final lastName = (p['last_name'] as String? ?? '').toLowerCase();
+      return username.contains(query) || firstName.contains(query) || lastName.contains(query);
+    }).toList();
+    
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      height: MediaQuery.of(context).size.height * 0.7,
+      child: Column(
+        children: [
+          Center(
+            child: Container(
+              width: 56,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC1C1C1),
+                borderRadius: BorderRadius.circular(100),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isAddPeopleView = false;
+                  });
+                },
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    color: const Color(0xFF82858C),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Text(
+                'Add people',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isAddPeopleView = false;
+                  });
+                },
+                child: Text(
+                  'Done',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    color: const Color(0xFF7C57FC),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F2F7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.search, color: Colors.grey, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    onChanged: (val) {
+                      setState(() {
+                        _addPeopleSearchQuery = val;
+                      });
+                    },
+                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
+                    decoration: InputDecoration(
+                      hintText: "Search",
+                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          Expanded(
+            child: _isLoadingProfiles
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC)))
+                : filteredProfiles.isEmpty
+                    ? Center(
+                        child: Text(
+                          "No friends found",
+                          style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: filteredProfiles.length,
+                        itemBuilder: (context, index) {
+                          final p = filteredProfiles[index];
+                          final pId = p['id'] as String;
+                          final username = p['username'] as String? ?? '';
+                          final fName = p['first_name'] as String? ?? '';
+                          final lName = p['last_name'] as String? ?? '';
+                          final fullName = fName.isNotEmpty ? '$fName $lName' : username;
+                          final avatarUrl = p['avatar_url'] as String?;
+                          final isSelected = _selectedSharedUserIds.contains(pId);
+                          
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.grey[200],
+                              backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                  ? (avatarUrl.startsWith('http')
+                                      ? NetworkImage(avatarUrl)
+                                      : AssetImage(avatarUrl) as ImageProvider)
+                                  : const AssetImage('assets/home/images/avatar_placeholder.png'),
+                            ),
+                            title: Text(
+                              fullName,
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '@$username',
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 12,
+                                color: const Color(0xFF82858C),
+                              ),
+                            ),
+                            trailing: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFD1D1D6),
+                                  width: 2,
+                                ),
+                                color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
+                              ),
+                              child: isSelected
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 14,
+                                    )
+                                  : null,
+                            ),
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selectedSharedUserIds.remove(pId);
+                                } else {
+                                  _selectedSharedUserIds.add(pId);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+          ),
         ],
       ),
     );
@@ -712,7 +1066,11 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
               )
             : AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
-                child: _isNewCollectionView ? _buildNewCollectionForm(colState) : _buildMainView(colState),
+                child: _isAddPeopleView
+                    ? _buildAddPeopleView()
+                    : _isNewCollectionView
+                        ? _buildNewCollectionForm(colState)
+                        : _buildMainView(colState),
               ),
       ),
     );

@@ -89,98 +89,132 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                   width: 110,
                   height: 150,
                   margin: const EdgeInsets.only(right: 12),
-                  child: Stack(
-                    children: [
-                      // Background image: current user's profile image
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            color: Colors.grey[300],
-                            child: widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
-                                ? (widget.currentUserAvatarUrl!.startsWith('http')
-                                    ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
-                                    : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
-                                : const Image(
-                                    image: AssetImage('assets/home/images/avatar_placeholder.png'),
-                                    fit: BoxFit.cover,
-                                  ),
+                  decoration: hasOwnStory
+                      ? BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF7C57FC), Color(0xFFFF45B5), Color(0xFFFF805D)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ),
-                      ),
-                      // Dark semi-transparent overlay
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            color: Colors.black.withValues(alpha: 0.35),
+                        )
+                      : null,
+                  padding: hasOwnStory ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
+                      color: Colors.white,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
+                      child: Stack(
+                        children: [
+                          // Background image: first story image or user's profile image
+                          Positioned.fill(
+                            child: Container(
+                              color: Colors.grey[300],
+                              child: hasOwnStory && currentUserGroup.mediaUrls.isNotEmpty
+                                  ? Image.network(
+                                      currentUserGroup.mediaUrls.first,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => const Center(
+                                        child: Icon(Icons.broken_image, color: Colors.grey),
+                                      ),
+                                    )
+                                  : widget.currentUserAvatarUrl != null &&
+                                          widget.currentUserAvatarUrl!.isNotEmpty
+                                      ? (widget.currentUserAvatarUrl!.startsWith('http')
+                                          ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
+                                          : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
+                                      : const Image(
+                                          image: AssetImage('assets/home/images/avatar_placeholder.png'),
+                                          fit: BoxFit.cover,
+                                        ),
+                            ),
                           ),
-                        ),
-                      ),
-                      // InkWell for taps
-                      Positioned.fill(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              if (hasOwnStory) {
-                                final index = state.storyGroups.indexOf(currentUserGroup);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => StoryViewer(
-                                      storyGroups: state.storyGroups,
-                                      initialGroupIndex: index,
-                                    ),
-                                  ),
-                                ).then((_) => ref.read(socialFeedViewModelProvider.notifier).refreshFeed());
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const StoryComposerScreen(),
-                                  ),
-                                ).then((_) => ref.read(socialFeedViewModelProvider.notifier).refreshFeed());
-                              }
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const SizedBox(height: 24),
-                                  // Center: white circle with plus icon
-                                  Container(
-                                    width: 32,
-                                    height: 32,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.add,
-                                      color: Color(0xFF7C57FC),
-                                      size: 20,
-                                    ),
-                                  ),
-                                  // Bottom: "Create a story" text
-                                  Text(
-                                    'Create a story',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      fontSize: 11,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
+                          // Overlay
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withValues(alpha: hasOwnStory ? 0.45 : 0.35),
+                                    Colors.transparent,
+                                  ],
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                          // InkWell for taps
+                          Positioned.fill(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  if (hasOwnStory) {
+                                    final index = state.storyGroups.indexOf(currentUserGroup);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => StoryViewer(
+                                          storyGroups: state.storyGroups,
+                                          initialGroupIndex: index,
+                                        ),
+                                      ),
+                                    ).then((_) => ref.read(socialFeedViewModelProvider.notifier).refreshFeed());
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const StoryComposerScreen(),
+                                      ),
+                                    ).then((_) => ref.read(socialFeedViewModelProvider.notifier).refreshFeed());
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const SizedBox(height: 24),
+                                      // Center: white circle with plus icon (only if no active story)
+                                      if (!hasOwnStory)
+                                        Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.add,
+                                            color: Color(0xFF7C57FC),
+                                            size: 20,
+                                          ),
+                                        )
+                                      else
+                                        const SizedBox.shrink(),
+                                      // Bottom label
+                                      Text(
+                                        hasOwnStory ? 'Your Story' : 'Create a story',
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          fontSize: 11,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
                 // Friends story cards

@@ -44,6 +44,8 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>NSContactsUsageDescription</key>
 	<string>This app needs access to your contacts to help you find friends who are already on More.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -67,15 +69,11 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

@@ -5,14 +5,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/timeline_post.dart';
-import 'models/collections_state.dart';
 import 'view_models/collections_view_model.dart';
 import 'widgets/timeline_post_card.dart';
 import 'widgets/comments_bottom_sheet.dart';
 import 'widgets/share_bottom_sheet.dart';
 import 'widgets/save_to_list_bottom_sheet.dart';
 import 'widgets/check_in_composer_screen.dart';
-import 'widgets/collection_details_screen.dart';
+import 'widgets/saved_screen.dart';
 import '../auth/auth_flow_page.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -520,7 +519,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colState = ref.watch(collectionsViewModelProvider);
     // Collect all image URLs from posts for the photo grid
     final photos = _posts
         .where((post) => post.imageUrl != null)
@@ -546,6 +544,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.bookmark_border_rounded, color: Colors.black),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SavedScreen(),
+                ),
+              );
+              if (mounted) {
+                ref.read(collectionsViewModelProvider.notifier).loadCollections();
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
             onPressed: () => _handleLogout(context),
           ),
@@ -558,8 +570,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const Divider(height: 1, color: Color(0xFFE8E8E8)),
             // Profile Card Info
             _buildProfileHeader(context, _posts.length),
-            const Divider(height: 8, color: Color(0xFFF6F6F6)),
-            _buildCollectionsSection(colState),
             const Divider(height: 8, color: Color(0xFFF6F6F6)),
             // Photos Grid Header
             Padding(
@@ -641,124 +651,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildCollectionsSection(CollectionsState colState) {
-    if (colState.isLoading) {
-      return const SizedBox(
-        height: 150,
-        child: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF7C57FC),
-          ),
-        ),
-      );
-    }
 
-    final collections = colState.collections;
-    if (collections.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Text(
-            'My Collections',
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 150,
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: collections.length,
-            itemBuilder: (context, index) {
-              final col = collections[index];
-              return GestureDetector(
-                onTap: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CollectionDetailsScreen(
-                        collectionId: col.id,
-                        collectionName: col.name,
-                        onRefresh: () {
-                          ref.read(collectionsViewModelProvider.notifier).loadCollections();
-                        },
-                      ),
-                    ),
-                  );
-                  ref.read(collectionsViewModelProvider.notifier).loadCollections();
-                },
-                child: Container(
-                  width: 100,
-                  margin: const EdgeInsets.only(right: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: col.coverImageUrl != null
-                            ? Image.network(
-                                col.coverImageUrl!,
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    _buildFolderPlaceholder(),
-                              )
-                            : _buildFolderPlaceholder(),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        col.name,
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${col.postIds.length} items',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 12,
-                          color: const Color(0xFF82858C),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFolderPlaceholder() {
-    return Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2EEFC),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.folder_rounded,
-          color: Color(0xFF7C57FC),
-          size: 40,
-        ),
-      ),
-    );
-  }
 
   Widget _buildProfileHeader(BuildContext context, int postsCount) {
     if (_profileLoading) {

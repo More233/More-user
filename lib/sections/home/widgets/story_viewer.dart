@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_story_group.dart';
 import '../models/story_view_state.dart';
 import '../view_models/story_view_model.dart';
+import 'story_composer_screen.dart';
 
 class StoryViewer extends ConsumerStatefulWidget {
   final List<UserStoryGroup> storyGroups;
@@ -27,6 +28,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
   late AnimationController _animationController;
   late TextEditingController _textController;
   late FocusNode _focusNode;
+  bool _simulateViews = false;
 
   @override
   void initState() {
@@ -92,88 +94,294 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier).previousStory(widget.storyGroups);
   }
 
-  void _showViewsBottomSheet(BuildContext context, StoryViewState storyState) {
+  List<Map<String, dynamic>> _getMockViewers() {
+    return [
+      {
+        'user': {
+          'username': 'karennne',
+          'first_name': 'Karen',
+          'last_name': '',
+          'avatar_url': 'assets/home/images/avatar_female.png',
+        },
+        'badge': 'heart',
+      },
+      {
+        'user': {
+          'username': 'Sam_TD',
+          'first_name': 'Sam',
+          'last_name': '',
+          'avatar_url': 'assets/home/images/avatar_male.png',
+        },
+        'badge': null,
+      },
+      {
+        'user': {
+          'username': 'kieron_d',
+          'first_name': 'Kieron',
+          'last_name': '',
+          'avatar_url': 'assets/home/images/avatar.png',
+        },
+        'badge': 'fire',
+      },
+      {
+        'user': {
+          'username': 'craig_love',
+          'first_name': 'Craig',
+          'last_name': 'Love',
+          'avatar_url': 'assets/home/images/profile_image2.png',
+        },
+        'badge': null,
+      },
+    ];
+  }
+
+  Widget _buildAvatarWithBadge(Map<String, dynamic> viewer) {
+    final user = viewer['user'];
+    final avatarUrl = user != null ? user['avatar_url'] as String? : null;
+    final badge = viewer['badge'] as String?;
+    
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.grey[200],
+          ),
+          child: ClipOval(
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? (avatarUrl.startsWith('http')
+                    ? Image.network(avatarUrl, fit: BoxFit.cover)
+                    : Image.asset(avatarUrl, fit: BoxFit.cover))
+                : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
+          ),
+        ),
+        if (badge != null)
+          Positioned(
+            right: -4,
+            bottom: -4,
+            child: Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2.5),
+              child: Center(
+                child: badge == 'heart'
+                    ? Image.asset('assets/home/images/heart.png', fit: BoxFit.contain)
+                    : Image.asset('assets/home/images/fire.png', fit: BoxFit.contain),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showViewsBottomSheet(BuildContext context, StoryViewState storyState, String currentStoryId) {
     _animationController.stop();
+    final showMock = _simulateViews && storyState.viewers.isEmpty;
+    final listToShow = storyState.viewers.isNotEmpty 
+        ? storyState.viewers 
+        : (showMock ? _getMockViewers() : <Map<String, dynamic>>[]);
+        
+    final displayViewsCount = storyState.viewers.isNotEmpty 
+        ? storyState.viewsCount 
+        : listToShow.length;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return Container(
           decoration: const BoxDecoration(
-            color: Color(0xFF1F1F1F),
+            color: Colors.white,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            MediaQuery.of(context).padding.bottom + 20,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Drag handle
+              Container(
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5EA),
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Header Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Story Views (${storyState.viewsCount})",
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      SvgPicture.asset(
+                        'assets/home/icons/user_multiple.svg',
+                        width: 22,
+                        height: 22,
+                        colorFilter: const ColorFilter.mode(Color(0xFF1F1F1F), BlendMode.srcIn),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "$displayViewsCount",
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          color: const Color(0xFF1F1F1F),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close, color: Colors.white70),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _confirmDeleteStory(currentStoryId);
+                    },
+                    child: SvgPicture.asset(
+                      'assets/home/icons/delete_03.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(Color(0xFFE53935), BlendMode.srcIn),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              if (storyState.viewers.isEmpty)
+              const SizedBox(height: 10),
+              const Divider(color: Color(0xFFEFEFEF), thickness: 1),
+              const SizedBox(height: 10),
+              // Viewers list
+              if (listToShow.isEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 32),
                   child: Center(
                     child: Text(
                       "No views yet",
-                      style: GoogleFonts.ibmPlexSansArabic(color: Colors.white38),
+                      style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey[400]),
                     ),
                   ),
-                )
-              else
+                ),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _simulateViews = true;
+                      });
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _showViewsBottomSheet(context, storyState, currentStoryId);
+                      });
+                    },
+                    icon: const Icon(Icons.bolt, color: Color(0xFF7C57FC)),
+                    label: Text(
+                      "Simulate Views (Figma Demo)",
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        color: const Color(0xFF7C57FC),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
                 Flexible(
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: storyState.viewers.length,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: listToShow.length,
                     itemBuilder: (context, index) {
-                      final viewer = storyState.viewers[index]['user'];
+                      final item = listToShow[index];
+                      final viewer = item['user'];
                       if (viewer == null) return const SizedBox.shrink();
-                      final avatarUrl = viewer['avatar_url'] as String?;
+                      
                       final username = viewer['username'] as String? ?? 'unknown';
                       final fullName = '${viewer['first_name'] ?? ''} ${viewer['last_name'] ?? ''}'.trim();
                       
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          radius: 20,
-                          backgroundColor: Colors.grey[800],
-                          backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                              ? NetworkImage(avatarUrl)
-                              : const AssetImage('assets/home/images/avatar_placeholder.png') as ImageProvider,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          children: [
+                            _buildAvatarWithBadge(item),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    username,
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      color: const Color(0xFF1F1F1F),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (fullName.isNotEmpty)
+                                    Text(
+                                      fullName,
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        color: Colors.grey[500],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.more_vert, color: Color(0xFF8E8E93)),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Options for @$username")),
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                        title: Text(
-                          username,
-                          style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: fullName.isNotEmpty
-                            ? Text(
-                                fullName,
-                                style: GoogleFonts.ibmPlexSansArabic(color: Colors.white54, fontSize: 12),
-                              )
-                            : null,
                       );
                     },
                   ),
                 ),
+                if (_simulateViews && storyState.viewers.isEmpty)
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          _simulateViews = false;
+                        });
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _showViewsBottomSheet(context, storyState, currentStoryId);
+                        });
+                      },
+                      child: Text(
+                        "Reset Simulation",
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         );
@@ -183,25 +391,90 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     });
   }
 
-  Future<void> _deleteStory(String storyId) async {
+  Future<void> _confirmDeleteStory(String storyId) async {
     _animationController.stop();
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1F1F1F),
-        title: Text("Delete Story", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white)),
-        content: Text("Are you sure you want to delete this story?", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white70)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text("Cancel", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white38)),
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF2F2F2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Delete this photo?",
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          color: Colors.black,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "You can restore unarchived stories for 24 hours, or 30 days for archived stories, from Recently deleted in Your activity. After that, it will be permanently deleted.",
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          color: const Color(0xFF333333),
+                          fontSize: 13,
+                          height: 1.35,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFD1D1D6), thickness: 0.5),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.pop(context, true),
+                  child: Container(
+                    width: double.infinity,
+                    height: 44,
+                    alignment: Alignment.center,
+                    child: Text(
+                      "Delete",
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        color: const Color(0xFFD32F2F),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFD1D1D6), thickness: 0.5),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.pop(context, false),
+                  child: Container(
+                    width: double.infinity,
+                    height: 44,
+                    alignment: Alignment.center,
+                    child: Text(
+                      "Cancel",
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        color: Colors.black,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text("Delete", style: GoogleFonts.ibmPlexSansArabic(color: Colors.redAccent)),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
     if (confirm == true) {
@@ -231,86 +504,767 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     }
   }
 
-  void _addToHighlights() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Added to Highlights!"),
-        backgroundColor: Color(0xFF7C57FC),
-        duration: Duration(seconds: 2),
+  void _showMoreOptions(BuildContext context, String storyId) {
+    _animationController.stop();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 36,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E5EA),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF1F1F1F)),
+                  title: Text(
+                    "Add to Story",
+                    style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF1F1F1F), fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StoryComposerScreen(),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text(
+                    "Delete Story",
+                    style: GoogleFonts.ibmPlexSansArabic(color: Colors.red, fontWeight: FontWeight.w600),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmDeleteStory(storyId);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.close, color: Colors.grey),
+                  title: Text(
+                    "Cancel",
+                    style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
+                  ),
+                  onTap: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((_) {
+      _animationController.forward();
+    });
+  }
+
+  void _showHighlightBottomSheet(BuildContext context, String currentMediaUrl) {
+    _animationController.stop();
+    String selectedHighlight = "Highlight";
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                12,
+                24,
+                MediaQuery.of(context).padding.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E5EA),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Add to highlight",
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: Colors.black,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          setSheetState(() {
+                            selectedHighlight = "Highlight";
+                          });
+                        },
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: selectedHighlight == "Highlight"
+                                      ? const Color(0xFF7C57FC)
+                                      : Colors.grey[300]!,
+                                  width: 2.5,
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(2.5),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.grey[200],
+                                ),
+                                child: ClipOval(
+                                  child: currentMediaUrl.startsWith('http')
+                                      ? Image.network(currentMediaUrl, fit: BoxFit.cover)
+                                      : Image.asset(currentMediaUrl, fit: BoxFit.cover),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Highlight",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                color: const Color(0xFF1F1F1F),
+                                fontSize: 13,
+                                fontWeight: selectedHighlight == "Highlight"
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 32),
+                      GestureDetector(
+                        onTap: () {
+                          _showCreateHighlightDialog(context, (newName) {
+                            setSheetState(() {
+                              selectedHighlight = newName;
+                            });
+                          });
+                        },
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: selectedHighlight != "Highlight"
+                                      ? const Color(0xFF7C57FC)
+                                      : Colors.grey[300]!,
+                                  width: 2.0,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.add, color: Color(0xFF7C57FC), size: 28),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              selectedHighlight != "Highlight" ? selectedHighlight : "New",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                color: const Color(0xFF1F1F1F),
+                                fontSize: 13,
+                                fontWeight: selectedHighlight != "Highlight"
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Added to highlight \"$selectedHighlight\"!"),
+                          backgroundColor: const Color(0xFF7C57FC),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C57FC),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        "Continue",
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      _animationController.forward();
+    });
+  }
+
+  void _showCreateHighlightDialog(BuildContext context, Function(String) onCreate) {
+    final textController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("New Highlight", style: GoogleFonts.ibmPlexSansArabic(fontSize: 16, fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: textController,
+            decoration: const InputDecoration(
+              hintText: "Enter highlight name",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Cancel", style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                final name = textController.text.trim();
+                if (name.isNotEmpty) {
+                  onCreate(name);
+                }
+                Navigator.pop(context);
+              },
+              child: Text("Create", style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF7C57FC))),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSendBottomSheet(BuildContext context) {
+    _animationController.stop();
+    final friends = [
+      {'username': 'karennne', 'name': 'Karen', 'avatar': 'assets/home/images/avatar_female.png'},
+      {'username': 'Sam_TD', 'name': 'Sam', 'avatar': 'assets/home/images/avatar_male.png'},
+      {'username': 'kieron_d', 'name': 'Kieron', 'avatar': 'assets/home/images/avatar.png'},
+      {'username': 'craig_love', 'name': 'Craig Love', 'avatar': 'assets/home/images/profile_image2.png'},
+    ];
+    final sentSet = <String>{};
+    String searchQuery = "";
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filteredFriends = friends.where((f) {
+              final query = searchQuery.toLowerCase();
+              return f['username']!.toLowerCase().contains(query) ||
+                  f['name']!.toLowerCase().contains(query);
+            }).toList();
+            
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                12,
+                20,
+                MediaQuery.of(context).padding.bottom + MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E5EA),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Send",
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: Colors.black,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F2F7),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, color: Colors.grey, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            onChanged: (val) {
+                              setSheetState(() {
+                                searchQuery = val;
+                              });
+                            },
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: "Search",
+                              hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (filteredFriends.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Text(
+                        "No friends found",
+                        style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: filteredFriends.length,
+                        itemBuilder: (context, index) {
+                          final f = filteredFriends[index];
+                          final username = f['username']!;
+                          final name = f['name']!;
+                          final avatar = f['avatar']!;
+                          final isSent = sentSet.contains(username);
+                          
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor: Colors.grey[200],
+                                  backgroundImage: AssetImage(avatar),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          color: const Color(0xFF1F1F1F),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        "@$username",
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    setSheetState(() {
+                                      if (isSent) {
+                                        sentSet.remove(username);
+                                      } else {
+                                        sentSet.add(username);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text("Story sent to @$username!"),
+                                            backgroundColor: const Color(0xFF7C57FC),
+                                            duration: const Duration(seconds: 1),
+                                          ),
+                                        );
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 72,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: isSent ? Colors.white : const Color(0xFF7C57FC),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: isSent
+                                          ? Border.all(color: const Color(0xFFD3D3D3), width: 1)
+                                          : null,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      isSent ? "Sent" : "Send",
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        color: isSent ? const Color(0xFF5A5D67) : Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMentionBottomSheet(BuildContext context) {
+    _animationController.stop();
+    final suggested = [
+      {'username': 'karennne', 'name': 'Karen', 'avatar': 'assets/home/images/avatar_female.png'},
+      {'username': 'Sam_TD', 'name': 'Sam', 'avatar': 'assets/home/images/avatar_male.png'},
+      {'username': 'kieron_d', 'name': 'Kieron', 'avatar': 'assets/home/images/avatar.png'},
+    ];
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            MediaQuery.of(context).padding.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5EA),
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "Mentions",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  color: Colors.black,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: suggested.length,
+                itemBuilder: (context, index) {
+                  final s = suggested[index];
+                  final username = s['username']!;
+                  final name = s['name']!;
+                  final avatar = s['avatar']!;
+                  
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: AssetImage(avatar),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  color: const Color(0xFF1F1F1F),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                "@$username",
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Mentioned @$username in this story!"),
+                                backgroundColor: const Color(0xFF7C57FC),
+                                duration: const Duration(milliseconds: 1500),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2F2F7),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              "Tag",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                color: const Color(0xFF7C57FC),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    ).then((_) {
+      _animationController.forward();
+    });
+  }
+
+  Widget _buildOverlappingAvatars(List<Map<String, dynamic>> viewers) {
+    final list = _simulateViews || viewers.isNotEmpty 
+        ? (viewers.isNotEmpty ? viewers : _getMockViewers()) 
+        : <Map<String, dynamic>>[];
+        
+    if (list.isEmpty) {
+      return SvgPicture.asset(
+        'assets/home/icons/user_multiple.svg',
+        width: 24,
+        height: 24,
+        colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
+      );
+    }
+    
+    final displayViewers = list.take(3).toList();
+    return SizedBox(
+      width: 24.0 + (displayViewers.length - 1) * 12.0,
+      height: 24,
+      child: Stack(
+        children: List.generate(displayViewers.length, (index) {
+          final viewer = displayViewers[index]['user'];
+          final avatarUrl = viewer != null ? viewer['avatar_url'] as String? : null;
+          
+          return Positioned(
+            left: index * 12.0,
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? (avatarUrl.startsWith('http')
+                        ? Image.network(avatarUrl, fit: BoxFit.cover)
+                        : Image.asset(avatarUrl, fit: BoxFit.cover))
+                    : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildOwnerBottomBar(BuildContext context, String currentStoryId, StoryViewState storyState) {
+  Widget _buildOwnerBottomBar(BuildContext context, String currentStoryId, String currentMediaUrl, StoryViewState storyState) {
     return Container(
       color: Colors.white,
       padding: EdgeInsets.fromLTRB(
-        24,
+        16,
         12,
-        24,
+        16,
         MediaQuery.of(context).padding.bottom + 12,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          GestureDetector(
-            onTap: () => _deleteStory(currentStoryId),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SvgPicture.asset(
-                  'assets/home/icons/delete_03.svg',
-                  width: 24,
-                  height: 24,
-                  colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "Delete",
-                  style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF5A5D67), fontSize: 12),
-                ),
-              ],
-            ),
+          _buildBottomBarItem(
+            icon: _buildOverlappingAvatars(storyState.viewers),
+            label: "Activity",
+            onTap: () => _showViewsBottomSheet(context, storyState, currentStoryId),
           ),
-          GestureDetector(
-            onTap: _addToHighlights,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SvgPicture.asset(
-                  'assets/home/icons/star_circle.svg',
-                  width: 24,
-                  height: 24,
-                  colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "Highlight",
-                  style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF5A5D67), fontSize: 12),
-                ),
-              ],
+          _buildBottomBarItem(
+            icon: SvgPicture.asset(
+              'assets/home/icons/like_icon.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
             ),
+            label: "Highlight",
+            onTap: () => _showHighlightBottomSheet(context, currentMediaUrl),
           ),
-          GestureDetector(
-            onTap: () => _showViewsBottomSheet(context, storyState),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SvgPicture.asset(
-                  'assets/home/icons/info_circle_large.svg',
-                  width: 24,
-                  height: 24,
-                  colorFilter: const ColorFilter.mode(Color(0xFF7C57FC), BlendMode.srcIn),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "${storyState.viewsCount} Views",
-                  style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF7C57FC), fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ],
+          _buildBottomBarItem(
+            icon: SvgPicture.asset(
+              'assets/home/icons/sent.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
             ),
+            label: "Send",
+            onTap: () => _showSendBottomSheet(context),
+          ),
+          _buildBottomBarItem(
+            icon: SvgPicture.asset(
+              'assets/home/icons/at.svg',
+              width: 24,
+              height: 24,
+              colorFilter: const ColorFilter.mode(Color(0xFF5A5D67), BlendMode.srcIn),
+            ),
+            label: "Mention",
+            onTap: () => _showMentionBottomSheet(context),
+          ),
+          _buildBottomBarItem(
+            icon: SvgPicture.string(
+              '''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 7H20M4 12H20M4 17H20" stroke="#5A5D67" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>''',
+              width: 24,
+              height: 24,
+            ),
+            label: "More",
+            onTap: () {
+              _showMoreOptions(context, currentStoryId);
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBarItem({
+    required Widget icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 68,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 26,
+              child: Center(
+                child: icon,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: GoogleFonts.ibmPlexSansArabic(
+                color: const Color(0xFF5A5D67),
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -399,7 +1353,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
 
     final currentGroup = widget.storyGroups[storyState.currentGroupIndex];
     final currentMediaUrl = currentGroup.mediaUrls[storyState.currentStoryIndex];
-    final topPadding = MediaQuery.of(context).padding.top;
 
     final client = Supabase.instance.client;
     final currentUser = client.auth.currentUser;
@@ -414,17 +1367,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
       body: Stack(
         children: [
           Positioned(
-            top: 0,
+            top: MediaQuery.of(context).padding.top + 8,
             left: 0,
             right: 0,
-            bottom: bottomSpacing,
+            bottom: bottomSpacing + 8,
             child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(32),
-                topRight: Radius.circular(32),
-                bottomLeft: Radius.zero,
-                bottomRight: Radius.zero,
-              ),
+              borderRadius: const BorderRadius.all(Radius.circular(28)),
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -462,7 +1410,11 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                           onVerticalDragEnd: (details) {
                             if (details.primaryVelocity != null && details.primaryVelocity! < -100) {
                               if (isOwner) {
-                                _showViewsBottomSheet(context, storyState);
+                                _showViewsBottomSheet(
+                                  context,
+                                  storyState,
+                                  currentGroup.storyIds[storyState.currentStoryIndex],
+                                );
                               }
                             } else if (details.primaryVelocity != null && details.primaryVelocity! > 100) {
                               Navigator.pop(context);
@@ -522,7 +1474,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                         filter: ImageFilter.blur(sigmaX: 2.65, sigmaY: 2.65),
                         child: Container(
                           color: const Color(0x4D989898),
-                          padding: EdgeInsets.fromLTRB(16, topPadding > 0 ? topPadding + 8 : 16, 16, 12),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -594,7 +1546,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                       Row(
                                         children: [
                                           Text(
-                                            currentGroup.username,
+                                            isOwner ? "Your Story" : currentGroup.username,
                                             style: GoogleFonts.ibmPlexSansArabic(
                                               color: Colors.white,
                                               fontSize: 14,
@@ -846,7 +1798,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildOwnerBottomBar(context, currentGroup.storyIds[storyState.currentStoryIndex], storyState),
+              child: _buildOwnerBottomBar(
+                context,
+                currentGroup.storyIds[storyState.currentStoryIndex],
+                currentMediaUrl,
+                storyState,
+              ),
             ),
         ],
       ),
