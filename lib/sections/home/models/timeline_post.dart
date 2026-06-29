@@ -83,47 +83,31 @@ class TimelinePost {
   String get shortLocationAddress {
     if (locationAddress.isEmpty) return '';
     
-    // Split by comma (standard and Arabic)
-    List<String> parts = locationAddress.split(RegExp(r'[,،]'));
-    String primary = parts.first.trim();
-    
-    // If the primary part contains a dash "-", let's check if we should split by it
-    if (primary.contains('-')) {
-      final dashParts = primary.split('-');
-      if (dashParts.first.trim().isNotEmpty) {
-        primary = dashParts.first.trim();
-      }
+    // Split by whitespace to get words
+    List<String> words = locationAddress.split(RegExp(r'\s+'));
+    if (words.length <= 4) {
+      return locationAddress;
     }
     
-    // If the resulting string is still extremely long, truncate it
-    if (primary.length > 35) {
-      return '${primary.substring(0, 32)}...';
-    }
-    
-    return primary;
+    String truncated = words.take(4).join(' ');
+    // Remove trailing commas or punctuation
+    truncated = truncated.replaceAll(RegExp(r'[,،\s]+$'), '');
+    return '$truncated...';
   }
 
   String get shortTitle {
     if (title.isEmpty) return '';
     
-    // Split by comma (standard and Arabic)
-    List<String> parts = title.split(RegExp(r'[,،]'));
-    String primary = parts.first.trim();
-    
-    // If the primary part contains a dash "-", let's check if we should split by it
-    if (primary.contains('-')) {
-      final dashParts = primary.split('-');
-      if (dashParts.first.trim().isNotEmpty) {
-        primary = dashParts.first.trim();
-      }
+    // Split by whitespace to get words
+    List<String> words = title.split(RegExp(r'\s+'));
+    if (words.length <= 4) {
+      return title;
     }
     
-    // If the resulting string is still extremely long, truncate it
-    if (primary.length > 35) {
-      return '${primary.substring(0, 32)}...';
-    }
-    
-    return primary;
+    String truncated = words.take(4).join(' ');
+    // Remove trailing commas or punctuation
+    truncated = truncated.replaceAll(RegExp(r'[,،\s]+$'), '');
+    return '$truncated...';
   }
 
 

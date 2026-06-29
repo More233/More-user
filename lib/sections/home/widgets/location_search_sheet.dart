@@ -17,7 +17,7 @@ class LocationSearchSheet extends StatefulWidget {
       'icon': Icons.business,
     },
     {
-      'name': 'منطقة تجنيد وتعبئة الزقازيق',
+      'name': 'Zagazig Recruitment and Mobilization Area',
       'address': 'Al-Sharkia, Egypt',
       'latitude': 30.587681,
       'longitude': 31.482811,
@@ -25,7 +25,7 @@ class LocationSearchSheet extends StatefulWidget {
       'icon': Icons.check_circle_outline,
     },
     {
-      'name': 'الزقازيق',
+      'name': 'Zagazig',
       'address': 'Al-Sharkia, Egypt',
       'latitude': 30.587123,
       'longitude': 31.502025,
@@ -41,7 +41,7 @@ class LocationSearchSheet extends StatefulWidget {
       'icon': Icons.business_outlined,
     },
     {
-      'name': 'مستشفى الأحرار',
+      'name': 'Al-Ahrar Hospital',
       'address': 'Zagazig, Al-Sharkia, Egypt',
       'latitude': 30.573215,
       'longitude': 31.481235,
@@ -73,7 +73,7 @@ class LocationSearchSheet extends StatefulWidget {
       'icon': Icons.location_on_outlined,
     },
     {
-      'name': 'كوبرى بردين',
+      'name': 'Bordein Bridge',
       'address': 'Bordein, Al-Sharkia, Egypt',
       'latitude': 30.498124,
       'longitude': 31.512345,
@@ -89,7 +89,7 @@ class LocationSearchSheet extends StatefulWidget {
       'icon': Icons.location_on_outlined,
     },
     {
-      'name': 'مقر الإخوان المسلمين بمدينة بلبيس',
+      'name': 'Muslim Brotherhood Headquarters in Belbeis',
       'address': 'Belbeis, Al-Sharkia, Egypt',
       'latitude': 30.418234,
       'longitude': 31.567123,
@@ -105,7 +105,7 @@ class LocationSearchSheet extends StatefulWidget {
       'icon': Icons.location_on_outlined,
     },
     {
-      'name': 'جامع سادات قريش',
+      'name': 'Sadat Quraish Mosque',
       'address': 'Belbeis, Al-Sharkia, Egypt',
       'latitude': 30.417234,
       'longitude': 31.566123,
