@@ -6,18 +6,20 @@ import 'dart:ui';
 class BottomNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
+  final String? userAvatarUrl;
 
   const BottomNavBar({
     super.key,
     required this.selectedIndex,
     required this.onItemTapped,
+    this.userAvatarUrl,
   });
 
   static const _items = [
     'Home',
     'Explore',
-    'Booking',
-    'Order',
+    'Reels',
+    'Profile',
   ];
 
   @override
@@ -60,6 +62,7 @@ class BottomNavBar extends StatelessWidget {
                       label: label,
                       isActive: isActive,
                       onTap: () => onItemTapped(index),
+                      userAvatarUrl: userAvatarUrl,
                     );
                   }),
                 ),
@@ -78,11 +81,13 @@ class _NavItem extends StatelessWidget {
   final String label;
   final bool isActive;
   final VoidCallback onTap;
+  final String? userAvatarUrl;
 
   const _NavItem({
     required this.label,
     required this.isActive,
     required this.onTap,
+    this.userAvatarUrl,
   });
 
   Widget _buildIcon() {
@@ -108,9 +113,9 @@ class _NavItem extends StatelessWidget {
         ),
       );
     }
-    if (label == 'Booking') {
+    if (label == 'Reels') {
       return SvgPicture.asset(
-        'assets/home/icons/booking_nav_icon.svg',
+        'assets/home/icons/reels_nav_icon.svg',
         width: 22,
         height: 22,
         colorFilter: ColorFilter.mode(
@@ -119,14 +124,31 @@ class _NavItem extends StatelessWidget {
         ),
       );
     }
-    if (label == 'Order') {
-      return SvgPicture.asset(
-        'assets/home/icons/order_nav_icon.svg',
+    if (label == 'Profile') {
+      return Container(
         width: 22,
         height: 22,
-        colorFilter: ColorFilter.mode(
-          isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-          BlendMode.srcIn,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isActive ? const Color(0xFF7C57FC) : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: ClipOval(
+          child: userAvatarUrl != null
+              ? Image.network(
+                  userAvatarUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                    'assets/home/images/element.png',
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Image.asset(
+                  'assets/home/images/element.png',
+                  fit: BoxFit.cover,
+                ),
         ),
       );
     }

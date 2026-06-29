@@ -11,6 +11,7 @@ import 'view_models/collections_view_model.dart';
 import 'view_models/social_feed_view_model.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import 'widgets/reels_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/comments_bottom_sheet.dart';
@@ -189,143 +190,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
         );
       case 2:
-        return _buildBookingPlaceholder();
+        return ReelsScreen(
+          onBackToTimeline: () {
+            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
+          },
+        );
       case 3:
-        return _buildOrderPlaceholder();
+        return ProfileScreen(
+          userPosts: state.posts,
+          onPostUpdated: () {
+            ref.read(timelineViewModelProvider.notifier).refreshAll();
+          },
+        );
       default:
         return const SizedBox.shrink();
     }
   }
 
-  Widget _buildBookingPlaceholder() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Color(0xFFEDE6FC),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.calendar_month_outlined,
-              color: Color(0xFF7C57FC),
-              size: 48,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            "No Bookings Yet",
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF333333),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Explore places on the map to book your next dining experience, sports session, or hotel stay.",
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 14,
-              color: const Color(0xFF82858C),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          GestureDetector(
-            onTap: () {
-              ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
-            },
-            child: Container(
-              height: 48,
-              width: 200,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C57FC),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                "Explore Places",
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildOrderPlaceholder() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: Color(0xFFEDE6FC),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.shopping_bag_outlined,
-              color: Color(0xFF7C57FC),
-              size: 48,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            "No Active Orders",
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF333333),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Place orders at your favorite cafes and restaurants to view their status here.",
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 14,
-              color: const Color(0xFF82858C),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          GestureDetector(
-            onTap: () {
-              ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
-            },
-            child: Container(
-              height: 48,
-              width: 200,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C57FC),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                "Explore Places",
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -348,6 +230,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               bottom: 0,
               child: BottomNavBar(
                 selectedIndex: state.selectedNavIndex,
+                userAvatarUrl: state.currentUserAvatarUrl,
                 onItemTapped: (index) {
                   ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
                 },
@@ -365,19 +248,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => _onAvatarTapped(state.posts),
-            child: CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: state.currentUserAvatarUrl != null
-                  ? NetworkImage(state.currentUserAvatarUrl!) as ImageProvider
-                  : const AssetImage(
-                      'assets/home/images/element.png',
-                    ),
-            ),
-          ),
-          const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
