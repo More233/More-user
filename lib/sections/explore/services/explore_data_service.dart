@@ -6,7 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../home/widgets/location_search_sheet.dart';
 
 class ExploreDataService {
-  static const String googlePlacesApiKey = 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug';
+  static const String googlePlacesApiKey = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY',
+    defaultValue: 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug',
+  );
 
   static const List<String> _coffeeImages = [
     'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500',
@@ -413,44 +416,44 @@ class ExploreDataService {
 
   static Future<List<Map<String, dynamic>>> searchFoursquarePlaces(String query, double lat, double lng) async {
     final List<Map<String, dynamic>> places = [];
+    
+    final String url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
+        '?query=${Uri.encodeComponent(query)}'
+        '&location=$lat,$lng'
+        '&radius=50000'
+        '&key=$googlePlacesApiKey';
+
+    final double latMin = lat - 1.5;
+    final double latMax = lat + 1.5;
+    final double lngMin = lng - 1.5;
+    final double lngMax = lng + 1.5;
+    final client = Supabase.instance.client;
+
     try {
-      final String url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
-          '?query=${Uri.encodeComponent(query)}'
-          '&location=$lat,$lng'
-          '&radius=50000'
-          '&key=$googlePlacesApiKey';
+      final results = await Future.wait<dynamic>([
+        http.get(Uri.parse(url)),
+        client
+            .from('custom_venues')
+            .select('*')
+            .ilike('name', '%$query%')
+            .gte('latitude', latMin)
+            .lte('latitude', latMax)
+            .gte('longitude', lngMin)
+            .lte('longitude', lngMax)
+            .limit(10),
+      ]);
 
-      final response = await http.get(Uri.parse(url));
+      final httpResponse = results[0] as http.Response;
+      final venuesResponse = results[1];
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'] as List<dynamic>? ?? [];
-        for (final item in results) {
+      if (httpResponse.statusCode == 200) {
+        final data = json.decode(httpResponse.body);
+        final resultsList = data['results'] as List<dynamic>? ?? [];
+        for (final item in resultsList) {
           final place = item as Map<String, dynamic>;
           places.add(parseGooglePlace(place, lat, lng));
         }
       }
-    } catch (e) {
-      debugPrint("Error searching Google Places: $e");
-    }
-
-    // Add Supabase custom venues matching search query
-    try {
-      final client = Supabase.instance.client;
-      final double latMin = lat - 1.5;
-      final double latMax = lat + 1.5;
-      final double lngMin = lng - 1.5;
-      final double lngMax = lng + 1.5;
-
-      final venuesResponse = await client
-          .from('custom_venues')
-          .select('*')
-          .ilike('name', '%$query%')
-          .gte('latitude', latMin)
-          .lte('latitude', latMax)
-          .gte('longitude', lngMin)
-          .lte('longitude', lngMax)
-          .limit(10);
 
       final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
       for (final res in venueResults) {
@@ -486,7 +489,7 @@ class ExploreDataService {
         });
       }
     } catch (e) {
-      debugPrint("Error searching custom venues in database: $e");
+      debugPrint("Error performing parallel search: $e");
     }
 
     // Fallback: search local hardcoded locations matching search query
@@ -538,25 +541,40 @@ class ExploreDataService {
     double userLng,
   ) async {
     Map<String, dynamic>? placeMap;
+    List<dynamic> visitorsRes = [];
+
+    final String url = 'https://maps.googleapis.com/maps/api/place/details/json'
+        '?place_id=$placeId'
+        '&key=$googlePlacesApiKey';
+
+    final client = Supabase.instance.client;
 
     try {
-      final String url = 'https://maps.googleapis.com/maps/api/place/details/json'
-          '?place_id=$placeId'
-          '&key=$googlePlacesApiKey';
+      final results = await Future.wait<dynamic>([
+        http.get(Uri.parse(url)),
+        client
+            .from('posts')
+            .select('*, author:profiles(*)')
+            .eq('place_id', placeId)
+            .eq('is_private', false)
+            .order('created_at', ascending: false)
+            .limit(10),
+      ]);
 
-      final response = await http.get(Uri.parse(url));
+      final httpResponse = results[0] as http.Response;
+      visitorsRes = results[1] as List<dynamic>;
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (httpResponse.statusCode == 200) {
+        final data = json.decode(httpResponse.body);
         final result = data['result'] as Map<String, dynamic>?;
         if (result != null) {
           placeMap = parseGooglePlace(result, userLat, userLng);
         }
       }
     } catch (e) {
-      debugPrint("Error fetching Google place details: $e");
+      debugPrint("Error performing parallel place details fetch: $e");
     }
-    
+
     if (placeMap == null) {
       final double meters = Geolocator.distanceBetween(userLat, userLng, defaultLat, defaultLng);
       final double km = meters / 1000;
@@ -590,16 +608,7 @@ class ExploreDataService {
     }
 
     try {
-      final client = Supabase.instance.client;
-      final visitorsRes = await client
-          .from('posts')
-          .select('*, author:profiles(*)')
-          .eq('place_id', placeMap['id'])
-          .eq('is_private', false)
-          .order('created_at', ascending: false)
-          .limit(10);
-
-      final list = List<Map<String, dynamic>>.from(visitorsRes as List);
+      final list = List<Map<String, dynamic>>.from(visitorsRes);
       final List<Map<String, dynamic>> parsedVisitors = [];
       for (final v in list) {
         final author = v['author'] as Map<String, dynamic>?;
@@ -647,14 +656,26 @@ class ExploreDataService {
       final double lngMin = lng - 0.5;
       final double lngMax = lng + 0.5;
 
-      final postsResponse = await client
-          .from('posts')
-          .select('*, author:profiles(*)')
-          .eq('is_private', false)
-          .gte('latitude', latMin)
-          .lte('latitude', latMax)
-          .gte('longitude', lngMin)
-          .lte('longitude', lngMax);
+      final results = await Future.wait<dynamic>([
+        client
+            .from('posts')
+            .select('*, author:profiles(*)')
+            .eq('is_private', false)
+            .gte('latitude', latMin)
+            .lte('latitude', latMax)
+            .gte('longitude', lngMin)
+            .lte('longitude', lngMax),
+        client
+            .from('custom_venues')
+            .select('*, creator:profiles(*)')
+            .gte('latitude', latMin)
+            .lte('latitude', latMax)
+            .gte('longitude', lngMin)
+            .lte('longitude', lngMax),
+      ]);
+
+      final postsResponse = results[0];
+      final venuesResponse = results[1];
 
       postResults = List<Map<String, dynamic>>.from(postsResponse as List);
       for (final res in postResults) {
@@ -693,14 +714,6 @@ class ExploreDataService {
           'stickerIndex': res['sticker_index'] as int? ?? -1,
         });
       }
-
-      final venuesResponse = await client
-          .from('custom_venues')
-          .select('*, creator:profiles(*)')
-          .gte('latitude', latMin)
-          .lte('latitude', latMax)
-          .gte('longitude', lngMin)
-          .lte('longitude', lngMax);
 
       final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
       for (final res in venueResults) {

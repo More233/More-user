@@ -26,9 +26,17 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
   String _selectedCategory = "Recents";
   List<AssetPathEntity> _deviceAlbums = [];
 
+  final ScrollController _scrollController = ScrollController();
+  AssetPathEntity? _currentAlbum;
+  int _currentPage = 0;
+  final int _pageSize = 80;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     // Wrap any previously selected files
     for (var path in widget.previouslySelected) {
       _selectedImages.add(GalleryImage(filePath: path));
@@ -38,6 +46,23 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       _activePreviewImage = _selectedImages.first;
     }
     _loadGalleryImages();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final threshold = _scrollController.position.maxScrollExtent - 200;
+      if (_scrollController.position.pixels >= threshold) {
+        if (_currentAlbum != null && _hasMore && !_isLoadingMore) {
+          _loadAssetsFromAlbum(_currentAlbum!, isLoadMore: true);
+        }
+      }
+    }
   }
 
   Future<void> _loadGalleryImages() async {
@@ -73,27 +98,69 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     }
   }
 
-  Future<void> _loadAssetsFromAlbum(AssetPathEntity album) async {
+  Future<void> _loadAssetsFromAlbum(AssetPathEntity album, {bool isLoadMore = false}) async {
     try {
+      if (!isLoadMore) {
+        _currentAlbum = album;
+        _currentPage = 0;
+        _hasMore = true;
+        _isLoadingMore = false;
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0.0);
+        }
+      } else {
+        if (!_hasMore || _isLoadingMore) return;
+        setState(() {
+          _isLoadingMore = true;
+        });
+      }
+
+      final int start = _currentPage * _pageSize;
+      final int end = start + _pageSize;
       final int totalCount = await album.assetCountAsync;
-      List<AssetEntity> assets = await album.getAssetListRange(start: 0, end: totalCount);
+
+      if (start >= totalCount) {
+        if (mounted) {
+          setState(() {
+            _hasMore = false;
+            _isLoadingMore = false;
+          });
+        }
+        return;
+      }
+
+      final List<AssetEntity> assets = await album.getAssetListRange(
+        start: start,
+        end: end > totalCount ? totalCount : end,
+      );
       
-      List<GalleryImage> images = assets.map((entity) => GalleryImage(entity: entity)).toList();
+      final List<GalleryImage> images = assets.map((entity) => GalleryImage(entity: entity)).toList();
       
       if (mounted) {
         setState(() {
-          _galleryImages.clear();
+          if (!isLoadMore) {
+            _galleryImages.clear();
+          }
           _galleryImages.addAll(images);
           _currentGridPhotos = List.from(_galleryImages);
           _selectedCategory = album.name;
           
-          if (_selectedImages.isEmpty && _currentGridPhotos.isNotEmpty) {
+          if (!isLoadMore && _selectedImages.isEmpty && _currentGridPhotos.isNotEmpty) {
             _activePreviewImage = _currentGridPhotos.first;
           }
+          
+          _currentPage++;
+          _hasMore = _galleryImages.length < totalCount;
+          _isLoadingMore = false;
         });
       }
     } catch (e) {
       debugPrint("Error loading assets from album: $e");
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -515,6 +582,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                 // Main Photo Grid
                 Expanded(
                   child: GridView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(2),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 4,

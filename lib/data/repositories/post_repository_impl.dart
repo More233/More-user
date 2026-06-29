@@ -79,37 +79,44 @@ class PostRepositoryImpl implements PostRepository {
       'receiver_id': receiverId,
       'type': type,
       'post_id': postId,
-      'metadata': ?metadata,
+      'metadata': metadata,
     });
   }
 
   @override
   Future<List<TimelinePost>> fetchPosts(String? currentUserId) async {
-    final List<dynamic> response = await _client
-        .from('posts')
-        .select()
-        .order('created_at', ascending: false);
-
+    List<dynamic> response = [];
     Set<String> likedPostIds = {};
+    Set<String> bookmarkedPostIds = {};
+
     if (currentUserId != null) {
-      final likesResponse = await _client
-          .from('post_likes')
-          .select('post_id')
-          .eq('user_id', currentUserId);
+      final results = await Future.wait<dynamic>([
+        _client
+            .from('posts')
+            .select()
+            .order('created_at', ascending: false),
+        _client
+            .from('post_likes')
+            .select('post_id')
+            .eq('user_id', currentUserId),
+        _client
+            .from('collections')
+            .select('id')
+            .eq('user_id', currentUserId),
+      ]);
+
+      response = results[0] as List<dynamic>;
+      final likesResponse = results[1] as List<dynamic>;
+      final collectionsResponse = results[2] as List<dynamic>;
+
       likedPostIds = List<Map<String, dynamic>>.from(likesResponse)
           .map((l) => l['post_id'] as String)
           .toSet();
-    }
 
-    Set<String> bookmarkedPostIds = {};
-    if (currentUserId != null) {
-      final collectionsResponse = await _client
-          .from('collections')
-          .select('id')
-          .eq('user_id', currentUserId);
       final collectionIds = List<Map<String, dynamic>>.from(collectionsResponse)
           .map((c) => c['id'] as String)
           .toList();
+
       if (collectionIds.isNotEmpty) {
         final collectionPostsResponse = await _client
             .from('collection_posts')
@@ -119,6 +126,11 @@ class PostRepositoryImpl implements PostRepository {
             .map((cp) => cp['post_id'] as String)
             .toSet();
       }
+    } else {
+      response = await _client
+          .from('posts')
+          .select()
+          .order('created_at', ascending: false);
     }
 
     return response
@@ -139,19 +151,31 @@ class PostRepositoryImpl implements PostRepository {
   }) async {
     if (followingIds.isEmpty) return [];
 
-    final likesResponse = await _client
-        .from('post_likes')
-        .select('post_id')
-        .eq('user_id', userId);
-    final likedPostIds = List<Map<String, dynamic>>.from(likesResponse)
+    final results = await Future.wait<dynamic>([
+      _client
+          .from('post_likes')
+          .select('post_id')
+          .eq('user_id', userId),
+      _client
+          .from('collections')
+          .select('id')
+          .eq('user_id', userId),
+      _client
+          .from('posts')
+          .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
+          .inFilter('user_id', followingIds)
+          .order('created_at', ascending: false),
+    ]);
+
+    final likesResponse = results[0];
+    final collectionsResponse = results[1];
+    final postsResponse = results[2];
+
+    final likedPostIds = List<Map<String, dynamic>>.from(likesResponse as List)
         .map((l) => l['post_id'] as String)
         .toSet();
 
-    final collectionsResponse = await _client
-        .from('collections')
-        .select('id')
-        .eq('user_id', userId);
-    final collectionIds = List<Map<String, dynamic>>.from(collectionsResponse)
+    final collectionIds = List<Map<String, dynamic>>.from(collectionsResponse as List)
         .map((c) => c['id'] as String)
         .toList();
 
@@ -166,13 +190,7 @@ class PostRepositoryImpl implements PostRepository {
           .toSet();
     }
 
-    final postsResponse = await _client
-        .from('posts')
-        .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
-        .inFilter('user_id', followingIds)
-        .order('created_at', ascending: false);
-
-    return List<Map<String, dynamic>>.from(postsResponse).map((postData) {
+    return List<Map<String, dynamic>>.from(postsResponse as List).map((postData) {
       final post = TimelinePost.fromMap(postData);
       return post.copyWith(
         isLiked: likedPostIds.contains(post.id),

@@ -56,12 +56,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final currentUser = client.auth.currentUser;
       if (currentUser == null) return;
 
-      // 1. Fetch profile info
-      final profile = await client
-          .from('profiles')
-          .select()
-          .eq('id', currentUser.id)
-          .maybeSingle();
+      final results = await Future.wait<dynamic>([
+        client
+            .from('profiles')
+            .select()
+            .eq('id', currentUser.id)
+            .maybeSingle(),
+        client
+            .from('follows')
+            .select('follower_id')
+            .eq('following_id', currentUser.id),
+        client
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', currentUser.id),
+        client
+            .from('posts')
+            .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
+            .eq('user_id', currentUser.id)
+            .order('created_at', ascending: false),
+      ]);
+
+      final profile = results[0] as Map<String, dynamic>?;
+      final followersData = results[1] as List<dynamic>;
+      final followingData = results[2] as List<dynamic>;
+      final postsResponse = results[3] as List<dynamic>;
 
       if (profile != null) {
         _fullName = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
@@ -69,29 +88,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _avatarUrl = profile['avatar_url'] as String?;
       }
 
-      // 2. Fetch followers count
-      final followersData = await client
-          .from('follows')
-          .select('follower_id')
-          .eq('following_id', currentUser.id);
-      _followersCount = (followersData as List).length;
-
-      // 3. Fetch following count
-      final followingData = await client
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', currentUser.id);
-      _followingCount = (followingData as List).length;
-
-      // 4. Fetch posts
-      final postsResponse = await client
-          .from('posts')
-          .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
-          .eq('user_id', currentUser.id)
-          .order('created_at', ascending: false);
+      _followersCount = followersData.length;
+      _followingCount = followingData.length;
 
       final List<TimelinePost> userPostsList = [];
-      for (var row in postsResponse as List) {
+      for (var row in postsResponse) {
         userPostsList.add(TimelinePost.fromMap(row as Map<String, dynamic>));
       }
       _posts = userPostsList;

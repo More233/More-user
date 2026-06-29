@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 import 'widgets/widgets.dart';
 import '../auth/auth_flow_page.dart';
 
@@ -26,6 +27,46 @@ class _PermissionsPageState extends State<PermissionsPage> {
         MaterialPageRoute(builder: (context) => const AuthFlowPage()),
       );
     }
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    try {
+      await ph.Permission.notification.request();
+    } catch (e) {
+      debugPrint("Error requesting notification permission: $e");
+    }
+    _nextPage();
+  }
+
+  Future<void> _requestContactsPermission() async {
+    try {
+      await ph.Permission.contacts.request();
+    } catch (e) {
+      debugPrint("Error requesting contacts permission: $e");
+    }
+    _nextPage();
+  }
+
+  Future<void> _requestLocationAlwaysPermission() async {
+    try {
+      // Prompt whenInUse first, then request always (iOS/Android best practice)
+      final status = await ph.Permission.locationWhenInUse.request();
+      if (status.isGranted) {
+        await ph.Permission.locationAlways.request();
+      }
+    } catch (e) {
+      debugPrint("Error requesting location always permission: $e");
+    }
+    _nextPage();
+  }
+
+  Future<void> _requestLocationWhenInUsePermission() async {
+    try {
+      await ph.Permission.locationWhenInUse.request();
+    } catch (e) {
+      debugPrint("Error requesting location whenInUse permission: $e");
+    }
+    _nextPage();
   }
 
   @override
@@ -66,7 +107,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                   ),
                 ],
                 primaryButtonText: 'Continue',
-                onPrimaryPressed: _nextPage,
+                onPrimaryPressed: _requestNotificationPermission,
                 secondaryButtonText: 'Not now',
                 onSecondaryPressed: _nextPage,
               ),
@@ -95,7 +136,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                   ),
                 ],
                 primaryButtonText: 'Continue',
-                onPrimaryPressed: _nextPage,
+                onPrimaryPressed: _requestContactsPermission,
                 secondaryButtonText: 'Skip for now',
                 onSecondaryPressed: _nextPage,
               ),
@@ -127,9 +168,9 @@ class _PermissionsPageState extends State<PermissionsPage> {
                   ),
                 ],
                 primaryButtonText: 'Continue',
-                onPrimaryPressed: _nextPage,
+                onPrimaryPressed: _requestLocationAlwaysPermission,
                 secondaryButtonText: 'Only while using',
-                onSecondaryPressed: _nextPage,
+                onSecondaryPressed: _requestLocationWhenInUsePermission,
               ),
             ],
           ),

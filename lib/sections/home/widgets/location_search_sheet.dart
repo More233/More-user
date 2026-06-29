@@ -133,7 +133,10 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
   Timer? _debounce;
   String? _apiErrorMessage;
 
-  static const String googlePlacesApiKey = 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug';
+  static const String googlePlacesApiKey = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY',
+    defaultValue: 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug',
+  );
 
   @override
   void initState() {

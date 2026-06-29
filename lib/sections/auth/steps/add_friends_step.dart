@@ -98,42 +98,24 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
     try {
       final client = Supabase.instance.client;
       final currentUserId = client.auth.currentUser?.id;
+      if (currentUserId == null) return;
 
-      // Query profiles table
-      final List<dynamic> profilesData = await client.from('profiles').select();
+      // 1. Suggestions: Query other profiles selecting only public fields and limiting to 30
+      final List<dynamic> suggestionsData = await client
+          .from('profiles')
+          .select('id, first_name, last_name, username, city, avatar_url')
+          .neq('id', currentUserId)
+          .limit(30);
 
       final List<UserCardInfo> suggestions = [];
       final List<UserCardInfo> contacts = [];
 
-      // Parse the profiles
-      final List<Map<String, dynamic>> otherProfiles = [];
-      for (final p in profilesData) {
-        final id = p['id'] as String;
-        if (id == currentUserId) continue; // Skip current user
-
+      for (final p in suggestionsData) {
         final firstName = p['first_name'] as String? ?? '';
         final lastName = p['last_name'] as String? ?? '';
         final name = '$firstName $lastName'.trim();
         final username = p['username'] as String? ?? '';
         final city = p['city'] as String? ?? '';
-        final phone = p['phone'] as String? ?? '';
-        final email = p['email'] as String? ?? '';
-
-        otherProfiles.add({
-          'id': id,
-          'name': name.isEmpty ? username : name,
-          'username': username,
-          'city': city,
-          'phone': phone,
-          'email': email,
-        });
-      }
-
-      // 1. Suggestions: all other registered profiles
-      for (final p in otherProfiles) {
-        final username = p['username'] as String;
-        final name = p['name'] as String;
-        final city = p['city'] as String;
 
         String detailText = 'On More';
         Widget? detailIcon = const Icon(Icons.sentiment_satisfied, size: 14, color: Color(0xFF9CA3AF));
@@ -155,7 +137,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
 
         suggestions.add(
           UserCardInfo(
-            name: name,
+            name: name.isEmpty ? username : name,
             username: '@$username',
             avatarPath: _getAvatarPath(username),
             detailText: detailText,
@@ -186,7 +168,45 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
         // Fallback silently if contacts API fails
       }
 
-      // 2. Contacts: check if registered
+      // 2. Contacts: check if registered by querying ONLY matched numbers/emails from DB (Secure)
+      List<dynamic> matchedProfilesData = [];
+      if (deviceContacts.isNotEmpty) {
+        final List<String> contactPhones = [];
+        final List<String> contactEmails = [];
+        for (final dc in deviceContacts) {
+          final String dcPhone = dc.phones.isNotEmpty ? dc.phones.first.number : '';
+          final String dcEmail = dc.emails.isNotEmpty ? dc.emails.first.address : '';
+          if (dcPhone.isNotEmpty) {
+            contactPhones.add(_normalizePhone(dcPhone));
+          }
+          if (dcEmail.isNotEmpty) {
+            contactEmails.add(dcEmail.toLowerCase());
+          }
+        }
+
+        final List<String> orClauses = [];
+        if (contactPhones.isNotEmpty) {
+          final phonesList = contactPhones.map((p) => '"$p"').join(',');
+          orClauses.add('phone.in.($phonesList)');
+        }
+        if (contactEmails.isNotEmpty) {
+          final emailsList = contactEmails.map((e) => '"$e"').join(',');
+          orClauses.add('email.in.($emailsList)');
+        }
+
+        if (orClauses.isNotEmpty) {
+          try {
+            matchedProfilesData = await client
+                .from('profiles')
+                .select('id, first_name, last_name, username, city, avatar_url, phone, email')
+                .neq('id', currentUserId)
+                .or(orClauses.join(','));
+          } catch (e) {
+            debugPrint("Error querying matched profiles: $e");
+          }
+        }
+      }
+
       if (deviceContacts.isNotEmpty) {
         for (final dc in deviceContacts) {
           final String dcName = dc.displayName ?? '';
@@ -198,7 +218,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
           final normalizedPhone = _normalizePhone(dcPhone);
 
           // Check registration
-          final match = otherProfiles.firstWhere(
+          final match = matchedProfilesData.firstWhere(
             (p) {
               final pPhone = p['phone'] as String? ?? '';
               final pEmail = p['email'] as String? ?? '';
@@ -210,10 +230,10 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
               }
               return false;
             },
-            orElse: () => {},
+            orElse: () => null,
           );
 
-          final isRegistered = match.isNotEmpty;
+          final isRegistered = match != null;
           final String username = isRegistered ? (match['username'] as String) : (dcPhone.isNotEmpty ? dcPhone : dcEmail);
           final String name = dcName.isNotEmpty ? dcName : username;
 

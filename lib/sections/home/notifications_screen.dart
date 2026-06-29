@@ -26,22 +26,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final currentUser = client.auth.currentUser;
       if (currentUser == null) return;
 
-      // 1. Fetch current user following list to see who we follow back
-      final followsResponse = await client
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', currentUser.id);
+      final results = await Future.wait<dynamic>([
+        client
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', currentUser.id),
+        client
+            .from('notifications')
+            .select('*, sender:profiles!notifications_sender_id_fkey(id, username, first_name, last_name, avatar_url)')
+            .eq('receiver_id', currentUser.id)
+            .order('created_at', ascending: false),
+      ]);
 
-      final followingIds = List<Map<String, dynamic>>.from(followsResponse)
+      final followsResponse = results[0];
+      final response = results[1] as List<dynamic>;
+
+      final followingIds = List<Map<String, dynamic>>.from(followsResponse as List)
           .map((f) => f['following_id'] as String)
           .toSet();
-
-      // 2. Fetch notifications where current user is the receiver
-      final response = await client
-          .from('notifications')
-          .select('*, sender:profiles!notifications_sender_id_fkey(id, username, first_name, last_name, avatar_url)')
-          .eq('receiver_id', currentUser.id)
-          .order('created_at', ascending: false);
 
       final List<Map<String, dynamic>> activities = [];
       for (var row in response) {

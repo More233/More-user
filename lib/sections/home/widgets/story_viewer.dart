@@ -9,6 +9,10 @@ import '../models/user_story_group.dart';
 import '../models/story_view_state.dart';
 import '../view_models/story_view_model.dart';
 import 'story_composer_screen.dart';
+import 'story/story_delete_dialog.dart';
+import 'story/story_options_sheet.dart';
+import 'story/story_highlight_sheet.dart';
+import 'story/story_views_sheet.dart';
 
 class StoryViewer extends ConsumerStatefulWidget {
   final List<UserStoryGroup> storyGroups;
@@ -149,255 +153,28 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     ];
   }
 
-  Widget _buildAvatarWithBadge(Map<String, dynamic> viewer) {
-    final user = viewer['user'];
-    final avatarUrl = user != null ? user['avatar_url'] as String? : null;
-    final badge = viewer['badge'] as String?;
-    
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.grey[200],
-          ),
-          child: ClipOval(
-            child: avatarUrl != null && avatarUrl.isNotEmpty
-                ? (avatarUrl.startsWith('http')
-                    ? Image.network(avatarUrl, fit: BoxFit.cover)
-                    : Image.asset(avatarUrl, fit: BoxFit.cover))
-                : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
-          ),
-        ),
-        if (badge != null)
-          Positioned(
-            right: -4,
-            bottom: -4,
-            child: Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(2.5),
-              child: Center(
-                child: badge == 'heart'
-                    ? Image.asset('assets/home/images/heart.png', fit: BoxFit.contain)
-                    : Image.asset('assets/home/images/fire.png', fit: BoxFit.contain),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
 
   void _showViewsBottomSheet(BuildContext context, StoryViewState storyState, String currentStoryId) {
     _animationController.stop();
-    final showMock = _simulateViews && storyState.viewers.isEmpty;
-    final listToShow = storyState.viewers.isNotEmpty 
-        ? storyState.viewers 
-        : (showMock ? _getMockViewers() : <Map<String, dynamic>>[]);
-        
-    final displayViewsCount = storyState.viewers.isNotEmpty 
-        ? storyState.viewsCount 
-        : listToShow.length;
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: EdgeInsets.fromLTRB(
-            20,
-            12,
-            20,
-            MediaQuery.of(context).padding.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Drag handle
-              Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5EA),
-                  borderRadius: BorderRadius.circular(2.5),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Header Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      SvgPicture.asset(
-                        'assets/home/icons/user_multiple.svg',
-                        width: 22,
-                        height: 22,
-                        colorFilter: const ColorFilter.mode(Color(0xFF1F1F1F), BlendMode.srcIn),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        "$displayViewsCount",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: const Color(0xFF1F1F1F),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      _confirmDeleteStory(currentStoryId);
-                    },
-                    child: SvgPicture.asset(
-                      'assets/home/icons/delete_03.svg',
-                      width: 24,
-                      height: 24,
-                      colorFilter: const ColorFilter.mode(Color(0xFFE53935), BlendMode.srcIn),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              const Divider(color: Color(0xFFEFEFEF), thickness: 1),
-              const SizedBox(height: 10),
-              // Viewers list
-              if (listToShow.isEmpty) ...[
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 32),
-                  child: Center(
-                    child: Text(
-                      "No views yet",
-                      style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey[400]),
-                    ),
-                  ),
-                ),
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _simulateViews = true;
-                      });
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _showViewsBottomSheet(context, storyState, currentStoryId);
-                      });
-                    },
-                    icon: const Icon(Icons.bolt, color: Color(0xFF7C57FC)),
-                    label: Text(
-                      "Simulate Views (Figma Demo)",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        color: const Color(0xFF7C57FC),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: listToShow.length,
-                    itemBuilder: (context, index) {
-                      final item = listToShow[index];
-                      final viewer = item['user'];
-                      if (viewer == null) return const SizedBox.shrink();
-                      
-                      final username = viewer['username'] as String? ?? 'unknown';
-                      final fullName = '${viewer['first_name'] ?? ''} ${viewer['last_name'] ?? ''}'.trim();
-                      
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Row(
-                          children: [
-                            _buildAvatarWithBadge(item),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    username,
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      color: const Color(0xFF1F1F1F),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (fullName.isNotEmpty)
-                                    Text(
-                                      fullName,
-                                      style: GoogleFonts.ibmPlexSansArabic(
-                                        color: Colors.grey[500],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.more_vert, color: Color(0xFF8E8E93)),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Options for @$username")),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                if (_simulateViews && storyState.viewers.isEmpty)
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        setState(() {
-                          _simulateViews = false;
-                        });
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _showViewsBottomSheet(context, storyState, currentStoryId);
-                        });
-                      },
-                      child: Text(
-                        "Reset Simulation",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ],
-          ),
+        return StoryViewsSheet(
+          storyState: storyState,
+          currentStoryId: currentStoryId,
+          simulateViews: _simulateViews,
+          onSimulateViewsChanged: (val) {
+            setState(() {
+              _simulateViews = val;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _showViewsBottomSheet(context, storyState, currentStoryId);
+            });
+          },
+          onDeletePressed: () => _confirmDeleteStory(currentStoryId),
+          mockViewers: _getMockViewers(),
         );
       },
     ).then((_) {
@@ -410,85 +187,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F2),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Delete this photo?",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: Colors.black,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "You can restore unarchived stories for 24 hours, or 30 days for archived stories, from Recently deleted in Your activity. After that, it will be permanently deleted.",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: const Color(0xFF333333),
-                          fontSize: 13,
-                          height: 1.35,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: Color(0xFFD1D1D6), thickness: 0.5),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.pop(context, true),
-                  child: Container(
-                    width: double.infinity,
-                    height: 44,
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Delete",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        color: const Color(0xFFD32F2F),
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const Divider(height: 1, color: Color(0xFFD1D1D6), thickness: 0.5),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.pop(context, false),
-                  child: Container(
-                    width: double.infinity,
-                    height: 44,
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Cancel",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        color: Colors.black,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (context) => const StoryDeleteDialog(),
     );
 
     if (confirm == true) {
@@ -524,81 +223,16 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 8),
-                Container(
-                  width: 36,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE5E5EA),
-                    borderRadius: BorderRadius.circular(2.5),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: SvgPicture.asset(
-                    'assets/home/icons/add_circle.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: const ColorFilter.mode(Color(0xFF1F1F1F), BlendMode.srcIn),
-                  ),
-                  title: Text(
-                    "Add to Story",
-                    style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF1F1F1F), fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const StoryComposerScreen(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: SvgPicture.asset(
-                    'assets/home/icons/delete_03.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: const ColorFilter.mode(Color(0xFFE53935), BlendMode.srcIn),
-                  ),
-                  title: Text(
-                    "Delete Story",
-                    style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFFE53935), fontWeight: FontWeight.w600),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _confirmDeleteStory(storyId);
-                  },
-                ),
-                ListTile(
-                  leading: SvgPicture.asset(
-                    'assets/home/icons/cancel_01.svg',
-                    width: 24,
-                    height: 24,
-                    colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
-                  ),
-                  title: Text(
-                    "Cancel",
-                    style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
-                  ),
-                  onTap: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          ),
+        return StoryOptionsSheet(
+          onAddToStory: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StoryComposerScreen(),
+              ),
+            );
+          },
+          onDeleteStory: () => _confirmDeleteStory(storyId),
         );
       },
     ).then((_) {
@@ -608,173 +242,18 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
 
   void _showHighlightBottomSheet(BuildContext context, String currentMediaUrl) {
     _animationController.stop();
-    String selectedHighlight = "Highlight";
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
-              padding: EdgeInsets.fromLTRB(
-                24,
-                12,
-                24,
-                MediaQuery.of(context).padding.bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5EA),
-                      borderRadius: BorderRadius.circular(2.5),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Add to highlight",
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.black,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setSheetState(() {
-                            selectedHighlight = "Highlight";
-                          });
-                        },
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: selectedHighlight == "Highlight"
-                                      ? const Color(0xFF7C57FC)
-                                      : Colors.grey[300]!,
-                                  width: 2.5,
-                                ),
-                              ),
-                              padding: const EdgeInsets.all(2.5),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.grey[200],
-                                ),
-                                child: ClipOval(
-                                  child: currentMediaUrl.startsWith('http')
-                                      ? Image.network(currentMediaUrl, fit: BoxFit.cover)
-                                      : Image.asset(currentMediaUrl, fit: BoxFit.cover),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              "Highlight",
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                color: const Color(0xFF1F1F1F),
-                                fontSize: 13,
-                                fontWeight: selectedHighlight == "Highlight"
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 32),
-                      GestureDetector(
-                        onTap: () {
-                          _showCreateHighlightDialog(context, (newName) {
-                            setSheetState(() {
-                              selectedHighlight = newName;
-                            });
-                          });
-                        },
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: selectedHighlight != "Highlight"
-                                      ? const Color(0xFF7C57FC)
-                                      : Colors.grey[300]!,
-                                  width: 2.0,
-                                ),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.add, color: Color(0xFF7C57FC), size: 28),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              selectedHighlight != "Highlight" ? selectedHighlight : "New",
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                color: const Color(0xFF1F1F1F),
-                                fontSize: 13,
-                                fontWeight: selectedHighlight != "Highlight"
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("Added to highlight \"$selectedHighlight\"!"),
-                          backgroundColor: const Color(0xFF7C57FC),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF7C57FC),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        "Continue",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+        return StoryHighlightSheet(
+          currentMediaUrl: currentMediaUrl,
+          onCompleted: (selectedHighlight) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Added to highlight \"$selectedHighlight\"!"),
+                backgroundColor: const Color(0xFF7C57FC),
+                duration: const Duration(seconds: 2),
               ),
             );
           },
@@ -783,40 +262,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     ).then((_) {
       _animationController.forward();
     });
-  }
-
-  void _showCreateHighlightDialog(BuildContext context, Function(String) onCreate) {
-    final textController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("New Highlight", style: GoogleFonts.ibmPlexSansArabic(fontSize: 16, fontWeight: FontWeight.bold)),
-          content: TextField(
-            controller: textController,
-            decoration: const InputDecoration(
-              hintText: "Enter highlight name",
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("Cancel", style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                final name = textController.text.trim();
-                if (name.isNotEmpty) {
-                  onCreate(name);
-                }
-                Navigator.pop(context);
-              },
-              child: Text("Create", style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF7C57FC))),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _showSendBottomSheet(BuildContext context) {

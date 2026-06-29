@@ -52,6 +52,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   GoogleMapController? _mapController;
   int _lastRoundedZoom = 13;
   double _currentZoom = 13.0;
+  double _lastIdleZoom = 13.0;
   final TextEditingController _searchController = TextEditingController();
   final MarkerGenerator _markerGenerator = MarkerGenerator();
 
@@ -567,25 +568,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   }
                 },
                 onCameraMove: (position) {
-                  final double oldZoom = _currentZoom;
                   _currentZoom = position.zoom;
-
-                  final bool crossedThreshold = (oldZoom < 15.0 && _currentZoom >= 15.0) ||
-                                                (oldZoom >= 15.0 && _currentZoom < 15.0);
-
-                  final int roundedZoom = position.zoom.round();
-                  if (roundedZoom != _lastRoundedZoom || crossedThreshold) {
-                    _lastRoundedZoom = roundedZoom;
-                    _markerGenerator.initMarkerIcons(
-                      zoom: position.zoom,
-                      onUpdate: () {
-                        if (mounted) setState(() {});
-                      },
-                    );
-                    if (crossedThreshold) {
-                      setState(() {});
-                    }
-                  }
                 },
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
@@ -600,6 +583,23 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   _onMapTapped(latLng, state);
                 },
                 onCameraIdle: () {
+                  final double oldZoom = _lastIdleZoom;
+                  _lastIdleZoom = _currentZoom;
+
+                  final bool crossedThreshold = (oldZoom < 15.0 && _currentZoom >= 15.0) ||
+                                                (oldZoom >= 15.0 && _currentZoom < 15.0);
+
+                  final int roundedZoom = _currentZoom.round();
+                  if (roundedZoom != _lastRoundedZoom || crossedThreshold) {
+                    _lastRoundedZoom = roundedZoom;
+                    _markerGenerator.initMarkerIcons(
+                      zoom: _currentZoom,
+                      onUpdate: () {
+                        if (mounted) setState(() {});
+                      },
+                    );
+                  }
+
                   if (_mapController != null) {
                     _mapController!.getVisibleRegion().then((bounds) {
                       final center = LatLng(

@@ -18,8 +18,8 @@ void main() async {
     publishableKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltbGp5amlpYXRyb3V6dWZjbnB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyODMxMzMsImV4cCI6MjA5Njg1OTEzM30.OZS7T7_MrJ1xBjxJejGQCa5jZ5fwqGCECI_UI-KVlJU',
   );
 
-  // Initialize push notifications (fail-safe)
-  await NotificationService().initialize();
+  // Initialize push notifications (fail-safe) asynchronously to avoid blocking app launch
+  NotificationService().initialize();
 
   runApp(const ProviderScope(child: MyApp()));
 }

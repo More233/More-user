@@ -64,6 +64,56 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
     }
   }
 
+  Future<void> _resendCode() async {
+    try {
+      final isEmail = widget.targetAddress.contains('@');
+      if (isEmail) {
+        await Supabase.instance.client.auth.signInWithOtp(
+          email: widget.targetAddress,
+        );
+      } else {
+        await Supabase.instance.client.auth.signInWithOtp(
+          phone: widget.targetAddress,
+        );
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Verification code resent successfully!',
+              style: GoogleFonts.ibmPlexSansArabic(),
+            ),
+            backgroundColor: const Color(0xFF7C57FC),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to resend code: ${e.message}',
+              style: GoogleFonts.ibmPlexSansArabic(),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to resend code: $e',
+              style: GoogleFonts.ibmPlexSansArabic(),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final canVerify = _enteredCode.length == 6;
@@ -125,17 +175,7 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
                 });
               },
               onChangeNumber: widget.onChangeNumber,
-              onResendCode: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Verification code resent successfully!',
-                      style: GoogleFonts.ibmPlexSansArabic(),
-                    ),
-                    backgroundColor: const Color(0xFF7C57FC),
-                  ),
-                );
-              },
+              onResendCode: _resendCode,
             ),
             if (_errorCode != null) ...[
               const SizedBox(height: 16),
