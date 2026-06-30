@@ -20,7 +20,8 @@ class StoryOverlayItem {
 
 class StoryEditorScreen extends StatefulWidget {
   final String imagePath;
-  const StoryEditorScreen({super.key, required this.imagePath});
+  final bool isReels;
+  const StoryEditorScreen({super.key, required this.imagePath, this.isReels = false});
 
   @override
   State<StoryEditorScreen> createState() => _StoryEditorScreenState();
@@ -66,6 +67,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       await _videoPlayerController!.initialize();
       await _videoPlayerController!.setLooping(true);
       await _videoPlayerController!.play();
+      _videoPlayerController!.addListener(_videoListener);
       if (mounted) {
         setState(() {});
       }
@@ -74,8 +76,15 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     }
   }
 
+  void _videoListener() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
+    _videoPlayerController?.removeListener(_videoListener);
     _videoPlayerController?.dispose();
     _textOverlayController.dispose();
     _textOverlayFocus.dispose();
@@ -295,7 +304,9 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       if (currentUser == null) return;
 
       final file = File(widget.imagePath);
-      final fileName = 'stories/${currentUser.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final isVideo = _isVideoFile(widget.imagePath);
+      final extension = isVideo ? 'mp4' : 'jpg';
+      final fileName = 'stories/${currentUser.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
       // Upload file to Supabase storage
       await client.storage.from('post-images').upload(
@@ -306,12 +317,41 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
       final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
 
-      // Insert story record in Supabase
-      await client.from('stories').insert({
-        'user_id': currentUser.id,
-        'media_url': publicUrl,
-        'expires_at': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
-      });
+      // Insert record in Supabase depending on mode
+      if (widget.isReels) {
+        final profileResponse = await client
+            .from('profiles')
+            .select('username')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+        final username = profileResponse != null ? profileResponse['username'] as String? : 'User';
+
+        String description = "Check out this Reel!";
+        final textOverlays = _overlays.where((item) => item.type == 'text').toList();
+        if (textOverlays.isNotEmpty) {
+          description = textOverlays.map((item) => item.data as String).join(' ');
+        }
+
+        await client.from('posts').insert({
+          'user_id': currentUser.id,
+          'title': 'Reel by $username',
+          'category_name': 'Reels',
+          'location_address': 'Riyadh, Saudi Arabia',
+          'description': description,
+          'image_url': publicUrl,
+          'is_private': false,
+          'sticker_index': -1,
+          'tagged_friends': [],
+          'latitude': 24.7136,
+          'longitude': 46.6753,
+        });
+      } else {
+        await client.from('stories').insert({
+          'user_id': currentUser.id,
+          'media_url': publicUrl,
+          'expires_at': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+        });
+      }
 
       if (!mounted) return;
 
@@ -362,13 +402,9 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
-          Container(
-            height: topPadding,
-            color: Colors.white,
-          ),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
               child: Stack(
                 children: [
                   // 1. Full screen preview inside the ClipRRect card (Image or Video Player)
@@ -391,6 +427,41 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                             fit: BoxFit.cover,
                           ),
                   ),
+
+                  // Video Progress Indicator (Story-style)
+                  if (_isVideoFile(widget.imagePath) &&
+                      _videoPlayerController != null &&
+                      _videoPlayerController!.value.isInitialized)
+                    Positioned(
+                      top: topPadding + 16,
+                      left: 16,
+                      right: 16,
+                      child: Container(
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final duration = _videoPlayerController!.value.duration.inMilliseconds;
+                            final position = _videoPlayerController!.value.position.inMilliseconds;
+                            final double progress = duration > 0 ? position / duration : 0.0;
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: Container(
+                                width: constraints.maxWidth * progress.clamp(0.0, 1.0),
+                                height: 3,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
 
                   // 2. Overlays Stack (draggable elements)
                   Positioned.fill(
@@ -442,7 +513,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
                   // 3. Top left back button
                   Positioned(
-                    top: 16,
+                    top: topPadding + 16 + 20,
                     left: 16,
                     child: GestureDetector(
                       onTap: () => Navigator.pop(context),
@@ -464,7 +535,7 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
                   // 4. Editing tools Column on the right side
                   Positioned(
-                    top: 16,
+                    top: topPadding + 16 + 20,
                     right: 16,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

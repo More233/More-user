@@ -498,6 +498,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exploreViewModelProvider);
+    
+    ref.listen<LatLng?>(
+      exploreViewModelProvider.select((s) => s.userLocation),
+      (previous, next) {
+        if (previous == null && next != null) {
+          _animateToUserLocation(next);
+        }
+      },
+    );
+
     final filteredPlaces = _getFilteredPlaces(state);
 
     final double topPadding = MediaQuery.of(context).padding.top;
@@ -556,16 +566,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               child: GoogleMap(
                 style: _mapStyleJson,
                 initialCameraPosition: CameraPosition(
-                  target: const LatLng(24.7136, 46.6753),
+                  target: state.userLocation ?? const LatLng(24.7136, 46.6753),
                   zoom: 13.0,
                 ),
                 onMapCreated: (controller) {
                   _mapController = controller;
-                  if (state.userLocation != null) {
-                    _mapController!.animateCamera(
-                      CameraUpdate.newLatLngZoom(state.userLocation!, 13.0),
-                    );
-                  }
                 },
                 onCameraMove: (position) {
                   _currentZoom = position.zoom;

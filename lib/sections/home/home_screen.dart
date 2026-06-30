@@ -149,62 +149,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildBody(TimelineState state) {
-    switch (state.selectedNavIndex) {
-      case 0:
-        return Stack(
-          children: [
-            Column(
-              children: [
-                _buildHeader(state),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: SocialFeedView(
-                    currentUserAvatarUrl: state.currentUserAvatarUrl,
-                    followedUsernames: state.followedUsernames,
-                    onAvatarTapped: () => _onAvatarTapped(state.posts),
-                    openFollowFriends: () => _openFollowFriends(state.followedUsernames),
-                    onLike: (post) => ref.read(timelineViewModelProvider.notifier).toggleLike(post.id),
-                    onBookmark: _handleBookmarkTap,
-                    onComment: _openComments,
-                    onShare: _openShare,
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              right: 16,
-              bottom: 130,
-              child: _buildFAB(state),
-            ),
-            if (state.isFirstCheckIn && state.showCoachmark)
-              FabCoachmarkOverlay(
-                onTap: _startOnboardingFlow,
-              ),
-          ],
-        );
-      case 1:
-        return ExploreScreen(
+    return IndexedStack(
+      index: state.selectedNavIndex,
+      children: [
+        _buildTimelineTab(state),
+        ExploreScreen(
           userAvatarUrl: state.currentUserAvatarUrl,
           onBackToTimeline: () {
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
           },
-        );
-      case 2:
-        return ReelsScreen(
+        ),
+        ReelsScreen(
           onBackToTimeline: () {
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
           },
-        );
-      case 3:
-        return ProfileScreen(
+        ),
+        ProfileScreen(
           userPosts: state.posts,
           onPostUpdated: () {
             ref.read(timelineViewModelProvider.notifier).refreshAll();
           },
-        );
-      default:
-        return const SizedBox.shrink();
-    }
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimelineTab(TimelineState state) {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            _buildHeader(state),
+            const SizedBox(height: 8),
+            Expanded(
+              child: SocialFeedView(
+                currentUserAvatarUrl: state.currentUserAvatarUrl,
+                followedUsernames: state.followedUsernames,
+                onAvatarTapped: () => _onAvatarTapped(state.posts),
+                openFollowFriends: () => _openFollowFriends(state.followedUsernames),
+                onLike: (post) => ref.read(timelineViewModelProvider.notifier).toggleLike(post.id),
+                onBookmark: _handleBookmarkTap,
+                onComment: _openComments,
+                onShare: _openShare,
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          right: 16,
+          bottom: 130,
+          child: _buildFAB(state),
+        ),
+        if (state.isFirstCheckIn && state.showCoachmark)
+          FabCoachmarkOverlay(
+            onTap: _startOnboardingFlow,
+          ),
+      ],
+    );
   }
 
 
@@ -216,6 +217,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
+        top: state.selectedNavIndex != 2,
         bottom: false,
         child: Stack(
           children: [
@@ -224,18 +226,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : _buildBody(state),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: BottomNavBar(
-                selectedIndex: state.selectedNavIndex,
-                userAvatarUrl: state.currentUserAvatarUrl,
-                onItemTapped: (index) {
-                  ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-                },
+            if (state.selectedNavIndex != 2)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: BottomNavBar(
+                  selectedIndex: state.selectedNavIndex,
+                  userAvatarUrl: state.currentUserAvatarUrl,
+                  onItemTapped: (index) {
+                    ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),

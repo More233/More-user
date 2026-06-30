@@ -85,7 +85,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
             )
           : ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 120),
+              padding: const EdgeInsets.only(top: 12, bottom: 120),
               itemCount: 1 + (state.socialPosts.isEmpty ? 1 : state.socialPosts.length),
               itemBuilder: (context, index) {
                 if (index == 0) {
@@ -123,27 +123,18 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                   borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
                                   child: Stack(
                                     children: [
-                                      // Background image: first story image or user's profile image
+                                      // Background image: always current user's profile image
                                       Positioned.fill(
                                         child: Container(
                                           color: Colors.grey[300],
-                                          child: hasOwnStory && currentUserGroup.mediaUrls.isNotEmpty
-                                              ? Image.network(
-                                                  currentUserGroup.mediaUrls.first,
+                                          child: widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
+                                              ? (widget.currentUserAvatarUrl!.startsWith('http')
+                                                  ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
+                                                  : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
+                                              : Image.asset(
+                                                  'assets/home/images/avatar_placeholder.png',
                                                   fit: BoxFit.cover,
-                                                  errorBuilder: (context, error, stackTrace) => Image.asset(
-                                                    'assets/home/images/element.png',
-                                                    fit: BoxFit.cover,
-                                                  ),
-                                                )
-                                              : (widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
-                                                  ? (widget.currentUserAvatarUrl!.startsWith('http')
-                                                      ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
-                                                      : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
-                                                  : Image.asset(
-                                                      'assets/home/images/avatar_placeholder.png',
-                                                      fit: BoxFit.cover,
-                                                    )),
+                                                ),
                                         ),
                                       ),
                                       // Dark overlay

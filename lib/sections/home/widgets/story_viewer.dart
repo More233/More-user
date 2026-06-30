@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 import '../models/user_story_group.dart';
 import '../models/story_view_state.dart';
 import '../view_models/story_view_model.dart';
@@ -602,26 +603,31 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                           },
                           child: Container(
                             color: Colors.grey[950],
-                            child: Image.network(
-                              currentMediaUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return const Center(
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
+                            child: _isVideoFile(currentMediaUrl)
+                                ? _StoryVideoWidget(
+                                    videoUrl: currentMediaUrl,
+                                    isSelected: true,
+                                  )
+                                : Image.network(
+                                    currentMediaUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      color: Colors.grey[900],
+                                      child: const Center(
+                                        child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                                      ),
+                                    ),
                                   ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                color: Colors.grey[900],
-                                child: const Center(
-                                  child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
-                                ),
-                              ),
-                            ),
                           ),
                         );
                       },
@@ -1709,5 +1715,75 @@ class _StoryMentionSheetContentState extends State<_StoryMentionSheetContent> {
       ),
     ),
     );
+  }
+}
+
+bool _isVideoFile(String path) {
+  final lower = path.toLowerCase();
+  return lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.avi') || lower.endsWith('.m4v');
+}
+
+class _StoryVideoWidget extends StatefulWidget {
+  final String videoUrl;
+  final bool isSelected;
+  const _StoryVideoWidget({required this.videoUrl, required this.isSelected});
+
+  @override
+  State<_StoryVideoWidget> createState() => _StoryVideoWidgetState();
+}
+
+class _StoryVideoWidgetState extends State<_StoryVideoWidget> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    _controller!.initialize().then((_) {
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+        if (widget.isSelected) {
+          _controller!.play();
+        }
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _StoryVideoWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_controller != null && _isInitialized) {
+      if (widget.isSelected && !oldWidget.isSelected) {
+        _controller!.play();
+      } else if (!widget.isSelected && oldWidget.isSelected) {
+        _controller!.pause();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isInitialized && _controller != null) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _controller!.value.size.width,
+            height: _controller!.value.size.height,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
+      );
+    }
+    return const Center(child: CircularProgressIndicator(color: Colors.white));
   }
 }

@@ -165,7 +165,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => StoryEditorScreen(imagePath: image.path),
+              builder: (context) => StoryEditorScreen(
+                imagePath: image.path,
+                isReels: _currentMode == CameraMode.reels,
+              ),
             ),
           );
         } else {
@@ -198,7 +201,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => StoryEditorScreen(imagePath: image.path),
+              builder: (context) => StoryEditorScreen(
+                imagePath: image.path,
+                isReels: _currentMode == CameraMode.reels,
+              ),
             ),
           );
         } else {
@@ -288,7 +294,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => StoryEditorScreen(imagePath: videoFile.path),
+          builder: (context) => StoryEditorScreen(
+            imagePath: videoFile.path,
+            isReels: _currentMode == CameraMode.reels,
+          ),
         ),
       );
     } catch (e) {
@@ -340,7 +349,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => StoryEditorScreen(imagePath: image.path),
+            builder: (context) => StoryEditorScreen(
+              imagePath: image.path,
+              isReels: _currentMode == CameraMode.reels,
+            ),
           ),
         );
       } catch (e) {
