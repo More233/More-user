@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 
 class StoryOverlayItem {
   final UniqueKey id = UniqueKey();
@@ -31,6 +32,8 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
   List<Map<String, dynamic>> _followedUsers = [];
   List<Map<String, dynamic>> _mentionSuggestions = [];
   
+  VideoPlayerController? _videoPlayerController;
+  
   // Active text tool controller
   final TextEditingController _textOverlayController = TextEditingController();
   final FocusNode _textOverlayFocus = FocusNode();
@@ -40,16 +43,6 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
   final TextEditingController _mentionController = TextEditingController();
   final FocusNode _mentionFocus = FocusNode();
   bool _isEditingMention = false;
-
-  final List<Map<String, String>> _musicTracks = [
-    {'title': 'Blinding Lights', 'artist': 'The Weeknd'},
-    {'title': 'Save Your Tears', 'artist': 'The Weeknd'},
-    {'title': 'As It Was', 'artist': 'Harry Styles'},
-    {'title': 'Flowers', 'artist': 'Miley Cyrus'},
-    {'title': 'Stay', 'artist': 'The Kid LAROI & Justin Bieber'},
-    {'title': 'Starboy', 'artist': 'The Weeknd'},
-    {'title': 'Perfect', 'artist': 'Ed Sheeran'},
-  ];
 
   final List<String> _stickerEmojis = ['❤️', '😍', '🫣', '🔥', '👍', '🍻', '👏', '😂', '🎉', '🌟', '🍿', '💯'];
 
@@ -62,6 +55,33 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
   void initState() {
     super.initState();
     _fetchFollowedUsers();
+    if (_isVideoFile(widget.imagePath)) {
+      _initVideoPlayer();
+    }
+  }
+
+  Future<void> _initVideoPlayer() async {
+    _videoPlayerController = VideoPlayerController.file(File(widget.imagePath));
+    try {
+      await _videoPlayerController!.initialize();
+      await _videoPlayerController!.setLooping(true);
+      await _videoPlayerController!.play();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint("Error initializing video player: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoPlayerController?.dispose();
+    _textOverlayController.dispose();
+    _textOverlayFocus.dispose();
+    _mentionController.dispose();
+    _mentionFocus.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchFollowedUsers() async {
@@ -92,18 +112,6 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     } catch (e) {
       debugPrint("Error fetching followed users: $e");
     }
-  }
-
-  void _addMusicOverlay(Map<String, String> track) {
-    setState(() {
-      _overlays.add(
-        StoryOverlayItem(
-          type: 'music',
-          data: track,
-          position: const Offset(100, 200),
-        ),
-      );
-    });
   }
 
   void _addEmojiOverlay(String emoji) {
@@ -156,71 +164,6 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
     });
   }
 
-  void _showMusicDrawer() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1F1F1F),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Select Music",
-                style: GoogleFonts.ibmPlexSansArabic(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _musicTracks.length,
-                  itemBuilder: (context, index) {
-                    final track = _musicTracks[index];
-                    return ListTile(
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7C57FC).withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.music_note, color: Color(0xFF7C57FC)),
-                      ),
-                      title: Text(
-                        track['title']!,
-                        style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: Text(
-                        track['artist']!,
-                        style: GoogleFonts.ibmPlexSansArabic(color: Colors.white54, fontSize: 12),
-                      ),
-                      onTap: () {
-                        _addMusicOverlay(track);
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   void _showStickersDrawer() {
     showModalBottomSheet(
@@ -428,50 +371,21 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
               borderRadius: BorderRadius.circular(24),
               child: Stack(
                 children: [
-                  // 1. Full screen preview inside the ClipRRect card (Image or Video Placeholder)
+                  // 1. Full screen preview inside the ClipRRect card (Image or Video Player)
                   Positioned.fill(
                     child: _isVideoFile(widget.imagePath)
-                        ? Container(
-                            color: const Color(0xFF1E1E24),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                  ),
-                                  child: const Icon(
-                                    Icons.play_circle_fill_rounded,
-                                    color: Colors.white,
-                                    size: 80,
-                                  ),
+                        ? (_videoPlayerController != null && _videoPlayerController!.value.isInitialized
+                            ? FittedBox(
+                                fit: BoxFit.cover,
+                                child: SizedBox(
+                                  width: _videoPlayerController!.value.size.width,
+                                  height: _videoPlayerController!.value.size.height,
+                                  child: VideoPlayer(_videoPlayerController!),
                                 ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  'Video Preview',
-                                  style: GoogleFonts.ibmPlexSansArabic(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                                  child: Text(
-                                    'Your video will be published to your Reels / Story.',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
+                              )
+                            : const Center(
+                                child: CircularProgressIndicator(color: Colors.white),
+                              ))
                         : Image.file(
                             File(widget.imagePath),
                             fit: BoxFit.cover,
@@ -570,12 +484,6 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
                         GestureDetector(
                           onTap: _showStickersDrawer,
                           child: _buildIconButton('assets/home/icons/smile.svg'),
-                        ),
-                        const SizedBox(height: 12),
-                        // Music overlay button
-                        GestureDetector(
-                          onTap: _showMusicDrawer,
-                          child: _buildIconButton('assets/home/icons/music_note_03.svg'),
                         ),
                         const SizedBox(height: 12),
                         // Mention overlay button

@@ -152,6 +152,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   }
 
   void _onShutterTap() async {
+    if (_isRecording) {
+      _stopRecordingVideo();
+      return;
+    }
     if (_isCameraInitialized && _cameraController != null) {
       try {
         final XFile image = await _cameraController!.takePicture();
@@ -479,16 +483,20 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                         ),
                       ),
                     
-                    // Left Control Sidebar (Music, Timer)
-                    if (!_isRecording && (_currentMode == CameraMode.reels || _currentMode == CameraMode.story))
+                    // Left Control Sidebar (Timer)
+                    if (!_isRecording && _currentMode == CameraMode.reels)
                       Positioned(
                         left: 20,
                         top: 100,
                         child: Column(
                           children: [
-                            // Music Button
+                            // Timer/Duration Selector Button
                             GestureDetector(
-                              onTap: () {},
+                              onTap: () {
+                                setState(() {
+                                  _showDurationSelector = !_showDurationSelector;
+                                });
+                              },
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: const BoxDecoration(
@@ -496,37 +504,13 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                                   color: Colors.black38,
                                 ),
                                 child: SvgPicture.asset(
-                                  'assets/home/icons/music_note_03.svg',
+                                  'assets/home/icons/time_04.svg',
                                   width: 20,
                                   height: 20,
                                   colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                                 ),
                               ),
                             ),
-                            if (_currentMode == CameraMode.reels) ...[
-                              const SizedBox(height: 16),
-                              // Timer/Duration Selector Button
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _showDurationSelector = !_showDurationSelector;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.black38,
-                                  ),
-                                  child: SvgPicture.asset(
-                                    'assets/home/icons/time_04.svg',
-                                    width: 20,
-                                    height: 20,
-                                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                  ),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
