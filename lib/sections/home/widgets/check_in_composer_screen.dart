@@ -11,6 +11,7 @@ import 'add_friends_bottom_sheet.dart';
 import 'intro_bottom_sheet.dart';
 import 'posting_loading_screen.dart';
 import 'location_search_sheet.dart';
+import 'die_cut_sticker.dart';
 
 class CheckInComposerScreen extends StatefulWidget {
   final bool isFirstCheckIn;
@@ -246,9 +247,10 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
             )
           : sticker['type'] == 'emoji'
               ? Center(
-                  child: Text(
-                    sticker['emoji'] ?? '',
-                    style: const TextStyle(fontSize: 22),
+                  child: DieCutSticker(
+                    emoji: sticker['emoji'] ?? '',
+                    size: 22,
+                    strokeWidth: 5,
                   ),
                 )
               : Image.asset(
@@ -399,28 +401,15 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Container(
+                                    SizedBox(
                                       width: 60,
                                       height: 60,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: const Color(0xFFE8E8E8),
-                                          width: 1.5,
+                                      child: Center(
+                                        child: DieCutSticker(
+                                          emoji: emoji,
+                                          size: 42,
+                                          strokeWidth: 8,
                                         ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.08),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 3),
-                                          ),
-                                        ],
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        emoji,
-                                        style: const TextStyle(fontSize: 32),
                                       ),
                                     ),
                                     const SizedBox(height: 8),

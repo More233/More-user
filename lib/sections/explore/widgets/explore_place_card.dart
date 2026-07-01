@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dynamic_place_image.dart';
+import '../../home/widgets/die_cut_sticker.dart';
 
 class ExplorePlaceCard extends StatelessWidget {
   final Map<String, dynamic> place;
@@ -210,17 +211,15 @@ class ExplorePlaceCard extends StatelessWidget {
                 if (place['stickerIndex'] != null && (place['stickerIndex'] as int) != -1) ...[
                   const SizedBox(width: 8),
                   // Render a small sticker badge
-                  Container(
+                  SizedBox(
                     width: 32,
                     height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEDE6FC),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _getStickerEmoji(place['stickerIndex'] as int),
-                      style: const TextStyle(fontSize: 18),
+                    child: Center(
+                      child: DieCutSticker(
+                        emoji: _getStickerEmoji(place['stickerIndex'] as int),
+                        size: 22,
+                        strokeWidth: 4,
+                      ),
                     ),
                   ),
                 ],

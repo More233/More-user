@@ -12,6 +12,7 @@ import '../view_models/social_feed_view_model.dart';
 import 'story_composer_screen.dart';
 import 'story_viewer.dart';
 import 'check_in_composer_screen.dart';
+import 'die_cut_sticker.dart';
 
 class SocialFeedView extends ConsumerStatefulWidget {
   final String? currentUserAvatarUrl;
@@ -40,6 +41,29 @@ class SocialFeedView extends ConsumerStatefulWidget {
 }
 
 class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
+  String _getStickerEmoji(int index) {
+    if (index == 1) return "❤️";
+    if (index == 2) return "🍺";
+    if (index == 3) return "👏";
+    if (index == 4) return "👍";
+    if (index == 5) return "🔥";
+    if (index == 6) return "😍";
+    if (index == 7) return "➕";
+    
+    if (index >= 8) {
+      final customIndex = index - 8;
+      final customStickers = [
+        '🥳', '😎', '⛈️', '❤️', '🐸', '🔥', '👋', '👍', '🍺', '⏰', '🚗', '🚕',
+        '💄', '🧻', '🖼️', '💊', '⚾', '🚫', '🏁', '🥧', '🩹', '🛍️', '🍻', '🌲',
+        '🛒', '🌵', '👮', '🛟', '🍦', '🥯', '🐶', '🕴️', '👠', '🥾', '🦕', '🏛️'
+      ];
+      if (customIndex < customStickers.length) {
+        return customStickers[customIndex];
+      }
+    }
+    return "";
+  }
+
   @override
   void initState() {
     super.initState();
@@ -634,6 +658,14 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                           color: Colors.black,
                         ),
                       ),
+                      if (post.stickerIndex != -1) ...[
+                        const SizedBox(width: 6),
+                        DieCutSticker(
+                          emoji: _getStickerEmoji(post.stickerIndex),
+                          size: 20,
+                          strokeWidth: 4,
+                        ),
+                      ],
                       const SizedBox(width: 6),
                       Text(
                         '•  ${post.postTime}',
