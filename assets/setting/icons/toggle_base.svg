@@ -1,6 +1,6 @@
 <svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
 <g id="Button" filter="url(#filter0_dd_3895_26725)">
-<circle cx="11" cy="10" r="8" fill="var(--fill-0, #E7E7E7)"/>
+<circle cx="11" cy="10" r="8" fill="#E7E7E7"/>
 </g>
 <defs>
 <filter id="filter0_dd_3895_26725" x="0" y="0" width="22" height="22" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">

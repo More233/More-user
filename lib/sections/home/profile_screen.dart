@@ -12,7 +12,9 @@ import 'widgets/share_bottom_sheet.dart';
 import 'widgets/save_to_list_bottom_sheet.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/saved_screen.dart';
-import '../auth/auth_flow_page.dart';
+import '../settings/settings_screen.dart';
+import '../settings/edit_profile_screen.dart';
+
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final List<TimelinePost> userPosts;
@@ -165,94 +167,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _handleLogout(BuildContext context) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Container(
-            width: 286,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            padding: const EdgeInsets.only(top: 24, bottom: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Sign out of your account?',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF323232),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                // Sign Out Button
-                GestureDetector(
-                  onTap: () => Navigator.pop(context, true),
-                  child: Container(
-                    width: 286,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Sign Out',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFFD80000),
-                      ),
-                    ),
-                  ),
-                ),
-                // Cancel Button
-                GestureDetector(
-                  onTap: () => Navigator.pop(context, false),
-                  child: Container(
-                    width: 286,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'Cancel',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF373737),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    if (confirm == true) {
-      try {
-        await Supabase.instance.client.auth.signOut();
-        if (!context.mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const AuthFlowPage()),
-          (route) => false,
-        );
-      } catch (e) {
-        debugPrint("Error signing out: $e");
-      }
-    }
-  }
 
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
@@ -538,10 +452,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
+
         title: Text(
           'Profile',
           style: GoogleFonts.ibmPlexSansArabic(
@@ -566,8 +483,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            onPressed: () => _handleLogout(context),
+            icon: const Icon(Icons.settings_outlined, color: Colors.black),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsScreen(),
+                ),
+              );
+              _fetchProfileData();
+            },
           ),
         ],
       ),
@@ -788,7 +713,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () async {
+                  final updated = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfileScreen(),
+                    ),
+                  );
+                  if (updated == true) {
+                    _fetchProfileData();
+                  }
+                },
                 child: Text(
                   'Edit Profile',
                   style: GoogleFonts.ibmPlexSansArabic(
