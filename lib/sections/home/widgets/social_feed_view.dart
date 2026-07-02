@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../helpers/story_tracker.dart';
 import '../models/timeline_post.dart';
@@ -752,6 +753,48 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                     ],
                   ),
                   const SizedBox(height: 6),
+                  if (post.locationAddress.isNotEmpty) ...[
+                    GestureDetector(
+                      onTap: () async {
+                        final String query = (post.latitude != null && post.longitude != null)
+                            ? '${post.latitude},${post.longitude}'
+                            : post.locationAddress;
+                        final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
+                        final uri = Uri.tryParse(googleMapsUrl);
+                        if (uri != null) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/home/icons/location_01.svg',
+                            width: 14,
+                            height: 14,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFF7C57FC),
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              post.shortLocationAddress,
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: const Color(0xFF82858C),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if (post.description.isNotEmpty) ...[
                     Text(
                       post.description,
@@ -759,39 +802,10 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         fontSize: 13.5,
                         color: const Color(0xFF221F26),
                         height: 1.4,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                if (post.locationAddress.isNotEmpty) ...[
-                  Row(
-                    children: [
-                      SvgPicture.asset(
-                        'assets/home/icons/location_01.svg',
-                        width: 14,
-                        height: 14,
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFF7C57FC),
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          post.shortLocationAddress,
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0xFF82858C),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                    const SizedBox(height: 10),
+                  ],
                 if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
                   PostImageSlider(
                     imageUrls: post.imageUrls,
