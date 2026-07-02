@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../explore/explore_screen.dart';
 import 'models/timeline_post.dart';
@@ -30,6 +30,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _isNavBarVisible = true;
+
   @override
   void initState() {
     super.initState();
@@ -175,6 +177,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildTimelineTab(TimelineState state) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Stack(
       children: [
         Column(
@@ -195,9 +198,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-        Positioned(
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
           right: 16,
-          bottom: 130,
+          bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
           child: _buildFAB(state),
         ),
         if (state.isFirstCheckIn && state.showCoachmark)
@@ -213,33 +218,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(timelineViewModelProvider);
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final navBarHeight = 50.0 + bottomPadding;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         top: state.selectedNavIndex != 2,
         bottom: false,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _buildBody(state),
-            ),
-            if (state.selectedNavIndex != 2)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: BottomNavBar(
-                  selectedIndex: state.selectedNavIndex,
-                  userAvatarUrl: state.currentUserAvatarUrl,
-                  onItemTapped: (index) {
-                    ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-                  },
-                ),
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification notification) {
+            if (state.selectedNavIndex == 0) {
+              if (notification is UserScrollNotification) {
+                if (notification.direction == ScrollDirection.reverse) {
+                  if (_isNavBarVisible) {
+                    setState(() {
+                      _isNavBarVisible = false;
+                    });
+                  }
+                } else if (notification.direction == ScrollDirection.forward) {
+                  if (!_isNavBarVisible) {
+                    setState(() {
+                      _isNavBarVisible = true;
+                    });
+                  }
+                }
+              }
+            }
+            return false;
+          },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildBody(state),
               ),
-          ],
+              if (state.selectedNavIndex != 2)
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  left: 0,
+                  right: 0,
+                  bottom: _isNavBarVisible ? 0 : -navBarHeight,
+                  child: BottomNavBar(
+                    selectedIndex: state.selectedNavIndex,
+                    userAvatarUrl: state.currentUserAvatarUrl,
+                    onItemTapped: (index) {
+                      setState(() {
+                        _isNavBarVisible = true;
+                      });
+                      ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -251,31 +285,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFE9E9E9)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/home/images/coin.png',
-                  width: 24,
-                  height: 24,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  '${state.userCoins}',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF464646),
-                  ),
-                ),
-              ],
+          SvgPicture.asset(
+            'assets/Splash/logo.svg',
+            height: 22,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFF7C57FC),
+              BlendMode.srcIn,
             ),
           ),
           const Spacer(),

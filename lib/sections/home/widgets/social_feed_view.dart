@@ -382,6 +382,12 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                       const SizedBox(height: 12),
                       if (widget.followedUsernames.isEmpty && state.showFindFriendsCard)
                         _buildFindFriendsCard(),
+                      const Divider(
+                        height: 8,
+                        thickness: 8,
+                        color: Color(0xFFF6F6F6),
+                      ),
+                      const SizedBox(height: 16),
                     ],
                   );
                 }
@@ -620,34 +626,27 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
 
   Widget _buildSocialPostCard(TimelinePost post) {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.grey[200],
-            backgroundImage: post.authorAvatar != null && post.authorAvatar!.isNotEmpty
-                ? (post.authorAvatar!.startsWith('http')
-                    ? NetworkImage(post.authorAvatar!)
-                    : AssetImage(post.authorAvatar!)) as ImageProvider
-                : const AssetImage('assets/home/images/avatar_placeholder.png'),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: Color(0xFFE8E8E8),
-                    width: 0.8,
-                  ),
-                ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: post.authorAvatar != null && post.authorAvatar!.isNotEmpty
+                    ? (post.authorAvatar!.startsWith('http')
+                        ? NetworkImage(post.authorAvatar!)
+                        : AssetImage(post.authorAvatar!)) as ImageProvider
+                    : const AssetImage('assets/home/images/avatar_placeholder.png'),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   Row(
                     children: [
                       Text(
@@ -844,15 +843,22 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
-  );
-}
+    const SizedBox(height: 12),
+    const Divider(
+      height: 1,
+      thickness: 0.8,
+      color: Color(0xFFE8E8E8),
+    ),
+    const SizedBox(height: 16),
+  ],
+);
+  }
 }
 
 class _EngagementButton extends StatelessWidget {
