@@ -515,6 +515,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         .toList();
 
     final topPadding = MediaQuery.of(context).padding.top;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final coverHeight = screenWidth / 3.0; // 3:1 aspect ratio matching Twitter
+    final maxExtent = coverHeight + topPadding;
+    final minExtent = topPadding + 56.0;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -524,346 +528,248 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: Stack(
-          children: [
-            SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Cover & Avatar Stack (scrolls normally)
-                  Stack(
-                    clipBehavior: Clip.none,
+        body: CustomScrollView(
+          slivers: [
+            // Pinned collapsing Twitter header
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: TwitterProfileHeaderDelegate(
+                maxExtentVal: maxExtent,
+                minExtentVal: minExtent,
+                topPadding: topPadding,
+                fullName: _fullName,
+                username: _username,
+                coverUrl: _coverUrl,
+                postCount: _posts.length,
+                avatarImageProvider: _getAvatarProvider(_username, _avatarUrl),
+                onBack: () => Navigator.pop(context),
+                onEdit: () async {
+                  final updated = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfileScreen(),
+                    ),
+                  );
+                  if (updated == true) {
+                    _fetchProfileData();
+                  }
+                },
+                onShare: _pickCoverImage, // Note: preserved original functionality
+                onCoverTap: _pickCoverImage,
+                onAvatarTap: _pickProfileImage,
+              ),
+            ),
+            // Profile details & contents
+            SliverList(
+              delegate: SliverChildListDelegate([
+                // Profile details content (now directly in the list, no Stack/overlap needed here)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 52, 16, 0), // 52px top padding to leave room for the overlapping avatar
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Cover Image
-                      GestureDetector(
-                        onTap: _pickCoverImage,
-                        child: Container(
-                          width: double.infinity,
-                          height: 150,
-                          color: const Color(0xFF7C57FC), // Fallback purple
-                          child: _coverUrl != null && _coverUrl!.isNotEmpty
-                              ? Image.network(_coverUrl!, fit: BoxFit.cover)
-                              : null,
+                      Text(
+                        _fullName.isNotEmpty ? _fullName : 'No Name',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
-                      // Avatar (Circular, overlapping cover image)
-                      Positioned(
-                        top: 100,
-                        left: 16,
-                        child: GestureDetector(
-                          onTap: _pickProfileImage,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 4),
-                            ),
-                            child: Hero(
-                              tag: 'user-avatar',
-                              child: CircleAvatar(
-                                radius: 42,
-                                backgroundColor: Colors.grey[200],
-                                backgroundImage: _getAvatarProvider(_username, _avatarUrl),
-                              ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _username.isNotEmpty ? '@$_username' : '',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          color: const Color(0xFF687684),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Joined Date & Links (Static/Mocked matching Twitter)
+                      Row(
+                        children: [
+                          const Icon(Icons.link, size: 16, color: Color(0xFF687684)),
+                          const SizedBox(width: 4),
+                          Text(
+                            'facebook.com/abdullah.elawady',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 14,
+                              color: const Color(0xFF7C57FC),
                             ),
                           ),
-                        ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF687684)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Joined March 2021',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 14,
+                              color: const Color(0xFF687684),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Following / Followers
+                      Row(
+                        children: [
+                          Text(
+                            '$_followingCount',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Following',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 14,
+                              color: const Color(0xFF687684),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            '$_followersCount',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Followers',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 14,
+                              color: const Color(0xFF687684),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 52), // Space for overlapping avatar height
-            // Name and Details
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _fullName.isNotEmpty ? _fullName : 'No Name',
+                ),
+                const SizedBox(height: 16),
+                // Photos Grid Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'My Check-in Photos',
                     style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _username.isNotEmpty ? '@$_username' : '',
+                ),
+                // Photos Grid
+                if (photos.isEmpty)
+                  _buildEmptyPhotos()
+                else
+                  GridView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemCount: photos.length,
+                    itemBuilder: (context, index) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _buildGridImage(photos[index]),
+                      );
+                    },
+                  ),
+                const SizedBox(height: 20),
+                const Divider(height: 8, color: Color(0xFFF6F6F6)),
+                // My Timeline Feed Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Text(
+                    'My Feed',
                     style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 14,
-                      color: const Color(0xFF687684),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Joined Date & Links (Static/Mocked matching Twitter)
-                  Row(
-                    children: [
-                      const Icon(Icons.link, size: 16, color: Color(0xFF687684)),
-                      const SizedBox(width: 4),
-                      Text(
-                        'facebook.com/abdullah.elawady',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
-                          color: const Color(0xFF7C57FC),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF687684)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Joined March 2021',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
-                          color: const Color(0xFF687684),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Following / Followers
-                  Row(
-                    children: [
-                      Text(
-                        '$_followingCount',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Following',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
-                          color: const Color(0xFF687684),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        '$_followersCount',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Followers',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
-                          color: const Color(0xFF687684),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Photos Grid Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'My Check-in Photos',
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
                 ),
-              ),
+                // My timeline posts
+                if (_posts.isEmpty)
+                  _buildEmptyFeed()
+                else
+                  ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _posts.length,
+                    itemBuilder: (context, index) {
+                      final post = _posts[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: TimelinePostCard(
+                          post: post,
+                          onLike: () => _toggleLike(post),
+                          onBookmark: () => _handleBookmarkTap(post),
+                          onComment: () => _openComments(post),
+                          onShare: () => _openShare(post),
+                          onEdit: () => _editPost(post),
+                          onDelete: () => _confirmDeletePost(post),
+                          isLastInSection: index == _posts.length - 1,
+                        ),
+                      );
+                    },
+                  ),
+                const SizedBox(height: 30),
+              ]),
             ),
-            // Photos Grid
-            if (photos.isEmpty)
-              _buildEmptyPhotos()
-            else
-              GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                ),
-                itemCount: photos.length,
-                itemBuilder: (context, index) {
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _buildGridImage(photos[index]),
-                  );
-                },
-              ),
-            const SizedBox(height: 20),
-            const Divider(height: 8, color: Color(0xFFF6F6F6)),
-            // My Timeline Feed Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Text(
-                'My Feed',
-                style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            // My timeline posts
-            if (_posts.isEmpty)
-              _buildEmptyFeed()
-            else
-              ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _posts.length,
-                itemBuilder: (context, index) {
-                  final post = _posts[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: TimelinePostCard(
-                      post: post,
-                      onLike: () => _toggleLike(post),
-                      onBookmark: () => _handleBookmarkTap(post),
-                      onComment: () => _openComments(post),
-                      onShare: () => _openShare(post),
-                      onEdit: () => _editPost(post),
-                      onDelete: () => _confirmDeletePost(post),
-                      isLastInSection: index == _posts.length - 1,
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 30),
-            ],
-          ),
+          ],
         ),
-        // Pinned Header
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
+        bottomNavigationBar: BottomNavBar(
+          selectedIndex: ref.watch(timelineViewModelProvider).selectedNavIndex,
+          userAvatarUrl: _avatarUrl,
+          onItemTapped: (index) {
+            HapticFeedback.lightImpact();
+            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+            Navigator.pop(context);
+          },
+        ),
+        floatingActionButton: GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CheckInComposerScreen(),
+              ),
+            ).then((_) => _fetchProfileData());
+          },
           child: Container(
-            height: topPadding + 56,
-            padding: EdgeInsets.only(top: topPadding, left: 16, right: 16),
-            color: Colors.transparent,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Back Button
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.black38,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-                // Top-Right Actions
-                Row(
-                  children: [
-                    // Upload / Cover pick icon
-                    GestureDetector(
-                      onTap: _pickCoverImage,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: Colors.black38,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.ios_share,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    // Edit Profile Icon (Pen style)
-                    GestureDetector(
-                      onTap: () async {
-                        final updated = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const EditProfileScreen(),
-                          ),
-                        );
-                        if (updated == true) {
-                          _fetchProfileData();
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: Colors.black38,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.edit_outlined,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              color: Color(0xFF7C57FC),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.add,
+              color: Colors.white,
+              size: 28,
             ),
           ),
-        ),
-      ],
-    ),
-    bottomNavigationBar: BottomNavBar(
-      selectedIndex: ref.watch(timelineViewModelProvider).selectedNavIndex,
-      userAvatarUrl: _avatarUrl,
-      onItemTapped: (index) {
-        HapticFeedback.lightImpact();
-        ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-        Navigator.pop(context);
-      },
-    ),
-    floatingActionButton: GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CheckInComposerScreen(),
-          ),
-        ).then((_) => _fetchProfileData());
-      },
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: const BoxDecoration(
-          color: Color(0xFF7C57FC),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-          size: 28,
         ),
       ),
-    ),
-  ),
-);
-}
-
-
-
-
+    );
+  }
 
   Widget _buildEmptyPhotos() {
     return Container(
@@ -895,5 +801,218 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
     );
+  }
+}
+
+class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double maxExtentVal;
+  final double minExtentVal;
+  final double topPadding;
+  final String fullName;
+  final String username;
+  final String? coverUrl;
+  final int postCount;
+  final ImageProvider avatarImageProvider;
+  final VoidCallback onBack;
+  final VoidCallback onEdit;
+  final VoidCallback onShare;
+  final VoidCallback onCoverTap;
+  final VoidCallback onAvatarTap;
+
+  TwitterProfileHeaderDelegate({
+    required this.maxExtentVal,
+    required this.minExtentVal,
+    required this.topPadding,
+    required this.fullName,
+    required this.username,
+    required this.coverUrl,
+    required this.postCount,
+    required this.avatarImageProvider,
+    required this.onBack,
+    required this.onEdit,
+    required this.onShare,
+    required this.onCoverTap,
+    required this.onAvatarTap,
+  });
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final double progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    // Dynamic button circle background styling (fades out as we collapse)
+    final circleBgColor = Colors.black.withOpacity((1.0 - progress) * 0.38);
+    // Dynamic text color for header title (fades in as we collapse)
+    final textColor = Colors.white;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Cover Image / Fallback Purple (resizes naturally to act as the header background)
+        GestureDetector(
+          onTap: onCoverTap,
+          child: Container(
+            width: double.infinity,
+            height: maxExtent - shrinkOffset,
+            color: const Color(0xFF7C57FC),
+            child: coverUrl != null && coverUrl!.isNotEmpty
+                ? Image.network(coverUrl!, fit: BoxFit.cover)
+                : null,
+          ),
+        ),
+        // Title & Subtitle (fades in as we collapse)
+        Positioned(
+          left: 60,
+          top: topPadding,
+          bottom: 0,
+          child: Opacity(
+            opacity: progress.clamp(0.0, 1.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  fullName.isNotEmpty ? fullName : 'No Name',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
+                Text(
+                  '$postCount posts',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 11,
+                    color: textColor.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Avatar (Circular, overlapping cover image, fades out as we collapse)
+        Positioned(
+          left: 16,
+          top: maxExtent - 42 - shrinkOffset,
+          child: Opacity(
+            opacity: (1.0 - progress * 2.0).clamp(0.0, 1.0),
+            child: GestureDetector(
+              onTap: onAvatarTap,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                ),
+                child: Hero(
+                  tag: 'user-avatar',
+                  child: CircleAvatar(
+                    radius: 42,
+                    backgroundColor: Colors.grey[200],
+                    backgroundImage: avatarImageProvider,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Back Button
+        Positioned(
+          left: 16,
+          top: topPadding + (56 - 36) / 2, // Centered in the 56px height toolbar
+          child: GestureDetector(
+            onTap: onBack,
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: circleBgColor,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_back,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+        // Actions (Edit, Share)
+        Positioned(
+          right: 16,
+          top: topPadding + (56 - 36) / 2,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Edit Icon (Swapped: edit first, then share/upload)
+              GestureDetector(
+                onTap: onEdit,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: circleBgColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Share/Upload Icon
+              GestureDetector(
+                onTap: onShare,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: circleBgColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.ios_share,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Bottom divider (fades in as we collapse)
+        if (progress > 0.9)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Opacity(
+              opacity: ((progress - 0.9) / 0.1).clamp(0.0, 1.0),
+              child: const Divider(
+                height: 1,
+                thickness: 0.5,
+                color: Color(0xFFE1E8ED),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  double get maxExtent => maxExtentVal;
+
+  @override
+  double get minExtent => minExtentVal;
+
+  @override
+  bool shouldRebuild(covariant TwitterProfileHeaderDelegate oldDelegate) {
+    return oldDelegate.maxExtentVal != maxExtentVal ||
+        oldDelegate.minExtentVal != minExtentVal ||
+        oldDelegate.fullName != fullName ||
+        oldDelegate.username != username ||
+        oldDelegate.coverUrl != coverUrl ||
+        oldDelegate.postCount != postCount ||
+        oldDelegate.avatarImageProvider != avatarImageProvider;
   }
 }
