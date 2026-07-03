@@ -261,13 +261,7 @@ class _UserDrawerState extends State<UserDrawer> {
                             HapticFeedback.lightImpact();
                           },
                         ),
-                        _buildDrawerItem(
-                          icon: CupertinoIcons.lock_shield,
-                          title: 'Privacy',
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                          },
-                        ),
+
                         _buildDrawerItem(
                           icon: CupertinoIcons.person_crop_circle_badge_xmark,
                           title: 'Blocked people',

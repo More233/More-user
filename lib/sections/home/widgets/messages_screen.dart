@@ -34,9 +34,29 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
       _isSearchMode = true;
     });
   }
+
+  void showNewChatBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return _NewChatBottomSheet(
+          profilesList: _profilesList,
+          currentUserId: _currentUserId,
+          getAvatarProvider: _getAvatarProvider,
+          onUserSelected: (profile) {
+            Navigator.pop(context);
+            _openConversation(profile);
+          },
+        );
+      },
+    );
+  }
   bool _isLoadingStories = true;
   List<Map<String, dynamic>> _profilesList = [];
-  List<Map<String, dynamic>> _searchResults = [];
+  List<Map<String, dynamic>> _searchThreadsResult = [];
+  bool _isSearching = false;
   final List<UserStoryGroup> _storyGroups = [];
   bool _isSearchMode = false;
   String _currentUserId = '';
@@ -159,31 +179,87 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
     }
   }
 
-  void _onSearchChanged(String query) {
-    if (query.trim().isEmpty) {
+  Future<void> _onSearchChanged(String query) async {
+    final queryTrimmed = query.trim();
+    if (queryTrimmed.isEmpty) {
       setState(() {
-        _searchResults = [];
+        _searchThreadsResult = [];
+        _isSearching = false;
       });
       return;
     }
 
-    final queryLower = query.toLowerCase();
-    final results = _profilesList.where((p) {
-      // Don't show current user in search results
-      if (p['id'] == _currentUserId) return false;
+    setState(() {
+      _isSearching = true;
+    });
 
-      final firstName = (p['first_name'] ?? '').toString().toLowerCase();
-      final lastName = (p['last_name'] ?? '').toString().toLowerCase();
-      final username = (p['username'] ?? '').toString().toLowerCase();
+    final queryLower = queryTrimmed.toLowerCase();
+    final messagesState = ref.read(messagesViewModelProvider);
+    final threadsList = messagesState.threads;
 
+    // 1. Filter local threads by other user's name/username
+    final localMatches = threadsList.where((t) {
+      final otherProfile = t['otherProfile'] as Map<String, dynamic>;
+      final firstName = (otherProfile['first_name'] ?? '').toString().toLowerCase();
+      final lastName = (otherProfile['last_name'] ?? '').toString().toLowerCase();
+      final username = (otherProfile['username'] ?? '').toString().toLowerCase();
+      
       return firstName.contains(queryLower) ||
           lastName.contains(queryLower) ||
           username.contains(queryLower);
     }).toList();
 
-    setState(() {
-      _searchResults = results;
-    });
+    // 2. Query Supabase for messages containing the query in the user's threads
+    final threadIds = threadsList.map((t) => t['thread']['id'] as String).toList();
+    final Set<String> msgMatchingThreadIds = {};
+
+    if (threadIds.isNotEmpty) {
+      try {
+        final client = Supabase.instance.client;
+        final res = await client
+            .from('chat_messages')
+            .select('thread_id')
+            .inFilter('thread_id', threadIds)
+            .ilike('content', '%$queryTrimmed%');
+
+        final data = List<Map<String, dynamic>>.from(res as List);
+        for (var row in data) {
+          final tId = row['thread_id'] as String?;
+          if (tId != null) {
+            msgMatchingThreadIds.add(tId);
+          }
+        }
+      } catch (e) {
+        debugPrint("Error searching chat messages: $e");
+      }
+    }
+
+    // 3. Combine local matches (by name) and remote matches (by message content)
+    final Set<String> addedThreadIds = {};
+    final List<Map<String, dynamic>> combinedResults = [];
+
+    for (var t in localMatches) {
+      final tId = t['thread']['id'] as String;
+      if (addedThreadIds.add(tId)) {
+        combinedResults.add(t);
+      }
+    }
+
+    for (var t in threadsList) {
+      final tId = t['thread']['id'] as String;
+      if (msgMatchingThreadIds.contains(tId)) {
+        if (addedThreadIds.add(tId)) {
+          combinedResults.add(t);
+        }
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _searchThreadsResult = combinedResults;
+        _isSearching = false;
+      });
+    }
   }
 
   Future<void> _openConversation(Map<String, dynamic> otherProfile) async {
@@ -339,43 +415,6 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
       );
   }
 
-  Widget _buildSearchTile(Map<String, dynamic> profile) {
-    final otherUsername = profile['username'] ?? '';
-    final otherName = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
-    final avatarUrl = profile['avatar_url'] as String?;
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 4),
-      leading: CircleAvatar(
-        radius: 20,
-        backgroundImage: _getAvatarProvider(otherUsername, avatarUrl),
-      ),
-      title: Text(
-        otherName,
-        style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF0F1419),
-          height: 1.2,
-        ),
-      ),
-      subtitle: Text(
-        '@$otherUsername',
-        style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 13,
-          color: const Color(0xFF536471),
-          height: 1.2,
-        ),
-      ),
-      onTap: () {
-        setState(() {
-          _isSearchMode = false;
-        });
-        _openConversation(profile);
-      },
-    );
-  }
-
   Widget _buildEmptyState() {
     return Center(
       child: Padding(
@@ -416,70 +455,6 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildConversationsTab() {
-    // Show only profiles that are not the current user
-    final filteredProfiles = _profilesList.where((p) => p['id'] != _currentUserId).toList();
-    final listToShow = _searchController.text.isEmpty ? filteredProfiles : _searchResults;
-    if (listToShow.isEmpty) {
-      return Center(
-        child: Text(
-          'No conversations found',
-          style: GoogleFonts.ibmPlexSansArabic(
-            color: const Color(0xFF82858C),
-          ),
-        ),
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: listToShow.length,
-      itemBuilder: (context, index) {
-        return _buildSearchTile(listToShow[index]);
-      },
-    );
-  }
-
-  Widget _buildMessagesTab() {
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) {
-      return Center(
-        child: Text(
-          'Search for messages',
-          style: GoogleFonts.ibmPlexSansArabic(
-            color: const Color(0xFF82858C),
-          ),
-        ),
-      );
-    }
-
-    final messagesState = ref.read(messagesViewModelProvider);
-    final filteredThreads = messagesState.threads.where((t) {
-      final lastMsg = t['last_message'];
-      if (lastMsg == null) return false;
-      final content = (lastMsg['content'] ?? '').toString().toLowerCase();
-      return content.contains(query);
-    }).toList();
-
-    if (filteredThreads.isEmpty) {
-      return Center(
-        child: Text(
-          'No messages found',
-          style: GoogleFonts.ibmPlexSansArabic(
-            color: const Color(0xFF82858C),
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: filteredThreads.length,
-      itemBuilder: (context, index) {
-        return _buildThreadTile(filteredThreads[index]);
-      },
     );
   }
 
@@ -744,40 +719,41 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
           children: [
             const Divider(height: 1, color: Color(0xFFE8E8E8)),
             Expanded(
-              child: DefaultTabController(
-                length: 2,
-                child: Column(
-                  children: [
-                    TabBar(
-                      dividerColor: Colors.transparent,
-                      indicatorColor: const Color(0xFF7C57FC),
-                      labelColor: Colors.black,
-                      unselectedLabelColor: const Color(0xFF82858C),
-                      labelStyle: GoogleFonts.ibmPlexSansArabic(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                      unselectedLabelStyle: GoogleFonts.ibmPlexSansArabic(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 15,
-                      ),
-                      tabs: const [
-                        Tab(text: 'Conversations'),
-                        Tab(text: 'Messages'),
-                      ],
-                    ),
-                    const Divider(height: 1, color: Color(0xFFE8E8E8)),
-                    Expanded(
-                      child: TabBarView(
-                        children: [
-                          _buildConversationsTab(),
-                          _buildMessagesTab(),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _isSearching
+                  ? const Center(child: CupertinoActivityIndicator())
+                  : (_searchController.text.trim().isEmpty
+                      ? (threadsList.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No conversations yet',
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  color: const Color(0xFF82858C),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: threadsList.length,
+                              itemBuilder: (context, index) {
+                                return _buildThreadTile(threadsList[index]);
+                              },
+                            ))
+                      : (_searchThreadsResult.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No results found',
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  color: const Color(0xFF82858C),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _searchThreadsResult.length,
+                              itemBuilder: (context, index) {
+                                return _buildThreadTile(_searchThreadsResult[index]);
+                              },
+                            ))),
             ),
           ],
         ),
@@ -932,6 +908,228 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _NewChatBottomSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> profilesList;
+  final String currentUserId;
+  final ImageProvider Function(String username, String? dbUrl) getAvatarProvider;
+  final Function(Map<String, dynamic>) onUserSelected;
+
+  const _NewChatBottomSheet({
+    required this.profilesList,
+    required this.currentUserId,
+    required this.getAvatarProvider,
+    required this.onUserSelected,
+  });
+
+  @override
+  State<_NewChatBottomSheet> createState() => _NewChatBottomSheetState();
+}
+
+class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _filteredProfiles = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Exclude current user from list
+    _filteredProfiles = widget.profilesList
+        .where((p) => p['id'] != widget.currentUserId)
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    final queryLower = query.trim().toLowerCase();
+    if (queryLower.isEmpty) {
+      setState(() {
+        _filteredProfiles = widget.profilesList
+            .where((p) => p['id'] != widget.currentUserId)
+            .toList();
+      });
+      return;
+    }
+
+    final results = widget.profilesList.where((p) {
+      if (p['id'] == widget.currentUserId) return false;
+
+      final firstName = (p['first_name'] ?? '').toString().toLowerCase();
+      final lastName = (p['last_name'] ?? '').toString().toLowerCase();
+      final username = (p['username'] ?? '').toString().toLowerCase();
+
+      return firstName.contains(queryLower) ||
+          lastName.contains(queryLower) ||
+          username.contains(queryLower);
+    }).toList();
+
+    setState(() {
+      _filteredProfiles = results;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.9,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(bottom: keyboardHeight),
+      child: Column(
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 16,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                Text(
+                  'New chat',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Search input
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDEFF2),
+                borderRadius: BorderRadius.circular(21),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  const Icon(CupertinoIcons.search, color: Color(0xFF82858C), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
+                      decoration: InputDecoration(
+                        hintText: 'Search',
+                        hintStyle: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          color: const Color(0xFF82858C),
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                    ),
+                  ),
+                  if (_searchController.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF7C57FC),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // List
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+
+                // Users list
+                ..._filteredProfiles.map((profile) {
+                  final username = profile['username'] ?? '';
+                  final name = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
+                  final avatarUrl = profile['avatar_url'] as String?;
+                  final isVerified = profile['is_verified'] as bool? ?? false;
+
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    leading: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: widget.getAvatarProvider(username, avatarUrl),
+                    ),
+                    title: Row(
+                      children: [
+                        Text(
+                          name,
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        if (isVerified) ...[
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.verified,
+                            color: Color(0xFF1D9BF0),
+                            size: 16,
+                          ),
+                        ],
+                      ],
+                    ),
+                    subtitle: Text(
+                      '@$username',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 14,
+                        color: const Color(0xFF536471),
+                      ),
+                    ),
+                    onTap: () => widget.onUserSelected(profile),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'widgets/bottom_nav_bar.dart';
+import 'view_models/timeline_view_model.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -499,8 +502,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       return const Scaffold(
         backgroundColor: Colors.white,
         body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF7C57FC),
+          child: CupertinoActivityIndicator(
+            radius: 14,
           ),
         ),
       );
@@ -521,130 +524,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        body: Stack(
           children: [
-            // Header Stack (Cover Image, Avatar, Back/Share buttons)
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // Cover Image
-                GestureDetector(
-                  onTap: _pickCoverImage,
-                  child: Container(
-                    width: double.infinity,
-                    height: 150,
-                    color: Colors.black87,
-                    child: _coverUrl != null && _coverUrl!.isNotEmpty
-                        ? Image.network(_coverUrl!, fit: BoxFit.cover)
-                        : const Center(
-                            child: Icon(
-                              Icons.camera_alt_outlined,
-                              color: Colors.white54,
-                              size: 32,
+            SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cover & Avatar Stack (scrolls normally)
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      // Cover Image
+                      GestureDetector(
+                        onTap: _pickCoverImage,
+                        child: Container(
+                          width: double.infinity,
+                          height: 150,
+                          color: const Color(0xFF7C57FC), // Fallback purple
+                          child: _coverUrl != null && _coverUrl!.isNotEmpty
+                              ? Image.network(_coverUrl!, fit: BoxFit.cover)
+                              : null,
+                        ),
+                      ),
+                      // Avatar (Circular, overlapping cover image)
+                      Positioned(
+                        top: 100,
+                        left: 16,
+                        child: GestureDetector(
+                          onTap: _pickProfileImage,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 4),
+                            ),
+                            child: Hero(
+                              tag: 'user-avatar',
+                              child: CircleAvatar(
+                                radius: 42,
+                                backgroundColor: Colors.grey[200],
+                                backgroundImage: _getAvatarProvider(_username, _avatarUrl),
+                              ),
                             ),
                           ),
-                  ),
-                ),
-                // Back Button (Over cover image)
-                Positioned(
-                  top: topPadding + 10,
-                  left: 16,
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.black38,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-                // Upload Cover Icon Button (top-right of cover photo)
-                Positioned(
-                  top: topPadding + 10,
-                  right: 16,
-                  child: GestureDetector(
-                    onTap: _pickCoverImage,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: Colors.black38,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt_outlined,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-                // Avatar (Circular, overlapping cover image)
-                Positioned(
-                  top: 100,
-                  left: 16,
-                  child: GestureDetector(
-                    onTap: _pickProfileImage,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                      ),
-                      child: Hero(
-                        tag: 'user-avatar',
-                        child: CircleAvatar(
-                          radius: 42,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: _getAvatarProvider(_username, _avatarUrl),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ),
-                // Edit Profile Button (Right side, baseline aligned with avatar)
-                Positioned(
-                  top: 160,
-                  right: 16,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFC8C8C8)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    onPressed: () async {
-                      final updated = await Navigator.push<bool>(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen(),
-                        ),
-                      );
-                      if (updated == true) {
-                        _fetchProfileData();
-                      }
-                    },
-                    child: Text(
-                      'Edit profile',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 52), // Space for overlapping avatar height
+                  const SizedBox(height: 52), // Space for overlapping avatar height
             // Name and Details
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -739,9 +665,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Twitter Style Tab Bar
-            _buildTabBar(),
-            const Divider(height: 1, color: Color(0xFFE8E8E8)),
             // Photos Grid Header
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -816,50 +739,129 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 },
               ),
             const SizedBox(height: 30),
-          ],
+            ],
+          ),
+        ),
+        // Pinned Header
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: topPadding + 56,
+            padding: EdgeInsets.only(top: topPadding, left: 16, right: 16),
+            color: Colors.transparent,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Back Button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.black38,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                // Top-Right Actions
+                Row(
+                  children: [
+                    // Upload / Cover pick icon
+                    GestureDetector(
+                      onTap: _pickCoverImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Colors.black38,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.ios_share,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Edit Profile Icon (Pen style)
+                    GestureDetector(
+                      onTap: () async {
+                        final updated = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const EditProfileScreen(),
+                          ),
+                        );
+                        if (updated == true) {
+                          _fetchProfileData();
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Colors.black38,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.edit_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+    bottomNavigationBar: BottomNavBar(
+      selectedIndex: ref.watch(timelineViewModelProvider).selectedNavIndex,
+      userAvatarUrl: _avatarUrl,
+      onItemTapped: (index) {
+        HapticFeedback.lightImpact();
+        ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+        Navigator.pop(context);
+      },
+    ),
+    floatingActionButton: GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CheckInComposerScreen(),
+          ),
+        ).then((_) => _fetchProfileData());
+      },
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: const BoxDecoration(
+          color: Color(0xFF7C57FC),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.add,
+          color: Colors.white,
+          size: 28,
         ),
       ),
     ),
-  );
+  ),
+);
 }
 
-  Widget _buildTabBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildTabItem('Posts', true),
-          _buildTabItem('Replies', false),
-          _buildTabItem('Highlights', false),
-          _buildTabItem('Media', false),
-          _buildTabItem('Likes', false),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildTabItem(String title, bool active) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: active ? const Color(0xFF7C57FC) : Colors.transparent,
-            width: 2.5,
-          ),
-        ),
-      ),
-      child: Text(
-        title,
-        style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 14,
-          fontWeight: active ? FontWeight.bold : FontWeight.w600,
-          color: active ? Colors.black : const Color(0xFF687684),
-        ),
-      ),
-    );
-  }
 
 
 
