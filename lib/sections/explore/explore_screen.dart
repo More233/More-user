@@ -24,10 +24,17 @@ import 'view_models/explore_view_model.dart';
 class ExploreScreen extends ConsumerStatefulWidget {
   final VoidCallback onBackToTimeline;
   final String? userAvatarUrl;
+  final double? initialLatitude;
+  final double? initialLongitude;
+  final String? initialAddress;
+
   const ExploreScreen({
     super.key,
     required this.onBackToTimeline,
     this.userAvatarUrl,
+    this.initialLatitude,
+    this.initialLongitude,
+    this.initialAddress,
   });
 
   @override
@@ -82,6 +89,95 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     _statusBadgeTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(ExploreScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialLatitude != oldWidget.initialLatitude ||
+        widget.initialLongitude != oldWidget.initialLongitude) {
+      if (widget.initialLatitude != null && widget.initialLongitude != null) {
+        _moveToInitialLocation(
+          widget.initialLatitude!,
+          widget.initialLongitude!,
+          widget.initialAddress,
+        );
+      }
+    }
+  }
+
+  void _moveToInitialLocation(double lat, double lng, String? address) {
+    final latLng = LatLng(lat, lng);
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 15.0));
+    _onMapTappedWithFallbackAddress(latLng, ref.read(exploreViewModelProvider), address);
+  }
+
+  Future<void> _onMapTappedWithFallbackAddress(LatLng latLng, ExploreState state, String? address) async {
+    FocusScope.of(context).unfocus();
+    ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
+
+    final double userLat = state.userLocation?.latitude ?? latLng.latitude;
+    final double userLng = state.userLocation?.longitude ?? latLng.longitude;
+
+    try {
+      final place = await ExploreDataService.fetchPlaceDetails(
+        '',
+        '',
+        latLng.latitude,
+        latLng.longitude,
+        userLat,
+        userLng,
+      );
+      if (place != null && place['id'].toString().isNotEmpty && !place['id'].toString().startsWith('tapped_') && mounted) {
+        ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(place);
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLng(latLng),
+        );
+        _markerGenerator.preloadNetworkIconsForPlaces([place], () {
+          if (mounted) setState(() {});
+        });
+        _markerGenerator.preloadPlaceMarkers([place], () {
+          if (mounted) setState(() {});
+        });
+        return;
+      }
+    } catch (e) {
+      debugPrint("Error detecting POI on Foursquare search: $e");
+    }
+
+    final double meters = Geolocator.distanceBetween(userLat, userLng, latLng.latitude, latLng.longitude);
+    final double km = meters / 1000;
+    final String distanceStr = km < 1 
+        ? '${meters.toStringAsFixed(0)} m' 
+        : '${km.toStringAsFixed(1)} km';
+
+    final String fallbackId = 'tapped_${latLng.latitude}_${latLng.longitude}';
+    final fallbackPlace = {
+      'id': fallbackId,
+      'name': address ?? 'Dropped Pin',
+      'arabicName': address ?? 'دبوس مثبت',
+      'address': address ?? '${latLng.latitude.toStringAsFixed(6)}, ${latLng.longitude.toStringAsFixed(6)}',
+      'latitude': latLng.latitude,
+      'longitude': latLng.longitude,
+      'distance': distanceStr,
+      'rating': 4.5,
+      'reviewsCount': 0,
+      'price': r'$$',
+      'peopleCount': 0,
+      'type': 'Other',
+      'imageUrl': ExploreDataService.getPlaceholderUrl('Other', fallbackId),
+      'isSaved': false,
+      'isVisited': false,
+      'actionType': 'check-in',
+      'isRegistered': false,
+    };
+
+    if (mounted) {
+      ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(fallbackPlace);
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLng(latLng),
+      );
+    }
   }
 
   void _triggerStatusBadge(String message) {
@@ -565,12 +661,21 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             Positioned.fill(
               child: GoogleMap(
                 style: _mapStyleJson,
-                initialCameraPosition: CameraPosition(
-                  target: state.userLocation ?? const LatLng(24.7136, 46.6753),
-                  zoom: 13.0,
+                 initialCameraPosition: CameraPosition(
+                  target: (widget.initialLatitude != null && widget.initialLongitude != null)
+                      ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
+                      : (state.userLocation ?? const LatLng(24.7136, 46.6753)),
+                  zoom: (widget.initialLatitude != null && widget.initialLongitude != null) ? 15.0 : 13.0,
                 ),
                 onMapCreated: (controller) {
                   _mapController = controller;
+                  if (widget.initialLatitude != null && widget.initialLongitude != null) {
+                    _moveToInitialLocation(
+                      widget.initialLatitude!,
+                      widget.initialLongitude!,
+                      widget.initialAddress,
+                    );
+                  }
                 },
                 onCameraMove: (position) {
                   _currentZoom = position.zoom;

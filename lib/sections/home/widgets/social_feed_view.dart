@@ -24,6 +24,7 @@ class SocialFeedView extends ConsumerStatefulWidget {
   final Function(TimelinePost)? onComment;
   final Function(TimelinePost)? onShare;
   final Function(TimelinePost)? onBookmark;
+  final Function(double lat, double lng, String address)? onLocationTapped;
 
   const SocialFeedView({
     super.key,
@@ -35,6 +36,7 @@ class SocialFeedView extends ConsumerStatefulWidget {
     this.onComment,
     this.onShare,
     this.onBookmark,
+    this.onLocationTapped,
   });
 
   @override
@@ -752,17 +754,21 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
                   if (post.locationAddress.isNotEmpty) ...[
                     GestureDetector(
                       onTap: () async {
-                        final String query = (post.latitude != null && post.longitude != null)
-                            ? '${post.latitude},${post.longitude}'
-                            : post.locationAddress;
-                        final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
-                        final uri = Uri.tryParse(googleMapsUrl);
-                        if (uri != null) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        if (post.latitude != null && post.longitude != null && widget.onLocationTapped != null) {
+                          widget.onLocationTapped!(post.latitude!, post.longitude!, post.shortLocationAddress);
+                        } else {
+                          final String query = (post.latitude != null && post.longitude != null)
+                              ? '${post.latitude},${post.longitude}'
+                              : post.locationAddress;
+                          final googleMapsUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
+                          final uri = Uri.tryParse(googleMapsUrl);
+                          if (uri != null) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
                         }
                       },
                       child: Row(

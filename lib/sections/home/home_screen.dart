@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -11,7 +10,6 @@ import 'view_models/collections_view_model.dart';
 import 'view_models/social_feed_view_model.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
-import 'widgets/reels_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/comments_bottom_sheet.dart';
@@ -30,6 +28,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  double? _selectedExploreLat;
+  double? _selectedExploreLng;
+  String? _selectedExploreAddress;
+  bool _isHeaderVisible = true;
   bool _isNavBarVisible = true;
 
   @override
@@ -157,20 +159,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _buildTimelineTab(state),
         ExploreScreen(
           userAvatarUrl: state.currentUserAvatarUrl,
+          initialLatitude: _selectedExploreLat,
+          initialLongitude: _selectedExploreLng,
+          initialAddress: _selectedExploreAddress,
           onBackToTimeline: () {
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
           },
         ),
-        ReelsScreen(
-          onBackToTimeline: () {
-            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
-          },
+        const NotificationsScreen(
+          showBackButton: false,
         ),
-        ProfileScreen(
-          userPosts: state.posts,
-          onPostUpdated: () {
-            ref.read(timelineViewModelProvider.notifier).refreshAll();
+        MessagesScreen(
+          followedUsernames: state.followedUsernames,
+          onFollowChanged: (username, isFollowed) {
+            ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
           },
+          showBackButton: false,
         ),
       ],
     );
@@ -182,8 +186,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       children: [
         Column(
           children: [
-            _buildHeader(state),
-            const SizedBox(height: 8),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              height: _isHeaderVisible ? 56.0 : 0.0,
+              child: ClipRect(
+                child: _buildHeader(state),
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              height: _isHeaderVisible ? 8.0 : 0.0,
+              child: const SizedBox(height: 8),
+            ),
             Expanded(
               child: SocialFeedView(
                 currentUserAvatarUrl: state.currentUserAvatarUrl,
@@ -194,6 +210,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onBookmark: _handleBookmarkTap,
                 onComment: _openComments,
                 onShare: _openShare,
+                onLocationTapped: (lat, lng, address) {
+                  setState(() {
+                    _selectedExploreLat = lat;
+                    _selectedExploreLng = lng;
+                    _selectedExploreAddress = address;
+                  });
+                  ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
+                },
               ),
             ),
           ],
@@ -224,19 +248,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        top: state.selectedNavIndex != 2,
+        top: true,
         bottom: false,
         child: NotificationListener<ScrollNotification>(
           onNotification: (ScrollNotification notification) {
             if (state.selectedNavIndex == 0) {
-              if (notification is UserScrollNotification) {
-                if (notification.direction == ScrollDirection.reverse) {
-                  if (_isNavBarVisible) {
+              if (notification is ScrollUpdateNotification) {
+                final delta = notification.scrollDelta;
+                if (delta != null) {
+                  if (delta > 0.5) {
+                    if (_isHeaderVisible || _isNavBarVisible) {
+                      setState(() {
+                        _isHeaderVisible = false;
+                        _isNavBarVisible = false;
+                      });
+                    }
+                  } else if (delta < -0.5) {
+                    if (!_isHeaderVisible || !_isNavBarVisible) {
+                      setState(() {
+                        _isHeaderVisible = true;
+                        _isNavBarVisible = true;
+                      });
+                    }
+                  }
+                }
+                if (notification.metrics.pixels <= 0) {
+                  if (!_isHeaderVisible || !_isNavBarVisible) {
                     setState(() {
-                      _isNavBarVisible = false;
+                      _isHeaderVisible = true;
+                      _isNavBarVisible = true;
                     });
                   }
-                } else if (notification.direction == ScrollDirection.forward) {
+                }
+              } else if (notification is ScrollEndNotification) {
+                if (notification.metrics.pixels <= 0) {
+                  if (!_isHeaderVisible || !_isNavBarVisible) {
+                    setState(() {
+                      _isHeaderVisible = true;
+                      _isNavBarVisible = true;
+                    });
+                  }
+                } else {
                   if (!_isNavBarVisible) {
                     setState(() {
                       _isNavBarVisible = true;
@@ -254,24 +306,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ? const Center(child: CircularProgressIndicator())
                     : _buildBody(state),
               ),
-              if (state.selectedNavIndex != 2)
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOut,
-                  left: 0,
-                  right: 0,
-                  bottom: _isNavBarVisible ? 0 : -navBarHeight,
-                  child: BottomNavBar(
-                    selectedIndex: state.selectedNavIndex,
-                    userAvatarUrl: state.currentUserAvatarUrl,
-                    onItemTapped: (index) {
-                      setState(() {
-                        _isNavBarVisible = true;
-                      });
-                      ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-                    },
-                  ),
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                left: 0,
+                right: 0,
+                bottom: _isNavBarVisible ? 0.0 : -navBarHeight,
+                child: BottomNavBar(
+                  selectedIndex: state.selectedNavIndex,
+                  userAvatarUrl: state.currentUserAvatarUrl,
+                  onItemTapped: (index) {
+                    setState(() {
+                      _isHeaderVisible = true;
+                      _isNavBarVisible = true;
+                      if (index != 1) {
+                        _selectedExploreLat = null;
+                        _selectedExploreLng = null;
+                        _selectedExploreAddress = null;
+                      }
+                    });
+                    ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+                  },
                 ),
+              ),
             ],
           ),
         ),
@@ -282,9 +339,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildHeader(TimelineState state) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Row(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Stack(
+        alignment: Alignment.center,
         children: [
+          // Left aligned profile avatar
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => _onAvatarTapped(state.posts),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFFE9E9E9),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: state.currentUserAvatarUrl != null && state.currentUserAvatarUrl!.isNotEmpty
+                      ? (state.currentUserAvatarUrl!.startsWith('http')
+                          ? Image.network(state.currentUserAvatarUrl!, fit: BoxFit.cover)
+                          : Image.asset(state.currentUserAvatarUrl!, fit: BoxFit.cover))
+                      : Image.asset(
+                          'assets/home/images/avatar_placeholder.png',
+                          fit: BoxFit.cover,
+                        ),
+                ),
+              ),
+            ),
+          ),
+          // Centered logo
           SvgPicture.asset(
             'assets/Splash/logo.svg',
             height: 22,
@@ -293,71 +388,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               BlendMode.srcIn,
             ),
           ),
-          const Spacer(),
-          _buildActionButton(
-            iconPath: 'assets/home/icons/chat_bubble_icon.svg',
-            onTap: () => _openMessagesScreen(state.followedUsernames),
-          ),
-          const SizedBox(width: 16),
-          _buildActionButton(
-            iconPath: 'assets/home/icons/notification_02.svg',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(),
-                ),
-              );
-            },
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({required String iconPath, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFE9E9E9), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: SvgPicture.asset(
-          iconPath,
-          width: 24,
-          height: 24,
-          colorFilter: const ColorFilter.mode(
-            Color(0xFF464646),
-            BlendMode.srcIn,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openMessagesScreen(Set<String> followedUsernames) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MessagesScreen(
-          followedUsernames: followedUsernames,
-          onFollowChanged: (username, isFollowed) {
-            ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
-          },
-        ),
-      ),
-    );
-  }
 
   void _openFollowFriends(Set<String> followedUsernames) {
     showModalBottomSheet(
@@ -387,16 +422,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Container(
         width: 60,
         height: 60,
-        decoration: BoxDecoration(
-          color: const Color(0xFF7C57FC),
+        decoration: const BoxDecoration(
+          color: Color(0xFF7C57FC),
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF7C57FC).withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: const Icon(
           Icons.add,

@@ -14,11 +14,13 @@ import '../view_models/messages_view_model.dart';
 class MessagesScreen extends ConsumerStatefulWidget {
   final Set<String> followedUsernames;
   final Function(String, bool) onFollowChanged;
+  final bool showBackButton;
 
   const MessagesScreen({
     super.key,
     required this.followedUsernames,
     required this.onFollowChanged,
+    this.showBackButton = true,
   });
 
   @override
@@ -628,10 +630,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: widget.showBackButton,
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: Text(
           'Messages',
           style: GoogleFonts.ibmPlexSansArabic(

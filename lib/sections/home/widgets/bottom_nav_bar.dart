@@ -15,9 +15,9 @@ class BottomNavBar extends StatelessWidget {
 
   static const _items = [
     'Home',
-    'Explore',
-    'Reels',
-    'Profile',
+    'Search',
+    'Notifications',
+    'Messages',
   ];
 
   @override
@@ -80,9 +80,9 @@ class _NavItem extends StatelessWidget {
         ),
       );
     }
-    if (label == 'Explore') {
+    if (label == 'Search') {
       return SvgPicture.asset(
-        'assets/home/icons/explore_nav_icon.svg',
+        'assets/home/icons/search_01.svg',
         width: 24,
         height: 24,
         colorFilter: ColorFilter.mode(
@@ -91,38 +91,18 @@ class _NavItem extends StatelessWidget {
         ),
       );
     }
-    if (label == 'Reels') {
-      return SvgPicture.asset(
-        'assets/home/icons/reels_nav_icon.svg',
-        width: 24,
-        height: 24,
-        colorFilter: ColorFilter.mode(
-          isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-          BlendMode.srcIn,
-        ),
+    if (label == 'Notifications') {
+      return Icon(
+        Icons.notifications_outlined,
+        size: 24,
+        color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
       );
     }
-    if (label == 'Profile') {
-      return Container(
-        width: 26,
-        height: 26,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isActive ? const Color(0xFF7C57FC) : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: ClipOval(
-          child: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
-              ? (userAvatarUrl!.startsWith('http')
-                  ? Image.network(userAvatarUrl!, fit: BoxFit.cover)
-                  : Image.asset(userAvatarUrl!, fit: BoxFit.cover))
-              : Image.asset(
-                  'assets/home/images/avatar_placeholder.png',
-                  fit: BoxFit.cover,
-                ),
-        ),
+    if (label == 'Messages') {
+      return Icon(
+        Icons.chat_bubble_outline,
+        size: 24,
+        color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
       );
     }
     return const Icon(Icons.help_outline);

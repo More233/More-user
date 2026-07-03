@@ -4,7 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+  final bool showBackButton;
+  const NotificationsScreen({super.key, this.showBackButton = true});
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -154,17 +155,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            child: SvgPicture.asset(
-              'assets/home/icons/arrow_left_01.svg',
-              width: 24,
-              height: 24,
-            ),
-          ),
-        ),
+        automaticallyImplyLeading: widget.showBackButton,
+        leading: widget.showBackButton
+            ? GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  child: SvgPicture.asset(
+                    'assets/home/icons/arrow_left_01.svg',
+                    width: 24,
+                    height: 24,
+                  ),
+                ),
+              )
+            : null,
         title: Text(
           'Notifications',
           style: GoogleFonts.ibmPlexSansArabic(
