@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -9,7 +11,6 @@ import 'view_models/timeline_view_model.dart';
 import 'view_models/collections_view_model.dart';
 import 'view_models/social_feed_view_model.dart';
 import 'notifications_screen.dart';
-import 'profile_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/comments_bottom_sheet.dart';
@@ -19,6 +20,7 @@ import 'widgets/messages_screen.dart';
 import 'widgets/save_to_list_bottom_sheet.dart';
 import 'widgets/share_bottom_sheet.dart';
 import 'widgets/social_feed_view.dart';
+import 'widgets/user_drawer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -27,34 +29,115 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProviderStateMixin {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<MessagesScreenState> _messagesKey = GlobalKey<MessagesScreenState>();
   double? _selectedExploreLat;
   double? _selectedExploreLng;
   String? _selectedExploreAddress;
   bool _isHeaderVisible = true;
   bool _isNavBarVisible = true;
 
+  late AnimationController _menuAnimationController;
+  late Animation<double> _menuAnimation;
+  bool _isMenuOpen = false;
+  bool _canDrag = false;
+
   @override
   void initState() {
     super.initState();
+    _menuAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _menuAnimation = CurvedAnimation(
+      parent: _menuAnimationController,
+      curve: Curves.easeInOut,
+    );
+    
     Future.microtask(() {
       ref.read(timelineViewModelProvider.notifier).init();
       ref.read(collectionsViewModelProvider.notifier).init();
     });
   }
 
-  void _onAvatarTapped(List<TimelinePost> posts) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ProfileScreen(
-          userPosts: posts,
-          onPostUpdated: () {
-            ref.read(timelineViewModelProvider.notifier).refreshAll();
-          },
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _menuAnimationController.dispose();
+    super.dispose();
+  }
+
+  void _onAvatarTapped() {
+    HapticFeedback.lightImpact();
+    if (_isMenuOpen) {
+      _menuAnimationController.reverse();
+      setState(() {
+        _isMenuOpen = false;
+      });
+    } else {
+      _menuAnimationController.forward();
+      setState(() {
+        _isMenuOpen = true;
+      });
+    }
+  }
+
+  void _onHorizontalDragStart(DragStartDetails details, int selectedNavIndex) {
+    if (_isMenuOpen || selectedNavIndex == 0 || details.globalPosition.dx < 45.0) {
+      _canDrag = true;
+    } else {
+      _canDrag = false;
+    }
+  }
+
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    if (!_canDrag) return;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final menuWidth = screenWidth * 0.76;
+    _menuAnimationController.value += details.delta.dx / menuWidth;
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    if (!_canDrag) return;
+    final velocity = details.primaryVelocity ?? 0;
+    
+    if (velocity < -200) {
+      // Swiped left quickly -> close
+      _menuAnimationController.reverse();
+      setState(() {
+        _isMenuOpen = false;
+      });
+      return;
+    } else if (velocity > 200) {
+      // Swiped right quickly -> open
+      _menuAnimationController.forward();
+      setState(() {
+        _isMenuOpen = true;
+      });
+      return;
+    }
+
+    if (_isMenuOpen) {
+      // If it was already open, if they dragged it left at all (value < 0.85), close it
+      if (_menuAnimationController.value < 0.85) {
+        _menuAnimationController.reverse();
+        setState(() {
+          _isMenuOpen = false;
+        });
+      } else {
+        _menuAnimationController.forward();
+      }
+    } else {
+      // If it was closed, if they dragged it right past 0.25, open it
+      if (_menuAnimationController.value > 0.25) {
+        _menuAnimationController.forward();
+        setState(() {
+          _isMenuOpen = true;
+        });
+      } else {
+        _menuAnimationController.reverse();
+      }
+    }
   }
 
   void _openSaveToList(TimelinePost post) {
@@ -170,18 +253,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           showBackButton: false,
         ),
         MessagesScreen(
+          key: _messagesKey,
           followedUsernames: state.followedUsernames,
           onFollowChanged: (username, isFollowed) {
             ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
           },
           showBackButton: false,
+          onAvatarTapped: _onAvatarTapped,
         ),
       ],
     );
   }
 
   Widget _buildTimelineTab(TimelineState state) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Stack(
       children: [
         Column(
@@ -204,7 +288,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: SocialFeedView(
                 currentUserAvatarUrl: state.currentUserAvatarUrl,
                 followedUsernames: state.followedUsernames,
-                onAvatarTapped: () => _onAvatarTapped(state.posts),
+                onAvatarTapped: _onAvatarTapped,
                 openFollowFriends: () => _openFollowFriends(state.followedUsernames),
                 onLike: (post) => ref.read(timelineViewModelProvider.notifier).toggleLike(post.id),
                 onBookmark: _handleBookmarkTap,
@@ -222,13 +306,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          right: 16,
-          bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
-          child: _buildFAB(state),
-        ),
         if (state.isFirstCheckIn && state.showCoachmark)
           FabCoachmarkOverlay(
             onTap: _startOnboardingFlow,
@@ -244,95 +321,205 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final state = ref.watch(timelineViewModelProvider);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final navBarHeight = 50.0 + bottomPadding;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final menuWidth = screenWidth * 0.76;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (ScrollNotification notification) {
-            if (state.selectedNavIndex == 0) {
-              if (notification is ScrollUpdateNotification) {
-                final delta = notification.scrollDelta;
-                if (delta != null) {
-                  if (delta > 0.5) {
-                    if (_isHeaderVisible || _isNavBarVisible) {
-                      setState(() {
-                        _isHeaderVisible = false;
-                        _isNavBarVisible = false;
-                      });
-                    }
-                  } else if (delta < -0.5) {
-                    if (!_isHeaderVisible || !_isNavBarVisible) {
-                      setState(() {
-                        _isHeaderVisible = true;
-                        _isNavBarVisible = true;
-                      });
-                    }
-                  }
-                }
-                if (notification.metrics.pixels <= 0) {
-                  if (!_isHeaderVisible || !_isNavBarVisible) {
-                    setState(() {
-                      _isHeaderVisible = true;
-                      _isNavBarVisible = true;
-                    });
-                  }
-                }
-              } else if (notification is ScrollEndNotification) {
-                if (notification.metrics.pixels <= 0) {
-                  if (!_isHeaderVisible || !_isNavBarVisible) {
-                    setState(() {
-                      _isHeaderVisible = true;
-                      _isNavBarVisible = true;
-                    });
-                  }
-                } else {
-                  if (!_isNavBarVisible) {
-                    setState(() {
-                      _isNavBarVisible = true;
-                    });
-                  }
-                }
-              }
-            }
-            return false;
-          },
-          child: Stack(
+    return AnimatedBuilder(
+      animation: _menuAnimation,
+      builder: (context, child) {
+        final slide = menuWidth * _menuAnimation.value;
+        const scale = 1.0; // No scaling per user request
+
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: const Color(0xFFF7F9FA), // Matches Drawer background color
+          body: Stack(
             children: [
-              Positioned.fill(
-                child: state.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _buildBody(state),
-              ),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
+              // Under Layer: The Drawer Menu
+              Positioned(
                 left: 0,
-                right: 0,
-                bottom: _isNavBarVisible ? 0.0 : -navBarHeight,
-                child: BottomNavBar(
-                  selectedIndex: state.selectedNavIndex,
-                  userAvatarUrl: state.currentUserAvatarUrl,
-                  onItemTapped: (index) {
-                    setState(() {
-                      _isHeaderVisible = true;
-                      _isNavBarVisible = true;
-                      if (index != 1) {
-                        _selectedExploreLat = null;
-                        _selectedExploreLng = null;
-                        _selectedExploreAddress = null;
-                      }
-                    });
-                    ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-                  },
+                top: 0,
+                bottom: 0,
+                width: menuWidth,
+                child: Transform.translate(
+                  offset: Offset((_menuAnimation.value - 1.0) * 80.0, 0.0), // Parallax effect
+                  child: UserDrawer(
+                    onProfileUpdated: () {
+                      ref.read(timelineViewModelProvider.notifier).refreshAll();
+                    },
+                    onCloseMenu: () {
+                      _menuAnimationController.reverse();
+                      setState(() {
+                        _isMenuOpen = false;
+                      });
+                    },
+                  ),
                 ),
               ),
+              // Top Layer: The Main Content
+              Transform.translate(
+                offset: Offset(slide, 0.0),
+                child: Transform.scale(
+                  scale: scale,
+                  alignment: Alignment.centerLeft,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0), // 64px rounded corners
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: _menuAnimation.value > 0 ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.35 * _menuAnimation.value), // deep outer shadow
+                            blurRadius: 40,
+                            spreadRadius: 8,
+                            offset: const Offset(-12, 0),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15 * _menuAnimation.value), // soft inner shadow
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                            offset: const Offset(-4, 0),
+                          ),
+                        ] : [],
+                      ),
+                      child: GestureDetector(
+                        onHorizontalDragStart: (details) => _onHorizontalDragStart(details, state.selectedNavIndex),
+                        onHorizontalDragUpdate: (details) => _onHorizontalDragUpdate(details),
+                        onHorizontalDragEnd: _onHorizontalDragEnd,
+                        child: Scaffold(
+                          backgroundColor: Colors.white,
+                          body: SafeArea(
+                            top: true,
+                            bottom: false,
+                            child: NotificationListener<ScrollNotification>(
+                              onNotification: (ScrollNotification notification) {
+                                if (state.selectedNavIndex == 0) {
+                                  if (notification is ScrollUpdateNotification) {
+                                    final delta = notification.scrollDelta;
+                                    if (delta != null) {
+                                      if (delta > 0.5) {
+                                        if (_isHeaderVisible || _isNavBarVisible) {
+                                          setState(() {
+                                            _isHeaderVisible = false;
+                                            _isNavBarVisible = false;
+                                          });
+                                        }
+                                      } else if (delta < -0.5) {
+                                        if (!_isHeaderVisible || !_isNavBarVisible) {
+                                          setState(() {
+                                            _isHeaderVisible = true;
+                                            _isNavBarVisible = true;
+                                          });
+                                        }
+                                      }
+                                    }
+                                    if (notification.metrics.pixels <= 0) {
+                                      if (!_isHeaderVisible || !_isNavBarVisible) {
+                                        setState(() {
+                                          _isHeaderVisible = true;
+                                          _isNavBarVisible = true;
+                                        });
+                                      }
+                                    }
+                                  } else if (notification is ScrollEndNotification) {
+                                    if (notification.metrics.pixels <= 0) {
+                                      if (!_isHeaderVisible || !_isNavBarVisible) {
+                                        setState(() {
+                                          _isHeaderVisible = true;
+                                          _isNavBarVisible = true;
+                                        });
+                                      }
+                                    } else {
+                                      if (!_isNavBarVisible) {
+                                        setState(() {
+                                          _isNavBarVisible = true;
+                                        });
+                                      }
+                                    }
+                                  }
+                                }
+                                return false;
+                              },
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: state.isLoading
+                                        ? const Center(child: CupertinoActivityIndicator(radius: 14))
+                                        : _buildBody(state),
+                                  ),
+                                  AnimatedPositioned(
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.easeInOut,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: _isNavBarVisible ? 0.0 : -navBarHeight,
+                                    child: BottomNavBar(
+                                      selectedIndex: state.selectedNavIndex,
+                                      userAvatarUrl: state.currentUserAvatarUrl,
+                                      onItemTapped: (index) {
+                                        setState(() {
+                                          _isHeaderVisible = true;
+                                          _isNavBarVisible = true;
+                                          if (index != 1) {
+                                            _selectedExploreLat = null;
+                                            _selectedExploreLng = null;
+                                            _selectedExploreAddress = null;
+                                          }
+                                        });
+                                        ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+                                      },
+                                    ),
+                                  ),
+                                  AnimatedPositioned(
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.easeInOut,
+                                    right: 16,
+                                    bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
+                                    child: IgnorePointer(
+                                      ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 3),
+                                      child: AnimatedOpacity(
+                                        duration: const Duration(milliseconds: 200),
+                                        opacity: (state.selectedNavIndex == 0 || state.selectedNavIndex == 3) ? 1.0 : 0.0,
+                                        child: _buildFAB(state),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Invisible gesture overlay on the right when menu is open to close menu on tap
+              if (_isMenuOpen)
+                Positioned(
+                  left: slide,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: GestureDetector(
+                    onTap: () {
+                      _menuAnimationController.reverse();
+                      setState(() {
+                        _isMenuOpen = false;
+                      });
+                    },
+                    onHorizontalDragStart: (details) => _onHorizontalDragStart(details, state.selectedNavIndex),
+                    onHorizontalDragUpdate: (details) => _onHorizontalDragUpdate(details),
+                    onHorizontalDragEnd: _onHorizontalDragEnd,
+                    child: Container(
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -348,33 +535,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
-              onTap: () => _onAvatarTapped(state.posts),
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0xFFE9E9E9),
-                    width: 1,
+              onTap: _onAvatarTapped,
+              child: Hero(
+                 tag: 'user-avatar',
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: state.currentUserAvatarUrl != null && state.currentUserAvatarUrl!.isNotEmpty
-                      ? (state.currentUserAvatarUrl!.startsWith('http')
-                          ? Image.network(state.currentUserAvatarUrl!, fit: BoxFit.cover)
-                          : Image.asset(state.currentUserAvatarUrl!, fit: BoxFit.cover))
-                      : Image.asset(
-                          'assets/home/images/avatar_placeholder.png',
-                          fit: BoxFit.cover,
-                        ),
+                  child: ClipOval(
+                    child: state.currentUserAvatarUrl != null && state.currentUserAvatarUrl!.isNotEmpty
+                        ? (state.currentUserAvatarUrl!.startsWith('http')
+                            ? Image.network(state.currentUserAvatarUrl!, fit: BoxFit.cover)
+                            : Image.asset(state.currentUserAvatarUrl!, fit: BoxFit.cover))
+                        : Image.asset(
+                            'assets/home/images/avatar_placeholder.png',
+                            fit: BoxFit.cover,
+                          ),
+                  ),
                 ),
               ),
             ),
@@ -413,10 +592,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildFAB(TimelineState state) {
     return GestureDetector(
       onTap: () {
-        if (state.isFirstCheckIn) {
-          ref.read(timelineViewModelProvider.notifier).setShowCoachmark(true);
+        HapticFeedback.lightImpact();
+        if (state.selectedNavIndex == 3) {
+          _messagesKey.currentState?.enterSearchMode();
         } else {
-          _openCheckInComposer();
+          if (state.isFirstCheckIn) {
+            ref.read(timelineViewModelProvider.notifier).setShowCoachmark(true);
+          } else {
+            _openCheckInComposer();
+          }
         }
       },
       child: Container(
@@ -426,10 +610,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           color: Color(0xFF7C57FC),
           shape: BoxShape.circle,
         ),
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-          size: 28,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, animation) {
+            return ScaleTransition(scale: animation, child: child);
+          },
+          child: state.selectedNavIndex == 3
+              ? const Icon(
+                  CupertinoIcons.plus_bubble,
+                  key: ValueKey('chat_icon'),
+                  color: Colors.white,
+                  size: 26,
+                )
+              : const Icon(
+                  Icons.add,
+                  key: ValueKey('add_icon'),
+                  color: Colors.white,
+                  size: 28,
+                ),
         ),
       ),
     );

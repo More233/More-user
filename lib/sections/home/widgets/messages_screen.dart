@@ -1,46 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'follow_friends_bottom_sheet.dart';
 import 'conversation_screen.dart';
 import 'story_viewer.dart';
 import 'story_composer_screen.dart';
 import '../helpers/story_tracker.dart';
 import '../models/user_story_group.dart';
 import '../view_models/messages_view_model.dart';
+import 'package:flutter/cupertino.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
   final Set<String> followedUsernames;
   final Function(String, bool) onFollowChanged;
   final bool showBackButton;
+  final VoidCallback? onAvatarTapped;
 
   const MessagesScreen({
     super.key,
     required this.followedUsernames,
     required this.onFollowChanged,
     this.showBackButton = true,
+    this.onAvatarTapped,
   });
 
   @override
-  ConsumerState<MessagesScreen> createState() => _MessagesScreenState();
+  ConsumerState<MessagesScreen> createState() => MessagesScreenState();
 }
 
-class _MessagesScreenState extends ConsumerState<MessagesScreen> {
-  late Set<String> _localFollowed;
+class MessagesScreenState extends ConsumerState<MessagesScreen> {
+  void enterSearchMode() {
+    setState(() {
+      _isSearchMode = true;
+    });
+  }
   bool _isLoadingStories = true;
   List<Map<String, dynamic>> _profilesList = [];
   List<Map<String, dynamic>> _searchResults = [];
   final List<UserStoryGroup> _storyGroups = [];
-  bool _isSearching = false;
+  bool _isSearchMode = false;
   String _currentUserId = '';
   final TextEditingController _searchController = TextEditingController();
+
+  String? get _currentUserAvatarUrl {
+    final curProfile = _profilesList.firstWhere(
+      (p) => p['id'] == _currentUserId,
+      orElse: () => {},
+    );
+    return curProfile['avatar_url'] as String?;
+  }
 
   @override
   void initState() {
     super.initState();
-    _localFollowed = Set.from(widget.followedUsernames);
     StoryTracker().init().then((_) {
       if (mounted) {
         setState(() {});
@@ -95,7 +107,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       // 2. Fetch active stories from Supabase where expires_at > now()
       final storiesResponse = await client
           .from('stories')
-          .select('*, user:profiles(id, username, first_name, last_name, avatar_url)')
+          .select('*, user:profiles(id, username, first_name, last_name, avatar_url, is_verified)')
           .inFilter('user_id', userIds)
           .gt('expires_at', DateTime.now().toIso8601String())
           .order('created_at', ascending: true);
@@ -150,7 +162,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   void _onSearchChanged(String query) {
     if (query.trim().isEmpty) {
       setState(() {
-        _isSearching = false;
         _searchResults = [];
       });
       return;
@@ -171,7 +182,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     }).toList();
 
     setState(() {
-      _isSearching = true;
       _searchResults = results;
     });
   }
@@ -265,36 +275,15 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       } else if (diff.inDays < 7) {
         return '${diff.inDays}d';
       } else {
-        return '${date.day}/${date.month}';
+        final weeks = (diff.inDays / 7).floor();
+        return '${weeks}w';
       }
     } catch (e) {
       return '';
     }
   }
 
-  void _openAddFriends() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return FollowFriendsBottomSheet(
-          followedUsernames: _localFollowed,
-          onFollowChanged: (username, isFollowed) {
-            setState(() {
-              if (isFollowed) {
-                _localFollowed.add(username);
-              } else {
-                _localFollowed.remove(username);
-              }
-            });
-            widget.onFollowChanged(username, isFollowed);
-            ref.read(messagesViewModelProvider.notifier).loadData();
-          },
-        );
-      },
-    );
-  }
+
 
   Widget _buildThreadTile(Map<String, dynamic> populatedThread) {
     final otherProfile = populatedThread['otherProfile'] as Map<String, dynamic>;
@@ -316,13 +305,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 
     final timeText = lastMsg != null ? _formatTime(lastMsg['created_at']) : '';
 
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFEEEEF0), width: 1),
-        ),
-      ),
-      child: ListTile(
+    return ListTile(
         contentPadding: const EdgeInsets.symmetric(vertical: 4),
         leading: CircleAvatar(
           radius: 24,
@@ -353,8 +336,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           ),
         ),
         onTap: () => _openConversation(otherProfile),
-      ),
-    );
+      );
   }
 
   Widget _buildSearchTile(Map<String, dynamic> profile) {
@@ -371,19 +353,26 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       title: Text(
         otherName,
         style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF0D111C),
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF0F1419),
+          height: 1.2,
         ),
       ),
       subtitle: Text(
         '@$otherUsername',
         style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 14,
-          color: const Color(0xFF82858C),
+          fontSize: 13,
+          color: const Color(0xFF536471),
+          height: 1.2,
         ),
       ),
-      onTap: () => _openConversation(profile),
+      onTap: () {
+        setState(() {
+          _isSearchMode = false;
+        });
+        _openConversation(profile);
+      },
     );
   }
 
@@ -399,38 +388,30 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF5D5D5D).withValues(alpha: 0.1),
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                  ),
-                ],
               ),
-              child: SvgPicture.asset(
-                'assets/home/icons/chat_bubble_icon.svg',
-                width: 64,
-                height: 64,
-                colorFilter: const ColorFilter.mode(Color(0xFF82858C), BlendMode.srcIn),
+              child: const Icon(
+                CupertinoIcons.chat_bubble_2,
+                size: 40,
+                color: Color(0xFF7C57FC),
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              'No chats yet',
+              'No messages yet',
               style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Add friends to start chatting.',
+              'Start a conversation with one of your friends to see messages here.',
+              textAlign: TextAlign.center,
               style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 16,
+                fontSize: 14,
                 color: const Color(0xFF545763),
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -438,22 +419,89 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     );
   }
 
+  Widget _buildConversationsTab() {
+    // Show only profiles that are not the current user
+    final filteredProfiles = _profilesList.where((p) => p['id'] != _currentUserId).toList();
+    final listToShow = _searchController.text.isEmpty ? filteredProfiles : _searchResults;
+    if (listToShow.isEmpty) {
+      return Center(
+        child: Text(
+          'No conversations found',
+          style: GoogleFonts.ibmPlexSansArabic(
+            color: const Color(0xFF82858C),
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: listToShow.length,
+      itemBuilder: (context, index) {
+        return _buildSearchTile(listToShow[index]);
+      },
+    );
+  }
+
+  Widget _buildMessagesTab() {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      return Center(
+        child: Text(
+          'Search for messages',
+          style: GoogleFonts.ibmPlexSansArabic(
+            color: const Color(0xFF82858C),
+          ),
+        ),
+      );
+    }
+
+    final messagesState = ref.read(messagesViewModelProvider);
+    final filteredThreads = messagesState.threads.where((t) {
+      final lastMsg = t['last_message'];
+      if (lastMsg == null) return false;
+      final content = (lastMsg['content'] ?? '').toString().toLowerCase();
+      return content.contains(query);
+    }).toList();
+
+    if (filteredThreads.isEmpty) {
+      return Center(
+        child: Text(
+          'No messages found',
+          style: GoogleFonts.ibmPlexSansArabic(
+            color: const Color(0xFF82858C),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: filteredThreads.length,
+      itemBuilder: (context, index) {
+        return _buildThreadTile(filteredThreads[index]);
+      },
+    );
+  }
+
   Widget _buildStoriesRow() {
+    if (_storyGroups.isEmpty) return const SizedBox.shrink();
+    
+    final currentUserUsername = _profilesList.firstWhere(
+      (p) => p['id'] == _currentUserId,
+      orElse: () => {},
+    )['username'] as String? ?? 'unknown';
+
+    final currentUserAvatarUrl = _currentUserAvatarUrl;
+
     final currentUserGroup = _storyGroups.firstWhere(
       (g) => g.userId == _currentUserId,
-      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: '', mediaUrls: [], createdTimes: [], storyIds: []),
+      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: null, mediaUrls: [], createdTimes: [], storyIds: []),
     );
     final hasOwnStory = currentUserGroup.userId.isNotEmpty;
 
-    final currentUserProfile = _profilesList.firstWhere(
-      (p) => p['id'] == _currentUserId,
-      orElse: () => <String, dynamic>{},
-    );
-    final String? currentUserAvatarUrl = currentUserProfile['avatar_url'] as String?;
-    final String currentUserUsername = currentUserProfile['username'] ?? '';
-
-    return SizedBox(
-      height: 110,
+    return Container(
+      height: 96,
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -575,29 +623,18 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                       height: 64,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: StoryTracker().isGroupViewed(group.mediaUrls)
-                            ? null
-                            : const LinearGradient(
-                                colors: [Color(0xFF7C57FC), Color(0xFFFF57B9)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        border: StoryTracker().isGroupViewed(group.mediaUrls)
-                            ? Border.all(color: const Color(0xFFE9E9E9), width: 2)
-                            : null,
+                        border: Border.all(
+                          color: StoryTracker().isGroupViewed(group.mediaUrls)
+                              ? const Color(0xFFE9E9E9)
+                              : const Color(0xFF7C57FC),
+                          width: 2,
+                        ),
                       ),
                       padding: const EdgeInsets.all(2),
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        padding: const EdgeInsets.all(2),
-                        child: CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: _getAvatarProvider(group.username, group.avatarUrl),
-                        ),
+                      child: CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: _getAvatarProvider(group.username, group.avatarUrl),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -625,162 +662,276 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     final threadsList = messagesState.threads;
     final isLoading = messagesState.isLoading || _isLoadingStories;
 
+    if (_isSearchMode) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          surfaceTintColor: Colors.transparent,
+          automaticallyImplyLeading: false,
+          titleSpacing: 0,
+          title: Padding(
+            padding: const EdgeInsets.only(left: 8, right: 16),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
+                  onPressed: () {
+                    setState(() {
+                      _isSearchMode = false;
+                      _searchController.clear();
+                    });
+                  },
+                ),
+                Expanded(
+                  child: Container(
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEDEFF2),
+                      borderRadius: BorderRadius.circular(21),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      children: [
+                        const Icon(CupertinoIcons.search, color: Color(0xFF82858C), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
+                            decoration: InputDecoration(
+                              hintText: 'Search',
+                              hintStyle: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 14,
+                                color: const Color(0xFF82858C),
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            onChanged: _onSearchChanged,
+                          ),
+                        ),
+                        if (_searchController.text.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              _onSearchChanged('');
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF7C57FC),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                size: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        body: Column(
+          children: [
+            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            Expanded(
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  children: [
+                    TabBar(
+                      dividerColor: Colors.transparent,
+                      indicatorColor: const Color(0xFF7C57FC),
+                      labelColor: Colors.black,
+                      unselectedLabelColor: const Color(0xFF82858C),
+                      labelStyle: GoogleFonts.ibmPlexSansArabic(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                      unselectedLabelStyle: GoogleFonts.ibmPlexSansArabic(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                      ),
+                      tabs: const [
+                        Tab(text: 'Conversations'),
+                        Tab(text: 'Messages'),
+                      ],
+                    ),
+                    const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildConversationsTab(),
+                          _buildMessagesTab(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final avatarUrl = _currentUserAvatarUrl;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0.5,
-        automaticallyImplyLeading: widget.showBackButton,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        automaticallyImplyLeading: false,
+        leadingWidth: 56,
         leading: widget.showBackButton
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
                 onPressed: () => Navigator.pop(context),
               )
-            : null,
+            : (widget.onAvatarTapped != null
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: GestureDetector(
+                        onTap: widget.onAvatarTapped,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                          ),
+                          child: ClipOval(
+                            child: avatarUrl != null && avatarUrl.isNotEmpty
+                                ? (avatarUrl.startsWith('http')
+                                    ? Image.network(avatarUrl, fit: BoxFit.cover)
+                                    : Image.asset(avatarUrl, fit: BoxFit.cover))
+                                : Image.asset(
+                                    'assets/home/images/avatar_placeholder.png',
+                                    fit: BoxFit.cover,
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : null),
         title: Text(
-          'Messages',
+          'Chat',
           style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
         ),
-        centerTitle: false,
+        centerTitle: true,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              child: _buildActionButtonChild(
-                child: SvgPicture.asset(
-                  'assets/home/icons/add_friend_icon.svg',
-                  width: 24,
-                  height: 24,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFE2E4E6)),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                onTap: _openAddFriends,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'All',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      CupertinoIcons.chevron_down,
+                      size: 12,
+                      color: Colors.black,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CupertinoActivityIndicator())
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(height: 1, color: Color(0xFFE8E8E8)),
-                
-                // Search bar
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF6F6F6),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.search, color: Color(0xFF82858C), size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                            decoration: InputDecoration(
-                              hintText: 'Search by name or username',
-                              hintStyle: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 14,
-                                color: const Color(0xFF82858C),
-                              ),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                // Search bar trigger
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isSearchMode = true;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+                    child: Container(
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDEFF2),
+                        borderRadius: BorderRadius.circular(21),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(CupertinoIcons.search, color: Color(0xFF82858C), size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Search',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 15,
+                              color: const Color(0xFF82858C),
+                              fontWeight: FontWeight.w400,
                             ),
-                            onChanged: _onSearchChanged,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
+                const Divider(height: 1, color: Color(0xFFE8E8E8)),
 
-                if (_isSearching) ...[
-                  // Search results header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text(
-                      'Search Results',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  // Search results list
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _searchResults.length,
-                      itemBuilder: (context, index) {
-                        return _buildSearchTile(_searchResults[index]);
-                      },
-                    ),
-                  ),
-                ] else ...[
-                  // Stories row
-                  _buildStoriesRow(),
-                  const SizedBox(height: 12),
+                // Stories row
+                _buildStoriesRow(),
+                const SizedBox(height: 4),
 
-                  // Messages list header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text(
-                      'Messages',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
+                // Divider below stories
+                if (_storyGroups.isNotEmpty)
+                  const Divider(height: 1, color: Color(0xFFF0F0F0)),
 
-                  // Messages thread list / empty state
-                  Expanded(
-                    child: threadsList.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: threadsList.length,
-                            itemBuilder: (context, index) {
-                              return _buildThreadTile(threadsList[index]);
-                            },
-                          ),
-                  ),
-                ],
+                // Messages thread list / empty state
+                Expanded(
+                  child: threadsList.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: threadsList.length,
+                          itemBuilder: (context, index) {
+                            return _buildThreadTile(threadsList[index]);
+                          },
+                        ),
+                ),
               ],
             ),
-    );
-  }
-
-  Widget _buildActionButtonChild({required Widget child, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFE9E9E9), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: child,
-      ),
     );
   }
 }

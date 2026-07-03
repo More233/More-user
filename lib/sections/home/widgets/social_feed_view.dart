@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,7 +14,6 @@ import '../view_models/social_feed_view_model.dart';
 import 'story_composer_screen.dart';
 import 'story_viewer.dart';
 import 'check_in_composer_screen.dart';
-import 'die_cut_sticker.dart';
 
 class SocialFeedView extends ConsumerStatefulWidget {
   final String? currentUserAvatarUrl;
@@ -44,28 +44,6 @@ class SocialFeedView extends ConsumerStatefulWidget {
 }
 
 class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
-  String _getStickerEmoji(int index) {
-    if (index == 1) return "❤️";
-    if (index == 2) return "🍺";
-    if (index == 3) return "👏";
-    if (index == 4) return "👍";
-    if (index == 5) return "🔥";
-    if (index == 6) return "😍";
-    if (index == 7) return "➕";
-    
-    if (index >= 8) {
-      final customIndex = index - 8;
-      final customStickers = [
-        '🥳', '😎', '⛈️', '❤️', '🐸', '🔥', '👋', '👍', '🍺', '⏰', '🚗', '🚕',
-        '💄', '🧻', '🖼️', '💊', '⚾', '🚫', '🏁', '🥧', '🩹', '🛍️', '🍻', '🌲',
-        '🛒', '🌵', '👮', '🛟', '🍦', '🥯', '🐶', '🕴️', '👠', '🥾', '🦕', '🏛️'
-      ];
-      if (customIndex < customStickers.length) {
-        return customStickers[customIndex];
-      }
-    }
-    return "";
-  }
 
   @override
   void initState() {
@@ -101,307 +79,389 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
     );
     final hasOwnStory = currentUserGroup.userId.isNotEmpty;
 
-    return RefreshIndicator(
-      onRefresh: () => ref.read(socialFeedViewModelProvider.notifier).refreshFeed(),
-      color: const Color(0xFF7C57FC),
-      child: state.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF7C57FC),
-              ),
-            )
-          : ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 12, bottom: 120),
-              itemCount: 1 + (state.socialPosts.isEmpty ? 1 : state.socialPosts.length),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 165,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        CupertinoSliverRefreshControl(
+          onRefresh: () => ref.read(socialFeedViewModelProvider.notifier).refreshFeed(),
+        ),
+        SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 165,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                     if (!hasOwnStory)
+                      Container(
+                        width: 110,
+                        height: 150,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFFF2F2F7),
+                        ),
+                        child: Stack(
                           children: [
-                            // Create story card (current user)
-                            Container(
-                              width: 110,
-                              height: 150,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: hasOwnStory
-                                  ? BoxDecoration(
-                                      borderRadius: BorderRadius.circular(15),
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFF7C57FC), Color(0xFFFF45B5), Color(0xFFFF805D)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
+                            Center(
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    width: 52,
+                                    height: 52,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.transparent,
+                                        width: 1,
                                       ),
-                                    )
-                                  : null,
-                              padding: hasOwnStory ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
-                                  color: Colors.white,
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(hasOwnStory ? 12.5 : 12),
-                                  child: Stack(
-                                    children: [
-                                      // Background image: always current user's profile image
-                                      Positioned.fill(
-                                        child: Container(
-                                          color: Colors.grey[300],
-                                          child: widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
-                                              ? (widget.currentUserAvatarUrl!.startsWith('http')
-                                                  ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
-                                                  : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
-                                              : Image.asset(
-                                                  'assets/home/images/avatar_placeholder.png',
-                                                  fit: BoxFit.cover,
-                                                ),
-                                        ),
-                                      ),
-                                      // Dark overlay
-                                      Positioned.fill(
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                              colors: [
-                                                Colors.transparent,
-                                                Colors.black.withValues(alpha: hasOwnStory ? 0.45 : 0.35),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Content: Avatar + Name + Plus Icon
-                                      Positioned.fill(
-                                        child: Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            onTap: () {
-                                              if (hasOwnStory) {
-                                                final index = state.storyGroups.indexOf(currentUserGroup);
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => StoryViewer(
-                                                      storyGroups: state.storyGroups,
-                                                      initialGroupIndex: index,
-                                                    ),
-                                                  ),
-                                                );
-                                              } else {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => const StoryComposerScreen(),
-                                                  ),
-                                                ).then((val) {
-                                                  if (val == true) {
-                                                    ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
-                                                  }
-                                                });
-                                              }
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(8.0),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  // Center: white circle with plus icon (only if no active story)
-                                                  if (!hasOwnStory)
-                                                    Align(
-                                                      alignment: Alignment.topLeft,
-                                                      child: Container(
-                                                        width: 24,
-                                                        height: 24,
-                                                        decoration: const BoxDecoration(
-                                                          color: Colors.white,
-                                                          shape: BoxShape.circle,
-                                                        ),
-                                                        child: const Icon(
-                                                          Icons.add,
-                                                          color: Color(0xFF7C57FC),
-                                                          size: 16,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  else
-                                                    const SizedBox.shrink(),
-                                                  // Bottom: text
-                                                  Text(
-                                                    hasOwnStory ? 'Your Story' : 'Create a story',
-                                                    style: GoogleFonts.ibmPlexSansArabic(
-                                                      fontSize: 11,
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 25,
+                                      backgroundColor: Colors.grey[300],
+                                      backgroundImage: widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
+                                          ? (widget.currentUserAvatarUrl!.startsWith('http')
+                                              ? NetworkImage(widget.currentUserAvatarUrl!)
+                                              : AssetImage(widget.currentUserAvatarUrl!)) as ImageProvider
+                                          : const AssetImage('assets/home/images/avatar_placeholder.png'),
+                                    ),
                                   ),
+                                  Positioned(
+                                    bottom: -2,
+                                    right: -2,
+                                    child: Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF7C57FC),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.add,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              left: 8,
+                              right: 8,
+                              bottom: 8,
+                              child: Text(
+                                'Add story',
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  fontSize: 11,
+                                  color: const Color(0xFF82858C),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const StoryComposerScreen(),
+                                      ),
+                                    ).then((val) {
+                                      if (val == true) {
+                                        ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
+                                      }
+                                    });
+                                  },
                                 ),
                               ),
                             ),
-                            // Friends story cards
-                            ...state.storyGroups.where((g) => g.userId != currentUserId).map((group) {
-                              final hasViewed = StoryTracker().isGroupViewed(group.mediaUrls);
-                              return Container(
-                                width: 110,
-                                height: 150,
-                                margin: const EdgeInsets.only(right: 12),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(15),
-                                  gradient: hasViewed
-                                      ? null
-                                      : const LinearGradient(
-                                          colors: [Color(0xFF7C57FC), Color(0xFFFF45B5), Color(0xFFFF805D)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                ),
-                                padding: hasViewed ? EdgeInsets.zero : const EdgeInsets.all(2.5),
+                          ],
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 110,
+                        height: 150,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFFF2F2F7),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
                                 child: Container(
+                                  color: Colors.grey[300],
+                                  child: currentUserGroup.mediaUrls.isNotEmpty
+                                      ? Image.network(
+                                          currentUserGroup.mediaUrls.first,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
+                                          ? (widget.currentUserAvatarUrl!.startsWith('http')
+                                              ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
+                                              : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
+                                          : Image.asset(
+                                              'assets/home/images/avatar_placeholder.png',
+                                              fit: BoxFit.cover,
+                                            ),
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: Container(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                ),
+                              ),
+                              Positioned(
+                                top: 8,
+                                left: 8,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
                                   decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
-                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFF7C57FC),
+                                      width: 2,
+                                    ),
                                   ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
-                                    child: Stack(
-                                      children: [
-                                        // Background: first story media image
-                                        Positioned.fill(
-                                          child: Container(
-                                            color: Colors.grey[300],
-                                            child: group.mediaUrls.isNotEmpty
-                                                ? Image.network(
-                                                    group.mediaUrls.first,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (context, error, stackTrace) => Image.asset(
-                                                      'assets/home/images/element.png',
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  )
-                                                : Image.asset(
-                                                    'assets/home/images/element.png',
-                                                    fit: BoxFit.cover,
-                                                  ),
+                                  padding: const EdgeInsets.all(1.5),
+                                  child: CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: Colors.grey[200],
+                                    backgroundImage: widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
+                                        ? (widget.currentUserAvatarUrl!.startsWith('http')
+                                            ? NetworkImage(widget.currentUserAvatarUrl!)
+                                            : AssetImage(widget.currentUserAvatarUrl!)) as ImageProvider
+                                        : const AssetImage('assets/home/images/avatar_placeholder.png'),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                left: 8,
+                                right: 8,
+                                bottom: 8,
+                                child: Text(
+                                  'Your Story',
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(12),
+                                    onTap: () {
+                                      final index = state.storyGroups.indexOf(currentUserGroup);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => StoryViewer(
+                                            storyGroups: state.storyGroups,
+                                            initialGroupIndex: index,
                                           ),
                                         ),
-                                        // Dark overlay
-                                        Positioned.fill(
-                                          child: Container(
-                                            color: Colors.black.withValues(alpha: 0.35),
+                                      ).then((_) {
+                                        setState(() {});
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // Friends story cards
+                    ...state.storyGroups.where((g) => g.userId != currentUserId).map((group) {
+                      final hasViewed = StoryTracker().isGroupViewed(group.mediaUrls);
+                      return Container(
+                        width: 110,
+                        height: 150,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          gradient: hasViewed
+                              ? null
+                              : const LinearGradient(
+                                  colors: [Color(0xFF7C57FC), Color(0xFFFF45B5), Color(0xFFFF805D)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                        ),
+                        padding: hasViewed ? EdgeInsets.zero : const EdgeInsets.all(2.5),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
+                            color: Colors.white,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
+                            child: Stack(
+                              children: [
+                                // Background: first story media image
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.grey[300],
+                                    child: group.mediaUrls.isNotEmpty
+                                        ? Image.network(
+                                            group.mediaUrls.first,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => Image.asset(
+                                              'assets/home/images/element.png',
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : Image.asset(
+                                            'assets/home/images/element.png',
+                                            fit: BoxFit.cover,
                                           ),
-                                        ),
-                                        // Tap target & display overlay
-                                        Positioned.fill(
-                                          child: Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
-                                              onTap: () {
-                                                final index = state.storyGroups.indexOf(group);
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) => StoryViewer(
-                                                      storyGroups: state.storyGroups,
-                                                      initialGroupIndex: index,
-                                                    ),
-                                                  ),
-                                                ).then((_) {
-                                                  setState(() {}); // Refresh border colors after viewing
-                                                });
-                                              },
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(8.0),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  children: [
-                                                    // Top-left: User avatar with colorful border
-                                                    Container(
-                                                      width: 32,
-                                                      height: 32,
-                                                      decoration: BoxDecoration(
-                                                        shape: BoxShape.circle,
-                                                        border: Border.all(
-                                                          color: hasViewed ? const Color(0xFFE9E9E9) : const Color(0xFF7C57FC),
-                                                          width: 2,
-                                                        ),
-                                                      ),
-                                                      padding: const EdgeInsets.all(1.5),
-                                                      child: CircleAvatar(
-                                                        radius: 14,
-                                                        backgroundColor: Colors.grey[200],
-                                                        backgroundImage: group.avatarUrl != null && group.avatarUrl!.isNotEmpty
-                                                            ? (group.avatarUrl!.startsWith('http')
-                                                                ? NetworkImage(group.avatarUrl!)
-                                                                : AssetImage(group.avatarUrl!)) as ImageProvider
-                                                            : const AssetImage('assets/home/images/avatar_placeholder.png'),
-                                                      ),
-                                                    ),
-                                                    // Bottom: Username
-                                                    Text(
-                                                      group.username,
-                                                      style: GoogleFonts.ibmPlexSansArabic(
-                                                        fontSize: 11,
-                                                        color: Colors.white,
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
+                                  ),
+                                ),
+                                // Dark overlay
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                // Tap target & display overlay
+                                Positioned.fill(
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        final index = state.storyGroups.indexOf(group);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => StoryViewer(
+                                              storyGroups: state.storyGroups,
+                                              initialGroupIndex: index,
                                             ),
                                           ),
+                                        ).then((_) {
+                                          setState(() {}); // Refresh border colors after viewing
+                                        });
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            // Top-left: User avatar with colorful border
+                                            Container(
+                                              width: 32,
+                                              height: 32,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: hasViewed ? const Color(0xFFE9E9E9) : const Color(0xFF7C57FC),
+                                                  width: 2,
+                                                ),
+                                              ),
+                                              padding: const EdgeInsets.all(1.5),
+                                              child: CircleAvatar(
+                                                radius: 14,
+                                                backgroundColor: Colors.grey[200],
+                                                backgroundImage: group.avatarUrl != null && group.avatarUrl!.isNotEmpty
+                                                    ? (group.avatarUrl!.startsWith('http')
+                                                        ? NetworkImage(group.avatarUrl!)
+                                                        : AssetImage(group.avatarUrl!)) as ImageProvider
+                                                    : const AssetImage('assets/home/images/avatar_placeholder.png'),
+                                              ),
+                                            ),
+                                            // Bottom: Username
+                                            Text(
+                                              group.username,
+                                              style: GoogleFonts.ibmPlexSansArabic(
+                                                fontSize: 11,
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              );
-                            }),
-                          ],
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (widget.followedUsernames.isEmpty && state.showFindFriendsCard)
-                        _buildFindFriendsCard(),
-                      const Divider(
-                        height: 8,
-                        thickness: 8,
-                        color: Color(0xFFF6F6F6),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                }
-
-                if (state.socialPosts.isEmpty) {
-                  return _buildEmptyState();
-                }
-
-                return _buildSocialPostCard(state.socialPosts[index - 1]);
-              },
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (widget.followedUsernames.isEmpty && state.showFindFriendsCard)
+                _buildFindFriendsCard(),
+              const SizedBox(height: 8),
+              const Divider(
+                height: 1,
+                thickness: 0.5,
+                color: Color(0xFFE8E8E8),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+        if (state.isLoading && state.socialPosts.isEmpty)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: CupertinoActivityIndicator(
+                radius: 14,
+              ),
             ),
+          )
+        else if (state.socialPosts.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _buildEmptyState(),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 12, bottom: 120),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  return _buildSocialPostCard(state.socialPosts[index]);
+                },
+                childCount: state.socialPosts.length,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -658,22 +718,16 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Colors.black,
+                          height: 1.0,
                         ),
                       ),
-                      if (post.stickerIndex != -1) ...[
-                        const SizedBox(width: 6),
-                        DieCutSticker(
-                          emoji: _getStickerEmoji(post.stickerIndex),
-                          size: 20,
-                          strokeWidth: 4,
-                        ),
-                      ],
                       const SizedBox(width: 6),
                       Text(
                         '•  ${post.postTime}',
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 12,
                           color: const Color(0xFF82858C),
+                          height: 1.0,
                         ),
                       ),
                       const Spacer(),
@@ -754,7 +808,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 0),
                   if (post.locationAddress.isNotEmpty) ...[
                     GestureDetector(
                       onTap: () async {
@@ -791,6 +845,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w400,
                                 color: const Color(0xFF82858C),
+                                height: 1.0,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

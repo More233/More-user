@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -93,14 +94,14 @@ class _NavItem extends StatelessWidget {
     }
     if (label == 'Notifications') {
       return Icon(
-        Icons.notifications_outlined,
+        CupertinoIcons.bell,
         size: 24,
         color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
       );
     }
     if (label == 'Messages') {
       return Icon(
-        Icons.chat_bubble_outline,
+        CupertinoIcons.chat_bubble,
         size: 24,
         color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
       );

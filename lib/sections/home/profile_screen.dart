@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,8 +12,6 @@ import 'widgets/comments_bottom_sheet.dart';
 import 'widgets/share_bottom_sheet.dart';
 import 'widgets/save_to_list_bottom_sheet.dart';
 import 'widgets/check_in_composer_screen.dart';
-import 'widgets/saved_screen.dart';
-import '../settings/settings_screen.dart';
 import '../settings/edit_profile_screen.dart';
 
 
@@ -37,10 +36,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String _fullName = '';
   String _username = '';
   String? _avatarUrl;
+  String? _coverUrl;
   int _followersCount = 0;
   int _followingCount = 0;
-  int _postsCount = 0;
-  int _coins = 0;
 
   @override
   void initState() {
@@ -88,6 +86,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _fullName = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
         _username = profile['username'] ?? '';
         _avatarUrl = profile['avatar_url'] as String?;
+        _coverUrl = profile['cover_url'] as String?;
       }
 
       _followersCount = followersData.length;
@@ -98,10 +97,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         userPostsList.add(TimelinePost.fromMap(row as Map<String, dynamic>));
       }
       _posts = userPostsList;
-      _postsCount = userPostsList.length;
 
-      // 5. Coins calculation
-      _coins = _postsCount > 0 ? 300 : 0;
+
 
       if (mounted) {
         setState(() {
@@ -162,6 +159,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Failed to update profile photo: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickCoverImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1000,
+        maxHeight: 500,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        if (!mounted) return;
+
+        setState(() {
+          _profileLoading = true;
+        });
+
+        final client = Supabase.instance.client;
+        final user = client.auth.currentUser;
+        if (user == null) return;
+
+        final file = File(image.path);
+        final fileName = 'covers/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        
+        await client.storage.from('post-images').upload(
+          fileName,
+          file,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+        );
+
+        final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
+
+        await client.from('profiles').update({
+          'cover_url': publicUrl,
+        }).eq('id', user.id);
+
+        if (mounted) {
+          setState(() {
+            _coverUrl = publicUrl;
+            _profileLoading = false;
+          });
+          widget.onPostUpdated?.call();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error picking/uploading cover image: $e");
+      if (mounted) {
+        setState(() {
+          _profileLoading = false;
+        });
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update cover photo: $e")),
         );
       }
     }
@@ -392,7 +446,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (mounted) {
         setState(() {
           _posts.removeWhere((p) => p.id == postId);
-          _postsCount = _posts.length;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -442,68 +495,253 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_profileLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF7C57FC),
+          ),
+        ),
+      );
+    }
+
     // Collect all image URLs from posts for the photo grid
     final photos = _posts
         .expand((post) => post.imageUrls)
         .toList();
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: Navigator.canPop(context)
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
-              )
-            : null,
+    final topPadding = MediaQuery.of(context).padding.top;
 
-        title: Text(
-          'Profile',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bookmark_border_rounded, color: Colors.black),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SavedScreen(),
-                ),
-              );
-              if (mounted) {
-                ref.read(collectionsViewModelProvider.notifier).loadCollections();
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.black),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
-                ),
-              );
-              _fetchProfileData();
-            },
-          ),
-        ],
-      ),
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          HapticFeedback.lightImpact();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header Stack (Cover Image, Avatar, Back/Share buttons)
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Cover Image
+                GestureDetector(
+                  onTap: _pickCoverImage,
+                  child: Container(
+                    width: double.infinity,
+                    height: 150,
+                    color: Colors.black87,
+                    child: _coverUrl != null && _coverUrl!.isNotEmpty
+                        ? Image.network(_coverUrl!, fit: BoxFit.cover)
+                        : const Center(
+                            child: Icon(
+                              Icons.camera_alt_outlined,
+                              color: Colors.white54,
+                              size: 32,
+                            ),
+                          ),
+                  ),
+                ),
+                // Back Button (Over cover image)
+                Positioned(
+                  top: topPadding + 10,
+                  left: 16,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.black38,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                // Upload Cover Icon Button (top-right of cover photo)
+                Positioned(
+                  top: topPadding + 10,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: _pickCoverImage,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.black38,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+                // Avatar (Circular, overlapping cover image)
+                Positioned(
+                  top: 100,
+                  left: 16,
+                  child: GestureDetector(
+                    onTap: _pickProfileImage,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
+                      child: Hero(
+                        tag: 'user-avatar',
+                        child: CircleAvatar(
+                          radius: 42,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: _getAvatarProvider(_username, _avatarUrl),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Edit Profile Button (Right side, baseline aligned with avatar)
+                Positioned(
+                  top: 160,
+                  right: 16,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFFC8C8C8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                    onPressed: () async {
+                      final updated = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                      if (updated == true) {
+                        _fetchProfileData();
+                      }
+                    },
+                    child: Text(
+                      'Edit profile',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 52), // Space for overlapping avatar height
+            // Name and Details
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _fullName.isNotEmpty ? _fullName : 'No Name',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _username.isNotEmpty ? '@$_username' : '',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 14,
+                      color: const Color(0xFF687684),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Joined Date & Links (Static/Mocked matching Twitter)
+                  Row(
+                    children: [
+                      const Icon(Icons.link, size: 16, color: Color(0xFF687684)),
+                      const SizedBox(width: 4),
+                      Text(
+                        'facebook.com/abdullah.elawady',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          color: const Color(0xFF7C57FC),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF687684)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Joined March 2021',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          color: const Color(0xFF687684),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Following / Followers
+                  Row(
+                    children: [
+                      Text(
+                        '$_followingCount',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Following',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          color: const Color(0xFF687684),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        '$_followersCount',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Followers',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          color: const Color(0xFF687684),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Twitter Style Tab Bar
+            _buildTabBar(),
             const Divider(height: 1, color: Color(0xFFE8E8E8)),
-            // Profile Card Info
-            _buildProfileHeader(context, _posts.length),
-            const Divider(height: 8, color: Color(0xFFF6F6F6)),
             // Photos Grid Header
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -581,186 +819,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
-
-
-  Widget _buildProfileHeader(BuildContext context, int postsCount) {
-    if (_profileLoading) {
-      return const SizedBox(
-        height: 180,
-        child: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF7C57FC),
-          ),
-        ),
-      );
-    }
-
+  Widget _buildTabBar() {
     return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              // Avatar
-              GestureDetector(
-                onTap: _pickProfileImage,
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.grey[200],
-                      backgroundImage: _getAvatarProvider(_username, _avatarUrl),
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.black,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-              // Stats
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem('$_postsCount', 'Posts'),
-                    _buildStatItem('$_followersCount', 'Followers'),
-                    _buildStatItem('$_followingCount', 'Following'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // User name and Bio
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _fullName.isNotEmpty ? _fullName : 'No Name',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _username.isNotEmpty ? '@$_username' : '',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 14,
-                    color: const Color(0xFF3B3C4F),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Coin and edit profile row
-          Row(
-            children: [
-              // Coin Count
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9F9F9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE8E8E8)),
-                ),
-                child: Row(
-                  children: [
-                    Image.asset(
-                      'assets/home/images/coin.png',
-                      width: 20,
-                      height: 20,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$_coins Coins',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF464646),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              // Edit Profile Button (Mock)
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFFC8C8C8)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                onPressed: () async {
-                  final updated = await Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const EditProfileScreen(),
-                    ),
-                  );
-                  if (updated == true) {
-                    _fetchProfileData();
-                  }
-                },
-                child: Text(
-                  'Edit Profile',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF3B3C4F),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildTabItem('Posts', true),
+          _buildTabItem('Replies', false),
+          _buildTabItem('Highlights', false),
+          _buildTabItem('Media', false),
+          _buildTabItem('Likes', false),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String count, String label) {
-    return Column(
-      children: [
-        Text(
-          count,
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+  Widget _buildTabItem(String title, bool active) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: active ? const Color(0xFF7C57FC) : Colors.transparent,
+            width: 2.5,
           ),
         ),
-        Text(
-          label,
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 12,
-            color: const Color(0xFF82858C),
-          ),
+      ),
+      child: Text(
+        title,
+        style: GoogleFonts.ibmPlexSansArabic(
+          fontSize: 14,
+          fontWeight: active ? FontWeight.bold : FontWeight.w600,
+          color: active ? Colors.black : const Color(0xFF687684),
         ),
-      ],
+      ),
     );
   }
+
+
 
   Widget _buildEmptyPhotos() {
     return Container(
