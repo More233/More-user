@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,6 +12,8 @@ import '../models/conversation_state.dart';
 import '../view_models/conversation_view_model.dart';
 import 'chat_message_bubble.dart';
 import 'chat_recording_overlay.dart';
+import '../profile_screen.dart';
+import 'custom_loading_indicator.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
   final String threadId;
@@ -354,32 +357,53 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
               ),
               const SizedBox(width: 8),
-              CircleAvatar(
-                radius: 18,
-                backgroundImage: _getAvatarProvider(otherUsername, otherAvatar),
-              ),
-              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      otherName,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(
+                          userPosts: const [],
+                          userId: widget.otherProfile['id'] as String,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '@$otherUsername',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 12,
-                        color: const Color(0xFF545763),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundImage: _getAvatarProvider(otherUsername, otherAvatar),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              otherName,
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Text(
+                              '@$otherUsername',
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 12,
+                                color: const Color(0xFF545763),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -390,7 +414,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             children: [
               Expanded(
                 child: isLoadingMessages
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const CustomLoadingIndicator()
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

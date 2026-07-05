@@ -6,12 +6,14 @@ class BottomNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
   final String? userAvatarUrl;
+  final bool hasUnreadNotifications;
 
   const BottomNavBar({
     super.key,
     required this.selectedIndex,
     required this.onItemTapped,
     this.userAvatarUrl,
+    this.hasUnreadNotifications = false,
   });
 
   static const _items = [
@@ -47,6 +49,7 @@ class BottomNavBar extends StatelessWidget {
                 isActive: isActive,
                 onTap: () => onItemTapped(index),
                 userAvatarUrl: userAvatarUrl,
+                showBadge: label == 'Notifications' && hasUnreadNotifications,
               );
             }),
           ),
@@ -61,12 +64,14 @@ class _NavItem extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
   final String? userAvatarUrl;
+  final bool showBadge;
 
   const _NavItem({
     required this.label,
     required this.isActive,
     required this.onTap,
     this.userAvatarUrl,
+    this.showBadge = false,
   });
 
   Widget _buildIcon() {
@@ -117,7 +122,25 @@ class _NavItem extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         child: Container(
           alignment: Alignment.center,
-          child: _buildIcon(),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              _buildIcon(),
+              if (showBadge)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF3B30),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

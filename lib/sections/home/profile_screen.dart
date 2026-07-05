@@ -16,16 +16,19 @@ import 'widgets/share_bottom_sheet.dart';
 import 'widgets/save_to_list_bottom_sheet.dart';
 import 'widgets/check_in_composer_screen.dart';
 import '../settings/edit_profile_screen.dart';
+import 'widgets/custom_loading_indicator.dart';
 
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final List<TimelinePost> userPosts;
   final VoidCallback? onPostUpdated;
+  final String? userId;
 
   const ProfileScreen({
     super.key,
     required this.userPosts,
     this.onPostUpdated,
+    this.userId,
   });
 
   @override
@@ -59,24 +62,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final currentUser = client.auth.currentUser;
       if (currentUser == null) return;
 
+      final targetUserId = widget.userId ?? currentUser.id;
+
       final results = await Future.wait<dynamic>([
         client
             .from('profiles')
             .select()
-            .eq('id', currentUser.id)
+            .eq('id', targetUserId)
             .maybeSingle(),
         client
             .from('follows')
             .select('follower_id')
-            .eq('following_id', currentUser.id),
+            .eq('following_id', targetUserId),
         client
             .from('follows')
             .select('following_id')
-            .eq('follower_id', currentUser.id),
+            .eq('follower_id', targetUserId),
         client
             .from('posts')
             .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
-            .eq('user_id', currentUser.id)
+            .eq('user_id', targetUserId)
             .order('created_at', ascending: false),
       ]);
 
@@ -501,11 +506,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (_profileLoading) {
       return const Scaffold(
         backgroundColor: Colors.white,
-        body: Center(
-          child: CupertinoActivityIndicator(
-            radius: 14,
-          ),
-        ),
+        body: CustomLoadingIndicator(),
       );
     }
 
@@ -514,6 +515,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         .expand((post) => post.imageUrls)
         .toList();
 
+    final isCurrentUser = widget.userId == null || widget.userId == Supabase.instance.client.auth.currentUser?.id;
     final topPadding = MediaQuery.of(context).padding.top;
     final screenWidth = MediaQuery.of(context).size.width;
     final coverHeight = screenWidth / 3.6; // Wider aspect ratio (approx 3.6:1) to make the cover less tall
@@ -543,7 +545,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 postCount: _posts.length,
                 avatarImageProvider: _getAvatarProvider(_username, _avatarUrl),
                 onBack: () => Navigator.pop(context),
-                onEdit: () async {
+                onEdit: isCurrentUser ? () async {
                   final updated = await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(
@@ -553,10 +555,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   if (updated == true) {
                     _fetchProfileData();
                   }
-                },
+                } : () {},
                 onShare: _pickCoverImage, // Note: preserved original functionality
-                onCoverTap: _pickCoverImage,
-                onAvatarTap: _pickProfileImage,
+                onCoverTap: isCurrentUser ? _pickCoverImage : () {},
+                onAvatarTap: isCurrentUser ? _pickProfileImage : () {},
+                isCurrentUser: isCurrentUser,
               ),
             ),
             // Profile details & contents
@@ -818,6 +821,7 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
   final VoidCallback onShare;
   final VoidCallback onCoverTap;
   final VoidCallback onAvatarTap;
+  final bool isCurrentUser;
 
   TwitterProfileHeaderDelegate({
     required this.maxExtentVal,
@@ -833,6 +837,7 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.onShare,
     required this.onCoverTap,
     required this.onAvatarTap,
+    required this.isCurrentUser,
   });
 
   @override
@@ -940,50 +945,51 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
           ),
         ),
         // Actions (Edit, Share)
-        Positioned(
-          right: 16,
-          top: topPadding + (56 - 36) / 2,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Edit Icon (Swapped: edit first, then share/upload)
-              GestureDetector(
-                onTap: onEdit,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: circleBgColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.edit_outlined,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Share/Upload Icon
-              GestureDetector(
-                onTap: onShare,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: circleBgColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.ios_share,
-                    color: Colors.white,
-                    size: 20,
+        if (isCurrentUser)
+          Positioned(
+            right: 16,
+            top: topPadding + (56 - 36) / 2,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Edit Icon (Swapped: edit first, then share/upload)
+                GestureDetector(
+                  onTap: onEdit,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: circleBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                // Share/Upload Icon
+                GestureDetector(
+                  onTap: onShare,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: circleBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.ios_share,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
         // Bottom divider (fades in as we collapse)
         if (progress > 0.9)
           Positioned(

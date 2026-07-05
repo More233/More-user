@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,6 +15,8 @@ import '../view_models/social_feed_view_model.dart';
 import 'story_composer_screen.dart';
 import 'story_viewer.dart';
 import 'check_in_composer_screen.dart';
+import '../profile_screen.dart';
+import 'custom_loading_indicator.dart';
 
 class SocialFeedView extends ConsumerStatefulWidget {
   final String? currentUserAvatarUrl;
@@ -438,11 +441,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
         if (state.isLoading && state.socialPosts.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
-            child: Center(
-              child: CupertinoActivityIndicator(
-                radius: 14,
-              ),
-            ),
+            child: CustomLoadingIndicator(),
           )
         else if (state.socialPosts.isEmpty)
           SliverFillRemaining(
@@ -696,14 +695,28 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: post.authorAvatar != null && post.authorAvatar!.isNotEmpty
-                    ? (post.authorAvatar!.startsWith('http')
-                        ? NetworkImage(post.authorAvatar!)
-                        : AssetImage(post.authorAvatar!)) as ImageProvider
-                    : const AssetImage('assets/home/images/avatar_placeholder.png'),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProfileScreen(
+                        userPosts: const [],
+                        userId: post.authorId,
+                      ),
+                    ),
+                  );
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: post.authorAvatar != null && post.authorAvatar!.isNotEmpty
+                      ? (post.authorAvatar!.startsWith('http')
+                          ? NetworkImage(post.authorAvatar!)
+                          : AssetImage(post.authorAvatar!)) as ImageProvider
+                      : const AssetImage('assets/home/images/avatar_placeholder.png'),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -712,13 +725,27 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                   children: [
                   Row(
                     children: [
-                      Text(
-                        post.authorName ?? 'unknown',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                          height: 1.0,
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProfileScreen(
+                                userPosts: const [],
+                                userId: post.authorId,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          post.authorName ?? 'unknown',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                            height: 1.0,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),

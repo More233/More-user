@@ -8,6 +8,7 @@ import 'story_composer_screen.dart';
 import '../helpers/story_tracker.dart';
 import '../models/user_story_group.dart';
 import '../view_models/messages_view_model.dart';
+import 'custom_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
@@ -720,7 +721,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
             const Divider(height: 1, color: Color(0xFFE8E8E8)),
             Expanded(
               child: _isSearching
-                  ? const Center(child: CupertinoActivityIndicator())
+                  ? const CustomLoadingIndicator()
                   : (_searchController.text.trim().isEmpty
                       ? (threadsList.isEmpty
                           ? Center(
@@ -847,7 +848,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(child: CupertinoActivityIndicator())
+          ? const CustomLoadingIndicator()
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

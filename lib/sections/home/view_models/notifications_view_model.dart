@@ -3,9 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/notifications_state.dart';
 
-final notificationsViewModelProvider = StateNotifierProvider.autoDispose<NotificationsViewModel, NotificationsState>((ref) {
+final notificationsViewModelProvider = StateNotifierProvider<NotificationsViewModel, NotificationsState>((ref) {
   return NotificationsViewModel();
 });
 
@@ -89,9 +91,32 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
         });
       }
 
+      bool hasUnread = false;
+      if (activities.isNotEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final lastSeenStr = prefs.getString('last_seen_notifications_time');
+          if (lastSeenStr != null) {
+            final lastSeen = DateTime.parse(lastSeenStr);
+            if (response.isNotEmpty) {
+              final latestCreatedAtStr = response.first['created_at'] as String;
+              final latestCreatedAt = DateTime.parse(latestCreatedAtStr);
+              if (latestCreatedAt.isAfter(lastSeen)) {
+                hasUnread = true;
+              }
+            }
+          } else {
+            hasUnread = true;
+          }
+        } catch (e) {
+          debugPrint("Error checking unread notifications: $e");
+        }
+      }
+
       state = state.copyWith(
         activities: activities,
         isLoading: false,
+        hasUnread: hasUnread,
       );
     } catch (e) {
       debugPrint("Error loading notifications: $e");
@@ -99,6 +124,16 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
         isLoading: false,
         error: e.toString(),
       );
+    }
+  }
+
+  Future<void> markAsRead() async {
+    state = state.copyWith(hasUnread: false);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_seen_notifications_time', DateTime.now().toIso8601String());
+    } catch (e) {
+      debugPrint("Error saving last seen notifications time: $e");
     }
   }
 
@@ -123,6 +158,13 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
         await client.from('follows').insert({
           'follower_id': currentUser.id,
           'following_id': senderId,
+        });
+
+        // Insert follow notification so the other user gets notified
+        await client.from('notifications').insert({
+          'sender_id': currentUser.id,
+          'receiver_id': senderId,
+          'type': 'follow',
         });
       } else {
         // Unfollow

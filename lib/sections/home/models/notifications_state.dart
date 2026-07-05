@@ -2,11 +2,13 @@ class NotificationsState {
   final List<Map<String, dynamic>> activities;
   final bool isLoading;
   final String? error;
+  final bool hasUnread;
 
   NotificationsState({
     required this.activities,
     required this.isLoading,
     this.error,
+    this.hasUnread = false,
   });
 
   factory NotificationsState.initial() {
@@ -14,6 +16,7 @@ class NotificationsState {
       activities: [],
       isLoading: true,
       error: null,
+      hasUnread: false,
     );
   }
 
@@ -21,11 +24,13 @@ class NotificationsState {
     List<Map<String, dynamic>>? activities,
     bool? isLoading,
     String? error,
+    bool? hasUnread,
   }) {
     return NotificationsState(
       activities: activities ?? this.activities,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      hasUnread: hasUnread ?? this.hasUnread,
     );
   }
 }

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'view_models/notifications_view_model.dart';
+import 'profile_screen.dart';
+import 'widgets/custom_loading_indicator.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   final bool showBackButton;
@@ -20,6 +23,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(notificationsViewModelProvider.notifier).init();
+      ref.read(notificationsViewModelProvider.notifier).markAsRead();
     });
   }
 
@@ -66,9 +70,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               color: const Color(0xFF7C57FC),
               onRefresh: () => ref.read(notificationsViewModelProvider.notifier).loadNotifications(),
               child: state.isLoading
-                  ? const Center(
-                      child: CupertinoActivityIndicator(),
-                    )
+                  ? const CustomLoadingIndicator()
                   : (activities.isEmpty
                       ? _buildEmptyState()
                       : ListView.separated(
@@ -135,44 +137,66 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // User Avatar
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: Colors.grey[200],
-          backgroundImage: act['avatar_url'] != null && (act['avatar_url'] as String).isNotEmpty
-              ? NetworkImage(act['avatar_url'] as String) as ImageProvider
-              : const AssetImage(
-                  'assets/home/images/element.png',
-                ),
-        ),
-        const SizedBox(width: 12),
-        // Content Text
         Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                color: Colors.black,
-              ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileScreen(
+                    userPosts: const [],
+                    userId: act['sender_id'] as String,
+                  ),
+                ),
+              );
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                TextSpan(
-                  text: act['username'],
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontWeight: FontWeight.bold,
-                  ),
+                // User Avatar
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: act['avatar_url'] != null && (act['avatar_url'] as String).isNotEmpty
+                      ? NetworkImage(act['avatar_url'] as String) as ImageProvider
+                      : const AssetImage(
+                          'assets/home/images/element.png',
+                        ),
                 ),
-                const TextSpan(text: ' '),
-                TextSpan(
-                  text: act['text'],
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    color: const Color(0xFF3B3C4F),
-                  ),
-                ),
-                const TextSpan(text: ' '),
-                TextSpan(
-                  text: act['time'],
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    color: const Color(0xFF82858C),
+                const SizedBox(width: 12),
+                // Content Text
+                Expanded(
+                  child: RichText(
+                    text: TextSpan(
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: act['username'],
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const TextSpan(text: ' '),
+                        TextSpan(
+                          text: act['text'],
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            color: const Color(0xFF3B3C4F),
+                          ),
+                        ),
+                        const TextSpan(text: ' '),
+                        TextSpan(
+                          text: act['time'],
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            color: const Color(0xFF82858C),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

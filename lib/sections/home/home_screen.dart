@@ -11,12 +11,14 @@ import 'view_models/timeline_view_model.dart';
 import 'view_models/collections_view_model.dart';
 import 'view_models/social_feed_view_model.dart';
 import 'notifications_screen.dart';
+import 'view_models/notifications_view_model.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/comments_bottom_sheet.dart';
 import 'widgets/fab_coachmark_overlay.dart';
 import 'widgets/follow_friends_bottom_sheet.dart';
 import 'widgets/messages_screen.dart';
+import 'widgets/custom_loading_indicator.dart';
 import 'widgets/save_to_list_bottom_sheet.dart';
 import 'widgets/share_bottom_sheet.dart';
 import 'widgets/social_feed_view.dart';
@@ -58,6 +60,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     Future.microtask(() {
       ref.read(timelineViewModelProvider.notifier).init();
       ref.read(collectionsViewModelProvider.notifier).init();
+      ref.read(notificationsViewModelProvider.notifier).init();
     });
   }
 
@@ -447,7 +450,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                     children: [
                                       Positioned.fill(
                                         child: state.isLoading
-                                            ? const Center(child: CupertinoActivityIndicator(radius: 14))
+                                            ? const CustomLoadingIndicator()
                                             : _buildBody(state),
                                       ),
                                       AnimatedPositioned(
@@ -459,6 +462,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                         child: BottomNavBar(
                                           selectedIndex: state.selectedNavIndex,
                                           userAvatarUrl: state.currentUserAvatarUrl,
+                                          hasUnreadNotifications: ref.watch(notificationsViewModelProvider).hasUnread,
                                           onItemTapped: (index) {
                                             setState(() {
                                               _isHeaderVisible = true;
