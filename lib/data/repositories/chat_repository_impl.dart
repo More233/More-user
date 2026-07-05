@@ -30,6 +30,20 @@ class ChatRepositoryImpl implements ChatRepository {
         .order('created_at', referencedTable: 'chat_messages', ascending: false)
         .limit(1, referencedTable: 'chat_messages');
 
+    // Fetch unread messages to count them per thread
+    final unreadResponse = await _client
+        .from('chat_messages')
+        .select('thread_id')
+        .neq('sender_id', currentUserId)
+        .eq('is_read', false);
+    
+    final unreadList = List<Map<String, dynamic>>.from(unreadResponse as List);
+    final Map<String, int> unreadCounts = {};
+    for (var msg in unreadList) {
+      final tId = msg['thread_id'] as String;
+      unreadCounts[tId] = (unreadCounts[tId] ?? 0) + 1;
+    }
+
     final rawThreads = List<Map<String, dynamic>>.from(response as List);
     List<Map<String, dynamic>> populatedThreads = [];
 
@@ -67,6 +81,7 @@ class ChatRepositoryImpl implements ChatRepository {
           'avatar_url': null,
         },
         'lastMessage': lastMsg,
+        'unreadCount': unreadCounts[threadId] ?? 0,
       });
     }
 

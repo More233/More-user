@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'view_models/timeline_view_model.dart';
 import 'view_models/notifications_view_model.dart';
+import 'view_models/messages_view_model.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -726,7 +727,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         bottomNavigationBar: BottomNavBar(
           selectedIndex: ref.watch(timelineViewModelProvider).selectedNavIndex,
           userAvatarUrl: _avatarUrl,
-          hasUnreadNotifications: ref.watch(notificationsViewModelProvider).hasUnread,
+          unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
+          unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
           onItemTapped: (index) {
             HapticFeedback.lightImpact();
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);

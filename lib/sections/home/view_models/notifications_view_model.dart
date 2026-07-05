@@ -126,31 +126,33 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
       }
 
       bool hasUnread = false;
+      int unreadCount = 0;
       if (activities.isNotEmpty) {
         try {
           final prefs = await SharedPreferences.getInstance();
           final lastSeenStr = prefs.getString('last_seen_notifications_time');
           if (lastSeenStr != null) {
             final lastSeen = DateTime.parse(lastSeenStr);
-            if (response.isNotEmpty) {
-              final latestCreatedAtStr = response.first['created_at'] as String;
-              final latestCreatedAt = DateTime.parse(latestCreatedAtStr);
-              if (latestCreatedAt.isAfter(lastSeen)) {
-                hasUnread = true;
+            for (var row in response) {
+              final createdAt = DateTime.parse(row['created_at'] as String);
+              if (createdAt.isAfter(lastSeen)) {
+                unreadCount++;
               }
             }
           } else {
-            hasUnread = true;
+            unreadCount = activities.length;
           }
         } catch (e) {
           debugPrint("Error checking unread notifications: $e");
         }
       }
+      hasUnread = unreadCount > 0;
 
       state = state.copyWith(
         activities: activities,
         isLoading: false,
         hasUnread: hasUnread,
+        unreadCount: unreadCount,
       );
     } catch (e) {
       debugPrint("Error loading notifications: $e");
@@ -162,7 +164,7 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
   }
 
   Future<void> markAsRead() async {
-    state = state.copyWith(hasUnread: false);
+    state = state.copyWith(hasUnread: false, unreadCount: 0);
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('last_seen_notifications_time', DateTime.now().toIso8601String());

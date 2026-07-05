@@ -6,14 +6,16 @@ class BottomNavBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
   final String? userAvatarUrl;
-  final bool hasUnreadNotifications;
+  final int unreadNotificationsCount;
+  final int unreadMessagesCount;
 
   const BottomNavBar({
     super.key,
     required this.selectedIndex,
     required this.onItemTapped,
     this.userAvatarUrl,
-    this.hasUnreadNotifications = false,
+    this.unreadNotificationsCount = 0,
+    this.unreadMessagesCount = 0,
   });
 
   static const _items = [
@@ -44,12 +46,20 @@ class BottomNavBar extends StatelessWidget {
             children: List.generate(_items.length, (index) {
               final label = _items[index];
               final isActive = index == selectedIndex;
+              
+              int badgeCount = 0;
+              if (label == 'Notifications') {
+                badgeCount = unreadNotificationsCount;
+              } else if (label == 'Messages') {
+                badgeCount = unreadMessagesCount;
+              }
+
               return _NavItem(
                 label: label,
                 isActive: isActive,
                 onTap: () => onItemTapped(index),
                 userAvatarUrl: userAvatarUrl,
-                showBadge: label == 'Notifications' && hasUnreadNotifications,
+                badgeCount: badgeCount,
               );
             }),
           ),
@@ -64,14 +74,14 @@ class _NavItem extends StatelessWidget {
   final bool isActive;
   final VoidCallback onTap;
   final String? userAvatarUrl;
-  final bool showBadge;
+  final int badgeCount;
 
   const _NavItem({
     required this.label,
     required this.isActive,
     required this.onTap,
     this.userAvatarUrl,
-    this.showBadge = false,
+    this.badgeCount = 0,
   });
 
   Widget _buildIcon() {
@@ -126,16 +136,31 @@ class _NavItem extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               _buildIcon(),
-              if (showBadge)
+              if (badgeCount > 0)
                 Positioned(
-                  top: -2,
-                  right: -2,
+                  top: -6,
+                  right: -8,
                   child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF3B30),
-                      shape: BoxShape.circle,
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF3B30),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Center(
+                      child: Text(
+                        badgeCount > 99 ? '99+' : '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0,
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -12,6 +12,7 @@ import 'view_models/collections_view_model.dart';
 import 'view_models/social_feed_view_model.dart';
 import 'notifications_screen.dart';
 import 'view_models/notifications_view_model.dart';
+import 'view_models/messages_view_model.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'widgets/check_in_composer_screen.dart';
 import 'widgets/comments_bottom_sheet.dart';
@@ -469,7 +470,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                         child: BottomNavBar(
                                           selectedIndex: state.selectedNavIndex,
                                           userAvatarUrl: state.currentUserAvatarUrl,
-                                          hasUnreadNotifications: ref.watch(notificationsViewModelProvider).hasUnread,
+                                          unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
+                                          unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
                                           onItemTapped: (index) {
                                             setState(() {
                                               _isHeaderVisible = true;

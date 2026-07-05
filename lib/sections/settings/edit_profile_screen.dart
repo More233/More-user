@@ -199,7 +199,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         controller: _lastNameController,
                         label: isAr ? 'اسم العائلة' : 'Last Name',
                         hint: isAr ? 'أدخل اسم عائلتك' : 'Enter your last name',
-                        icon: Icons.person_outline,
+                        icon: Icons.people_outline,
                         isAr: isAr,
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
@@ -251,8 +251,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 20),
-                      // Gender Dropdown Field
-                      _buildGenderDropdown(isAr, editState.gender),
+                      // Gender Selector Field
+                      _buildGenderSelector(isAr, editState.gender),
                       const SizedBox(height: 20),
                       // Hometown Field
                       _buildTextField(
@@ -387,7 +387,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildGenderDropdown(bool isAr, String? gender) {
+  Widget _buildGenderSelector(bool isAr, String? genderValue) {
+    String displayedGender = isAr ? 'اختر الجنس' : 'Select gender';
+    if (genderValue == 'male') {
+      displayedGender = isAr ? 'ذكر' : 'Male';
+    } else if (genderValue == 'female') {
+      displayedGender = isAr ? 'أنثى' : 'Female';
+    } else if (genderValue == 'other') {
+      displayedGender = isAr ? 'أخرى' : 'Other';
+    }
+
+    final hasSelected = genderValue != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -400,65 +411,121 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          initialValue: gender,
-          hint: Text(
-            isAr ? 'اختر الجنس' : 'Select gender',
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 15,
-              color: const Color(0xFFBBBBBB),
+        GestureDetector(
+          onTap: () => _showGenderBottomSheet(isAr, genderValue),
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE8E8E8)),
+              color: Colors.white,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(
+                    left: isAr ? 8 : 0,
+                    right: isAr ? 0 : 8,
+                  ),
+                  child: const Icon(
+                    Icons.person_outline,
+                    size: 20,
+                    color: Color(0xFF7C57FC),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    displayedGender,
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 15,
+                      color: hasSelected ? const Color(0xFF333333) : const Color(0xFFBBBBBB),
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: hasSelected ? const Color(0xFF7C57FC) : const Color(0xFFBBBBBB),
+                  size: 20,
+                ),
+              ],
             ),
           ),
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 36,
-              minHeight: 24,
-            ),
-            prefixIcon: Padding(
-              padding: EdgeInsets.only(
-                left: isAr ? 8 : 12,
-                right: isAr ? 12 : 8,
-              ),
-              child: const Icon(
-                Icons.person_outline,
-                size: 20,
-                color: Color(0xFF7C57FC),
-              ),
-            ),
-
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF7C57FC), width: 1.5),
-            ),
-          ),
-          items: [
-            DropdownMenuItem(
-              value: 'male',
-              child: Text(isAr ? 'ذكر' : 'Male', style: GoogleFonts.ibmPlexSansArabic()),
-            ),
-            DropdownMenuItem(
-              value: 'female',
-              child: Text(isAr ? 'أنثى' : 'Female', style: GoogleFonts.ibmPlexSansArabic()),
-            ),
-            DropdownMenuItem(
-              value: 'other',
-              child: Text(isAr ? 'أخرى' : 'Other', style: GoogleFonts.ibmPlexSansArabic()),
-            ),
-          ],
-          onChanged: (val) {
-            ref.read(editProfileProvider.notifier).setGender(val);
-          },
         ),
       ],
+    );
+  }
+
+  void _showGenderBottomSheet(bool isAr, String? currentGender) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isAr ? 'اختر الجنس' : 'Select Gender',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildGenderOption('male', isAr ? 'ذكر' : 'Male', currentGender),
+              _buildGenderOption('female', isAr ? 'أنثى' : 'Female', currentGender),
+              _buildGenderOption('other', isAr ? 'أخرى' : 'Other', currentGender),
+              SizedBox(height: MediaQuery.of(context).padding.bottom),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGenderOption(String value, String label, String? currentGender) {
+    final isSelected = value == currentGender;
+    return InkWell(
+      onTap: () {
+        ref.read(editProfileProvider.notifier).setGender(value);
+        Navigator.pop(context);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF7C57FC).withValues(alpha: 0.08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? const Color(0xFF7C57FC) : Colors.black87,
+              ),
+            ),
+            if (isSelected)
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Color(0xFF7C57FC),
+                size: 20,
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

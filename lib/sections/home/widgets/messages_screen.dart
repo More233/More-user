@@ -382,6 +382,8 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
 
     final timeText = lastMsg != null ? _formatTime(lastMsg['created_at']) : '';
 
+    final unreadCount = populatedThread['unreadCount'] as int? ?? 0;
+
     return ListTile(
         contentPadding: const EdgeInsets.symmetric(vertical: 4),
         leading: CircleAvatar(
@@ -405,12 +407,43 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: Text(
-          timeText,
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 12,
-            color: const Color(0xFF82858C),
-          ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              timeText,
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 12,
+                color: const Color(0xFF82858C),
+              ),
+            ),
+            if (unreadCount > 0) ...[
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF3B30),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 18,
+                  minHeight: 18,
+                ),
+                child: Center(
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         onTap: () => _openConversation(otherProfile),
       );
