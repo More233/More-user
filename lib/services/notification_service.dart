@@ -28,6 +28,13 @@ class NotificationService {
         provisional: false,
       );
 
+      // Set options to display notification even when app is in the foreground
+      await messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
         debugPrint("User granted push notification permission.");
 
@@ -37,6 +44,11 @@ class NotificationService {
         // Listen for token refreshes and sync them
         messaging.onTokenRefresh.listen((newToken) {
           _saveTokenToSupabase(newToken);
+        });
+
+        // Handler for foreground messages
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          debugPrint("Foreground notification received: ${message.notification?.title}");
         });
       }
     } catch (e) {
