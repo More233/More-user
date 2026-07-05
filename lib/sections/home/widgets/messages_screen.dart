@@ -407,30 +407,27 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              timeText,
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 12,
-                color: const Color(0xFF82858C),
+        trailing: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                timeText,
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 12,
+                  color: const Color(0xFF82858C),
+                ),
               ),
-            ),
-            if (unreadCount > 0) ...[
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF3B30),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
-                ),
-                child: Center(
+              if (unreadCount > 0) ...[
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF3B30),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Text(
                     unreadCount > 99 ? '99+' : '$unreadCount',
                     style: const TextStyle(
@@ -441,9 +438,9 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
         onTap: () => _openConversation(otherProfile),
       );
