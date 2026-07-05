@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'view_models/timeline_view_model.dart';
+import 'view_models/notifications_view_model.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -588,21 +589,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      // Joined Date & Links (Static/Mocked matching Twitter)
-                      Row(
-                        children: [
-                          const Icon(Icons.link, size: 16, color: Color(0xFF687684)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'facebook.com/abdullah.elawady',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              color: const Color(0xFF7C57FC),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
+
                       Row(
                         children: [
                           const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF687684)),
@@ -740,6 +727,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         bottomNavigationBar: BottomNavBar(
           selectedIndex: ref.watch(timelineViewModelProvider).selectedNavIndex,
           userAvatarUrl: _avatarUrl,
+          hasUnreadNotifications: ref.watch(notificationsViewModelProvider).hasUnread,
           onItemTapped: (index) {
             HapticFeedback.lightImpact();
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
@@ -970,7 +958,7 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Share/Upload Icon
+                // Cover Upload Icon
                 GestureDetector(
                   onTap: onShare,
                   child: Container(
@@ -981,7 +969,7 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
-                      Icons.ios_share,
+                      Icons.photo_camera_outlined,
                       color: Colors.white,
                       size: 20,
                     ),

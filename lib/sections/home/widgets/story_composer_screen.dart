@@ -7,8 +7,6 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../gallery_picker_screen.dart';
-import 'check_in_composer_screen.dart';
 import 'story_editor_screen.dart';
 
 class StoryComposerScreen extends StatefulWidget {
@@ -18,11 +16,11 @@ class StoryComposerScreen extends StatefulWidget {
   State<StoryComposerScreen> createState() => _StoryComposerScreenState();
 }
 
-enum CameraMode { post, story, reels }
+enum CameraMode { photo, video }
 
 class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
-  CameraMode _currentMode = CameraMode.story;
+  CameraMode _currentMode = CameraMode.photo;
   bool _isFrontCamera = false;
   AssetEntity? _latestAsset;
 
@@ -31,9 +29,6 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   double _recordingProgress = 0.0;
   int _recordingSeconds = 0;
   Timer? _recordingTimer;
-  final List<int> _reelsDurations = [15, 30, 45, 60, 90];
-  int _selectedDurationIndex = 1; // Default 30s
-  bool _showDurationSelector = false;
   FlashMode _flashMode = FlashMode.off;
 
   CameraController? _cameraController;
@@ -156,29 +151,26 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
       _stopRecordingVideo();
       return;
     }
+
+    if (_currentMode == CameraMode.video) {
+      _startRecordingVideo();
+      return;
+    }
+
     if (_isCameraInitialized && _cameraController != null) {
       try {
         final XFile image = await _cameraController!.takePicture();
         if (!mounted) return;
 
-        if (_currentMode == CameraMode.story || _currentMode == CameraMode.reels) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => StoryEditorScreen(
-                imagePath: image.path,
-                isReels: _currentMode == CameraMode.reels,
-              ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StoryEditorScreen(
+              imagePath: image.path,
+              isReels: false,
             ),
-          );
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CheckInComposerScreen(),
-            ),
-          );
-        }
+          ),
+        );
       } catch (e) {
         debugPrint("Error capturing photo from live camera: $e");
         ScaffoldMessenger.of(context).showSnackBar(
@@ -197,24 +189,15 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
         if (image == null) return;
         if (!mounted) return;
 
-        if (_currentMode == CameraMode.story || _currentMode == CameraMode.reels) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => StoryEditorScreen(
-                imagePath: image.path,
-                isReels: _currentMode == CameraMode.reels,
-              ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StoryEditorScreen(
+              imagePath: image.path,
+              isReels: false,
             ),
-          );
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CheckInComposerScreen(),
-            ),
-          );
-        }
+          ),
+        );
       } catch (e) {
         debugPrint("Error launching camera fallback: $e");
         ScaffoldMessenger.of(context).showSnackBar(
@@ -228,9 +211,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
     if (!_isCameraInitialized || _cameraController == null || _isRecording) return;
     
     try {
-      final int maxSeconds = _currentMode == CameraMode.reels
-          ? _reelsDurations[_selectedDurationIndex]
-          : 15; // default 15s for story
+      final int maxSeconds = 30; // 30s limit for story video
           
       // Flash torch on during video if desired
       if (_flashMode == FlashMode.torch) {
@@ -296,7 +277,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
         MaterialPageRoute(
           builder: (context) => StoryEditorScreen(
             imagePath: videoFile.path,
-            isReels: _currentMode == CameraMode.reels,
+            isReels: false,
           ),
         ),
       );
@@ -334,46 +315,28 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   }
 
   void _onGalleryTap() async {
-    if (_currentMode == CameraMode.story || _currentMode == CameraMode.reels) {
-      try {
-        final XFile? image = await _picker.pickImage(
-          source: ImageSource.gallery,
-          maxWidth: 1080,
-          maxHeight: 1920,
-          imageQuality: 85,
-        );
-
-        if (image == null) return;
-        if (!mounted) return;
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => StoryEditorScreen(
-              imagePath: image.path,
-              isReels: _currentMode == CameraMode.reels,
-            ),
-          ),
-        );
-      } catch (e) {
-        debugPrint("Error picking story image: $e");
-      }
-    } else {
-      final List<String>? result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const GalleryPickerScreen(previouslySelected: []),
-        ),
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1080,
+        maxHeight: 1920,
+        imageQuality: 85,
       );
 
-      if (result != null && result.isNotEmpty && mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CheckInComposerScreen(),
+      if (image == null) return;
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StoryEditorScreen(
+            imagePath: image.path,
+            isReels: false,
           ),
-        );
-      }
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error picking story image: $e");
     }
   }
 
@@ -383,12 +346,12 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black,
       body: Column(
         children: [
           Container(
             height: topPadding,
-            color: Colors.white,
+            color: Colors.black,
           ),
           // Viewfinder Card (rounded corners, expands to fill space, touching left/right screen edges)
           Expanded(
@@ -425,7 +388,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                             padding: const EdgeInsets.all(8),
                             decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.black38,
+                              color: Colors.black,
                             ),
                             child: Icon(
                               _flashMode == FlashMode.torch ? Icons.flash_on : Icons.flash_off,
@@ -485,6 +448,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                           behavior: HitTestBehavior.opaque,
                           child: Container(
                             padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black,
+                            ),
                             child: SvgPicture.asset(
                               'assets/home/icons/cancel_01.svg',
                               width: 18,
@@ -495,89 +462,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                         ),
                       ),
                     
-                    // Left Control Sidebar (Timer)
-                    if (!_isRecording && _currentMode == CameraMode.reels)
-                      Positioned(
-                        left: 20,
-                        top: 100,
-                        child: Column(
-                          children: [
-                            // Timer/Duration Selector Button
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _showDurationSelector = !_showDurationSelector;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.black38,
-                                ),
-                                child: SvgPicture.asset(
-                                  'assets/home/icons/time_04.svg',
-                                  width: 20,
-                                  height: 20,
-                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
 
-                    // Translucent Duration Selector overlay
-                    if (_showDurationSelector && _currentMode == CameraMode.reels && !_isRecording)
-                      Positioned(
-                        left: 76,
-                        top: 140,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white24, width: 0.8),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: List.generate(_reelsDurations.length, (idx) {
-                              final duration = _reelsDurations[idx];
-                              final isSelected = idx == _selectedDurationIndex;
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedDurationIndex = idx;
-                                    _showDurationSelector = false;
-                                  });
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  margin: const EdgeInsets.symmetric(vertical: 4),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isSelected ? Colors.white : Colors.transparent,
-                                    border: Border.all(
-                                      color: isSelected ? Colors.white : Colors.white60,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    '$duration',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      color: isSelected ? Colors.black : Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-                      ),
 
                     // Bottom Controls Layer
                     Positioned(
@@ -684,7 +569,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                                 width: 44,
                                 height: 44,
                                 decoration: const BoxDecoration(
-                                  color: Colors.black38,
+                                  color: Colors.black,
                                   shape: BoxShape.circle,
                                 ),
                                 alignment: Alignment.center,
@@ -709,7 +594,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
           
           const SizedBox(height: 16),
           
-          // Mode selector (Post vs. Story vs. Reels)
+          // Mode selector (Video vs. Photo)
           if (!_isRecording)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -719,18 +604,17 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                   GestureDetector(
                     onTap: () {
                       setState(() {
-                        _currentMode = CameraMode.post;
-                        _showDurationSelector = false;
+                        _currentMode = CameraMode.video;
                       });
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Text(
-                        "Post",
+                        "Video",
                         style: GoogleFonts.ibmPlexSansArabic(
-                          color: _currentMode == CameraMode.post ? Colors.black : const Color(0xFF9D9D9D),
-                          fontWeight: _currentMode == CameraMode.post ? FontWeight.bold : FontWeight.normal,
-                          fontSize: _currentMode == CameraMode.post ? 18 : 14,
+                          color: _currentMode == CameraMode.video ? Colors.white : Colors.white38,
+                          fontWeight: _currentMode == CameraMode.video ? FontWeight.bold : FontWeight.normal,
+                          fontSize: _currentMode == CameraMode.video ? 18 : 14,
                         ),
                       ),
                     ),
@@ -738,37 +622,17 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                   GestureDetector(
                     onTap: () {
                       setState(() {
-                        _currentMode = CameraMode.story;
-                        _showDurationSelector = false;
+                        _currentMode = CameraMode.photo;
                       });
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Text(
-                        "Story",
+                        "Photo",
                         style: GoogleFonts.ibmPlexSansArabic(
-                          color: _currentMode == CameraMode.story ? Colors.black : const Color(0xFF9D9D9D),
-                          fontWeight: _currentMode == CameraMode.story ? FontWeight.bold : FontWeight.normal,
-                          fontSize: _currentMode == CameraMode.story ? 18 : 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _currentMode = CameraMode.reels;
-                        _showDurationSelector = false;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(
-                        "Reels",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: _currentMode == CameraMode.reels ? Colors.black : const Color(0xFF9D9D9D),
-                          fontWeight: _currentMode == CameraMode.reels ? FontWeight.bold : FontWeight.normal,
-                          fontSize: _currentMode == CameraMode.reels ? 18 : 14,
+                          color: _currentMode == CameraMode.photo ? Colors.white : Colors.white38,
+                          fontWeight: _currentMode == CameraMode.photo ? FontWeight.bold : FontWeight.normal,
+                          fontSize: _currentMode == CameraMode.photo ? 18 : 14,
                         ),
                       ),
                     ),

@@ -548,12 +548,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
       body: Stack(
         children: [
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
+            top: MediaQuery.of(context).padding.top,
             left: 0,
             right: 0,
-            bottom: bottomSpacing + 8,
+            bottom: bottomSpacing,
             child: ClipRRect(
-              borderRadius: const BorderRadius.all(Radius.circular(28)),
+              borderRadius: BorderRadius.zero,
               child: Stack(
                 children: [
                   Positioned.fill(

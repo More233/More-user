@@ -346,11 +346,44 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
           'longitude': 46.6753,
         });
       } else {
-        await client.from('stories').insert({
+        final storyResponse = await client.from('stories').insert({
           'user_id': currentUser.id,
           'media_url': publicUrl,
           'expires_at': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
-        });
+        }).select().single();
+
+        final storyId = storyResponse['id'] as String;
+
+        // Process mentions and generate notifications
+        final mentionOverlays = _overlays.where((item) => item.type == 'mention').toList();
+        for (final item in mentionOverlays) {
+          final targetUser = (item.data as String).replaceAll('@', '').trim();
+          if (targetUser.isNotEmpty) {
+            try {
+              final profile = await client
+                  .from('profiles')
+                  .select('id')
+                  .eq('username', targetUser)
+                  .maybeSingle();
+              if (profile != null) {
+                final receiverId = profile['id'] as String;
+                if (receiverId != currentUser.id) {
+                  await client.from('notifications').insert({
+                    'sender_id': currentUser.id,
+                    'receiver_id': receiverId,
+                    'type': 'mention',
+                    'metadata': {
+                      'story_id': storyId,
+                      'media_url': publicUrl,
+                    },
+                  });
+                }
+              }
+            } catch (e) {
+              debugPrint("Error creating mention notification for $targetUser: $e");
+            }
+          }
+        }
       }
 
       if (!mounted) return;

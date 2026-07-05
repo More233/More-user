@@ -14,8 +14,40 @@ final notificationsViewModelProvider = StateNotifierProvider<NotificationsViewMo
 class NotificationsViewModel extends StateNotifier<NotificationsState> {
   NotificationsViewModel() : super(NotificationsState.initial());
 
+  RealtimeChannel? _notificationsSubscription;
+
   Future<void> init() async {
     await loadNotifications();
+    _subscribeToNotifications();
+  }
+
+  void _subscribeToNotifications() {
+    final client = Supabase.instance.client;
+    final currentUser = client.auth.currentUser;
+    if (currentUser == null) return;
+
+    _notificationsSubscription?.unsubscribe();
+    _notificationsSubscription = client
+        .channel('public:notifications')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          callback: (payload) {
+            debugPrint("Realtime notification change received: $payload");
+            final newRecord = payload.newRecord;
+            if (newRecord['receiver_id'] == currentUser.id) {
+              loadNotifications();
+            }
+          },
+        );
+    _notificationsSubscription?.subscribe();
+  }
+
+  @override
+  void dispose() {
+    _notificationsSubscription?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> loadNotifications() async {
@@ -66,6 +98,8 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
         } else if (type == 'comment') {
           final commentText = row['metadata']?['comment'] as String? ?? '';
           text = 'commented on your check-in: "$commentText"';
+        } else if (type == 'mention') {
+          text = 'mentioned you in their story.';
         }
 
         // Relative time formatting
