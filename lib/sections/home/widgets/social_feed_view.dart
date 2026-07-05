@@ -835,7 +835,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 0),
+                  const SizedBox(height: 4),
                   if (post.locationAddress.isNotEmpty) ...[
                     GestureDetector(
                       onTap: () async {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../place_details_screen.dart';
-import 'explore_place_card.dart';
+import 'explore_list_place_card.dart';
 
 class ExploreListView extends StatelessWidget {
   final double topPadding;

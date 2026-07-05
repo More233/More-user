@@ -13,6 +13,7 @@ import 'helpers/marker_generator.dart';
 import 'helpers/bookmark_tracker.dart';
 import 'widgets/explore_place_card.dart';
 import 'widgets/explore_search_bar.dart';
+import 'widgets/explore_category_filters.dart';
 import 'widgets/explore_filter_sheet.dart';
 import 'widgets/explore_list_view.dart';
 import 'widgets/explore_map_tabs.dart';

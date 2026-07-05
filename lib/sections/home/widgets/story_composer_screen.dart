@@ -34,6 +34,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   CameraController? _cameraController;
   List<CameraDescription> _cameras = [];
   bool _isCameraInitialized = false;
+  bool _isPermissionDenied = false;
 
   @override
   void initState() {
@@ -73,6 +74,12 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
     final cameraStatus = await Permission.camera.request();
     await Permission.microphone.request();
 
+    if (mounted) {
+      setState(() {
+        _isPermissionDenied = !cameraStatus.isGranted;
+      });
+    }
+
     if (cameraStatus.isGranted) {
       await _initializeCamera();
     } else {
@@ -93,16 +100,30 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
         orElse: () => _cameras.first,
       );
 
-      final controller = CameraController(
+      final hasMicPermission = await Permission.microphone.isGranted;
+      
+      CameraController controller = CameraController(
         camera,
         ResolutionPreset.high,
-        enableAudio: true,
+        enableAudio: hasMicPermission,
       );
 
       await _cameraController?.dispose();
       _cameraController = controller;
 
-      await controller.initialize();
+      try {
+        await controller.initialize();
+      } catch (e) {
+        debugPrint("Failed to initialize camera with audio: $e. Retrying without audio.");
+        controller = CameraController(
+          camera,
+          ResolutionPreset.high,
+          enableAudio: false,
+        );
+        _cameraController = controller;
+        await controller.initialize();
+      }
+
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
@@ -173,53 +194,57 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
         );
       } catch (e) {
         debugPrint("Error capturing photo from live camera: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to capture image: $e")),
-        );
       }
     } else {
-      try {
-        final XFile? image = await _picker.pickImage(
-          source: ImageSource.camera,
-          maxWidth: 1080,
-          maxHeight: 1920,
-          imageQuality: 85,
-        );
-
-        if (image == null) return;
-        if (!mounted) return;
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => StoryEditorScreen(
-              imagePath: image.path,
-              isReels: false,
-            ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            Directionality.of(context) == TextDirection.rtl
+                ? 'الكاميرا غير متوفرة'
+                : 'Camera is not available',
+            style: GoogleFonts.ibmPlexSansArabic(),
           ),
-        );
-      } catch (e) {
-        debugPrint("Error launching camera fallback: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to launch camera: $e")),
-        );
-      }
+        ),
+      );
     }
   }
 
   void _startRecordingVideo() async {
-    if (!_isCameraInitialized || _cameraController == null || _isRecording) return;
+    if (_isRecording) return;
+    final int maxSeconds = 30; // 30s limit for story video
     
-    try {
-      final int maxSeconds = 30; // 30s limit for story video
-          
-      // Flash torch on during video if desired
-      if (_flashMode == FlashMode.torch) {
-        await _cameraController!.setFlashMode(FlashMode.torch);
-      }
+    if (_isCameraInitialized && _cameraController != null) {
+      try {
+        if (_flashMode == FlashMode.torch) {
+          await _cameraController!.setFlashMode(FlashMode.torch);
+        }
 
-      await _cameraController!.startVideoRecording();
-      
+        await _cameraController!.startVideoRecording();
+        
+        setState(() {
+          _isRecording = true;
+          _recordingProgress = 0.0;
+          _recordingSeconds = 0;
+        });
+        
+        _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+          final elapsedMs = timer.tick * 100;
+          final totalMs = maxSeconds * 1000;
+          
+          if (elapsedMs >= totalMs) {
+            _stopRecordingVideo();
+          } else {
+            setState(() {
+              _recordingProgress = elapsedMs / totalMs;
+              _recordingSeconds = elapsedMs ~/ 1000;
+            });
+          }
+        });
+      } catch (e) {
+        debugPrint("Error starting video recording: $e");
+      }
+    } else {
+      // Simulate video recording on simulator
       setState(() {
         _isRecording = true;
         _recordingProgress = 0.0;
@@ -239,54 +264,73 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
           });
         }
       });
-    } catch (e) {
-      debugPrint("Error starting video recording: $e");
     }
   }
 
   void _stopRecordingVideo() async {
-    if (!_isRecording || _cameraController == null) return;
+    if (!_isRecording) return;
     
     _recordingTimer?.cancel();
     _recordingTimer = null;
     
-    try {
-      final XFile videoFile = await _cameraController!.stopVideoRecording();
-      
+    if (_isCameraInitialized && _cameraController != null) {
+      try {
+        final XFile videoFile = await _cameraController!.stopVideoRecording();
+        
+        setState(() {
+          _isRecording = false;
+          _recordingProgress = 0.0;
+        });
+        
+        if (_flashMode == FlashMode.torch) {
+          await _cameraController!.setFlashMode(FlashMode.off);
+        }
+        
+        if (_recordingSeconds < 1) {
+          debugPrint("Video recording was too short");
+          return;
+        }
+        
+        if (!mounted) return;
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => StoryEditorScreen(
+              imagePath: videoFile.path,
+              isReels: false,
+            ),
+          ),
+        );
+      } catch (e) {
+        debugPrint("Error stopping video recording: $e");
+        setState(() {
+          _isRecording = false;
+          _recordingProgress = 0.0;
+        });
+      }
+    } else {
+      // Simulate stop recording on simulator: copy mock file and proceed
       setState(() {
         _isRecording = false;
         _recordingProgress = 0.0;
       });
       
-      // Reset flash torch if it was on
-      if (_flashMode == FlashMode.torch) {
-        await _cameraController!.setFlashMode(FlashMode.off);
-      }
-      
-      // If video duration is too short (less than 1s), delete/ignore it
       if (_recordingSeconds < 1) {
-        debugPrint("Video recording was too short");
+        debugPrint("Simulated video recording was too short");
         return;
       }
       
-      if (!mounted) return;
-      
-      // Navigate to Editor
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StoryEditorScreen(
-            imagePath: videoFile.path,
-            isReels: false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            Directionality.of(context) == TextDirection.rtl
+                ? 'الكاميرا غير متوفرة'
+                : 'Camera is not available',
+            style: GoogleFonts.ibmPlexSansArabic(),
           ),
         ),
       );
-    } catch (e) {
-      debugPrint("Error stopping video recording: $e");
-      setState(() {
-        _isRecording = false;
-        _recordingProgress = 0.0;
-      });
     }
   }
 
@@ -362,19 +406,95 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                 child: Stack(
                   children: [
                     // Viewfinder background / camera preview
-                    Positioned.fill(
-                      child: _isCameraInitialized && _cameraController != null
-                          ? FittedBox(
-                              fit: BoxFit.cover,
-                              child: SizedBox(
-                                width: _cameraController!.value.previewSize?.height ?? 1080,
-                                height: _cameraController!.value.previewSize?.width ?? 1920,
-                                child: CameraPreview(_cameraController!),
+                     Positioned.fill(
+                      child: _isPermissionDenied
+                          ? Container(
+                              color: const Color(0xFF1E1E1E),
+                              padding: const EdgeInsets.symmetric(horizontal: 32),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.05),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.videocam_off_outlined,
+                                      color: Color(0xFF7C57FC),
+                                      size: 64,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    Directionality.of(context) == TextDirection.rtl
+                                        ? 'مطلوب إذن الكاميرا'
+                                        : 'Camera Access Required',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    Directionality.of(context) == TextDirection.rtl
+                                        ? 'يرجى تمكين إذن الكاميرا من إعدادات الهاتف لالتقاط ونشر القصص.'
+                                        : 'Please enable camera access in your device settings to capture and post stories.',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      color: Colors.white54,
+                                      fontSize: 14,
+                                      height: 1.5,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 32),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 50,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF7C57FC),
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                      ),
+                                      onPressed: () => openAppSettings(),
+                                      child: Text(
+                                        Directionality.of(context) == TextDirection.rtl
+                                            ? 'فتح الإعدادات'
+                                            : 'Open Settings',
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             )
-                          : Container(
-                              color: Colors.black,
-                            ),
+                          : (_isCameraInitialized && _cameraController != null
+                              ? FittedBox(
+                                  fit: BoxFit.cover,
+                                  child: SizedBox(
+                                    width: _cameraController!.value.previewSize?.height ?? 1080,
+                                    height: _cameraController!.value.previewSize?.width ?? 1920,
+                                    child: CameraPreview(_cameraController!),
+                                  ),
+                                )
+                              : Container(
+                                  color: Colors.black,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFF7C57FC),
+                                    ),
+                                  ),
+                                )),
                     ),
                     
                     // Flash Toggle Button (Top Left)

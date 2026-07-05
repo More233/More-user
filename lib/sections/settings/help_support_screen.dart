@@ -197,14 +197,14 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
               // Popular Topics section matching Figma - 322
               _buildSectionHeader(isAr ? 'المواضيع الشائعة' : 'POPULAR TOPICS', isAr),
               _buildTopicRow(
-                iconPath: 'assets/setting/icons/location_06.svg',
+                icon: Icons.location_on_outlined,
                 title: isAr ? 'تسجيلات الوصول' : 'Check-ins',
                 subtitle: isAr ? 'كيفية تسجيل الوصول وإدارته' : 'How to check in and manage check-ins',
                 isAr: isAr,
               ),
               _buildDivider(),
               _buildTopicRow(
-                iconPath: 'assets/setting/icons/user_group.svg',
+                icon: Icons.people_outline,
                 title: isAr ? 'الأصدقاء والتواصل' : 'Friends & Connections',
                 subtitle: isAr
                     ? 'إضافة الأصدقاء، وإدارة الطلبات والاتصالات'
@@ -213,7 +213,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
               ),
               _buildDivider(),
               _buildTopicRow(
-                iconPath: 'assets/setting/icons/store_location_02.svg',
+                icon: Icons.storefront_outlined,
                 title: isAr ? 'الأماكن المحفوظة' : 'Saved Places',
                 subtitle: isAr
                     ? 'حفظ وتنظيم وإدارة أمكنتك المفضلة'
@@ -222,21 +222,21 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
               ),
               _buildDivider(),
               _buildTopicRow(
-                iconPath: 'assets/setting/icons/notification_02.svg',
+                icon: Icons.notifications_none_outlined,
                 title: isAr ? 'التنبيهات' : 'Notifications',
                 subtitle: isAr ? 'التحكم في التنبيهات التي تتلقاها' : 'Control what notifications you receive',
                 isAr: isAr,
               ),
               _buildDivider(),
               _buildTopicRow(
-                iconPath: 'assets/setting/icons/security_lock.svg',
+                icon: Icons.lock_outline,
                 title: isAr ? 'الخصوصية والأمان' : 'Privacy & Safety',
                 subtitle: isAr ? 'الحفاظ على أمان حسابك وبياناتك' : 'Keep your account and data secure',
                 isAr: isAr,
               ),
               _buildDivider(),
               _buildTopicRow(
-                iconPath: 'assets/setting/icons/setting_07.svg',
+                icon: Icons.settings_outlined,
                 title: isAr ? 'إعدادات الحساب' : 'Account Settings',
                 subtitle: isAr
                     ? 'تحديث ملفك الشخصي وتفضيلات حسابك'
@@ -342,7 +342,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
   }
 
   Widget _buildTopicRow({
-    required String iconPath,
+    required IconData icon,
     required String title,
     required String subtitle,
     required bool isAr,
@@ -354,14 +354,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
           color: const Color(0xFFF3EFFF),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: SvgPicture.asset(
-          iconPath,
-          width: 20,
-          height: 20,
-          colorFilter: const ColorFilter.mode(
-            Color(0xFF7C57FC),
-            BlendMode.srcIn,
-          ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: const Color(0xFF7C57FC),
         ),
       ),
       title: Text(

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
-import 'widgets/widgets.dart';
+import 'widgets/feature_row.dart';
+import 'widgets/custom_switch.dart';
+import 'widgets/permission_step_layout.dart';
 import '../auth/auth_flow_page.dart';
 
 class PermissionsPage extends StatefulWidget {

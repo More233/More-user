@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'view_models/timeline_view_model.dart';
 import 'view_models/notifications_view_model.dart';

@@ -222,7 +222,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const Divider(height: 8, color: Color(0xFFF6F6F6)),
                     _buildSectionHeader(isAr ? 'الحساب' : 'ACCOUNT', isAr),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/user.svg',
+                      icon: Icons.person_outline,
                       title: isAr ? 'تعديل الملف الشخصي' : 'Edit Profile',
                       isAr: isAr,
                       onTap: () async {
@@ -233,13 +233,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         );
                         if (updated == true) {
-                          _fetchUserData();
+                           _fetchUserData();
                         }
                       },
                     ),
                     _buildDivider(),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/language_square.svg',
+                      icon: Icons.language_outlined,
                       title: isAr ? 'اللغة' : 'Language',
                       isAr: isAr,
                       trailingText: settings.preferredLanguage == 'ar'
@@ -250,7 +250,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const Divider(height: 8, color: Color(0xFFF6F6F6)),
                     _buildSectionHeader(isAr ? 'التجربة' : 'EXPERIENCE', isAr),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/notification_02.svg',
+                      icon: Icons.notifications_none_outlined,
                       title: isAr ? 'التنبيهات' : 'Notifications',
                       isAr: isAr,
                       onTap: () {
@@ -264,7 +264,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _buildDivider(),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/location_01.svg',
+                      icon: Icons.location_on_outlined,
                       title: isAr ? 'الموقع والأماكن المجاورة' : 'Location & Nearby',
                       isAr: isAr,
                       onTap: () {
@@ -278,7 +278,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _buildDivider(),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/idea_01.svg',
+                      icon: Icons.lightbulb_outline,
                       title: isAr ? 'مقترحات تسجيل الوصول' : 'Check-in Suggestions',
                       isAr: isAr,
                       onTap: () {
@@ -293,7 +293,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const Divider(height: 8, color: Color(0xFFF6F6F6)),
                     _buildSectionHeader(isAr ? 'الخصوصية' : 'PRIVACY', isAr),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/security_lock.svg',
+                      icon: Icons.lock_outline,
                       title: isAr ? 'الخصوصية والظهور' : 'Privacy & Visibility',
                       isAr: isAr,
                       onTap: () {
@@ -307,7 +307,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _buildDivider(),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/user_block_01.svg',
+                      icon: Icons.block_outlined,
                       title: isAr ? 'الأشخاص المحظورين' : 'Blocked People',
                       isAr: isAr,
                       trailingText: isAr
@@ -325,7 +325,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const Divider(height: 8, color: Color(0xFFF6F6F6)),
                     _buildSectionHeader(isAr ? 'الدعم' : 'SUPPORT', isAr),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/help_circle.svg',
+                      icon: Icons.help_outline,
                       title: isAr ? 'المساعدة والدعم' : 'Help & Support',
                       isAr: isAr,
                       onTap: () {
@@ -339,7 +339,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _buildDivider(),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/mail_01.svg',
+                      icon: Icons.mail_outline,
                       title: isAr ? 'إرسال ملاحظاتك' : 'Send Feedback',
                       isAr: isAr,
                       onTap: () {
@@ -353,11 +353,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _buildDivider(),
                     _buildFeatureRow(
-                      iconPath: 'assets/setting/icons/information_circle.svg',
+                      icon: Icons.info_outline,
                       title: isAr ? 'حول More' : 'About More',
                       isAr: isAr,
                       onTap: () => _showAboutMoreDialog(context, isAr),
-
                     ),
                     const SizedBox(height: 32),
                     Padding(
@@ -628,7 +627,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildFeatureRow({
-    required String iconPath,
+    required IconData icon,
     required String title,
     required bool isAr,
     String? trailingText,
@@ -641,14 +640,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           color: const Color(0xFFF3EFFF),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: SvgPicture.asset(
-          iconPath,
-          width: 20,
-          height: 20,
-          colorFilter: const ColorFilter.mode(
-            Color(0xFF7C57FC),
-            BlendMode.srcIn,
-          ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: const Color(0xFF7C57FC),
         ),
       ),
       title: Text(

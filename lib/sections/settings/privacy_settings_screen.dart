@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'settings_provider.dart';
 
@@ -248,7 +247,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
               _buildSelectorRow(
                 context: context,
                 ref: ref,
-                iconPath: 'assets/setting/icons/user.svg',
+                icon: Icons.person_outline,
                 title: isAr ? 'ظهور الملف الشخصي' : 'Profile visibility',
                 subtitle: isAr ? 'إدارة من يمكنه رؤية ملفك الشخصي' : 'Manage who can see your account',
                 fieldKey: 'profile_visibility',
@@ -259,7 +258,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
               _buildSelectorRow(
                 context: context,
                 ref: ref,
-                iconPath: 'assets/setting/icons/user_add_01.svg', // Fallback or placeholder icon
+                icon: Icons.person_add_outlined, // Fallback or placeholder icon
                 title: isAr ? 'طلبات الصداقة' : 'Friend requests',
                 subtitle: isAr ? 'إدارة من يمكنه إرسال طلبات الصداقة إليك' : 'Manage who can request friendships',
                 fieldKey: 'friend_requests_visibility',
@@ -276,7 +275,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
               _buildSelectorRow(
                 context: context,
                 ref: ref,
-                iconPath: 'assets/setting/icons/location_01.svg',
+                icon: Icons.location_on_outlined,
                 title: isAr ? 'ظهور تسجيلات الوصول' : 'Check-in visibility',
                 subtitle: isAr ? 'إدارة من يمكنه رؤية تسجيلات وصولك' : 'Manage who can see your check-ins',
                 fieldKey: 'check_in_visibility',
@@ -285,14 +284,14 @@ class PrivacySettingsScreen extends ConsumerWidget {
               ),
               _buildDivider(),
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/user_multiple_02.svg',
+                icon: Icons.group_outlined,
                 title: isAr ? 'إظهاري في "هنا الآن"' : 'Show me in Here now',
                 value: settings.showMeHereNow,
                 onChanged: (val) => notifier.updateField('show_me_here_now', val),
               ),
               _buildDivider(),
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/security_check.svg',
+                icon: Icons.verified_user_outlined,
                 title: isAr ? 'السماح للأصدقاء بتسجيل الوصول معي' : 'Let friends check in with me',
                 value: settings.letFriendsCheckInWithMe,
                 onChanged: (val) => notifier.updateField('let_friends_check_in_with_me', val),
@@ -303,7 +302,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
               _buildSelectorRow(
                 context: context,
                 ref: ref,
-                iconPath: 'assets/setting/icons/toggle_base.svg', // Fallback or placeholder icon
+                icon: Icons.show_chart_outlined, // Fallback or placeholder icon
                 title: isAr ? 'إظهار الإحصائيات والمتتاليات' : 'Show stats & streaks',
                 subtitle: isAr ? 'إدارة من يمكنه رؤية إحصائياتك' : 'Manage who can see your stats & streaks',
                 fieldKey: 'show_stats_streaks',
@@ -312,14 +311,14 @@ class PrivacySettingsScreen extends ConsumerWidget {
               ),
               _buildDivider(),
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/store_location_02.svg', // Fallback or placeholder icon
+                icon: Icons.storefront_outlined, // Fallback or placeholder icon
                 title: isAr ? 'إظهار الأماكن المحفوظة في ملفي الشخصي' : 'Show saved places on profile',
                 value: settings.showSavedPlacesProfile,
                 onChanged: (val) => notifier.updateField('show_saved_places_profile', val),
               ),
               _buildDivider(),
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/radios.svg', // Fallback or placeholder at icon
+                icon: Icons.alternate_email_outlined, // Fallback or placeholder at icon
                 title: isAr ? 'السماح بالإشارات والذكر' : 'Allow tags & mentions',
                 value: settings.allowTagsMentions,
                 onChanged: (val) => notifier.updateField('allow_tags_mentions', val),
@@ -377,7 +376,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
   Widget _buildSelectorRow({
     required BuildContext context,
     required WidgetRef ref,
-    required String iconPath,
+    required IconData icon,
     required String title,
     required String subtitle,
     required String fieldKey,
@@ -392,14 +391,10 @@ class PrivacySettingsScreen extends ConsumerWidget {
           color: const Color(0xFFF3EFFF),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: SvgPicture.asset(
-          iconPath,
-          width: 20,
-          height: 20,
-          colorFilter: const ColorFilter.mode(
-            Color(0xFF7C57FC),
-            BlendMode.srcIn,
-          ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: const Color(0xFF7C57FC),
         ),
       ),
       title: Text(
@@ -442,7 +437,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildToggleRow({
-    required String iconPath,
+    required IconData icon,
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
@@ -457,14 +452,10 @@ class PrivacySettingsScreen extends ConsumerWidget {
               color: const Color(0xFFF3EFFF),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: SvgPicture.asset(
-              iconPath,
-              width: 20,
-              height: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF7C57FC),
-                BlendMode.srcIn,
-              ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: const Color(0xFF7C57FC),
             ),
           ),
           const SizedBox(width: 16),

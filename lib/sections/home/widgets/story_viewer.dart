@@ -789,92 +789,98 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
               ),
             ),
           ),
-          if (!isOwner)
-            Positioned(
+          if (!isOwner) ...[
+            // 1. Floating Sticker Reaction Tray (Opens vertically above the smiley button)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutBack,
               left: 16,
-              bottom: 78 + MediaQuery.of(context).padding.bottom + 16,
               right: 16,
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        final notifier = ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier);
-                        final nextState = !storyState.isReactionTrayOpen;
-                        notifier.setReactionTrayOpen(nextState);
-                        if (nextState) {
-                          _animationController.stop();
-                        } else {
-                          if (!_focusNode.hasFocus) {
-                            _animationController.forward();
-                          }
-                        }
-                      },
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7C57FC),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFD3D3D3), width: 1.0),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 4,
-                              offset: const Offset(0, 0),
-                            ),
-                          ],
+              bottom: storyState.isReactionTrayOpen
+                  ? (78 + MediaQuery.of(context).padding.bottom + 16 + 62)
+                  : (78 + MediaQuery.of(context).padding.bottom + 16),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: storyState.isReactionTrayOpen ? 1.0 : 0.0,
+                child: IgnorePointer(
+                  ignoring: !storyState.isReactionTrayOpen,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: Colors.white12, width: 1.0),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                        padding: const EdgeInsets.all(4),
-                        child: Center(
-                          child: SvgPicture.asset(
-                            'assets/home/icons/smile.svg',
-                            width: 48,
-                            height: 48,
-                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                          ),
-                        ),
-                      ),
+                      ],
                     ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutBack,
-                      width: storyState.isReactionTrayOpen ? 290 : 0,
-                      height: 50,
-                      margin: EdgeInsets.only(left: storyState.isReactionTrayOpen ? 12 : 0),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        physics: const NeverScrollableScrollPhysics(),
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 200),
-                          opacity: storyState.isReactionTrayOpen ? 1.0 : 0.0,
-                          child: Row(
-                            children: [
-                              _buildStickerItem('assets/home/images/heart.png', '❤️'),
-                              const SizedBox(width: 8),
-                              _buildStickerItem('assets/home/images/heart_eyes.png', '😍'),
-                              const SizedBox(width: 8),
-                              _buildStickerItem('assets/home/images/hands_face.png', '🫣'),
-                              const SizedBox(width: 8),
-                              _buildStickerItem('assets/home/images/fire.png', '🔥'),
-                              const SizedBox(width: 8),
-                              _buildStickerItem('assets/home/images/thumbs_up.png', '👍'),
-                              const SizedBox(width: 8),
-                              _buildStickerItem('assets/home/images/beer.png', '🍻'),
-                              const SizedBox(width: 8),
-                              _buildStickerItem('assets/home/images/plus_one.png', '+1'),
-                            ],
-                          ),
-                        ),
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildStickerItem('assets/home/images/heart.png', '❤️'),
+                        _buildStickerItem('assets/home/images/heart_eyes.png', '😍'),
+                        _buildStickerItem('assets/home/images/hands_face.png', '🫣'),
+                        _buildStickerItem('assets/home/images/fire.png', '🔥'),
+                        _buildStickerItem('assets/home/images/thumbs_up.png', '👍'),
+                        _buildStickerItem('assets/home/images/beer.png', '🍻'),
+                        _buildStickerItem('assets/home/images/plus_one.png', '+1'),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
+            
+            // 2. Smiley Toggle Button
+            Positioned(
+              left: 16,
+              bottom: 78 + MediaQuery.of(context).padding.bottom + 16,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  final notifier = ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier);
+                  final nextState = !storyState.isReactionTrayOpen;
+                  notifier.setReactionTrayOpen(nextState);
+                  if (nextState) {
+                    _animationController.stop();
+                  } else {
+                    if (!_focusNode.hasFocus) {
+                      _animationController.forward();
+                    }
+                  }
+                },
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C57FC),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFD3D3D3), width: 1.0),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 4,
+                        offset: const Offset(0, 0),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'assets/home/icons/smile.svg',
+                      width: 48,
+                      height: 48,
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
           if (!isOwner)
             Positioned(
               bottom: 0,

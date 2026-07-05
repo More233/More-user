@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'settings_provider.dart';
 
@@ -264,14 +263,10 @@ class LocationSettingsScreen extends ConsumerWidget {
                     color: const Color(0xFFF3EFFF),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: SvgPicture.asset(
-                    'assets/setting/icons/location_01.svg',
-                    width: 20,
-                    height: 20,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFF7C57FC),
-                      BlendMode.srcIn,
-                    ),
+                  child: const Icon(
+                    Icons.location_on_outlined,
+                    size: 20,
+                    color: Color(0xFF7C57FC),
                   ),
                 ),
                 title: Text(
@@ -305,7 +300,7 @@ class LocationSettingsScreen extends ConsumerWidget {
               _buildDivider(),
               // Precise Location toggle
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/gps_01.svg',
+                icon: Icons.gps_fixed_outlined,
                 title: isAr ? 'الموقع الدقيق' : 'Precise location',
                 subtitle: isAr
                     ? 'تحسين دقة تحديد الموقع لتسجيلات الوصول والنتائج القريبة'
@@ -316,7 +311,7 @@ class LocationSettingsScreen extends ConsumerWidget {
               _buildDivider(),
               // Show nearby spots toggle
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/store_location_02.svg',
+                icon: Icons.storefront_outlined,
                 title: isAr ? 'إظهار الأماكن المجاورة' : 'Show nearby places',
                 subtitle: isAr
                     ? 'استكشاف المحلات والمقاهي والأماكن من حولك'
@@ -327,7 +322,7 @@ class LocationSettingsScreen extends ConsumerWidget {
               _buildDivider(),
               // Prompts when arrive toggle
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/notification_02.svg',
+                icon: Icons.notifications_none_outlined,
                 title: isAr ? 'موجهات تسجيلات الوصول القريبة' : 'Nearby check-in prompts',
                 subtitle: isAr
                     ? 'الحصول على اقتراحات لتسجيل الوصول عند وصولك للأماكن'
@@ -361,7 +356,7 @@ class LocationSettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildToggleRow({
-    required String iconPath,
+    required IconData icon,
     required String title,
     required String subtitle,
     required bool value,
@@ -378,14 +373,10 @@ class LocationSettingsScreen extends ConsumerWidget {
               color: const Color(0xFFF3EFFF),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: SvgPicture.asset(
-              iconPath,
-              width: 20,
-              height: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF7C57FC),
-                BlendMode.srcIn,
-              ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: const Color(0xFF7C57FC),
             ),
           ),
           const SizedBox(width: 16),

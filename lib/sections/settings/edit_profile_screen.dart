@@ -1,11 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'edit_profile_provider.dart';
 import 'settings_provider.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -17,7 +16,6 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _client = Supabase.instance.client;
 
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
@@ -25,11 +23,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _hometownController;
-
-  String? _gender;
-  String? _avatarUrl;
-  bool _loading = true;
-  bool _saving = false;
 
   @override
   void initState() {
@@ -40,8 +33,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
     _hometownController = TextEditingController();
-
-    _fetchProfile();
   }
 
   @override
@@ -55,40 +46,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _fetchProfile() async {
-    final user = _client.auth.currentUser;
-    if (user == null) return;
-
-    try {
-      final data = await _client
-          .from('profiles')
-          .select()
-          .eq('id', user.id)
-          .maybeSingle();
-
-      if (data != null) {
-        _firstNameController.text = data['first_name'] as String? ?? '';
-        _lastNameController.text = data['last_name'] as String? ?? '';
-        _usernameController.text = data['username'] as String? ?? '';
-        _emailController.text = data['email'] as String? ?? '';
-        _phoneController.text = data['phone'] as String? ?? '';
-        _hometownController.text = data['city'] as String? ?? '';
-        _avatarUrl = data['avatar_url'] as String?;
-        // If gender is in db, populate it, otherwise fallback to null.
-        // Profiles might not have gender column originally, let's safe-check or default.
-        _gender = data['gender'] as String?;
-      }
-      setState(() {
-        _loading = false;
-      });
-    } catch (e) {
-      debugPrint('Error fetching profile for edit: $e');
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
   Future<void> _pickProfileImage() async {
     try {
       final ImagePicker picker = ImagePicker();
@@ -99,86 +56,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         imageQuality: 85,
       );
       if (image != null) {
-        setState(() {
-          _saving = true;
-        });
-
-        final user = _client.auth.currentUser;
-        if (user == null) return;
-
         final file = File(image.path);
-        final fileName = 'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-        await _client.storage.from('post-images').upload(
-          fileName,
-          file,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-        );
-
-        final publicUrl = _client.storage.from('post-images').getPublicUrl(fileName);
-
-        await _client.from('profiles').update({
-          'avatar_url': publicUrl,
-        }).eq('id', user.id);
-
-        setState(() {
-          _avatarUrl = publicUrl;
-          _saving = false;
-        });
+        await ref.read(editProfileProvider.notifier).uploadAvatar(file);
       }
     } catch (e) {
       debugPrint("Error picking image: $e");
-      setState(() {
-        _saving = false;
-      });
     }
   }
 
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final user = _client.auth.currentUser;
-    if (user == null) return;
-
-    setState(() {
-      _saving = true;
-    });
-
-    try {
-      // Proactively support gender column inside profiles table (save check)
-      final Map<String, dynamic> updates = {
-        'first_name': _firstNameController.text.trim(),
-        'last_name': _lastNameController.text.trim(),
-        'username': _usernameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'city': _hometownController.text.trim(),
-      };
-
-      try {
-        updates['gender'] = _gender;
-      } catch (_) {}
-
-      await _client.from('profiles').update(updates).eq('id', user.id);
-
-      setState(() {
-        _saving = false;
-      });
-
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      debugPrint('Error saving profile changes: $e');
-      setState(() {
-        _saving = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save changes: $e')),
-        );
-      }
-    }
+    await ref.read(editProfileProvider.notifier).saveChanges(
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      hometown: _hometownController.text.trim(),
+    );
   }
 
   ImageProvider _getAvatarProvider(String? dbUrl) {
@@ -196,6 +92,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final isAr = settings.preferredLanguage == 'ar';
+    final editState = ref.watch(editProfileProvider);
+
+    ref.listen<EditProfileState>(editProfileProvider, (previous, next) {
+      if (previous?.loading == true && !next.loading) {
+        _firstNameController.text = next.firstName;
+        _lastNameController.text = next.lastName;
+        _usernameController.text = next.username;
+        _emailController.text = next.email;
+        _phoneController.text = next.phone;
+        _hometownController.text = next.hometown;
+      }
+      if (previous != null && !previous.success && next.success) {
+        Navigator.pop(context, true);
+      }
+      if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${next.errorMessage}')),
+        );
+      }
+    });
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
@@ -221,7 +137,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           centerTitle: true,
         ),
-        body: _loading
+        body: editState.loading
             ? const Center(
                 child: CircularProgressIndicator(
                   color: Color(0xFF7C57FC),
@@ -241,7 +157,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             CircleAvatar(
                               radius: 50,
                               backgroundColor: const Color(0xFFF2F2F2),
-                              backgroundImage: _getAvatarProvider(_avatarUrl),
+                              backgroundImage: _getAvatarProvider(editState.avatarUrl),
                             ),
                             Positioned(
                               right: 0,
@@ -252,14 +168,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   color: Color(0xFF7C57FC),
                                   shape: BoxShape.circle,
                                 ),
-                                child: SvgPicture.asset(
-                                  'assets/setting/icons/pen_01.svg',
-                                  width: 16,
-                                  height: 16,
-                                  colorFilter: const ColorFilter.mode(
-                                    Colors.white,
-                                    BlendMode.srcIn,
-                                  ),
+                                child: const Icon(
+                                  Icons.edit,
+                                  size: 16,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
@@ -272,7 +184,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         controller: _firstNameController,
                         label: isAr ? 'الاسم الأول' : 'First Name',
                         hint: isAr ? 'أدخل اسمك الأول' : 'Enter your first name',
-                        iconPath: 'assets/setting/icons/user.svg',
+                        icon: Icons.person_outline,
                         isAr: isAr,
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
@@ -287,7 +199,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         controller: _lastNameController,
                         label: isAr ? 'اسم العائلة' : 'Last Name',
                         hint: isAr ? 'أدخل اسم عائلتك' : 'Enter your last name',
-                        iconPath: 'assets/setting/icons/user.svg',
+                        icon: Icons.person_outline,
                         isAr: isAr,
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {
@@ -302,6 +214,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         controller: _usernameController,
                         label: isAr ? 'اسم المستخدم' : 'Username',
                         hint: isAr ? 'اسم المستخدم' : 'Username',
+                        icon: Icons.alternate_email,
                         prefixText: '@',
                         isAr: isAr,
                         validator: (val) {
@@ -317,7 +230,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         controller: _emailController,
                         label: isAr ? 'البريد الإلكتروني' : 'Email',
                         hint: isAr ? 'بريدك الإلكتروني' : 'Your email',
-                        iconPath: 'assets/setting/icons/mail_01.svg',
+                        icon: Icons.mail_outline,
                         isAr: isAr,
                         keyboardType: TextInputType.emailAddress,
                         validator: (val) {
@@ -333,20 +246,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         controller: _phoneController,
                         label: isAr ? 'رقم الهاتف' : 'Phone',
                         hint: isAr ? 'رقم الهاتف' : 'Phone number',
-                        iconPath: 'assets/setting/icons/toggle_base.svg', // Fallback or placeholder icon
+                        icon: Icons.phone_outlined,
                         isAr: isAr,
                         keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 20),
                       // Gender Dropdown Field
-                      _buildGenderDropdown(isAr),
+                      _buildGenderDropdown(isAr, editState.gender),
                       const SizedBox(height: 20),
                       // Hometown Field
                       _buildTextField(
                         controller: _hometownController,
                         label: isAr ? 'المدينة / الموطن' : 'Hometown',
                         hint: isAr ? 'المدينة الحالية' : 'Hometown city',
-                        iconPath: 'assets/setting/icons/location_01.svg',
+                        icon: Icons.home_outlined,
                         isAr: isAr,
                       ),
                       const SizedBox(height: 40),
@@ -363,8 +276,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             elevation: 0,
                           ),
-                          onPressed: _saving ? null : _saveChanges,
-                          child: _saving
+                          onPressed: editState.saving ? null : _saveChanges,
+                          child: editState.saving
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
@@ -395,7 +308,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     required TextEditingController controller,
     required String label,
     required String hint,
-    String? iconPath,
+    IconData? icon,
     String? prefixText,
     required bool isAr,
     TextInputType keyboardType = TextInputType.text,
@@ -424,20 +337,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               color: const Color(0xFFBBBBBB),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-            prefixIcon: iconPath != null
-                ? Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: SvgPicture.asset(
-                      iconPath,
-                      width: 18,
-                      height: 18,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF7C57FC),
-                        BlendMode.srcIn,
-                      ),
-                    ),
+            prefixIcon: icon != null
+                ? Icon(
+                    icon,
+                    size: 20,
+                    color: const Color(0xFF7C57FC),
                   )
-
                 : (prefixText != null
                     ? Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -469,7 +374,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildGenderDropdown(bool isAr) {
+  Widget _buildGenderDropdown(bool isAr, String? gender) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -483,7 +388,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: _gender,
+          initialValue: gender,
           hint: Text(
             isAr ? 'اختر الجنس' : 'Select gender',
             style: GoogleFonts.ibmPlexSansArabic(
@@ -493,17 +398,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           decoration: InputDecoration(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            prefixIcon: Padding(
-              padding: const EdgeInsets.all(12),
-              child: SvgPicture.asset(
-                'assets/setting/icons/user.svg',
-                width: 18,
-                height: 18,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF7C57FC),
-                  BlendMode.srcIn,
-                ),
-              ),
+            prefixIcon: const Icon(
+              Icons.person_outline,
+              size: 20,
+              color: Color(0xFF7C57FC),
             ),
 
             border: OutlineInputBorder(
@@ -534,9 +432,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
           ],
           onChanged: (val) {
-            setState(() {
-              _gender = val;
-            });
+            ref.read(editProfileProvider.notifier).setGender(val);
           },
         ),
       ],

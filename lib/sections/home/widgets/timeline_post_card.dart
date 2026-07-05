@@ -107,7 +107,7 @@ class TimelinePostCard extends StatelessWidget {
         children: [
           // Post card header
           _buildPostHeader(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           // Details row
           _buildDetailsRow(),
           const SizedBox(height: 4),

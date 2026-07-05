@@ -297,13 +297,48 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
                       ? null
                       : () {
                           Navigator.pop(context);
+                          final size = MediaQuery.of(context).size;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(
-                                'Shared successfully with ${_selectedUsernames.length} friend(s)!',
-                                style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                              behavior: SnackBarBehavior.floating,
+                              margin: EdgeInsets.only(
+                                bottom: size.height - 140,
+                                left: 24,
+                                right: 24,
                               ),
-                              backgroundColor: const Color(0xFF7C57FC),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              backgroundColor: Colors.black.withValues(alpha: 0.9),
+                              elevation: 6,
+                              duration: const Duration(seconds: 3),
+                              content: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Color(0xFF7C57FC),
+                                    ),
+                                    child: const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Shared successfully with ${_selectedUsernames.length} friend(s)!',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 14,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },

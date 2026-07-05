@@ -36,6 +36,17 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7C57FC)),
         useMaterial3: true,
       ),
+      builder: (context, child) {
+        return GestureDetector(
+          onTap: () {
+            final FocusScopeNode currentFocus = FocusScope.of(context);
+            if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+              FocusManager.instance.primaryFocus?.unfocus();
+            }
+          },
+          child: child,
+        );
+      },
       home: const SplashScreen(),
     );
   }
