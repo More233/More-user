@@ -66,24 +66,38 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         children: [
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
           Expanded(
-            child: RefreshIndicator(
-              color: const Color(0xFF7C57FC),
-              onRefresh: () => ref.read(notificationsViewModelProvider.notifier).loadNotifications(),
-              child: state.isLoading
-                  ? const CustomLoadingIndicator()
-                  : (activities.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.separated(
-                          physics: const AlwaysScrollableScrollPhysics(),
+            child: state.isLoading
+                ? const CustomLoadingIndicator()
+                : CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      CupertinoSliverRefreshControl(
+                        onRefresh: () => ref.read(notificationsViewModelProvider.notifier).loadNotifications(),
+                      ),
+                      if (activities.isEmpty)
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: _buildEmptyState(),
+                        )
+                      else
+                        SliverPadding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          itemCount: activities.length,
-                          separatorBuilder: (context, index) => const SizedBox(height: 16),
-                          itemBuilder: (context, index) {
-                            final activity = activities[index];
-                            return _buildActivityItem(activity);
-                          },
-                        )),
-            ),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                if (index.isOdd) {
+                                  return const SizedBox(height: 16);
+                                }
+                                final itemIndex = index ~/ 2;
+                                final activity = activities[itemIndex];
+                                return _buildActivityItem(activity);
+                              },
+                              childCount: activities.length * 2 - 1,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
           ),
         ],
       ),
