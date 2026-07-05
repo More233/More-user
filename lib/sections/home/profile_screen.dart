@@ -516,7 +516,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     final topPadding = MediaQuery.of(context).padding.top;
     final screenWidth = MediaQuery.of(context).size.width;
-    final coverHeight = screenWidth / 3.0; // 3:1 aspect ratio matching Twitter
+    final coverHeight = screenWidth / 3.6; // Wider aspect ratio (approx 3.6:1) to make the cover less tall
     final maxExtent = coverHeight + topPadding;
     final minExtent = topPadding + 56.0;
 
@@ -840,23 +840,27 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
     final double progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
 
     // Dynamic button circle background styling (fades out as we collapse)
-    final circleBgColor = Colors.black.withOpacity((1.0 - progress) * 0.38);
+    final circleBgColor = Colors.black.withValues(alpha: (1.0 - progress) * 0.38);
     // Dynamic text color for header title (fades in as we collapse)
     final textColor = Colors.white;
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Cover Image / Fallback Purple (resizes naturally to act as the header background)
-        GestureDetector(
-          onTap: onCoverTap,
-          child: Container(
-            width: double.infinity,
-            height: maxExtent - shrinkOffset,
-            color: const Color(0xFF7C57FC),
-            child: coverUrl != null && coverUrl!.isNotEmpty
-                ? Image.network(coverUrl!, fit: BoxFit.cover)
-                : null,
+        // Cover Image / Fallback Purple (pinned and constrained to at least minExtent)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: (maxExtent - shrinkOffset).clamp(minExtent, double.infinity),
+          child: GestureDetector(
+            onTap: onCoverTap,
+            child: Container(
+              color: const Color(0xFF7C57FC),
+              child: coverUrl != null && coverUrl!.isNotEmpty
+                  ? Image.network(coverUrl!, fit: BoxFit.cover)
+                  : null,
+            ),
           ),
         ),
         // Title & Subtitle (fades in as we collapse)
@@ -882,7 +886,7 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
                   '$postCount posts',
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 11,
-                    color: textColor.withOpacity(0.7),
+                    color: textColor.withValues(alpha: 0.7),
                   ),
                 ),
               ],

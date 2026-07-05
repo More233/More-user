@@ -4,6 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../profile_screen.dart';
+import 'saved_screen.dart';
+import '../notifications_screen.dart';
+import '../../settings/language_sheet.dart';
+import '../../settings/location_settings_screen.dart';
+import '../../settings/suggestions_settings_screen.dart';
+import '../../settings/blocked_users_screen.dart';
+import '../../settings/settings_screen.dart';
+import '../../settings/help_support_screen.dart';
+
 
 class UserDrawer extends StatefulWidget {
   final VoidCallback? onProfileUpdated;
@@ -231,6 +240,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Bookmarks',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SavedScreen(),
+                              ),
+                            );
                           },
                         ),
                         _buildDrawerItem(
@@ -238,6 +254,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Language',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => const LanguageSheet(),
+                            );
                           },
                         ),
                         _buildDrawerItem(
@@ -245,6 +268,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Notifications',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const NotificationsScreen(showBackButton: true),
+                              ),
+                            );
                           },
                         ),
                         _buildDrawerItem(
@@ -252,6 +282,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Location',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LocationSettingsScreen(),
+                              ),
+                            );
                           },
                         ),
                         _buildDrawerItem(
@@ -259,6 +296,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Check-in Suggestions',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SuggestionsSettingsScreen(),
+                              ),
+                            );
                           },
                         ),
 
@@ -267,6 +311,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Blocked people',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const BlockedUsersScreen(),
+                              ),
+                            );
                           },
                         ),
                         // The single line/divider separating footer settings per Twitter layout
@@ -279,6 +330,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Settings and privacy',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SettingsScreen(),
+                              ),
+                            );
                           },
                         ),
                         _buildDrawerItem(
@@ -286,6 +344,13 @@ class _UserDrawerState extends State<UserDrawer> {
                           title: 'Help Center',
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const HelpSupportScreen(),
+                              ),
+                            );
                           },
                         ),
                         _buildDrawerItem(
