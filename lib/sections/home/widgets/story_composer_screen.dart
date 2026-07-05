@@ -16,11 +16,8 @@ class StoryComposerScreen extends StatefulWidget {
   State<StoryComposerScreen> createState() => _StoryComposerScreenState();
 }
 
-enum CameraMode { photo, video }
-
 class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
-  CameraMode _currentMode = CameraMode.photo;
   bool _isFrontCamera = false;
   AssetEntity? _latestAsset;
 
@@ -171,11 +168,6 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   void _onShutterTap() async {
     if (_isRecording) {
       _stopRecordingVideo();
-      return;
-    }
-
-    if (_currentMode == CameraMode.video) {
-      _startRecordingVideo();
       return;
     }
 
@@ -712,55 +704,6 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
               ),
             ),
           ),
-          
-          const SizedBox(height: 16),
-          
-          // Mode selector (Video vs. Photo)
-          if (!_isRecording)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _currentMode = CameraMode.video;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(
-                        "Video",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: _currentMode == CameraMode.video ? Colors.white : Colors.white38,
-                          fontWeight: _currentMode == CameraMode.video ? FontWeight.bold : FontWeight.normal,
-                          fontSize: _currentMode == CameraMode.video ? 18 : 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _currentMode = CameraMode.photo;
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(
-                        "Photo",
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          color: _currentMode == CameraMode.photo ? Colors.white : Colors.white38,
-                          fontWeight: _currentMode == CameraMode.photo ? FontWeight.bold : FontWeight.normal,
-                          fontSize: _currentMode == CameraMode.photo ? 18 : 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           
           SizedBox(height: bottomPadding > 0 ? bottomPadding : 16),
         ],

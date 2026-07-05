@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../models/user_story_group.dart';
 import '../models/story_view_state.dart';
 import '../view_models/story_view_model.dart';
+import '../view_models/social_feed_view_model.dart';
 import 'story_composer_screen.dart';
 import 'story/story_delete_dialog.dart';
 import 'story/story_options_sheet.dart';
@@ -196,20 +197,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
         final notifier = ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier);
         await notifier.deleteStory(storyId);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Story deleted"),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
+          ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
           Navigator.pop(context);
         }
       } catch (e) {
         debugPrint("Error deleting story: $e");
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Failed to delete story: $e")),
-          );
           _animationController.forward();
         }
       }
@@ -250,13 +243,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
         return StoryHighlightSheet(
           currentMediaUrl: currentMediaUrl,
           onCompleted: (selectedHighlight) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Added to highlight \"$selectedHighlight\"!"),
-                backgroundColor: const Color(0xFF7C57FC),
-                duration: const Duration(seconds: 2),
-              ),
-            );
+            // Completed silently without SnackBar
           },
         );
       },
@@ -459,25 +446,9 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
 
     try {
       final notifier = ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier);
-      final state = ref.read(storyViewModelProvider(widget.initialGroupIndex));
       await notifier.sendDM(text, widget.storyGroups);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Reply sent to @${widget.storyGroups[state.currentGroupIndex].username}!"),
-            backgroundColor: const Color(0xFF7C3AED),
-          ),
-        );
-      }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to send message: $e"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+      debugPrint("Failed to send message: $e");
     }
 
     final state = ref.read(storyViewModelProvider(widget.initialGroupIndex));
@@ -491,25 +462,9 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     notifier.setReactionTrayOpen(false);
 
     try {
-      final state = ref.read(storyViewModelProvider(widget.initialGroupIndex));
       await notifier.sendDM(emoji, widget.storyGroups);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Reply sent to @${widget.storyGroups[state.currentGroupIndex].username}!"),
-            backgroundColor: const Color(0xFF7C3AED),
-          ),
-        );
-      }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to send message: $e"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+      debugPrint("Failed to send message: $e");
     }
 
     if (!_focusNode.hasFocus) {
@@ -586,6 +541,27 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                               _previousStory();
                             } else {
                               _nextStory();
+                            }
+                          },
+                          onHorizontalDragEnd: (details) {
+                            if (details.primaryVelocity != null) {
+                              final isRtl = Directionality.of(context) == TextDirection.rtl;
+                              final notifier = ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier);
+                              if (details.primaryVelocity! < -100) {
+                                // Dragged left
+                                if (isRtl) {
+                                  notifier.previousGroup(widget.storyGroups);
+                                } else {
+                                  notifier.nextGroup(widget.storyGroups, () => Navigator.pop(context));
+                                }
+                              } else if (details.primaryVelocity! > 100) {
+                                // Dragged right
+                                if (isRtl) {
+                                  notifier.nextGroup(widget.storyGroups, () => Navigator.pop(context));
+                                } else {
+                                  notifier.previousGroup(widget.storyGroups);
+                                }
+                              }
                             }
                           },
                           onVerticalDragEnd: (details) {
@@ -1353,15 +1329,6 @@ class _StorySendSheetContentState extends State<_StorySendSheetContent> {
                   ? null
                   : () {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "Story sent successfully to ${_selectedUsernames.length} friend(s)!",
-                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                          ),
-                          backgroundColor: const Color(0xFF7C57FC),
-                        ),
-                      );
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C57FC),
@@ -1688,16 +1655,6 @@ class _StoryMentionSheetContentState extends State<_StoryMentionSheetContent> {
                   ? null
                   : () {
                       Navigator.pop(context);
-                      final listStr = _selectedUsernames.map((u) => "@$u").join(", ");
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "Mentioned $listStr in this story!",
-                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                          ),
-                          backgroundColor: const Color(0xFF7C57FC),
-                        ),
-                      );
                     },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF7C57FC),

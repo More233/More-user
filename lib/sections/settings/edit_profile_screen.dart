@@ -259,7 +259,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         controller: _hometownController,
                         label: isAr ? 'المدينة / الموطن' : 'Hometown',
                         hint: isAr ? 'المدينة الحالية' : 'Hometown city',
-                        icon: Icons.home_outlined,
+                        icon: Icons.place_outlined,
                         isAr: isAr,
                       ),
                       const SizedBox(height: 40),
@@ -336,16 +336,29 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               fontSize: 15,
               color: const Color(0xFFBBBBBB),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 36,
+              minHeight: 24,
+            ),
             prefixIcon: icon != null
-                ? Icon(
-                    icon,
-                    size: 20,
-                    color: const Color(0xFF7C57FC),
+                ? Padding(
+                    padding: EdgeInsets.only(
+                      left: isAr ? 8 : 12,
+                      right: isAr ? 12 : 8,
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 20,
+                      color: const Color(0xFF7C57FC),
+                    ),
                   )
                 : (prefixText != null
                     ? Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                        padding: EdgeInsets.only(
+                          left: isAr ? 8 : 12,
+                          right: isAr ? 12 : 8,
+                        ),
                         child: Text(
                           prefixText,
                           style: GoogleFonts.ibmPlexSansArabic(
@@ -397,11 +410,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
           ),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            prefixIcon: const Icon(
-              Icons.person_outline,
-              size: 20,
-              color: Color(0xFF7C57FC),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 36,
+              minHeight: 24,
+            ),
+            prefixIcon: Padding(
+              padding: EdgeInsets.only(
+                left: isAr ? 8 : 12,
+                right: isAr ? 12 : 8,
+              ),
+              child: const Icon(
+                Icons.person_outline,
+                size: 20,
+                color: Color(0xFF7C57FC),
+              ),
             ),
 
             border: OutlineInputBorder(

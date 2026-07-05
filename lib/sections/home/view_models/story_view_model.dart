@@ -171,4 +171,30 @@ class StoryViewModel extends StateNotifier<StoryViewState> {
   void setReactionTrayOpen(bool open) {
     state = state.copyWith(isReactionTrayOpen: open);
   }
+
+  void nextGroup(List<UserStoryGroup> storyGroups, VoidCallback onCompleted) {
+    final currentGroupIndex = state.currentGroupIndex;
+    if (currentGroupIndex < storyGroups.length - 1) {
+      state = state.copyWith(
+        currentGroupIndex: currentGroupIndex + 1,
+        currentStoryIndex: 0,
+        isReactionTrayOpen: false,
+      );
+      startStory(storyGroups);
+    } else {
+      onCompleted();
+    }
+  }
+
+  void previousGroup(List<UserStoryGroup> storyGroups) {
+    final currentGroupIndex = state.currentGroupIndex;
+    if (currentGroupIndex > 0) {
+      state = state.copyWith(
+        currentGroupIndex: currentGroupIndex - 1,
+        currentStoryIndex: 0,
+        isReactionTrayOpen: false,
+      );
+      startStory(storyGroups);
+    }
+  }
 }

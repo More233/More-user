@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
+import '../view_models/social_feed_view_model.dart';
 
 class StoryOverlayItem {
   final UniqueKey id = UniqueKey();
@@ -18,16 +20,16 @@ class StoryOverlayItem {
   });
 }
 
-class StoryEditorScreen extends StatefulWidget {
+class StoryEditorScreen extends ConsumerStatefulWidget {
   final String imagePath;
   final bool isReels;
   const StoryEditorScreen({super.key, required this.imagePath, this.isReels = false});
 
   @override
-  State<StoryEditorScreen> createState() => _StoryEditorScreenState();
+  ConsumerState<StoryEditorScreen> createState() => _StoryEditorScreenState();
 }
 
-class _StoryEditorScreenState extends State<StoryEditorScreen> {
+class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
   final List<StoryOverlayItem> _overlays = [];
   bool _isPublishing = false;
   List<Map<String, dynamic>> _followedUsers = [];
@@ -388,21 +390,13 @@ class _StoryEditorScreenState extends State<StoryEditorScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Story posted successfully!"),
-          backgroundColor: Color(0xFF7C57FC),
-        ),
-      );
+      ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
 
       // Pop back to feed
       Navigator.pop(context); // Close Editor
       Navigator.pop(context); // Close Composer
     } catch (e) {
       debugPrint("Error publishing story: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to publish story: $e")),
-      );
     } finally {
       setState(() {
         _isPublishing = false;
