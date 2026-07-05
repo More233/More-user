@@ -8,6 +8,7 @@ class ExploreSearchBar extends StatelessWidget {
   final String searchQuery;
   final List<Map<String, dynamic>> suggestions;
   final String? userAvatarUrl;
+  final VoidCallback? onAvatarTapped;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onSearchSubmitted;
   final VoidCallback onClearSearch;
@@ -25,6 +26,7 @@ class ExploreSearchBar extends StatelessWidget {
     required this.searchQuery,
     required this.suggestions,
     this.userAvatarUrl,
+    this.onAvatarTapped,
     required this.onSearchChanged,
     required this.onSearchSubmitted,
     required this.onClearSearch,
@@ -59,7 +61,7 @@ class ExploreSearchBar extends StatelessWidget {
         children: [
           // Avatar
           GestureDetector(
-            onTap: onBackToTimeline,
+            onTap: onAvatarTapped ?? onBackToTimeline,
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,

@@ -139,6 +139,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
     setState(() {
       _isFrontCamera = !_isFrontCamera;
       _isCameraInitialized = false;
+      _flashMode = FlashMode.off;
     });
     await _initializeCamera();
   }

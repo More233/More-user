@@ -251,6 +251,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           onBackToTimeline: () {
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
           },
+          onAvatarTapped: _onAvatarTapped,
         ),
         const NotificationsScreen(
           showBackButton: false,
@@ -389,9 +390,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       child: Stack(
                         children: [
                           GestureDetector(
-                            onHorizontalDragStart: (details) => _onHorizontalDragStart(details, state.selectedNavIndex),
-                            onHorizontalDragUpdate: (details) => _onHorizontalDragUpdate(details),
-                            onHorizontalDragEnd: _onHorizontalDragEnd,
+                            onHorizontalDragStart: (state.selectedNavIndex == 0 || _isMenuOpen)
+                                ? (details) => _onHorizontalDragStart(details, state.selectedNavIndex)
+                                : null,
+                            onHorizontalDragUpdate: (state.selectedNavIndex == 0 || _isMenuOpen)
+                                ? (details) => _onHorizontalDragUpdate(details)
+                                : null,
+                            onHorizontalDragEnd: (state.selectedNavIndex == 0 || _isMenuOpen)
+                                ? _onHorizontalDragEnd
+                                : null,
                             child: Scaffold(
                               backgroundColor: Colors.white,
                               body: SafeArea(

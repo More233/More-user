@@ -24,6 +24,7 @@ import 'view_models/explore_view_model.dart';
 
 class ExploreScreen extends ConsumerStatefulWidget {
   final VoidCallback onBackToTimeline;
+  final VoidCallback? onAvatarTapped;
   final String? userAvatarUrl;
   final double? initialLatitude;
   final double? initialLongitude;
@@ -32,6 +33,7 @@ class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({
     super.key,
     required this.onBackToTimeline,
+    this.onAvatarTapped,
     this.userAvatarUrl,
     this.initialLatitude,
     this.initialLongitude,
@@ -629,6 +631,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 navBarHeight: navBarHeight,
                 filteredPlaces: filteredPlaces,
                 userAvatarUrl: widget.userAvatarUrl,
+                onAvatarTapped: widget.onAvatarTapped,
                 searchController: _searchController,
                 isSearching: state.isSearching,
                 searchQuery: state.searchQuery,
@@ -818,6 +821,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   searchQuery: "",
                   suggestions: const [],
                   userAvatarUrl: widget.userAvatarUrl,
+                  onAvatarTapped: widget.onAvatarTapped,
                   onSearchChanged: (_) {},
                   onSearchSubmitted: (_) {},
                   onClearSearch: () {},

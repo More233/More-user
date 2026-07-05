@@ -8,6 +8,7 @@ class ExploreListView extends StatelessWidget {
   final double navBarHeight;
   final List<Map<String, dynamic>> filteredPlaces;
   final String? userAvatarUrl;
+  final VoidCallback? onAvatarTapped;
   final TextEditingController searchController;
   final bool isSearching;
   final String searchQuery;
@@ -27,6 +28,7 @@ class ExploreListView extends StatelessWidget {
     required this.navBarHeight,
     required this.filteredPlaces,
     required this.userAvatarUrl,
+    this.onAvatarTapped,
     required this.searchController,
     required this.isSearching,
     required this.searchQuery,
@@ -65,7 +67,7 @@ class ExploreListView extends StatelessWidget {
           child: Row(
             children: [
               GestureDetector(
-                onTap: onBackToTimeline,
+                onTap: onAvatarTapped ?? onBackToTimeline,
                 child: Container(
                   width: 48,
                   height: 48,
