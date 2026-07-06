@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../explore/explore_screen.dart';
+import '../explore/view_models/explore_view_model.dart';
 import 'models/timeline_post.dart';
 import 'models/timeline_state.dart';
 import 'view_models/timeline_view_model.dart';
@@ -236,6 +237,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       ref.read(timelineViewModelProvider.notifier).loadPosts();
       ref.read(timelineViewModelProvider.notifier).completeFirstCheckIn();
       ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
+      final currentNavIndex = ref.read(timelineViewModelProvider).selectedNavIndex;
+      if (currentNavIndex == 1) {
+        final exploreState = ref.read(exploreViewModelProvider);
+        final lat = exploreState.userLocation?.latitude ?? 24.7136;
+        final lng = exploreState.userLocation?.longitude ?? 46.6753;
+        ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
+      }
     }
   }
 
@@ -492,10 +500,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                         right: 16,
                                         bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
                                         child: IgnorePointer(
-                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 3),
+                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3),
                                           child: AnimatedOpacity(
                                             duration: const Duration(milliseconds: 200),
-                                            opacity: (state.selectedNavIndex == 0 || state.selectedNavIndex == 3) ? 1.0 : 0.0,
+                                            opacity: (state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) ? 1.0 : 0.0,
                                             child: _buildFAB(state),
                                           ),
                                         ),

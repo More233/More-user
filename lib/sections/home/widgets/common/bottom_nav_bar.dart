@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -14,8 +15,8 @@ class BottomNavBar extends StatelessWidget {
     required this.selectedIndex,
     required this.onItemTapped,
     this.userAvatarUrl,
-    this.unreadNotificationsCount = 0,
-    this.unreadMessagesCount = 0,
+    required this.unreadNotificationsCount,
+    required this.unreadMessagesCount,
   });
 
   static const _items = [
@@ -27,41 +28,46 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFFE8E8E8),
-            width: 0.8,
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.75),
+            border: Border(
+              top: BorderSide(
+                color: Colors.black.withValues(alpha: 0.06),
+                width: 0.8,
+              ),
+            ),
           ),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 50,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_items.length, (index) {
-              final label = _items[index];
-              final isActive = index == selectedIndex;
-              
-              int badgeCount = 0;
-              if (label == 'Notifications') {
-                badgeCount = unreadNotificationsCount;
-              } else if (label == 'Messages') {
-                badgeCount = unreadMessagesCount;
-              }
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              height: 50,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(_items.length, (index) {
+                  final label = _items[index];
+                  final isActive = index == selectedIndex;
+                  
+                  int badgeCount = 0;
+                  if (label == 'Notifications') {
+                    badgeCount = unreadNotificationsCount;
+                  } else if (label == 'Messages') {
+                    badgeCount = unreadMessagesCount;
+                  }
 
-              return _NavItem(
-                label: label,
-                isActive: isActive,
-                onTap: () => onItemTapped(index),
-                userAvatarUrl: userAvatarUrl,
-                badgeCount: badgeCount,
-              );
-            }),
+                  return _NavItem(
+                    label: label,
+                    isActive: isActive,
+                    onTap: () => onItemTapped(index),
+                    userAvatarUrl: userAvatarUrl,
+                    badgeCount: badgeCount,
+                  );
+                }),
+              ),
+            ),
           ),
         ),
       ),

@@ -14,8 +14,8 @@ class ExploreMapTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(100),
@@ -34,19 +34,19 @@ class ExploreMapTabs extends StatelessWidget {
             index: 0,
             iconPath: 'assets/explore/earth.svg',
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           _buildPillTabItem(
             index: 1,
             iconPath: '',
             iconData: Icons.explore_outlined,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           _buildPillTabItem(
             index: 2,
             iconPath: '',
             iconData: Icons.sensors,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           _buildPillTabItem(
             index: 3,
             iconPath: 'assets/explore/favourite.svg',
@@ -65,8 +65,8 @@ class ExploreMapTabs extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTabChanged(index),
       child: Container(
-        width: 44,
-        height: 44,
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFEDE6FC) : Colors.transparent,
           shape: BoxShape.circle,
@@ -75,13 +75,13 @@ class ExploreMapTabs extends StatelessWidget {
         child: iconData != null
             ? Icon(
                 iconData,
-                size: 22,
+                size: 18,
                 color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
               )
             : SvgPicture.asset(
                 iconPath,
-                width: 22,
-                height: 22,
+                width: 18,
+                height: 18,
                 colorFilter: ColorFilter.mode(
                   isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
                   BlendMode.srcIn,

@@ -2,9 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+
+import 'helpers/explore_screen_helpers.dart';
+import 'helpers/explore_marker_builder.dart';
+import 'widgets/explore_map_widget.dart';
+import 'widgets/explore_floating_controls.dart';
+import 'widgets/explore_status_badge.dart';
 
 import '../home/widgets/feed/check_in_composer_screen.dart';
 import 'place_details_screen.dart';
@@ -16,9 +21,10 @@ import 'widgets/search/explore_search_bar.dart';
 import 'widgets/search/explore_category_filters.dart';
 import 'widgets/sheets/explore_filter_sheet.dart';
 import 'widgets/search/explore_list_view.dart';
-import 'widgets/search/explore_map_tabs.dart';
 import 'widgets/search/explore_view_toggle_pill.dart';
 import 'explore_search_screen.dart';
+import '../home/view_models/timeline_view_model.dart';
+import '../home/widgets/bottom_sheets/follow_friends_bottom_sheet.dart';
 import 'models/explore_state.dart';
 import 'view_models/explore_view_model.dart';
 
@@ -62,11 +68,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   GoogleMapController? _mapController;
   int _lastRoundedZoom = 13;
   double _currentZoom = 13.0;
-  double _lastIdleZoom = 13.0;
   final TextEditingController _searchController = TextEditingController();
   final MarkerGenerator _markerGenerator = MarkerGenerator();
 
-  // Status Badge Overlay State
   bool _showStatusBadge = false;
   String _statusMessage = "";
   Timer? _statusBadgeTimer;
@@ -112,10 +116,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   void _moveToInitialLocation(double lat, double lng, String? address) {
     final latLng = LatLng(lat, lng);
     _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 15.0));
-    _onMapTappedWithFallbackAddress(latLng, ref.read(exploreViewModelProvider), address);
+    _onMapTapped(latLng, ref.read(exploreViewModelProvider));
   }
 
-  Future<void> _onMapTappedWithFallbackAddress(LatLng latLng, ExploreState state, String? address) async {
+  Future<void> _onMapTapped(LatLng latLng, ExploreState state) async {
     FocusScope.of(context).unfocus();
     ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
 
@@ -157,9 +161,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     final String fallbackId = 'tapped_${latLng.latitude}_${latLng.longitude}';
     final fallbackPlace = {
       'id': fallbackId,
-      'name': address ?? 'Dropped Pin',
-      'arabicName': address ?? 'دبوس مثبت',
-      'address': address ?? '${latLng.latitude.toStringAsFixed(6)}, ${latLng.longitude.toStringAsFixed(6)}',
+      'name': 'Dropped Pin',
+      'arabicName': 'دبوس مثبت',
+      'address': '${latLng.latitude.toStringAsFixed(6)}, ${latLng.longitude.toStringAsFixed(6)}',
       'latitude': latLng.latitude,
       'longitude': latLng.longitude,
       'distance': distanceStr,
@@ -306,320 +310,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _getFilteredPlaces(ExploreState state) {
-    final unfiltered = state.allPlaces.where((place) {
-      if (state.searchQuery.isNotEmpty) {
-        final query = state.searchQuery.toLowerCase();
-        final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
-        final arMatches = (place['arabicName'] as String? ?? '').toLowerCase().contains(query);
-        if (!nameMatches && !arMatches) return false;
-      }
-
-      if (state.selectedMapTab == 3) {
-        final filterVisited = state.filterState.visited;
-        final filterSaved = state.filterState.saved;
-        if (filterVisited && !(place['isVisited'] as bool? ?? false)) return false;
-        if (filterSaved && !(place['isSaved'] as bool? ?? false)) return false;
-        if (!filterVisited && !filterSaved) {
-          return (place['isVisited'] as bool? ?? false) || (place['isSaved'] as bool? ?? false);
-        }
-        return true;
-      }
-
-      if (state.selectedMapTab == 0 && state.selectedCategory.isNotEmpty) {
-        final type = place['type'] as String? ?? 'Other';
-        if (state.selectedCategory == "Restaurant" && type != "Restaurant") return false;
-        if (state.selectedCategory == "Coffee" && type != "Coffee") return false;
-        if (state.selectedCategory == "Bakery" && type != "Bakery") return false;
-        if (state.selectedCategory == "Bars" && type != "Bars") return false;
-      }
-
-      if (state.selectedMapTab == 1) {
-        return place['actionType'] == 'Book';
-      }
-
-      
-      
-      if (state.filterState.maxDistance != null) {
-        final double? dist = _parseDistance(place['distance'] as String?);
-        if (dist == null || dist > state.filterState.maxDistance!) {
-          return false;
-        }
-      }
-
-      if (state.filterState.openNow) {
-        final openNow = place['openNow'] as bool? ?? true;
-        if (!openNow) return false;
-      }
-
-      if (state.filterState.minRating != null) {
-        final rating = (place['rating'] as num? ?? 0.0).toDouble();
-        if (rating < state.filterState.minRating!) return false;
-      }
-
-      if (state.filterState.priceRange != null) {
-        final price = place['price'] as String? ?? r'$$';
-        if (price != state.filterState.priceRange) return false;
-      }
-
-      if (state.filterState.newToMe && (place['isVisited'] as bool? ?? false)) return false;
-      if (state.filterState.onList && !(place['isSaved'] as bool? ?? false)) return false;
-
-      return true;
-    }).toList();
-
-    // Progressive zoom density filtering
-    return unfiltered.where((place) {
-      final isSelected = state.selectedPlace != null && state.selectedPlace!['id'] == place['id'];
-      if (isSelected) return true;
-
-      final isManual = place['id'].toString().startsWith('tapped_');
-      if (isManual) return true;
-
-      if (_currentZoom < 11.0) {
-        // Zoomed out very far: show absolutely nothing except selected/dropped pins
-        return false;
-      }
-
-      final isCheckIn = place['isCheckIn'] as bool? ?? false;
-      if (isCheckIn) return true;
-
-      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-      final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
-
-      if (_currentZoom >= 11.0 && _currentZoom < 13.0) {
-        return rating >= 4.7 && reviews >= 30;
-      } else if (_currentZoom >= 13.0 && _currentZoom < 14.5) {
-        return rating >= 4.2 && reviews >= 10;
-      } else {
-        // Zoom >= 14.5: show everything
-        return true;
-      }
-    }).toList();
-  }
-
-  double? _parseDistance(String? distanceStr) {
-    if (distanceStr == null) return null;
-    final str = distanceStr.toLowerCase().trim();
-    if (str.contains('m') && !str.contains('k')) {
-      final numVal = double.tryParse(str.replaceAll('m', '').trim());
-      if (numVal != null) return numVal / 1000.0;
-    } else if (str.contains('km')) {
-      return double.tryParse(str.replaceAll('km', '').trim());
-    }
-    return null;
-  }
-
-  bool _isProminentPlace(Map<String, dynamic> place) {
-    if (place['isCheckIn'] == true) return true;
-    final String id = place['id']?.toString() ?? '';
-    if (id.startsWith('tapped_') || id.startsWith('swarm_')) return true;
-    if (place['isCustomVenue'] == true || place['isRegistered'] == true) return true;
-
-    final String type = place['type'] as String? ?? '';
-    final String typeLower = type.toLowerCase();
-    if (typeLower.contains('airport') ||
-        typeLower.contains('hotel') ||
-        typeLower.contains('park') ||
-        typeLower.contains('ticket')) {
-      return true;
-    }
-
-    final String name = (place['name'] as String? ?? '').toLowerCase();
-    final String address = (place['address'] as String? ?? '').toLowerCase();
-    if (name.contains('tower') || name.contains('mall') || name.contains('center') || name.contains('plaza') ||
-        name.contains('برج') || name.contains('مول') || name.contains('مركز') || name.contains('بلازا') || name.contains('ساحة')) {
-      return true;
-    }
-    if (address.contains('highway') || address.contains('road') || address.contains('main') ||
-        address.contains('طريق') || address.contains('رئيسي') || address.contains('سريع')) {
-      return true;
-    }
-
-    if (address.contains('alley') || address.contains('lane') || address.contains('side') ||
-        address.contains('زقاق') || address.contains('حارة') || address.contains('فرعي')) {
-      return false;
-    }
-
-    final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-    final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
-    if (rating >= 4.4 && reviewsCount >= 10) {
-      return true;
-    }
-
-    return false;
-  }
-
-  Set<Marker> _buildMarkers(ExploreState state, List<Map<String, dynamic>> filtered) {
-    final Set<Marker> markers = {};
-    final List<Map<String, dynamic>> placesToDraw = List.from(filtered);
-
-    if (state.selectedPlace != null) {
-      final selectedId = state.selectedPlace!['id'];
-      if (!placesToDraw.any((p) => p['id'] == selectedId)) {
-        placesToDraw.add(state.selectedPlace!);
-      }
-    }
-
-    final bool useHeatmapStyle = state.selectedMapTab == 2;
-    final normalCustomCache = useHeatmapStyle ? _markerGenerator.customPlaceMarkersNormalHeatmap : _markerGenerator.customPlaceMarkersNormal;
-    final selectedCustomCache = useHeatmapStyle ? _markerGenerator.customPlaceMarkersSelectedHeatmap : _markerGenerator.customPlaceMarkersSelected;
-
-    for (final place in placesToDraw) {
-      final isSelected = state.selectedPlace != null && state.selectedPlace!['id'] == place['id'];
-      final type = place['type'] as String? ?? 'Other';
-      final iconUrl = place['iconUrl'] as String?;
-      final isCheckIn = place['isCheckIn'] as bool? ?? false;
-      final authorAvatar = place['authorAvatar'] as String?;
-      
-      BitmapDescriptor icon;
-      final bool isManualTapped = place['id'].toString().startsWith('tapped_');
-      double anchorX = 0.5;
-      double anchorY = 1.0;
-
-      final bool isProminent = _isProminentPlace(place);
-      final bool showAsPin = useHeatmapStyle ? true : (isSelected || isProminent || _currentZoom >= 15.0);
-
-      if (isManualTapped) {
-        icon = BitmapDescriptor.defaultMarkerWithHue(
-          isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed,
-        );
-      } else if (isCheckIn && authorAvatar != null && _markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
-        icon = _markerGenerator.avatarMarkerCache[authorAvatar]!;
-      } else if (showAsPin) {
-        final bool showCustomLabel = (isSelected || _currentZoom >= 15.0 || useHeatmapStyle) && normalCustomCache.containsKey(place['id'].toString());
-        
-        if (showCustomLabel) {
-          if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
-            icon = selectedCustomCache[place['id'].toString()]!;
-          } else {
-            icon = normalCustomCache[place['id'].toString()]!;
-          }
-          
-          if (useHeatmapStyle) {
-            final double finalScale = isSelected ? 1.1 : 0.9;
-            final double radius = 16.0 * finalScale;
-            final double glowRadius = radius + 4.0;
-            final double cy = glowRadius + 4.0;
-            final double textTop = cy + glowRadius + 6.0;
-            final double canvasHeight = textTop + 15.0 + 4.0 + 13.0 + 8.0;
-            
-            anchorX = 0.5;
-            anchorY = cy / canvasHeight;
-          } else {
-            final double finalScale = isSelected ? 1.1 : 0.9;
-            final double pinWidth = 27.75 * finalScale;
-            final double textWidth = 120.0;
-            final double spacing = 8.0;
-            final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
-            
-            final double pinDx = textWidth + spacing + 4.0;
-            final double pinDy = 4.0;
-            final double pinHeight = 30.833 * finalScale;
-            final double canvasHeight = pinHeight + 16.0;
-
-            anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
-            anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
-          }
-        } else {
-          if (state.selectedMapTab == 2) {
-            if (_markerGenerator.heatmapCircleIcons.containsKey(type)) {
-              icon = _markerGenerator.heatmapCircleIcons[type]!;
-            } else {
-              icon = _markerGenerator.heatmapCircleIcons['default'] ??
-                  _markerGenerator.heatmapMarkerIcons[type] ??
-                  _markerGenerator.heatmapMarkerIcons['default'] ??
-                  BitmapDescriptor.defaultMarker;
-            }
-            anchorX = 0.5;
-            anchorY = 0.5;
-          } else if (isSelected) {
-            icon = _markerGenerator.selectedMarkerIcons[type] ?? _markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
-          } else {
-            icon = _markerGenerator.normalMarkerIcons[type] ?? _markerGenerator.normalMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
-          }
-        }
-      } else if (iconUrl != null &&
-          (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
-        icon = (isSelected ? _markerGenerator.networkIconsSelectedCache : _markerGenerator.networkIconsNormalCache)[iconUrl]!;
-      } else if (_markerGenerator.iconsLoaded) {
-        if (state.selectedMapTab == 2) {
-          icon = _markerGenerator.heatmapDotIcons[type] ?? _markerGenerator.heatmapDotIcons['default'] ?? BitmapDescriptor.defaultMarker;
-        } else {
-          icon = _markerGenerator.dotMarkerIcons[type] ?? _markerGenerator.dotMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
-        }
-        anchorX = 0.5;
-        anchorY = 0.5;
-      } else {
-        icon = BitmapDescriptor.defaultMarkerWithHue(
-          isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed,
-        );
-      }
-
-      markers.add(
-        Marker(
-          markerId: MarkerId(place['id']?.toString() ?? UniqueKey().toString()),
-          position: LatLng((place['latitude'] as num? ?? 0.0).toDouble(), (place['longitude'] as num? ?? 0.0).toDouble()),
-          icon: icon,
-          anchor: Offset(anchorX, anchorY),
-          onTap: () {
-            ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
-            _mapController?.animateCamera(
-              CameraUpdate.newLatLng(
-                LatLng((place['latitude'] as num? ?? 0.0).toDouble(), (place['longitude'] as num? ?? 0.0).toDouble()),
-              ),
-            );
-          },
-        ),
-      );
-    }
-    return markers;
-  }
-
-  Set<Heatmap> _buildHeatmaps(ExploreState state, List<Map<String, dynamic>> filtered) {
-    if (state.selectedMapTab != 2) return {};
-
-    final List<WeightedLatLng> points = [];
-
-    for (final place in filtered) {
-      final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
-      final double lng = (place['longitude'] as num? ?? 0.0).toDouble();
-      final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
-      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-      final int checkIns = (place['peopleCount'] as num? ?? 0).toInt();
-
-      // Calculate weight based on reviews, ratings, and app check-ins
-      final double reviewScore = (reviews / 50.0).clamp(0.0, 0.5);
-      final double ratingScore = rating > 4.0 ? ((rating - 4.0) * 0.2).clamp(0.0, 0.2) : 0.0;
-      final double checkInScore = (checkIns * 0.3).clamp(0.0, 0.6);
-      
-      // Keep a higher baseline floor weight (0.4) to guarantee visibility on map
-      final double heatWeight = (reviewScore + ratingScore + checkInScore).clamp(0.4, 1.0);
-
-      points.add(WeightedLatLng(LatLng(lat, lng), weight: heatWeight));
-    }
-
-    if (points.isEmpty) return {};
-
-    return {
-      Heatmap(
-        heatmapId: const HeatmapId('explore_heatmap'),
-        data: points,
-        radius: HeatmapRadius.fromPixels(40),
-        dissipating: false, // Ensure heatmap scales geographically with zoom and remains visible
-        opacity: 0.85,
-        gradient: const HeatmapGradient(
-          [
-            HeatmapGradientColor(Color(0xFFE5DDFF), 0.2), // Light brand purple
-            HeatmapGradientColor(Color(0xFFB599FF), 0.5), // Medium brand purple
-            HeatmapGradientColor(Color(0xFF7C57FC), 0.8), // Full brand purple
-            HeatmapGradientColor(Color(0xFF512DA8), 1.0), // Deep purple core
-          ],
-        ),
-      ),
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exploreViewModelProvider);
@@ -633,7 +323,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       },
     );
 
-    final filteredPlaces = _getFilteredPlaces(state);
+    final filteredPlaces = ExploreScreenHelpers.getFilteredPlaces(state, _currentZoom);
+    final heatmapPlaces = ExploreScreenHelpers.getFilteredPlaces(state, _currentZoom, forHeatmap: true);
 
     final double topPadding = MediaQuery.of(context).padding.top;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -689,14 +380,32 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
             ),
           ] else ...[
             Positioned.fill(
-              child: GoogleMap(
-                style: _mapStyleJson,
-                 initialCameraPosition: CameraPosition(
+              child: ExploreMapWidget(
+                mapStyleJson: _mapStyleJson,
+                initialCameraPosition: CameraPosition(
                   target: (widget.initialLatitude != null && widget.initialLongitude != null)
                       ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
                       : (state.userLocation ?? const LatLng(24.7136, 46.6753)),
                   zoom: (widget.initialLatitude != null && widget.initialLongitude != null) ? 15.0 : 13.0,
                 ),
+                markers: ExploreMarkerBuilder.buildMarkers(
+                  state: state,
+                  filtered: filteredPlaces,
+                  currentZoom: _currentZoom,
+                  markerGenerator: _markerGenerator,
+                  onMarkerTap: (place, position) {
+                    ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
+                    _mapController?.animateCamera(
+                      CameraUpdate.newLatLng(position),
+                    );
+                  },
+                ),
+                heatmaps: ExploreMarkerBuilder.buildHeatmaps(
+                  state: state,
+                  filtered: heatmapPlaces,
+                  currentZoom: _currentZoom,
+                ),
+                myLocationEnabled: state.userLocation != null,
                 onMapCreated: (controller) {
                   _mapController = controller;
                   if (widget.initialLatitude != null && widget.initialLongitude != null) {
@@ -710,63 +419,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 onCameraMove: (position) {
                   final double oldZoom = _currentZoom;
                   _currentZoom = position.zoom;
-
-                  // Check if we crossed any key zoom threshold during movement
-                  final bool crossed15 = (oldZoom < 15.0 && _currentZoom >= 15.0) ||
-                                         (oldZoom >= 15.0 && _currentZoom < 15.0);
-                  final bool crossed14_5 = (oldZoom < 14.5 && _currentZoom >= 14.5) ||
-                                           (oldZoom >= 14.5 && _currentZoom < 14.5);
-                  final bool crossed13 = (oldZoom < 13.0 && _currentZoom >= 13.0) ||
-                                         (oldZoom >= 13.0 && _currentZoom < 13.0);
-                  final bool crossed11 = (oldZoom < 11.0 && _currentZoom >= 11.0) ||
-                                         (oldZoom >= 11.0 && _currentZoom < 11.0);
-
-                  if (crossed15 || crossed14_5 || crossed13 || crossed11) {
-                    _markerGenerator.initMarkerIcons(
-                      zoom: _currentZoom,
-                      onUpdate: () {
-                        if (mounted) setState(() {});
-                      },
-                    );
-                    if (mounted) {
-                      setState(() {});
-                    }
+                  if (state.selectedMapTab == 2 || (oldZoom < 11.0 && _currentZoom >= 11.0) || (oldZoom >= 11.0 && _currentZoom < 11.0)) {
+                    if (mounted) setState(() {});
                   }
-                },
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                myLocationEnabled: state.userLocation != null,
-                myLocationButtonEnabled: false,
-                markers: _buildMarkers(state, filteredPlaces),
-                heatmaps: _buildHeatmaps(state, filteredPlaces),
-                onTap: (latLng) {
-                  ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
-                },
-                onLongPress: (latLng) {
-                  _onMapTapped(latLng, state);
                 },
                 onCameraIdle: () {
-                  final double oldZoom = _lastIdleZoom;
-                  _lastIdleZoom = _currentZoom;
-
-                  if (mounted) {
-                    setState(() {});
-                  }
-
-                  final bool crossedThreshold = (oldZoom < 15.0 && _currentZoom >= 15.0) ||
-                                                (oldZoom >= 15.0 && _currentZoom < 15.0);
-
                   final int roundedZoom = _currentZoom.round();
-                  if (roundedZoom != _lastRoundedZoom || crossedThreshold) {
+                  if (roundedZoom != _lastRoundedZoom) {
                     _lastRoundedZoom = roundedZoom;
                     _markerGenerator.initMarkerIcons(
                       zoom: _currentZoom,
-                      onUpdate: () {
-                        if (mounted) setState(() {});
-                      },
+                      onUpdate: () { if (mounted) setState(() {}); },
                     );
                   }
-
                   if (_mapController != null) {
                     _mapController!.getVisibleRegion().then((bounds) {
                       final center = LatLng(
@@ -788,6 +453,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       }
                     });
                   }
+                },
+                onTap: (latLng) {
+                  ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
+                },
+                onLongPress: (latLng) {
+                  _onMapTapped(latLng, state);
                 },
               ),
             ),
@@ -828,40 +499,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 ),
               ),
 
-            if (_showStatusBadge)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: overlaysBottom + (state.selectedPlace != null ? 140 : 0),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(100),
-                      border: Border.all(
-                        color: const Color(0xFFE8E8E8),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      _statusMessage,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF4B5563),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+            ExploreStatusBadge(
+              show: _showStatusBadge,
+              message: _statusMessage,
+              bottom: overlaysBottom + (state.selectedPlace != null ? 140 : 0),
+            ),
 
             if (state.selectedMapTab != 2)
               Positioned(
@@ -883,6 +525,101 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   iconDataGetter: (type) => _markerGenerator.getIconDataForType(type),
                   topPadding: topPadding,
                   onTap: () => _openSearchScreen(state),
+                ),
+              ),
+
+            if (state.selectedMapTab == 2)
+              Positioned(
+                top: topPadding + 10,
+                left: 16,
+                right: 16,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Avatar Button
+                    GestureDetector(
+                      onTap: widget.onAvatarTapped,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(22),
+                          child: widget.userAvatarUrl != null && widget.userAvatarUrl!.isNotEmpty
+                              ? Image.network(
+                                  widget.userAvatarUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) => Container(
+                                    color: const Color(0xFFEDE6FC),
+                                    child: const Icon(
+                                      Icons.person_outline,
+                                      color: Color(0xFF7C57FC),
+                                      size: 22,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  color: const Color(0xFFEDE6FC),
+                                  child: const Icon(
+                                    Icons.person_outline,
+                                    color: Color(0xFF7C57FC),
+                                    size: 22,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                    // Add Friend Button
+                    GestureDetector(
+                      onTap: () {
+                        final timelineState = ref.read(timelineViewModelProvider);
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) {
+                            return FollowFriendsBottomSheet(
+                              followedUsernames: timelineState.followedUsernames,
+                              onFollowChanged: (username, isFollowed) {
+                                ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
+                              },
+                            );
+                          },
+                        );
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.person_add_outlined,
+                          color: Color(0xFF1F242E),
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -916,85 +653,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               ),
 
             if (!showCategoryResultsMode)
-              Positioned(
-                left: 16,
-                right: 16,
+              ExploreFloatingControls(
                 bottom: controlsBottom,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => _animateToUserLocation(state.userLocation),
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: SvgPicture.asset(
-                          'assets/explore/sent.svg',
-                          width: 24,
-                          height: 24,
-                          colorFilter: const ColorFilter.mode(
-                            Color(0xFF7C57FC),
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    ExploreMapTabs(
-                      selectedMapTab: state.selectedMapTab,
-                      onTabChanged: (index) {
-                        ref.read(exploreViewModelProvider.notifier).updateMapTab(index);
-                        String msg = "";
-                        if (index == 0) msg = "Discover";
-                        if (index == 1) msg = "Plans";
-                        if (index == 2) msg = "Live Now";
-                        if (index == 3) msg = "My Places";
-                        _triggerStatusBadge(msg);
-                      },
-                    ),
-
-                    GestureDetector(
-                      onTap: () => _openCheckInComposer(),
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7C57FC),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C57FC).withValues(alpha: 0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: SvgPicture.asset(
-                          'assets/explore/plus_sign.svg',
-                          width: 24,
-                          height: 24,
-                          colorFilter: const ColorFilter.mode(
-                            Colors.white,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                selectedMapTab: state.selectedMapTab,
+                onLocationTap: () => _animateToUserLocation(state.userLocation),
+                onTabChanged: (index) {
+                  ref.read(exploreViewModelProvider.notifier).updateMapTab(index);
+                  String msg = "";
+                  if (index == 0) msg = "Discover";
+                  if (index == 1) msg = "Plans";
+                  if (index == 2) msg = "Live Now";
+                  if (index == 3) msg = "My Places";
+                  _triggerStatusBadge(msg);
+                },
               ),
           ],
 
@@ -1015,76 +686,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _onMapTapped(LatLng latLng, ExploreState state) async {
-    FocusScope.of(context).unfocus();
-    ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
-
-    final double userLat = state.userLocation?.latitude ?? latLng.latitude;
-    final double userLng = state.userLocation?.longitude ?? latLng.longitude;
-
-    try {
-      final place = await ExploreDataService.fetchPlaceDetails(
-        '',
-        '',
-        latLng.latitude,
-        latLng.longitude,
-        userLat,
-        userLng,
-      );
-      if (place != null && place['id'].toString().isNotEmpty && !place['id'].toString().startsWith('tapped_') && mounted) {
-        ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(place);
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(latLng),
-        );
-        _markerGenerator.preloadNetworkIconsForPlaces([place], () {
-          if (mounted) setState(() {});
-        });
-        _markerGenerator.preloadPlaceMarkers([place], () {
-          if (mounted) setState(() {});
-        });
-        return;
-      }
-    } catch (e) {
-      debugPrint("Error detecting POI on Foursquare search: $e");
-    }
-
-    final double meters = Geolocator.distanceBetween(userLat, userLng, latLng.latitude, latLng.longitude);
-    final double km = meters / 1000;
-    final String distanceStr = km < 1 
-        ? '${meters.toStringAsFixed(0)} m' 
-        : '${km.toStringAsFixed(1)} km';
-
-    final String fallbackId = 'tapped_${latLng.latitude}_${latLng.longitude}';
-    final fallbackPlace = {
-      'id': fallbackId,
-      'name': 'Dropped Pin',
-      'arabicName': 'دبوس مثبت',
-      'address': '${latLng.latitude.toStringAsFixed(6)}, ${latLng.longitude.toStringAsFixed(6)}',
-      'latitude': latLng.latitude,
-      'longitude': latLng.longitude,
-      'distance': distanceStr,
-      'rating': 4.5,
-      'reviewsCount': 0,
-      'price': r'$$',
-      'peopleCount': 0,
-      'type': 'Other',
-      'imageUrl': ExploreDataService.getPlaceholderUrl('Other', fallbackId),
-      'isSaved': false,
-      'isVisited': false,
-      'actionType': 'check-in',
-      'isRegistered': false,
-    };
-
-    debugPrint("No POI found. Dropping manual fallback pin.");
-
-    if (mounted) {
-      ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(fallbackPlace);
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLng(latLng),
-      );
-    }
   }
 
   void _handlePlaceAction(Map<String, dynamic> place) {
