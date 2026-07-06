@@ -12,11 +12,15 @@ class StoryOverlayItem {
   final String type; // 'music', 'mention', 'sticker', 'text'
   final dynamic data;
   Offset position;
+  double scale;
+  double rotation;
 
   StoryOverlayItem({
     required this.type,
     required this.data,
     required this.position,
+    this.scale = 1.0,
+    this.rotation = 0.0,
   });
 }
 
@@ -48,6 +52,10 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
   bool _isEditingMention = false;
 
   final List<String> _stickerEmojis = ['❤️', '😍', '🫣', '🔥', '👍', '🍻', '👏', '😂', '🎉', '🌟', '🍿', '💯'];
+
+  UniqueKey? _selectedOverlayId;
+  double _startScale = 1.0;
+  double _startRotation = 0.0;
 
   bool _isVideoFile(String path) {
     final lower = path.toLowerCase();
@@ -126,28 +134,28 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
   }
 
   void _addEmojiOverlay(String emoji) {
+    final newItem = StoryOverlayItem(
+      type: 'sticker',
+      data: emoji,
+      position: const Offset(150, 250),
+    );
     setState(() {
-      _overlays.add(
-        StoryOverlayItem(
-          type: 'sticker',
-          data: emoji,
-          position: const Offset(150, 250),
-        ),
-      );
+      _overlays.add(newItem);
+      _selectedOverlayId = newItem.id;
     });
   }
 
   void _onTextSubmit() {
     final text = _textOverlayController.text.trim();
     if (text.isNotEmpty) {
+      final newItem = StoryOverlayItem(
+        type: 'text',
+        data: text,
+        position: const Offset(120, 300),
+      );
       setState(() {
-        _overlays.add(
-          StoryOverlayItem(
-            type: 'text',
-            data: text,
-            position: const Offset(120, 300),
-          ),
-        );
+        _overlays.add(newItem);
+        _selectedOverlayId = newItem.id;
       });
       _textOverlayController.clear();
     }
@@ -159,14 +167,14 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
   void _onMentionSubmit() {
     final mention = _mentionController.text.trim().replaceAll('@', '');
     if (mention.isNotEmpty) {
+      final newItem = StoryOverlayItem(
+        type: 'mention',
+        data: '@$mention',
+        position: const Offset(120, 150),
+      );
       setState(() {
-        _overlays.add(
-          StoryOverlayItem(
-            type: 'mention',
-            data: '@$mention',
-            position: const Offset(120, 150),
-          ),
-        );
+        _overlays.add(newItem);
+        _selectedOverlayId = newItem.id;
       });
       _mentionController.clear();
     }
@@ -436,23 +444,31 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                 children: [
                   // 1. Full screen preview inside the ClipRRect card (Image or Video Player)
                   Positioned.fill(
-                    child: _isVideoFile(widget.imagePath)
-                        ? (_videoPlayerController != null && _videoPlayerController!.value.isInitialized
-                            ? FittedBox(
-                                fit: BoxFit.cover,
-                                child: SizedBox(
-                                  width: _videoPlayerController!.value.size.width,
-                                  height: _videoPlayerController!.value.size.height,
-                                  child: VideoPlayer(_videoPlayerController!),
-                                ),
-                              )
-                            : const Center(
-                                child: CircularProgressIndicator(color: Colors.white),
-                              ))
-                        : Image.file(
-                            File(widget.imagePath),
-                            fit: BoxFit.cover,
-                          ),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedOverlayId = null;
+                        });
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: _isVideoFile(widget.imagePath)
+                          ? (_videoPlayerController != null && _videoPlayerController!.value.isInitialized
+                              ? FittedBox(
+                                  fit: BoxFit.cover,
+                                  child: SizedBox(
+                                    width: _videoPlayerController!.value.size.width,
+                                    height: _videoPlayerController!.value.size.height,
+                                    child: VideoPlayer(_videoPlayerController!),
+                                  ),
+                                )
+                              : const Center(
+                                  child: CircularProgressIndicator(color: Colors.white),
+                                ))
+                          : Image.file(
+                              File(widget.imagePath),
+                              fit: BoxFit.cover,
+                            ),
+                    ),
                   ),
 
                   // Video Progress Indicator (Story-style)
@@ -494,43 +510,73 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                   Positioned.fill(
                     child: Stack(
                       children: _overlays.map((item) {
+                        final isSelected = _selectedOverlayId == item.id;
                         return Positioned(
                           left: item.position.dx,
                           top: item.position.dy,
                           child: GestureDetector(
-                            onPanUpdate: (details) {
+                            onTap: () {
                               setState(() {
-                                item.position = Offset(
-                                  item.position.dx + details.delta.dx,
-                                  item.position.dy + details.delta.dy,
-                                );
+                                _selectedOverlayId = item.id;
                               });
                             },
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                _buildOverlayWidget(item),
-                                // Remove button on top-right of overlay
-                                Positioned(
-                                  top: -12,
-                                  right: -12,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _overlays.removeWhere((o) => o.id == item.id);
-                                      });
-                                    },
-                                    child: Container(
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
+                            onScaleStart: (details) {
+                              setState(() {
+                                _selectedOverlayId = item.id;
+                                _startScale = item.scale;
+                                _startRotation = item.rotation;
+                              });
+                            },
+                            onScaleUpdate: (details) {
+                              setState(() {
+                                // 1. Translation
+                                item.position = item.position + details.focalPointDelta;
+                                
+                                // 2. Scale
+                                if (details.scale != 1.0) {
+                                  item.scale = (_startScale * details.scale).clamp(0.5, 8.0);
+                                }
+                                
+                                // 3. Rotation
+                                if (details.rotation != 0.0) {
+                                  item.rotation = _startRotation + details.rotation;
+                                }
+                              });
+                            },
+                            child: Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.diagonal3Values(item.scale, item.scale, 1.0)
+                                ..rotateZ(item.rotation),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  _buildOverlayWidget(item),
+                                  // Remove button on top-right of overlay
+                                  if (isSelected)
+                                    Positioned(
+                                      top: -12,
+                                      right: -12,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _overlays.removeWhere((o) => o.id == item.id);
+                                            if (_selectedOverlayId == item.id) {
+                                              _selectedOverlayId = null;
+                                            }
+                                          });
+                                        },
+                                        child: Container(
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          padding: const EdgeInsets.all(4),
+                                          child: const Icon(Icons.close, size: 12, color: Colors.black),
+                                        ),
                                       ),
-                                      padding: const EdgeInsets.all(4),
-                                      child: const Icon(Icons.close, size: 12, color: Colors.black),
                                     ),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         );
