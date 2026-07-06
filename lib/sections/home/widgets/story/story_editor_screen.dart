@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -42,6 +43,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
   List<Map<String, dynamic>> _mentionSuggestions = [];
   
   VideoPlayerController? _videoPlayerController;
+  bool _isAudioMuted = false;
   
   // Active text tool controller
   final TextEditingController _textOverlayController = TextEditingController();
@@ -155,8 +157,25 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     }
 
     // Clamp the position to keep the item inside the screen bounds
-    final clampedX = item.position.dx.clamp(0.0, _canvasWidth);
-    final clampedY = item.position.dy.clamp(0.0, _canvasHeight);
+    final halfWidth = (item.size.width * item.scale) / 2;
+    final halfHeight = (item.size.height * item.scale) / 2;
+
+    double minX = halfWidth;
+    double maxX = _canvasWidth - halfWidth;
+    double minY = halfHeight;
+    double maxY = _canvasHeight - halfHeight;
+
+    if (minX > maxX) {
+      minX = _canvasWidth / 2;
+      maxX = _canvasWidth / 2;
+    }
+    if (minY > maxY) {
+      minY = _canvasHeight / 2;
+      maxY = _canvasHeight / 2;
+    }
+
+    final clampedX = item.position.dx.clamp(minX, maxX);
+    final clampedY = item.position.dy.clamp(minY, maxY);
     item.position = Offset(clampedX, clampedY);
   }
 
@@ -179,6 +198,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     try {
       await _videoPlayerController!.initialize();
       await _videoPlayerController!.setLooping(true);
+      await _videoPlayerController!.setVolume(_isAudioMuted ? 0.0 : 1.0);
       await _videoPlayerController!.play();
       _videoPlayerController!.addListener(_videoListener);
       if (mounted) {
@@ -189,9 +209,35 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     }
   }
 
+  void _toggleMute() {
+    setState(() {
+      _isAudioMuted = !_isAudioMuted;
+    });
+    _videoPlayerController?.setVolume(_isAudioMuted ? 0.0 : 1.0);
+  }
+
+  Widget _buildVolumeButton() {
+    return GestureDetector(
+      onTap: _toggleMute,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: const BoxDecoration(
+          color: Colors.black38,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          _isAudioMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
   void _videoListener() {
     if (mounted) {
-      setState(() {});
+      setState(() {
+      });
     }
   }
 
@@ -416,8 +462,28 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       final currentUser = client.auth.currentUser;
       if (currentUser == null) return;
 
-      final file = File(widget.imagePath);
-      final isVideo = _isVideoFile(widget.imagePath);
+      var finalPath = widget.imagePath;
+      if (_isVideoFile(widget.imagePath) && _isAudioMuted) {
+        final tempDir = Directory.systemTemp;
+        final outputFileName = 'muted_${DateTime.now().millisecondsSinceEpoch}.mp4';
+        final outputPath = '${tempDir.path}/$outputFileName';
+        
+        try {
+          const channel = MethodChannel('com.app.more/video_utils');
+          final result = await channel.invokeMethod<String>('stripAudio', {
+            'inputPath': widget.imagePath,
+            'outputPath': outputPath,
+          });
+          if (result != null) {
+            finalPath = result;
+          }
+        } catch (e) {
+          debugPrint("Failed to strip audio: $e");
+        }
+      }
+
+      final file = File(finalPath);
+      final isVideo = _isVideoFile(finalPath);
       final extension = isVideo ? 'mp4' : 'jpg';
       final fileName = 'stories/${currentUser.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
@@ -621,108 +687,88 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                             ..._overlays.map((item) {
                               final isSelected = _selectedOverlayId == item.id;
                               final isNearTrashThis = isSelected && _isNearTrash;
+                              final displayScale = isNearTrashThis ? item.scale * 0.8 : item.scale;
+
+                              const double stickerPadding = 48.0;
+                              final paddedWidth = (item.size.width + 2 * stickerPadding) * displayScale;
+                              final paddedHeight = (item.size.height + 2 * stickerPadding) * displayScale;
 
                               return Positioned(
-                                left: item.position.dx - (item.size.width / 2),
-                                top: item.position.dy - (item.size.height / 2),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedOverlayId = item.id;
-                                    });
-                                  },
-                                  onLongPressStart: (details) {
-                                    setState(() {
-                                      _selectedOverlayId = item.id;
-                                      _startOverlayPosition = item.position;
-                                      _isDragging = true;
-                                    });
-                                  },
-                                  onLongPressMoveUpdate: (details) {
-                                    setState(() {
-                                      item.position = _startOverlayPosition + details.offsetFromOrigin;
-                                      _checkGuidelinesAndSnap(item);
-                                    });
-                                  },
-                                  onLongPressEnd: (details) {
-                                    setState(() {
-                                      _isDragging = false;
-                                      if (_isNearTrash && _selectedOverlayId != null) {
-                                        _overlays.removeWhere((o) => o.id == _selectedOverlayId);
-                                        _selectedOverlayId = null;
-                                      }
-                                      _isNearTrash = false;
-                                      _showVerticalCenterGuide = false;
-                                      _showHorizontalCenterGuide = false;
-                                      _showLeftGuide = false;
-                                      _showRightGuide = false;
-                                      _showTopGuide = false;
-                                      _showBottomGuide = false;
-                                    });
-                                  },
-                                  onScaleStart: (details) {
-                                    setState(() {
-                                      _selectedOverlayId = item.id;
-                                      _startScale = item.scale;
-                                      _startRotation = item.rotation;
-                                      _startFocalPoint = details.focalPoint;
-                                      _startOverlayPosition = item.position;
-                                      _isDragging = true;
-                                    });
-                                  },
-                                  onScaleUpdate: (details) {
-                                    setState(() {
-                                      // 1. Translation using absolute displacement
-                                      item.position = _startOverlayPosition + (details.focalPoint - _startFocalPoint);
-                                      
-                                      // 2. Scale
-                                      if (details.scale != 1.0) {
-                                        item.scale = (_startScale * details.scale).clamp(0.5, 8.0);
-                                      }
-                                      
-                                      // 3. Rotation
-                                      if (details.rotation != 0.0) {
-                                        item.rotation = _startRotation + details.rotation;
-                                      }
+                                left: item.position.dx - (paddedWidth / 2),
+                                top: item.position.dy - (paddedHeight / 2),
+                                width: paddedWidth,
+                                height: paddedHeight,
+                                child: Transform.rotate(
+                                  angle: item.rotation,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedOverlayId = item.id;
+                                      });
+                                    },
+                                    onScaleStart: (details) {
+                                      setState(() {
+                                        _selectedOverlayId = item.id;
+                                        _startScale = item.scale;
+                                        _startRotation = item.rotation;
+                                        _startFocalPoint = details.focalPoint;
+                                        _startOverlayPosition = item.position;
+                                        _isDragging = true;
+                                      });
+                                    },
+                                    onScaleUpdate: (details) {
+                                      setState(() {
+                                        // 1. Translation using absolute displacement
+                                        item.position = _startOverlayPosition + (details.focalPoint - _startFocalPoint);
+                                        
+                                        // 2. Scale
+                                        if (details.scale != 1.0) {
+                                          item.scale = (_startScale * details.scale).clamp(0.5, 8.0);
+                                        }
+                                        
+                                        // 3. Rotation
+                                        if (details.rotation != 0.0) {
+                                          item.rotation = _startRotation + details.rotation;
+                                        }
 
-                                      // 4. Snapping & Guidelines
-                                      _checkGuidelinesAndSnap(item);
-                                    });
-                                  },
-                                  onScaleEnd: (details) {
-                                    setState(() {
-                                      _isDragging = false;
-                                      if (_isNearTrash && _selectedOverlayId != null) {
-                                        _overlays.removeWhere((o) => o.id == _selectedOverlayId);
-                                        _selectedOverlayId = null;
-                                      }
-                                      _isNearTrash = false;
-                                      _showVerticalCenterGuide = false;
-                                      _showHorizontalCenterGuide = false;
-                                      _showLeftGuide = false;
-                                      _showRightGuide = false;
-                                      _showTopGuide = false;
-                                      _showBottomGuide = false;
-                                    });
-                                  },
-                                  child: Opacity(
-                                    opacity: isNearTrashThis ? 0.4 : 1.0,
-                                    child: Transform(
-                                      alignment: Alignment.center,
-                                      transform: Matrix4.diagonal3Values(
-                                        isNearTrashThis ? item.scale * 0.8 : item.scale,
-                                        isNearTrashThis ? item.scale * 0.8 : item.scale,
-                                        1.0,
-                                      )..rotateZ(item.rotation),
-                                      child: _MeasuredWidget(
-                                        onSizeChanged: (newSize) {
-                                          if (item.size != newSize) {
-                                            setState(() {
-                                              item.size = newSize;
-                                            });
-                                          }
-                                        },
-                                        child: _buildOverlayWidget(item),
+                                        // 4. Snapping & Guidelines
+                                        _checkGuidelinesAndSnap(item);
+                                      });
+                                    },
+                                    onScaleEnd: (details) {
+                                      setState(() {
+                                        _isDragging = false;
+                                        if (_isNearTrash && _selectedOverlayId != null) {
+                                          _overlays.removeWhere((o) => o.id == _selectedOverlayId);
+                                          _selectedOverlayId = null;
+                                        }
+                                        _isNearTrash = false;
+                                        _showVerticalCenterGuide = false;
+                                        _showHorizontalCenterGuide = false;
+                                        _showLeftGuide = false;
+                                        _showRightGuide = false;
+                                        _showTopGuide = false;
+                                        _showBottomGuide = false;
+                                      });
+                                    },
+                                    child: Opacity(
+                                      opacity: isNearTrashThis ? 0.4 : 1.0,
+                                      child: FittedBox(
+                                        fit: BoxFit.fill,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(stickerPadding),
+                                          color: Colors.transparent,
+                                          child: _MeasuredWidget(
+                                            onSizeChanged: (newSize) {
+                                              if (item.size != newSize) {
+                                                setState(() {
+                                                  item.size = newSize;
+                                                });
+                                              }
+                                            },
+                                            child: _buildOverlayWidget(item),
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -909,6 +955,10 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                           child: _buildIconButton('assets/home/icons/at.svg'),
                         ),
                         const SizedBox(height: 12),
+                        if (_isVideoFile(widget.imagePath)) ...[
+                          _buildVolumeButton(),
+                          const SizedBox(height: 12),
+                        ],
                         // More options button (three dots)
                         GestureDetector(
                           onTap: _showMoreOptionsSheet,

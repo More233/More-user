@@ -307,7 +307,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   }
 
   List<Map<String, dynamic>> _getFilteredPlaces(ExploreState state) {
-    return state.allPlaces.where((place) {
+    final unfiltered = state.allPlaces.where((place) {
       if (state.searchQuery.isNotEmpty) {
         final query = state.searchQuery.toLowerCase();
         final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
@@ -365,12 +365,39 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         if (price != state.filterState.priceRange) return false;
       }
 
-      if (state.filterState.visited && !(place['isVisited'] as bool? ?? false)) return false;
-      if (state.filterState.saved && !(place['isSaved'] as bool? ?? false)) return false;
       if (state.filterState.newToMe && (place['isVisited'] as bool? ?? false)) return false;
       if (state.filterState.onList && !(place['isSaved'] as bool? ?? false)) return false;
 
       return true;
+    }).toList();
+
+    // Progressive zoom density filtering
+    return unfiltered.where((place) {
+      final isSelected = state.selectedPlace != null && state.selectedPlace!['id'] == place['id'];
+      if (isSelected) return true;
+
+      final isManual = place['id'].toString().startsWith('tapped_');
+      if (isManual) return true;
+
+      if (_currentZoom < 11.0) {
+        // Zoomed out very far: show absolutely nothing except selected/dropped pins
+        return false;
+      }
+
+      final isCheckIn = place['isCheckIn'] as bool? ?? false;
+      if (isCheckIn) return true;
+
+      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+      final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
+
+      if (_currentZoom >= 11.0 && _currentZoom < 13.0) {
+        return rating >= 4.7 && reviews >= 30;
+      } else if (_currentZoom >= 13.0 && _currentZoom < 14.5) {
+        return rating >= 4.2 && reviews >= 10;
+      } else {
+        // Zoom >= 14.5: show everything
+        return true;
+      }
     }).toList();
   }
 
@@ -682,7 +709,30 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   }
                 },
                 onCameraMove: (position) {
+                  final double oldZoom = _currentZoom;
                   _currentZoom = position.zoom;
+
+                  // Check if we crossed any key zoom threshold during movement
+                  final bool crossed15 = (oldZoom < 15.0 && _currentZoom >= 15.0) ||
+                                         (oldZoom >= 15.0 && _currentZoom < 15.0);
+                  final bool crossed14_5 = (oldZoom < 14.5 && _currentZoom >= 14.5) ||
+                                           (oldZoom >= 14.5 && _currentZoom < 14.5);
+                  final bool crossed13 = (oldZoom < 13.0 && _currentZoom >= 13.0) ||
+                                         (oldZoom >= 13.0 && _currentZoom < 13.0);
+                  final bool crossed11 = (oldZoom < 11.0 && _currentZoom >= 11.0) ||
+                                         (oldZoom >= 11.0 && _currentZoom < 11.0);
+
+                  if (crossed15 || crossed14_5 || crossed13 || crossed11) {
+                    _markerGenerator.initMarkerIcons(
+                      zoom: _currentZoom,
+                      onUpdate: () {
+                        if (mounted) setState(() {});
+                      },
+                    );
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  }
                 },
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
@@ -699,6 +749,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 onCameraIdle: () {
                   final double oldZoom = _lastIdleZoom;
                   _lastIdleZoom = _currentZoom;
+
+                  if (mounted) {
+                    setState(() {});
+                  }
 
                   final bool crossedThreshold = (oldZoom < 15.0 && _currentZoom >= 15.0) ||
                                                 (oldZoom >= 15.0 && _currentZoom < 15.0);

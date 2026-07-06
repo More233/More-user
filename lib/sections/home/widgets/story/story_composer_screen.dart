@@ -38,6 +38,8 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   double _currentZoomLevel = 1.0;
   double _minZoomLevel = 1.0;
   double _maxZoomLevel = 1.0;
+  bool _showZoomIndicator = false;
+  Timer? _zoomIndicatorTimer;
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _recordingTimer?.cancel();
+    _zoomIndicatorTimer?.cancel();
     _cameraController?.dispose();
     super.dispose();
   }
@@ -485,6 +488,10 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                               ? GestureDetector(
                                   onScaleStart: (details) {
                                     _baseZoomLevel = _currentZoomLevel;
+                                    setState(() {
+                                      _showZoomIndicator = true;
+                                    });
+                                    _zoomIndicatorTimer?.cancel();
                                   },
                                   onScaleUpdate: (details) async {
                                     if (_cameraController == null || !_isCameraInitialized) return;
@@ -492,8 +499,21 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                                     if (newZoom != _currentZoomLevel) {
                                       _currentZoomLevel = newZoom;
                                       await _cameraController!.setZoomLevel(newZoom);
-                                      setState(() {});
+                                      setState(() {
+                                        _showZoomIndicator = true;
+                                      });
+                                      _zoomIndicatorTimer?.cancel();
                                     }
+                                  },
+                                  onScaleEnd: (details) {
+                                    _zoomIndicatorTimer?.cancel();
+                                    _zoomIndicatorTimer = Timer(const Duration(milliseconds: 1500), () {
+                                      if (mounted) {
+                                        setState(() {
+                                          _showZoomIndicator = false;
+                                        });
+                                      }
+                                    });
                                   },
                                   child: FittedBox(
                                     fit: BoxFit.cover,
@@ -599,7 +619,40 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                         ),
                       ),
                     
-
+                    // Zoom Level Indicator Pill
+                    Positioned(
+                      bottom: 120,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: IgnorePointer(
+                          ignoring: !_showZoomIndicator,
+                          child: AnimatedOpacity(
+                            opacity: _showZoomIndicator ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(100),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  width: 1.0,
+                                ),
+                              ),
+                              child: Text(
+                                "${_currentZoomLevel.toStringAsFixed(1)}x",
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
 
                     // Bottom Controls Layer
                     Positioned(
@@ -655,6 +708,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
                             onTap: _onShutterTap,
                             onLongPressStart: (_) => _startRecordingVideo(),
                             onLongPressEnd: (_) => _stopRecordingVideo(),
+                            onLongPressCancel: () => _stopRecordingVideo(),
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
