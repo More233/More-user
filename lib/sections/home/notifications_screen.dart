@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'view_models/notifications_view_model.dart';
 import 'profile_screen.dart';
-import 'widgets/custom_loading_indicator.dart';
+import 'widgets/common/custom_loading_indicator.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   final bool showBackButton;

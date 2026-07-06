@@ -4,28 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
-
-class UserCardInfo {
-  final String name;
-  final String username;
-  final String avatarPath;
-  final String detailText;
-  final Widget? detailIcon;
-  final bool isRegistered;
-  bool isFollowing;
-  bool isInvited;
-
-  UserCardInfo({
-    required this.name,
-    required this.username,
-    required this.avatarPath,
-    required this.detailText,
-    this.detailIcon,
-    this.isRegistered = true,
-    this.isFollowing = false,
-    this.isInvited = false,
-  });
-}
+import '../models/user_card_info.dart';
 
 class AddFriendsStep extends StatefulWidget {
   final VoidCallback onDone;

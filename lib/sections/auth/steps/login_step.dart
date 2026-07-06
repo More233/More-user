@@ -10,6 +10,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import '../widgets/auth_text_field.dart';
 import '../widgets/country_picker.dart';
+import '../models/country_info.dart';
 
 class LoginStep extends StatefulWidget {
   final ValueChanged<String> onContinue;

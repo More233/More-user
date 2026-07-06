@@ -5,10 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/timeline_post.dart';
 import 'view_models/collections_view_model.dart';
-import 'widgets/timeline_post_card.dart';
-import 'widgets/check_in_composer_screen.dart';
-import 'widgets/jump_to_date_bottom_sheet.dart';
-import 'widgets/save_to_list_bottom_sheet.dart';
+import 'widgets/feed/timeline_post_card.dart';
+import 'widgets/feed/check_in_composer_screen.dart';
+import 'widgets/bottom_sheets/jump_to_date_bottom_sheet.dart';
+import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
 
 class TimelineSearchScreen extends ConsumerStatefulWidget {
   final List<TimelinePost> posts;

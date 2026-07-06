@@ -13,17 +13,17 @@ import 'view_models/social_feed_view_model.dart';
 import 'notifications_screen.dart';
 import 'view_models/notifications_view_model.dart';
 import 'view_models/messages_view_model.dart';
-import 'widgets/bottom_nav_bar.dart';
-import 'widgets/check_in_composer_screen.dart';
-import 'widgets/comments_bottom_sheet.dart';
-import 'widgets/fab_coachmark_overlay.dart';
-import 'widgets/follow_friends_bottom_sheet.dart';
-import 'widgets/messages_screen.dart';
-import 'widgets/custom_loading_indicator.dart';
-import 'widgets/save_to_list_bottom_sheet.dart';
-import 'widgets/share_bottom_sheet.dart';
-import 'widgets/social_feed_view.dart';
-import 'widgets/user_drawer.dart';
+import 'widgets/common/bottom_nav_bar.dart';
+import 'widgets/feed/check_in_composer_screen.dart';
+import 'widgets/bottom_sheets/comments_bottom_sheet.dart';
+import 'widgets/common/fab_coachmark_overlay.dart';
+import 'widgets/bottom_sheets/follow_friends_bottom_sheet.dart';
+import 'widgets/chat/messages_screen.dart';
+import 'widgets/common/custom_loading_indicator.dart';
+import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
+import 'widgets/bottom_sheets/share_bottom_sheet.dart';
+import 'widgets/feed/social_feed_view.dart';
+import 'widgets/common/user_drawer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});

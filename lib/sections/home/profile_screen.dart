@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'widgets/bottom_nav_bar.dart';
+import 'widgets/common/bottom_nav_bar.dart';
 import 'view_models/timeline_view_model.dart';
 import 'view_models/notifications_view_model.dart';
 import 'view_models/messages_view_model.dart';
@@ -11,13 +11,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/timeline_post.dart';
 import 'view_models/collections_view_model.dart';
-import 'widgets/timeline_post_card.dart';
-import 'widgets/comments_bottom_sheet.dart';
-import 'widgets/share_bottom_sheet.dart';
-import 'widgets/save_to_list_bottom_sheet.dart';
-import 'widgets/check_in_composer_screen.dart';
-import '../settings/edit_profile_screen.dart';
-import 'widgets/custom_loading_indicator.dart';
+import 'widgets/feed/timeline_post_card.dart';
+import 'widgets/bottom_sheets/comments_bottom_sheet.dart';
+import 'widgets/bottom_sheets/share_bottom_sheet.dart';
+import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
+import 'widgets/feed/check_in_composer_screen.dart';
+import '../settings/screens/edit_profile_screen.dart';
+import 'widgets/common/custom_loading_indicator.dart';
 
 
 class ProfileScreen extends ConsumerStatefulWidget {

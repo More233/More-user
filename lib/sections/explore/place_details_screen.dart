@@ -4,13 +4,13 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/explore_data_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'widgets/place_details_photos_section.dart';
+import 'widgets/place_details/place_details_photos_section.dart';
 
-import 'widgets/place_details_check_in_section.dart';
-import 'widgets/place_details_rating_section.dart';
-import 'widgets/place_details_tips_section.dart';
-import 'widgets/place_details_similar_places_section.dart';
-import '../home/widgets/check_in_composer_screen.dart';
+import 'widgets/place_details/place_details_check_in_section.dart';
+import 'widgets/place_details/place_details_rating_section.dart';
+import 'widgets/place_details/place_details_tips_section.dart';
+import 'widgets/place_details/place_details_similar_places_section.dart';
+import '../home/widgets/feed/check_in_composer_screen.dart';
 import 'helpers/bookmark_tracker.dart';
 
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'widgets/explore_filter_sheet.dart';
+import 'widgets/sheets/explore_filter_sheet.dart';
+import 'models/filter_state.dart';
 import 'services/explore_data_service.dart';
 
 class ExploreSearchScreen extends StatefulWidget {

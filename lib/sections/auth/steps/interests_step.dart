@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
-class InterestItem {
-  final String label;
-  final String iconPath;
-
-  const InterestItem(this.label, this.iconPath);
-}
+import '../models/interest_item.dart';
 
 class InterestsStep extends StatefulWidget {
   final void Function(List<String> interests) onCompleted;

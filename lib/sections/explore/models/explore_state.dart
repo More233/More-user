@@ -1,5 +1,5 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../widgets/explore_filter_sheet.dart';
+import 'filter_state.dart';
 
 class ExploreState {
   final List<Map<String, dynamic>> allPlaces;

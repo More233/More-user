@@ -1,22 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
-class CountryInfo {
-  final String code;
-  final String dialCode;
-  final String flagEmoji;
-  final String name;
-  final String hintFormat;
-
-  const CountryInfo({
-    required this.code,
-    required this.dialCode,
-    required this.flagEmoji,
-    required this.name,
-    required this.hintFormat,
-  });
-}
+import '../models/country_info.dart';
 
 class CountryPicker extends StatelessWidget {
   final CountryInfo selectedCountry;

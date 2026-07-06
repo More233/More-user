@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'widgets/feed/crop_grid_painter.dart';
 
 class CropPreviewScreen extends StatefulWidget {
   final List<String> selectedImages;
@@ -273,25 +274,4 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
   }
 }
 
-class CropGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.6)
-      ..strokeWidth = 1.2
-      ..style = PaintingStyle.stroke;
 
-    // Draw vertical lines
-    final firstThirdWidth = size.width / 3.0;
-    canvas.drawLine(Offset(firstThirdWidth, 0), Offset(firstThirdWidth, size.height), paint);
-    canvas.drawLine(Offset(firstThirdWidth * 2, 0), Offset(firstThirdWidth * 2, size.height), paint);
-
-    // Draw horizontal lines
-    final firstThirdHeight = size.height / 3.0;
-    canvas.drawLine(Offset(0, firstThirdHeight), Offset(size.width, firstThirdHeight), paint);
-    canvas.drawLine(Offset(0, firstThirdHeight * 2), Offset(size.width, firstThirdHeight * 2), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CropGridPainter oldDelegate) => false;
-}

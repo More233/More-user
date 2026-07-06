@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../home/widgets/location_search_sheet.dart';
+import '../../home/widgets/bottom_sheets/location_search_sheet.dart';
 
 class ExploreDataService {
   static const String googlePlacesApiKey = String.fromEnvironment(

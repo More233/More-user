@@ -7,7 +7,7 @@ import '../../../data/repositories/explore_repository.dart';
 import '../../../data/repositories/explore_repository_impl.dart';
 import '../helpers/bookmark_tracker.dart';
 import '../models/explore_state.dart';
-import '../widgets/explore_filter_sheet.dart';
+import '../models/filter_state.dart';
 import '../services/explore_data_service.dart';
 
 final exploreViewModelProvider = StateNotifierProvider.autoDispose<ExploreViewModel, ExploreState>((ref) {
