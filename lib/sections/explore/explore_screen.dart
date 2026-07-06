@@ -338,10 +338,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         return place['actionType'] == 'Book';
       }
 
-      if (state.selectedMapTab == 2) {
-        final peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
-        if (peopleCount <= 0) return false;
-      }
+      
       
       if (state.filterState.maxDistance != null) {
         final double? dist = _parseDistance(place['distance'] as String?);
@@ -587,33 +584,59 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     for (final place in filtered) {
       final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
       final double lng = (place['longitude'] as num? ?? 0.0).toDouble();
-      final int peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
-      if (peopleCount <= 0) continue;
+      final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
+      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+      final int checkIns = (place['peopleCount'] as num? ?? 0).toInt();
+
+      // Calculate weight based on reviews, ratings, and app check-ins
+      final double reviewScore = (reviews / 50.0).clamp(0.0, 0.5);
+      final double ratingScore = rating > 4.0 ? ((rating - 4.0) * 0.2).clamp(0.0, 0.2) : 0.0;
+      final double checkInScore = (checkIns * 0.3).clamp(0.0, 0.6);
+      
+      final double heatWeight = (reviewScore + ratingScore + checkInScore).clamp(0.1, 1.0);
 
       final String placeId = place['id']?.toString() ?? UniqueKey().toString();
-      final double baseRadius = 80.0 + (peopleCount * 40.0).clamp(0.0, 400.0);
+      
+      // Tight, elegant radius (between 35 and 80 meters)
+      final double baseRadius = 35.0 + (heatWeight * 45.0);
 
+      // 1. Outer Circle: Soft cyan/purple glow
       circles.add(Circle(
         circleId: CircleId('${placeId}_heat_outer'),
         center: LatLng(lat, lng),
-        radius: baseRadius * 1.5,
-        fillColor: const Color(0xFF7C57FC).withValues(alpha: 0.05),
+        radius: baseRadius * 1.4,
+        fillColor: const Color(0x0C7C57FC), // Soft blue/purple (opacity ~0.05)
         strokeWidth: 0,
       ));
 
+      // 2. Middle Circle: Greenish or blueish glow
+      final Color midColor = heatWeight > 0.4 
+          ? const Color(0x1500E676) // Soft Green (opacity ~0.08)
+          : const Color(0x107C57FC); // Soft Blue (opacity ~0.06)
+          
       circles.add(Circle(
         circleId: CircleId('${placeId}_heat_mid'),
         center: LatLng(lat, lng),
-        radius: baseRadius * 1.0,
-        fillColor: const Color(0xFF7C57FC).withValues(alpha: 0.10),
+        radius: baseRadius * 0.9,
+        fillColor: midColor,
         strokeWidth: 0,
       ));
+
+      // 3. Core Circle: Red, Orange, Yellow or Cyan depending on heat level
+      Color coreColor;
+      if (heatWeight > 0.7) {
+        coreColor = const Color(0x28FF5252); // Soft Red (opacity ~0.16)
+      } else if (heatWeight > 0.4) {
+        coreColor = const Color(0x24FFD600); // Soft Yellow (opacity ~0.14)
+      } else {
+        coreColor = const Color(0x2000E5FF); // Soft Cyan (opacity ~0.12)
+      }
 
       circles.add(Circle(
         circleId: CircleId('${placeId}_heat_core'),
         center: LatLng(lat, lng),
         radius: baseRadius * 0.5,
-        fillColor: const Color(0xFF7C57FC).withValues(alpha: 0.20),
+        fillColor: coreColor,
         strokeWidth: 0,
       ));
     }
