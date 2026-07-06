@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -37,6 +39,7 @@ class StoryEditorScreen extends ConsumerStatefulWidget {
 }
 
 class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
+  final GlobalKey _repaintKey = GlobalKey();
   final List<StoryOverlayItem> _overlays = [];
   bool _isPublishing = false;
   List<Map<String, dynamic>> _followedUsers = [];
@@ -463,7 +466,34 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       if (currentUser == null) return;
 
       var finalPath = widget.imagePath;
-      if (_isVideoFile(widget.imagePath) && _isAudioMuted) {
+      final isVideo = _isVideoFile(widget.imagePath);
+
+      if (!isVideo) {
+        // Clear selection outline before capture so it is not baked into the story
+        setState(() {
+          _selectedOverlayId = null;
+        });
+
+        // Wait for frame to update without editing highlights
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        try {
+          final boundary = _repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+          if (boundary != null) {
+            final image = await boundary.toImage(pixelRatio: 3.0);
+            final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+            if (byteData != null) {
+              final pngBytes = byteData.buffer.asUint8List();
+              final tempDir = Directory.systemTemp;
+              final tempFile = File('${tempDir.path}/story_bake_${DateTime.now().millisecondsSinceEpoch}.png');
+              await tempFile.writeAsBytes(pngBytes);
+              finalPath = tempFile.path;
+            }
+          }
+        } catch (e) {
+          debugPrint("Failed to rasterize story: $e");
+        }
+      } else if (_isAudioMuted) {
         final tempDir = Directory.systemTemp;
         final outputFileName = 'muted_${DateTime.now().millisecondsSinceEpoch}.mp4';
         final outputPath = '${tempDir.path}/$outputFileName';
@@ -483,8 +513,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       }
 
       final file = File(finalPath);
-      final isVideo = _isVideoFile(finalPath);
-      final extension = isVideo ? 'mp4' : 'jpg';
+      final extension = isVideo ? 'mp4' : 'png';
       final fileName = 'stories/${currentUser.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
       // Upload file to Supabase storage
@@ -607,10 +636,12 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       body: Column(
         children: [
           Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-              child: Stack(
-                children: [
+            child: RepaintBoundary(
+              key: _repaintKey,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                child: Stack(
+                  children: [
                   // 1. Full screen preview inside the ClipRRect card (Image or Video Player)
                   Positioned.fill(
                     child: GestureDetector(
@@ -1068,6 +1099,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                     ),
                   ],
                 ],
+                ),
               ),
             ),
           ),

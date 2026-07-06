@@ -576,10 +576,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     return markers;
   }
 
-  Set<Circle> _buildHeatmapCircles(ExploreState state, List<Map<String, dynamic>> filtered) {
+  Set<Heatmap> _buildHeatmaps(ExploreState state, List<Map<String, dynamic>> filtered) {
     if (state.selectedMapTab != 2) return {};
 
-    final Set<Circle> circles = {};
+    final List<WeightedLatLng> points = [];
 
     for (final place in filtered) {
       final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
@@ -593,55 +593,31 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       final double ratingScore = rating > 4.0 ? ((rating - 4.0) * 0.2).clamp(0.0, 0.2) : 0.0;
       final double checkInScore = (checkIns * 0.3).clamp(0.0, 0.6);
       
-      final double heatWeight = (reviewScore + ratingScore + checkInScore).clamp(0.1, 1.0);
+      // Keep a higher baseline floor weight (0.4) to guarantee visibility on map
+      final double heatWeight = (reviewScore + ratingScore + checkInScore).clamp(0.4, 1.0);
 
-      final String placeId = place['id']?.toString() ?? UniqueKey().toString();
-      
-      // Tight, elegant radius (between 35 and 80 meters)
-      final double baseRadius = 35.0 + (heatWeight * 45.0);
-
-      // 1. Outer Circle: Soft cyan/purple glow
-      circles.add(Circle(
-        circleId: CircleId('${placeId}_heat_outer'),
-        center: LatLng(lat, lng),
-        radius: baseRadius * 1.4,
-        fillColor: const Color(0x0C7C57FC), // Soft blue/purple (opacity ~0.05)
-        strokeWidth: 0,
-      ));
-
-      // 2. Middle Circle: Greenish or blueish glow
-      final Color midColor = heatWeight > 0.4 
-          ? const Color(0x1500E676) // Soft Green (opacity ~0.08)
-          : const Color(0x107C57FC); // Soft Blue (opacity ~0.06)
-          
-      circles.add(Circle(
-        circleId: CircleId('${placeId}_heat_mid'),
-        center: LatLng(lat, lng),
-        radius: baseRadius * 0.9,
-        fillColor: midColor,
-        strokeWidth: 0,
-      ));
-
-      // 3. Core Circle: Red, Orange, Yellow or Cyan depending on heat level
-      Color coreColor;
-      if (heatWeight > 0.7) {
-        coreColor = const Color(0x28FF5252); // Soft Red (opacity ~0.16)
-      } else if (heatWeight > 0.4) {
-        coreColor = const Color(0x24FFD600); // Soft Yellow (opacity ~0.14)
-      } else {
-        coreColor = const Color(0x2000E5FF); // Soft Cyan (opacity ~0.12)
-      }
-
-      circles.add(Circle(
-        circleId: CircleId('${placeId}_heat_core'),
-        center: LatLng(lat, lng),
-        radius: baseRadius * 0.5,
-        fillColor: coreColor,
-        strokeWidth: 0,
-      ));
+      points.add(WeightedLatLng(LatLng(lat, lng), weight: heatWeight));
     }
 
-    return circles;
+    if (points.isEmpty) return {};
+
+    return {
+      Heatmap(
+        heatmapId: const HeatmapId('explore_heatmap'),
+        data: points,
+        radius: HeatmapRadius.fromPixels(40),
+        dissipating: false, // Ensure heatmap scales geographically with zoom and remains visible
+        opacity: 0.85,
+        gradient: const HeatmapGradient(
+          [
+            HeatmapGradientColor(Color(0xFFE5DDFF), 0.2), // Light brand purple
+            HeatmapGradientColor(Color(0xFFB599FF), 0.5), // Medium brand purple
+            HeatmapGradientColor(Color(0xFF7C57FC), 0.8), // Full brand purple
+            HeatmapGradientColor(Color(0xFF512DA8), 1.0), // Deep purple core
+          ],
+        ),
+      ),
+    };
   }
 
   @override
@@ -762,7 +738,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 myLocationEnabled: state.userLocation != null,
                 myLocationButtonEnabled: false,
                 markers: _buildMarkers(state, filteredPlaces),
-                circles: _buildHeatmapCircles(state, filteredPlaces),
+                heatmaps: _buildHeatmaps(state, filteredPlaces),
                 onTap: (latLng) {
                   ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
                 },
