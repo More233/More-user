@@ -526,7 +526,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
             if (state.selectedMapTab != 2)
               Positioned(
-                top: topPadding + 74,
+                top: topPadding + 64,
                 left: 0,
                 right: 0,
                 child: ExploreCategoryFilters(

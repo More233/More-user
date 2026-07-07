@@ -29,8 +29,8 @@ class ExploreFloatingControls extends StatelessWidget {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
-                width: 44,
-                height: 44,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.72),
                   shape: BoxShape.circle,
@@ -49,8 +49,8 @@ class ExploreFloatingControls extends StatelessWidget {
                 alignment: Alignment.center,
                 child: SvgPicture.asset(
                   'assets/explore/sent.svg',
-                  width: 18,
-                  height: 18,
+                  width: 22,
+                  height: 22,
                   fit: BoxFit.contain,
                   colorFilter: const ColorFilter.mode(
                     Color(0xFF7C57FC),
@@ -69,7 +69,7 @@ class ExploreFloatingControls extends StatelessWidget {
         ),
 
         // Right spacing placeholder to keep ExploreMapTabs centered
-        const SizedBox(width: 44),
+        const SizedBox(width: 52),
       ],
     );
   }
