@@ -122,17 +122,14 @@ class _UserDrawerState extends State<UserDrawer> {
                                   ),
                                 );
                               },
-                              child: Hero(
-                                tag: 'user-avatar',
-                                child: CircleAvatar(
-                                  radius: 28,
-                                  backgroundColor: Colors.grey[200],
-                                  backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
-                                      ? (_avatarUrl!.startsWith('http')
-                                          ? NetworkImage(_avatarUrl!)
-                                          : AssetImage(_avatarUrl!)) as ImageProvider
-                                      : const AssetImage('assets/home/images/avatar_placeholder.png'),
-                                ),
+                              child: CircleAvatar(
+                                radius: 28,
+                                backgroundColor: Colors.grey[200],
+                                backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                                    ? (_avatarUrl!.startsWith('http')
+                                        ? NetworkImage(_avatarUrl!)
+                                        : AssetImage(_avatarUrl!)) as ImageProvider
+                                    : const AssetImage('assets/home/images/avatar_placeholder.png'),
                               ),
                             ),
                             IconButton(

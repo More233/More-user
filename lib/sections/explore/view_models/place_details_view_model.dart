@@ -46,7 +46,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
       final client = Supabase.instance.client;
       final postsRes = await client
           .from('posts')
-          .select('*, author:profiles(*)')
+          .select('*, author:profiles!posts_user_id_fkey(*)')
           .eq('place_id', place['id'].toString())
           .order('created_at', ascending: false);
 

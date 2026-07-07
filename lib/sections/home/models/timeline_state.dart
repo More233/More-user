@@ -26,7 +26,7 @@ class TimelineState {
   factory TimelineState.initial() {
     return TimelineState(
       selectedTabIndex: 0,
-      selectedNavIndex: 0,
+      selectedNavIndex: 1,
       isFirstCheckIn: true,
       showCoachmark: false,
       userCoins: 0,

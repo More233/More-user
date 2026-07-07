@@ -11,6 +11,8 @@ class ExploreSearchHeader extends StatelessWidget {
   final VoidCallback onClearTap;
   final VoidCallback onFilterTap;
 
+  final FocusNode? focusNode;
+
   const ExploreSearchHeader({
     super.key,
     required this.topPadding,
@@ -21,6 +23,7 @@ class ExploreSearchHeader extends StatelessWidget {
     required this.onBackTap,
     required this.onClearTap,
     required this.onFilterTap,
+    this.focusNode,
   });
 
   @override
@@ -66,6 +69,7 @@ class ExploreSearchHeader extends StatelessWidget {
               ),
               child: TextField(
                 controller: controller,
+                focusNode: focusNode,
                 onChanged: onChanged,
                 autofocus: true,
                 style: GoogleFonts.ibmPlexSansArabic(fontSize: 15),

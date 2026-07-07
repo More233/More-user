@@ -128,7 +128,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
       // 2. Fetch active stories from Supabase where expires_at > now()
       final storiesResponse = await client
           .from('stories')
-          .select('*, user:profiles(id, username, first_name, last_name, avatar_url, is_verified)')
+          .select('*, user:profiles(id, username, first_name, last_name, avatar_url)')
           .inFilter('user_id', userIds)
           .gt('expires_at', DateTime.now().toIso8601String())
           .order('created_at', ascending: true);

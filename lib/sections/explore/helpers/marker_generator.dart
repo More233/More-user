@@ -654,6 +654,8 @@ class MarkerGenerator {
   void clearPlaceMarkersCache() {
     customPlaceMarkersNormal.clear();
     customPlaceMarkersSelected.clear();
+    customPlaceMarkersNormalHeatmap.clear();
+    customPlaceMarkersSelectedHeatmap.clear();
   }
 
   Future<void> preloadPlaceMarkers(
@@ -737,12 +739,27 @@ class MarkerGenerator {
         style: TextStyle(
           fontSize: 12.0,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: const Color(0xFF7C57FC),
           shadows: [
             Shadow(
               blurRadius: 4.0,
-              color: Colors.black.withValues(alpha: 0.8),
+              color: Colors.white,
               offset: const Offset(1.0, 1.0),
+            ),
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.white,
+              offset: const Offset(-1.0, -1.0),
+            ),
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.white,
+              offset: const Offset(1.0, -1.0),
+            ),
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.white,
+              offset: const Offset(-1.0, 1.0),
             ),
           ],
         ),
@@ -760,12 +777,27 @@ class MarkerGenerator {
         style: TextStyle(
           fontSize: 10.0,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFFC0A6FF), // Soft purple highlight
+          color: const Color(0xFFCB3D8D),
           shadows: [
             Shadow(
               blurRadius: 4.0,
-              color: Colors.black.withValues(alpha: 0.8),
+              color: Colors.white,
               offset: const Offset(1.0, 1.0),
+            ),
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.white,
+              offset: const Offset(-1.0, -1.0),
+            ),
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.white,
+              offset: const Offset(1.0, -1.0),
+            ),
+            Shadow(
+              blurRadius: 4.0,
+              color: Colors.white,
+              offset: const Offset(-1.0, 1.0),
             ),
           ],
         ),

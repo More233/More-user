@@ -310,15 +310,47 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     }
   }
 
+  void _openFollowFriendsBottomSheet() {
+    final timelineState = ref.read(timelineViewModelProvider);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return FollowFriendsBottomSheet(
+          followedUsernames: timelineState.followedUsernames,
+          onFollowChanged: (username, isFollowed) {
+            ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(exploreViewModelProvider);
+    debugPrint("ExploreScreen: build() called, isListView=${state.isListView}, selectedMapTab=${state.selectedMapTab}, allPlaces=${state.allPlaces.length}");
     
     ref.listen<LatLng?>(
       exploreViewModelProvider.select((s) => s.userLocation),
       (previous, next) {
         if (previous == null && next != null) {
           _animateToUserLocation(next);
+        }
+      },
+    );
+
+    ref.listen<List<Map<String, dynamic>>>(
+      exploreViewModelProvider.select((s) => s.allPlaces),
+      (previous, next) {
+        if (next.isNotEmpty) {
+          final activePlaces = next.where((p) => (p['peopleCount'] as num? ?? 0) > 0).toList();
+          if (activePlaces.isNotEmpty) {
+            _markerGenerator.preloadPlaceMarkers(activePlaces, () {
+              if (mounted) setState(() {});
+            });
+          }
         }
       },
     );
@@ -330,7 +362,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
     
     final double navBarHeight = 70 + (bottomPadding > 0 ? bottomPadding + 6 : 16);
-    final double controlsBottom = navBarHeight + 24;
+    final double controlsBottom = 70 + bottomPadding;
     final double overlaysBottom = controlsBottom + 56 + 12;
 
     final bool showCategoryResultsMode = state.selectedCategory.isNotEmpty ||
@@ -463,6 +495,85 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               ),
             ),
 
+
+
+            if (state.selectedMapTab != 2)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: ExploreSearchBar(
+                  searchController: _searchController,
+                  isSearching: false,
+                  searchQuery: "",
+                  suggestions: const [],
+                  userAvatarUrl: widget.userAvatarUrl,
+                  onAvatarTapped: widget.onAvatarTapped,
+                  onSearchChanged: (_) {},
+                  onSearchSubmitted: (_) {},
+                  onClearSearch: () {},
+                  onBackToTimeline: widget.onBackToTimeline,
+                  onSuggestionTapped: (_) {},
+                  iconDataGetter: (type) => _markerGenerator.getIconDataForType(type),
+                  topPadding: topPadding,
+                  onTap: () => _openSearchScreen(state),
+                  onAddFriendTapped: _openFollowFriendsBottomSheet,
+                  hintText: state.selectedMapTab == 1
+                      ? "Find an event"
+                      : (state.selectedMapTab == 3 ? "Find your places" : "Find a place"),
+                ),
+              ),
+
+            if (state.selectedMapTab != 2)
+              Positioned(
+                top: topPadding + 74,
+                left: 0,
+                right: 0,
+                child: ExploreCategoryFilters(
+                  selectedMapTab: state.selectedMapTab,
+                  selectedCategory: state.selectedCategory,
+                  filterVisited: state.filterState.visited,
+                  filterSaved: state.filterState.saved,
+                  onCategoryTapped: (category) {
+                    final bool isSelected = state.selectedCategory == category;
+                    ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
+                    final lat = state.userLocation?.latitude ?? 24.7136;
+                    final lng = state.userLocation?.longitude ?? 46.6753;
+                    ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
+                  },
+                  onFilterVisitedTapped: () {
+                    final updatedState = state.filterState.copyWith(visited: !state.filterState.visited);
+                    ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
+                  },
+                  onFilterSavedTapped: () {
+                    final updatedState = state.filterState.copyWith(saved: !state.filterState.saved);
+                    ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
+                  },
+                  topPadding: topPadding,
+                ),
+              ),
+
+            if (!showCategoryResultsMode)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: controlsBottom,
+                child: ExploreFloatingControls(
+                  bottom: controlsBottom,
+                  selectedMapTab: state.selectedMapTab,
+                  onLocationTap: () => _animateToUserLocation(state.userLocation),
+                  onTabChanged: (index) {
+                    ref.read(exploreViewModelProvider.notifier).updateMapTab(index);
+                    String msg = "";
+                    if (index == 0) msg = "Discover";
+                    if (index == 1) msg = "Events";
+                    if (index == 2) msg = "Swarming now";
+                    if (index == 3) msg = "You";
+                    _triggerStatusBadge(msg);
+                  },
+                ),
+              ),
+
             if (state.selectedPlace != null)
               Positioned(
                 left: 16,
@@ -499,174 +610,17 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 ),
               ),
 
-            ExploreStatusBadge(
-              show: _showStatusBadge,
-              message: _statusMessage,
-              bottom: overlaysBottom + (state.selectedPlace != null ? 140 : 0),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: controlsBottom + 64,
+              child: ExploreStatusBadge(
+                show: _showStatusBadge,
+                message: _statusMessage,
+                bottom: controlsBottom + 64,
+              ),
             ),
 
-            if (state.selectedMapTab != 2)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: ExploreSearchBar(
-                  searchController: _searchController,
-                  isSearching: false,
-                  searchQuery: "",
-                  suggestions: const [],
-                  userAvatarUrl: widget.userAvatarUrl,
-                  onAvatarTapped: widget.onAvatarTapped,
-                  onSearchChanged: (_) {},
-                  onSearchSubmitted: (_) {},
-                  onClearSearch: () {},
-                  onBackToTimeline: widget.onBackToTimeline,
-                  onSuggestionTapped: (_) {},
-                  iconDataGetter: (type) => _markerGenerator.getIconDataForType(type),
-                  topPadding: topPadding,
-                  onTap: () => _openSearchScreen(state),
-                ),
-              ),
-
-            if (state.selectedMapTab == 2)
-              Positioned(
-                top: topPadding + 10,
-                left: 16,
-                right: 16,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Avatar Button
-                    GestureDetector(
-                      onTap: widget.onAvatarTapped,
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(22),
-                          child: widget.userAvatarUrl != null && widget.userAvatarUrl!.isNotEmpty
-                              ? Image.network(
-                                  widget.userAvatarUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Container(
-                                    color: const Color(0xFFEDE6FC),
-                                    child: const Icon(
-                                      Icons.person_outline,
-                                      color: Color(0xFF7C57FC),
-                                      size: 22,
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  color: const Color(0xFFEDE6FC),
-                                  child: const Icon(
-                                    Icons.person_outline,
-                                    color: Color(0xFF7C57FC),
-                                    size: 22,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ),
-                    // Add Friend Button
-                    GestureDetector(
-                      onTap: () {
-                        final timelineState = ref.read(timelineViewModelProvider);
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (context) {
-                            return FollowFriendsBottomSheet(
-                              followedUsernames: timelineState.followedUsernames,
-                              onFollowChanged: (username, isFollowed) {
-                                ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
-                              },
-                            );
-                          },
-                        );
-                      },
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.person_add_outlined,
-                          color: Color(0xFF1F242E),
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            if (state.selectedMapTab != 2)
-              Positioned(
-                top: topPadding + 80,
-                left: 0,
-                right: 0,
-                child: ExploreCategoryFilters(
-                  selectedMapTab: state.selectedMapTab,
-                  selectedCategory: state.selectedCategory,
-                  filterVisited: state.filterState.visited,
-                  filterSaved: state.filterState.saved,
-                  onCategoryTapped: (category) {
-                    final bool isSelected = state.selectedCategory == category;
-                    ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
-                    final lat = state.userLocation?.latitude ?? 24.7136;
-                    final lng = state.userLocation?.longitude ?? 46.6753;
-                    ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
-                  },
-                  onFilterVisitedTapped: () {
-                    final updatedState = state.filterState.copyWith(visited: !state.filterState.visited);
-                    ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
-                  },
-                  onFilterSavedTapped: () {
-                    final updatedState = state.filterState.copyWith(saved: !state.filterState.saved);
-                    ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
-                  },
-                  topPadding: topPadding,
-                ),
-              ),
-
-            if (!showCategoryResultsMode)
-              ExploreFloatingControls(
-                bottom: controlsBottom,
-                selectedMapTab: state.selectedMapTab,
-                onLocationTap: () => _animateToUserLocation(state.userLocation),
-                onTabChanged: (index) {
-                  ref.read(exploreViewModelProvider.notifier).updateMapTab(index);
-                  String msg = "";
-                  if (index == 0) msg = "Discover";
-                  if (index == 1) msg = "Plans";
-                  if (index == 2) msg = "Live Now";
-                  if (index == 3) msg = "My Places";
-                  _triggerStatusBadge(msg);
-                },
-              ),
           ],
 
           if (state.selectedPlace == null && (state.isListView || showCategoryResultsMode))

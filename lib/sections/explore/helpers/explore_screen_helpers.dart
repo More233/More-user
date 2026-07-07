@@ -89,6 +89,11 @@ class ExploreScreenHelpers {
         return place['actionType'] == 'Book';
       }
 
+      if (state.selectedMapTab == 2 && !forHeatmap) {
+        final int checkIns = (place['peopleCount'] as num? ?? 0).toInt();
+        if (checkIns <= 0) return false;
+      }
+
       if (state.filterState.maxDistance != null) {
         final double? dist = parseDistance(place['distance'] as String?);
         if (dist == null || dist > state.filterState.maxDistance!) {
@@ -128,6 +133,19 @@ class ExploreScreenHelpers {
 
       final isManual = place['id'].toString().startsWith('tapped_');
       if (isManual) return true;
+
+      if (state.selectedMapTab == 2) {
+        final int checkIns = (place['peopleCount'] as num? ?? 0).toInt();
+        if (currentZoom < 5.0) {
+          return checkIns >= 2;
+        } else if (currentZoom >= 5.0 && currentZoom < 8.0) {
+          return checkIns >= 2;
+        } else if (currentZoom >= 8.0 && currentZoom < 12.0) {
+          return checkIns >= 2;
+        } else {
+          return checkIns >= 1;
+        }
+      }
 
       if (currentZoom < 11.0) {
         // Zoomed out very far: show absolutely nothing except selected/dropped pins

@@ -31,6 +31,7 @@ class ExploreSearchScreen extends ConsumerStatefulWidget {
 
 class _ExploreSearchScreenState extends ConsumerState<ExploreSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -40,11 +41,18 @@ class _ExploreSearchScreenState extends ConsumerState<ExploreSearchScreen> {
           .read(exploreSearchViewModelProvider(widget.filterState).notifier)
           .loadNearbyPlaces(widget.userLat, widget.userLng);
     });
+    // Request keyboard focus after routing animation finishes
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -94,6 +102,7 @@ class _ExploreSearchScreenState extends ConsumerState<ExploreSearchScreen> {
             ExploreSearchHeader(
               topPadding: topPadding,
               controller: _searchController,
+              focusNode: _searchFocusNode,
               onChanged: (query) {
                 viewModel.onSearchChanged(query, widget.userLat, widget.userLng);
               },

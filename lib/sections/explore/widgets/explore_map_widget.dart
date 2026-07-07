@@ -30,9 +30,16 @@ class ExploreMapWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GoogleMap(
-      style: mapStyleJson,
       initialCameraPosition: initialCameraPosition,
-      onMapCreated: onMapCreated,
+      onMapCreated: (controller) {
+        if (mapStyleJson != null) {
+          // ignore: deprecated_member_use
+          controller.setMapStyle(mapStyleJson);
+        }
+        if (onMapCreated != null) {
+          onMapCreated!(controller);
+        }
+      },
       onCameraMove: onCameraMove,
       onCameraIdle: onCameraIdle,
       zoomControlsEnabled: false,

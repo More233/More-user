@@ -374,7 +374,7 @@ class ExploreDataService {
       'rating': rating,
       'reviewsCount': reviewsCount,
       'price': r'$$',
-      'peopleCount': calculateSimulatedBusyness(id, reviewsCount),
+      'peopleCount': 0,
       'type': type,
       'imageUrl': imageUrl,
       'photos': photoUrls,
@@ -554,7 +554,7 @@ class ExploreDataService {
         http.get(Uri.parse(url)),
         client
             .from('posts')
-            .select('*, author:profiles(*)')
+            .select('*, author:profiles!posts_user_id_fkey(*)')
             .eq('place_id', placeId)
             .eq('is_private', false)
             .order('created_at', ascending: false)
@@ -659,7 +659,7 @@ class ExploreDataService {
       final results = await Future.wait<dynamic>([
         client
             .from('posts')
-            .select('*, author:profiles(*)')
+            .select('*, author:profiles!posts_user_id_fkey(*)')
             .eq('is_private', false)
             .gte('latitude', latMin)
             .lte('latitude', latMax)
@@ -762,7 +762,7 @@ class ExploreDataService {
       final client = Supabase.instance.client;
       final visitorsRes = await client
           .from('posts')
-          .select('*, author:profiles(*)')
+          .select('*, author:profiles!posts_user_id_fkey(*)')
           .eq('place_id', placeId)
           .eq('is_private', false)
           .order('created_at', ascending: false)

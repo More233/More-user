@@ -22,16 +22,15 @@ class ExploreMarkerBuilder {
       }
     }
 
-    final normalCustomCache = markerGenerator.customPlaceMarkersNormal;
-    final selectedCustomCache = markerGenerator.customPlaceMarkersSelected;
+    final normalCustomCache = state.selectedMapTab == 2
+        ? markerGenerator.customPlaceMarkersNormalHeatmap
+        : markerGenerator.customPlaceMarkersNormal;
+    final selectedCustomCache = state.selectedMapTab == 2
+        ? markerGenerator.customPlaceMarkersSelectedHeatmap
+        : markerGenerator.customPlaceMarkersSelected;
 
     for (final place in placesToDraw) {
       final isSelected = state.selectedPlace != null && state.selectedPlace!['id'] == place['id'];
-      
-      // In heatmap mode, hide markers entirely if zoomed out far (below zoom 14.0) unless selected
-      if (state.selectedMapTab == 2 && currentZoom < 14.0 && !isSelected) {
-        continue;
-      }
 
       final type = place['type'] as String? ?? 'Other';
       final iconUrl = place['iconUrl'] as String?;
@@ -44,7 +43,7 @@ class ExploreMarkerBuilder {
       double anchorY = 1.0;
 
       final bool isProminent = ExploreScreenHelpers.isProminentPlace(place);
-      final bool showAsPin = isSelected || isProminent || currentZoom >= 15.0;
+      final bool showAsPin = isSelected || isProminent || currentZoom >= 15.0 || state.selectedMapTab == 2;
 
       if (isManualTapped) {
         icon = BitmapDescriptor.defaultMarkerWithHue(
@@ -53,7 +52,7 @@ class ExploreMarkerBuilder {
       } else if (isCheckIn && authorAvatar != null && markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
         icon = markerGenerator.avatarMarkerCache[authorAvatar]!;
       } else if (showAsPin) {
-        final bool showCustomLabel = (isSelected || currentZoom >= 15.0) && normalCustomCache.containsKey(place['id'].toString());
+        final bool showCustomLabel = (isSelected || currentZoom >= 15.0 || state.selectedMapTab == 2) && normalCustomCache.containsKey(place['id'].toString());
         
         if (showCustomLabel) {
           if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
@@ -63,20 +62,63 @@ class ExploreMarkerBuilder {
           }
           
           final double finalScale = isSelected ? 1.1 : 0.9;
-          final double pinWidth = 27.75 * finalScale;
-          final double textWidth = 120.0;
-          final double spacing = 8.0;
-          final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
           
-          final double pinDx = textWidth + spacing + 4.0;
-          final double pinDy = 4.0;
-          final double pinHeight = 30.833 * finalScale;
-          final double canvasHeight = pinHeight + 16.0;
+          if (state.selectedMapTab == 2) {
+            // Heatmap custom label marker: circle icon at top center, text below it
+            final double radius = 16.0 * finalScale;
+            final double glowRadius = radius + 4.0;
+            final double canvasWidth = 150.0;
+            final double cy = glowRadius + 4.0;
+            
+            final name = place['name']?.toString() ?? '';
+            final TextPainter namePainter = TextPainter(
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              ellipsis: '...',
+            )..text = TextSpan(
+              text: name,
+              style: const TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold),
+            )..layout(maxWidth: canvasWidth - 16.0);
+            
+            final int peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
+            final String visitorsText = peopleCount == 1 ? "1 person here" : "$peopleCount people here";
+            final TextPainter visitorsPainter = TextPainter(
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+            )..text = TextSpan(
+              text: visitorsText,
+              style: const TextStyle(fontSize: 10.0, fontWeight: FontWeight.w600),
+            )..layout(maxWidth: canvasWidth - 16.0);
+            
+            final double textSpacing = 4.0;
+            final double textTop = cy + glowRadius + 6.0;
+            final double canvasHeight = textTop + namePainter.height + textSpacing + visitorsPainter.height + 8.0;
+            
+            anchorX = 0.5;
+            anchorY = cy / canvasHeight;
+          } else {
+            // Standard teardrop custom label marker
+            final double pinWidth = 27.75 * finalScale;
+            final double textWidth = 120.0;
+            final double spacing = 8.0;
+            final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
+            
+            final double pinDx = textWidth + spacing + 4.0;
+            final double pinDy = 4.0;
+            final double pinHeight = 30.833 * finalScale;
+            final double canvasHeight = pinHeight + 16.0;
 
-          anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
-          anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
+            anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
+            anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
+          }
         } else {
-          if (isSelected) {
+          if (state.selectedMapTab == 2) {
+            icon = markerGenerator.heatmapCircleIcons[type] ?? markerGenerator.heatmapCircleIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            anchorX = 0.5;
+            anchorY = 0.5;
+          } else if (isSelected) {
             icon = markerGenerator.selectedMarkerIcons[type] ?? markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
           } else {
             icon = markerGenerator.normalMarkerIcons[type] ?? markerGenerator.normalMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
@@ -121,7 +163,7 @@ class ExploreMarkerBuilder {
     if (state.selectedMapTab != 2) return {};
 
     // Hide heatmap completely at very close zooms
-    if (currentZoom >= 17.5) return {};
+    if (currentZoom >= 15.0) return {};
 
     final List<WeightedLatLng> points = [];
 
@@ -145,20 +187,20 @@ class ExploreMarkerBuilder {
 
     if (points.isEmpty) return {};
 
-    // Calculate dynamic opacity: fades out as zoom increases from 14.5 to 17.5
+    // Calculate dynamic opacity: fades out as zoom increases from 12.0 to 15.0
     double opacity = 0.85;
-    if (currentZoom >= 14.5) {
-      opacity = (0.85 * (1.0 - (currentZoom - 14.5) / 3.0)).clamp(0.0, 0.85);
+    if (currentZoom >= 12.0) {
+      opacity = (0.85 * (1.0 - (currentZoom - 12.0) / 3.0)).clamp(0.0, 0.85);
     }
 
-    // Calculate dynamic radius: larger radius when zoomed out, smaller when zoomed in
+    // Calculate dynamic radius: wider on zoom-out, tighter on zoom-in
     int radius = 45;
-    if (currentZoom < 10.0) {
-      radius = 70;
-    } else if (currentZoom >= 10.0 && currentZoom < 13.0) {
+    if (currentZoom < 5.0) {
+      radius = 90;
+    } else if (currentZoom >= 5.0 && currentZoom < 8.0) {
+      radius = 75;
+    } else if (currentZoom >= 8.0 && currentZoom < 12.0) {
       radius = 60;
-    } else if (currentZoom >= 13.0 && currentZoom < 15.0) {
-      radius = 50;
     } else {
       radius = 45;
     }
@@ -172,10 +214,11 @@ class ExploreMarkerBuilder {
         opacity: opacity,
         gradient: const HeatmapGradient(
           [
-            HeatmapGradientColor(Color(0x404CAF50), 0.2),   // Green for low density
-            HeatmapGradientColor(Color(0x90FFEB3B), 0.55),  // Yellow for medium density
-            HeatmapGradientColor(Color(0xC0FF9800), 0.8),   // Orange for high density
-            HeatmapGradientColor(Color(0xE0F44336), 1.0),   // Red for maximum density
+            HeatmapGradientColor(Color(0xFF3F51B5), 0.15),  // Blue/Indigo for very low density
+            HeatmapGradientColor(Color(0xFF00BCD4), 0.4),   // Cyan/Teal for low-medium density
+            HeatmapGradientColor(Color(0xFF4CAF50), 0.65),  // Green for medium density
+            HeatmapGradientColor(Color(0xFFFFEB3B), 0.85),  // Yellow for high density
+            HeatmapGradientColor(Color(0xFFFF5722), 1.0),   // Deep Orange/Red for maximum density
           ],
         ),
       ),

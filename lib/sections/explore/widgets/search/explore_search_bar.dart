@@ -18,6 +18,8 @@ class ExploreSearchBar extends StatelessWidget {
   final double topPadding;
   final VoidCallback? onFilterPressed;
   final VoidCallback? onTap;
+  final VoidCallback? onAddFriendTapped;
+  final String hintText;
 
   const ExploreSearchBar({
     super.key,
@@ -36,26 +38,21 @@ class ExploreSearchBar extends StatelessWidget {
     required this.topPadding,
     this.onFilterPressed,
     this.onTap,
+    this.onAddFriendTapped,
+    this.hintText = "Find a place",
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        top: topPadding + 12,
-        bottom: 12,
-        left: 16,
-        right: 16,
+        top: topPadding + 10,
+        bottom: 10,
+        left: 20,
+        right: 20,
       ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: Row(
         children: [
@@ -63,9 +60,10 @@ class ExploreSearchBar extends StatelessWidget {
           GestureDetector(
             onTap: onAvatarTapped ?? onBackToTimeline,
             child: Container(
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE8E8E8), width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -73,13 +71,27 @@ class ExploreSearchBar extends StatelessWidget {
                   )
                 ],
               ),
-              child: CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: userAvatarUrl != null
-                    ? NetworkImage(userAvatarUrl!) as ImageProvider
-                    : const AssetImage(
-                        'assets/home/images/element.png',
+              child: ClipOval(
+                child: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
+                    ? Image.network(
+                        userAvatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: const Color(0xFFEDE6FC),
+                          child: const Icon(
+                            Icons.person_outline,
+                            color: Color(0xFF7C57FC),
+                            size: 18,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: const Color(0xFFEDE6FC),
+                        child: const Icon(
+                          Icons.person_outline,
+                          color: Color(0xFF7C57FC),
+                          size: 18,
+                        ),
                       ),
               ),
             ),
@@ -89,10 +101,17 @@ class ExploreSearchBar extends StatelessWidget {
           // Search field
           Expanded(
             child: Container(
+              height: 46,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: const Color(0xFFE8E8E8)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: TextField(
                 controller: searchController,
@@ -102,19 +121,25 @@ class ExploreSearchBar extends StatelessWidget {
                 onTap: onTap,
                 style: GoogleFonts.ibmPlexSansArabic(fontSize: 16),
                 decoration: InputDecoration(
-                  hintText: "Find a place",
+                  hintText: hintText,
                   hintStyle: GoogleFonts.ibmPlexSansArabic(
                     color: const Color(0x9A1A1A2E),
                   ),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.all(12),
+                  prefixIcon: Container(
+                    margin: const EdgeInsets.only(left: 16, right: 8),
                     child: SvgPicture.asset(
                       'assets/explore/search_01.svg',
+                      width: 18,
+                      height: 18,
                       colorFilter: const ColorFilter.mode(
                         Color(0xFF82858C),
                         BlendMode.srcIn,
                       ),
                     ),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 42,
+                    minHeight: 18,
                   ),
                   suffixIcon: isSearching
                       ? const Padding(
@@ -141,7 +166,7 @@ class ExploreSearchBar extends StatelessWidget {
                             )
                           : null),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
                 ),
               ),
             ),
@@ -170,6 +195,32 @@ class ExploreSearchBar extends StatelessWidget {
                   Icons.tune,
                   color: Color(0xFF82858C),
                   size: 20,
+                ),
+              ),
+            ),
+          ],
+          if (onAddFriendTapped != null) ...[
+            const SizedBox(width: 12),
+            GestureDetector(
+              onTap: onAddFriendTapped,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.person_add_outlined,
+                  color: Color(0xFF1F242E),
+                  size: 18,
                 ),
               ),
             ),

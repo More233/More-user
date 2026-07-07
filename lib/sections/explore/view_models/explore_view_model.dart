@@ -8,7 +8,6 @@ import '../../../data/repositories/explore_repository_impl.dart';
 import '../helpers/bookmark_tracker.dart';
 import '../models/explore_state.dart';
 import '../models/filter_state.dart';
-import '../services/explore_data_service.dart';
 
 final exploreViewModelProvider = StateNotifierProvider.autoDispose<ExploreViewModel, ExploreState>((ref) {
   final exploreRepo = ref.watch(exploreRepositoryProvider);
@@ -119,8 +118,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           updated['peopleCount'] = placeVisitorCounts[pid];
           updated['visitors'] = placeVisitorsMap[pid];
         } else {
-          final originalReviewsCount = (p['reviewsCount'] as num?)?.toInt() ?? 5;
-          updated['peopleCount'] = ExploreDataService.calculateSimulatedBusyness(pid, originalReviewsCount);
+          updated['peopleCount'] = 0;
           updated['visitors'] = <Map<String, dynamic>>[];
         }
         return updated;

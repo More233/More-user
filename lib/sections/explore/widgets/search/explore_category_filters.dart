@@ -141,21 +141,33 @@ class ExploreCategoryFilters extends StatelessWidget {
                 ],
               ),
             )
-          : ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildCategoryPill("Restaurant", Icons.restaurant),
-                const SizedBox(width: 8),
-                _buildCategoryPill("Coffee", Icons.local_cafe),
-                const SizedBox(width: 8),
-                _buildCategoryPill("Bakery", Icons.breakfast_dining),
-                const SizedBox(width: 8),
-                _buildCategoryPill("Bars", Icons.local_bar),
-                const SizedBox(width: 8),
-                _buildCategoryPill("Desserts", Icons.icecream),
-              ],
-            ),
+          : (selectedMapTab == 1
+              ? ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _buildCategoryPill("Movies", Icons.movie_outlined),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Concerts", Icons.music_note),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Sports", Icons.sports_soccer),
+                  ],
+                )
+              : ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _buildCategoryPill("Restaurant", Icons.restaurant),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Coffee", Icons.local_cafe),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Bakery", Icons.breakfast_dining),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Bars", Icons.local_bar),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Desserts", Icons.icecream),
+                  ],
+                )),
     );
   }
 }

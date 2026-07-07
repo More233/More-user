@@ -251,7 +251,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     return IndexedStack(
       index: state.selectedNavIndex,
       children: [
-        _buildTimelineTab(state),
+        SafeArea(
+          top: true,
+          bottom: false,
+          child: _buildTimelineTab(state),
+        ),
         ExploreScreen(
           userAvatarUrl: state.currentUserAvatarUrl,
           initialLatitude: _selectedExploreLat,
@@ -262,17 +266,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           },
           onAvatarTapped: _onAvatarTapped,
         ),
-        const NotificationsScreen(
-          showBackButton: false,
+        SafeArea(
+          top: true,
+          bottom: false,
+          child: const NotificationsScreen(
+            showBackButton: false,
+          ),
         ),
-        MessagesScreen(
-          key: _messagesKey,
-          followedUsernames: state.followedUsernames,
-          onFollowChanged: (username, isFollowed) {
-            ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
-          },
-          showBackButton: false,
-          onAvatarTapped: _onAvatarTapped,
+        SafeArea(
+          top: true,
+          bottom: false,
+          child: MessagesScreen(
+            key: _messagesKey,
+            followedUsernames: state.followedUsernames,
+            onFollowChanged: (username, isFollowed) {
+              ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
+            },
+            showBackButton: false,
+            onAvatarTapped: _onAvatarTapped,
+          ),
         ),
       ],
     );
@@ -332,6 +344,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(timelineViewModelProvider);
+    debugPrint("HomeScreen: build() called, isLoading=${state.isLoading}, selectedNavIndex=${state.selectedNavIndex}");
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final navBarHeight = 50.0 + bottomPadding;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -410,106 +423,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                 : null,
                             child: Scaffold(
                               backgroundColor: Colors.white,
-                              body: SafeArea(
-                                top: true,
-                                bottom: false,
-                                child: NotificationListener<ScrollNotification>(
-                                  onNotification: (ScrollNotification notification) {
-                                    if (state.selectedNavIndex == 0) {
-                                      if (notification is ScrollUpdateNotification) {
-                                        final delta = notification.scrollDelta;
-                                        if (delta != null) {
-                                          if (delta > 0.5) {
-                                            if (_isHeaderVisible || _isNavBarVisible) {
-                                              setState(() {
-                                                _isHeaderVisible = false;
-                                                _isNavBarVisible = false;
-                                              });
-                                            }
-                                          } else if (delta < -0.5) {
-                                            if (!_isHeaderVisible || !_isNavBarVisible) {
-                                              setState(() {
-                                                _isHeaderVisible = true;
-                                                _isNavBarVisible = true;
-                                              });
-                                            }
+                              body: NotificationListener<ScrollNotification>(
+                                onNotification: (ScrollNotification notification) {
+                                  if (state.selectedNavIndex == 0) {
+                                    if (notification is ScrollUpdateNotification) {
+                                      final delta = notification.scrollDelta;
+                                      if (delta != null) {
+                                        if (delta > 0.5) {
+                                          if (_isHeaderVisible || _isNavBarVisible) {
+                                            setState(() {
+                                              _isHeaderVisible = false;
+                                              _isNavBarVisible = false;
+                                            });
                                           }
-                                        }
-                                        if (notification.metrics.pixels <= 0) {
+                                        } else if (delta < -0.5) {
                                           if (!_isHeaderVisible || !_isNavBarVisible) {
                                             setState(() {
                                               _isHeaderVisible = true;
-                                              _isNavBarVisible = true;
-                                            });
-                                          }
-                                        }
-                                      } else if (notification is ScrollEndNotification) {
-                                        if (notification.metrics.pixels <= 0) {
-                                          if (!_isHeaderVisible || !_isNavBarVisible) {
-                                            setState(() {
-                                              _isHeaderVisible = true;
-                                              _isNavBarVisible = true;
-                                            });
-                                          }
-                                        } else {
-                                          if (!_isNavBarVisible) {
-                                            setState(() {
                                               _isNavBarVisible = true;
                                             });
                                           }
                                         }
                                       }
+                                      if (notification.metrics.pixels <= 0) {
+                                        if (!_isHeaderVisible || !_isNavBarVisible) {
+                                          setState(() {
+                                            _isHeaderVisible = true;
+                                            _isNavBarVisible = true;
+                                          });
+                                        }
+                                      }
+                                    } else if (notification is ScrollEndNotification) {
+                                      if (notification.metrics.pixels <= 0) {
+                                        if (!_isHeaderVisible || !_isNavBarVisible) {
+                                          setState(() {
+                                            _isHeaderVisible = true;
+                                            _isNavBarVisible = true;
+                                          });
+                                        }
+                                      } else {
+                                        if (!_isNavBarVisible) {
+                                          setState(() {
+                                            _isNavBarVisible = true;
+                                          });
+                                        }
+                                      }
                                     }
-                                    return false;
-                                  },
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: state.isLoading
-                                            ? const CustomLoadingIndicator()
-                                            : _buildBody(state),
+                                  }
+                                  return false;
+                                },
+                                child: Stack(
+                                  children: [
+                                    Positioned.fill(
+                                      child: state.isLoading
+                                          ? const CustomLoadingIndicator()
+                                          : _buildBody(state),
+                                    ),
+                                    AnimatedPositioned(
+                                      duration: const Duration(milliseconds: 250),
+                                      curve: Curves.easeInOut,
+                                      left: 0,
+                                      right: 0,
+                                      bottom: _isNavBarVisible ? 0.0 : -navBarHeight,
+                                      child: BottomNavBar(
+                                        selectedIndex: state.selectedNavIndex,
+                                        userAvatarUrl: state.currentUserAvatarUrl,
+                                        unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
+                                        unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
+                                        onItemTapped: (index) {
+                                          setState(() {
+                                            _isHeaderVisible = true;
+                                            _isNavBarVisible = true;
+                                            if (index != 1) {
+                                              _selectedExploreLat = null;
+                                              _selectedExploreLng = null;
+                                              _selectedExploreAddress = null;
+                                            }
+                                          });
+                                          ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+                                        },
                                       ),
-                                      AnimatedPositioned(
-                                        duration: const Duration(milliseconds: 250),
-                                        curve: Curves.easeInOut,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: _isNavBarVisible ? 0.0 : -navBarHeight,
-                                        child: BottomNavBar(
-                                          selectedIndex: state.selectedNavIndex,
-                                          userAvatarUrl: state.currentUserAvatarUrl,
-                                          unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
-                                          unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
-                                          onItemTapped: (index) {
-                                            setState(() {
-                                              _isHeaderVisible = true;
-                                              _isNavBarVisible = true;
-                                              if (index != 1) {
-                                                _selectedExploreLat = null;
-                                                _selectedExploreLng = null;
-                                                _selectedExploreAddress = null;
-                                              }
-                                            });
-                                            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-                                          },
+                                    ),
+                                    AnimatedPositioned(
+                                      duration: const Duration(milliseconds: 250),
+                                      curve: Curves.easeInOut,
+                                      right: 16,
+                                      bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
+                                      child: IgnorePointer(
+                                        ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3),
+                                        child: AnimatedOpacity(
+                                          duration: const Duration(milliseconds: 200),
+                                          opacity: (state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) ? 1.0 : 0.0,
+                                          child: _buildFAB(state),
                                         ),
                                       ),
-                                      AnimatedPositioned(
-                                        duration: const Duration(milliseconds: 250),
-                                        curve: Curves.easeInOut,
-                                        right: 16,
-                                        bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
-                                        child: IgnorePointer(
-                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3),
-                                          child: AnimatedOpacity(
-                                            duration: const Duration(milliseconds: 200),
-                                            opacity: (state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) ? 1.0 : 0.0,
-                                            child: _buildFAB(state),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
