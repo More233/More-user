@@ -1,6 +1,83 @@
+import 'dart:math' as math;
 import '../models/explore_state.dart';
 
 class ExploreScreenHelpers {
+  static double calculateTimeDecayWeight(String? createdAtStr) {
+    if (createdAtStr == null || createdAtStr.isEmpty) return 0.0;
+    final createdAt = DateTime.tryParse(createdAtStr);
+    if (createdAt == null) return 0.0;
+    
+    final difference = DateTime.now().difference(createdAt);
+    final diffInMinutes = difference.inMinutes;
+
+    // Check-in sliding window of 3 hours (180 minutes)
+    if (diffInMinutes > 180 || diffInMinutes < 0) {
+      return 0.0;
+    }
+
+    // Exponential decay formula: e^(-t / 60.0)
+    // At t=0: weight = 1.0
+    // At t=60: weight = 0.36
+    // At t=120: weight = 0.13
+    // At t=180: weight = 0.05
+    final double exponent = -diffInMinutes / 60.0;
+    return math.exp(exponent);
+  }
+
+  static double calculateHybridWeight({
+    required Map<String, dynamic> place,
+    required bool isSaved,
+  }) {
+    // 1. Check-In Weight (with Time Decay) from our app
+    double checkInWeight = 0.0;
+    final visitors = place['visitors'] as List<dynamic>? ?? [];
+    for (final visitor in visitors) {
+      if (visitor is Map<String, dynamic>) {
+        final String? createdAtStr = visitor['createdAt'] as String?;
+        checkInWeight += calculateTimeDecayWeight(createdAtStr);
+      }
+    }
+    final double activeCheckins = checkInWeight.clamp(0.0, 10.0);
+
+    // 2. Real-world Popularity Base (Google/Foursquare Reviews Count)
+    final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
+    double reviewsContribution = 0.5; // default low baseline
+    if (reviewsCount >= 1500) {
+      reviewsContribution = 20.0;
+    } else if (reviewsCount >= 800) {
+      reviewsContribution = 14.0;
+    } else if (reviewsCount >= 300) {
+      reviewsContribution = 8.0;
+    } else if (reviewsCount >= 100) {
+      reviewsContribution = 4.0;
+    } else if (reviewsCount >= 20) {
+      reviewsContribution = 2.0;
+    }
+
+    // 3. Place Quality / Rating contribution
+    final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+    double ratingContribution = 1.0;
+    if (rating >= 4.5 || rating >= 9.0) { // Google 4.5+ or Foursquare 9.0+
+      ratingContribution = 1.5;
+    } else if (rating >= 4.0 || rating >= 8.0) {
+      ratingContribution = 1.25;
+    }
+
+    // 4. Baseline Real-world Crowd Density (combines popularity and rating)
+    final double baselineDensity = reviewsContribution * ratingContribution;
+
+    // 5. App Active Check-ins Multiplier (Amplifies the heatmap dynamically in real-time)
+    final double activeMultiplier = 1.0 + (activeCheckins * 4.0);
+
+    // 6. Saved places bonus (people bookmarked it)
+    final double savedBonus = isSaved ? 5.0 : 0.0;
+
+    // Final logical crowd density weight
+    final double totalWeight = (baselineDensity * activeMultiplier) + savedBonus;
+
+    return totalWeight;
+  }
+
   static double? parseDistance(String? distanceStr) {
     if (distanceStr == null) return null;
     final str = distanceStr.toLowerCase().trim();
@@ -88,10 +165,12 @@ class ExploreScreenHelpers {
       if (state.selectedMapTab == 1) {
         return place['actionType'] == 'Book';
       }
-
       if (state.selectedMapTab == 2 && !forHeatmap) {
-        final int checkIns = (place['peopleCount'] as num? ?? 0).toInt();
-        if (checkIns <= 0) return false;
+        final double hybridWeight = calculateHybridWeight(
+          place: place,
+          isSaved: place['isSaved'] as bool? ?? false,
+        );
+        if (hybridWeight < 0.3) return false;
       }
 
       if (state.filterState.maxDistance != null) {
@@ -135,15 +214,16 @@ class ExploreScreenHelpers {
       if (isManual) return true;
 
       if (state.selectedMapTab == 2) {
-        final int checkIns = (place['peopleCount'] as num? ?? 0).toInt();
-        if (currentZoom < 5.0) {
-          return checkIns >= 2;
-        } else if (currentZoom >= 5.0 && currentZoom < 8.0) {
-          return checkIns >= 2;
+        final double hybridWeight = calculateHybridWeight(
+          place: place,
+          isSaved: place['isSaved'] as bool? ?? false,
+        );
+        if (currentZoom < 8.0) {
+          return hybridWeight >= 0.7; // Very popular only
         } else if (currentZoom >= 8.0 && currentZoom < 12.0) {
-          return checkIns >= 2;
+          return hybridWeight >= 0.5; // Moderately popular
         } else {
-          return checkIns >= 1;
+          return hybridWeight >= 0.3; // All relevant swarms
         }
       }
 

@@ -99,19 +99,25 @@ class ExploreMarkerBuilder {
             anchorX = 0.5;
             anchorY = cy / canvasHeight;
           } else {
-            // Standard teardrop custom label marker
-            final double pinWidth = 27.75 * finalScale;
-            final double textWidth = 120.0;
-            final double spacing = 8.0;
-            final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
-            
-            final double pinDx = textWidth + spacing + 4.0;
-            final double pinDy = 4.0;
-            final double pinHeight = 30.833 * finalScale;
-            final double canvasHeight = pinHeight + 16.0;
+            final double rating = (place['rating'] as num?)?.toDouble() ?? 0.0;
+            if (!isCheckIn && rating > 0.0) {
+              anchorX = 0.5;
+              anchorY = isSelected ? 0.5 : 0.9;
+            } else {
+              // Standard teardrop custom label marker
+              final double pinWidth = 27.75 * finalScale;
+              final double textWidth = 120.0;
+              final double spacing = 8.0;
+              final double canvasWidth = textWidth + spacing + pinWidth + 8.0;
+              
+              final double pinDx = textWidth + spacing + 4.0;
+              final double pinDy = 4.0;
+              final double pinHeight = 30.833 * finalScale;
+              final double canvasHeight = pinHeight + 16.0;
 
-            anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
-            anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
+              anchorX = (pinDx + 13.875 * finalScale) / canvasWidth;
+              anchorY = (pinDy + 30.833 * finalScale) / canvasHeight;
+            }
           }
         } else {
           if (state.selectedMapTab == 2) {
@@ -160,49 +166,75 @@ class ExploreMarkerBuilder {
     required List<Map<String, dynamic>> filtered,
     required double currentZoom,
   }) {
+    // Show heatmap only on Swarming (2) tab
     if (state.selectedMapTab != 2) return {};
 
-    // Hide heatmap completely at very close zooms
-    if (currentZoom >= 15.0) return {};
+    // Hide heatmap completely at street level zoom
+    if (currentZoom >= 16.5) {
+      debugPrint("buildHeatmaps: hidden due to close zoom = $currentZoom");
+      return {};
+    }
+
+    // Determine weight boost factor based on zoom level to increase color intensity when zoomed out
+    double weightBoost = 1.0;
+    if (currentZoom < 4.0) {
+      weightBoost = 2.8;
+    } else if (currentZoom >= 4.0 && currentZoom < 6.0) {
+      weightBoost = 2.2;
+    } else if (currentZoom >= 6.0 && currentZoom < 9.0) {
+      weightBoost = 1.6;
+    } else if (currentZoom >= 9.0 && currentZoom < 12.0) {
+      weightBoost = 1.2;
+    }
 
     final List<WeightedLatLng> points = [];
 
     for (final place in filtered) {
       final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
       final double lng = (place['longitude'] as num? ?? 0.0).toDouble();
-      final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
-      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-      final int checkIns = (place['peopleCount'] as num? ?? 0).toInt();
 
-      // Calculate weight based on reviews, ratings, and app check-ins
-      final double reviewScore = (reviews / 50.0).clamp(0.0, 0.5);
-      final double ratingScore = rating > 4.0 ? ((rating - 4.0) * 0.2).clamp(0.0, 0.2) : 0.0;
-      final double checkInScore = (checkIns * 0.3).clamp(0.0, 0.6);
-      
-      // Keep a higher baseline floor weight (0.4) to guarantee visibility on map
-      final double heatWeight = (reviewScore + ratingScore + checkInScore).clamp(0.4, 1.0);
+      final double heatWeight = ExploreScreenHelpers.calculateHybridWeight(
+        place: place,
+        isSaved: place['isSaved'] as bool? ?? false,
+      );
 
-      points.add(WeightedLatLng(LatLng(lat, lng), weight: heatWeight));
+      final int peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
+      if (peopleCount > 0) {
+        debugPrint("buildHeatmaps LOOP: name=${place['name']}, peopleCount=$peopleCount, weight=$heatWeight, lat=$lat, lng=$lng");
+      }
+
+      // Only add to heatmap if the weight is above a threshold to avoid noise
+      if (heatWeight > 0.5) {
+        final double finalWeight = (heatWeight * weightBoost * 2.0).clamp(0.5, 200.0);
+        points.add(WeightedLatLng(LatLng(lat, lng), weight: finalWeight));
+      }
     }
 
+    debugPrint("buildHeatmaps: points count = ${points.length}, zoom = $currentZoom, weightBoost = $weightBoost");
     if (points.isEmpty) return {};
 
-    // Calculate dynamic opacity: fades out as zoom increases from 12.0 to 15.0
+    // Calculate dynamic opacity: fades out between 14.0 and 16.5
     double opacity = 0.85;
-    if (currentZoom >= 12.0) {
-      opacity = (0.85 * (1.0 - (currentZoom - 12.0) / 3.0)).clamp(0.0, 0.85);
+    if (currentZoom >= 14.0) {
+      opacity = (0.80 * (1.0 - (currentZoom - 14.0) / 2.5)).clamp(0.0, 0.80);
+    } else if (currentZoom >= 10.0) {
+      opacity = (0.85 - (currentZoom - 10.0) * 0.05).clamp(0.65, 0.85);
     }
 
     // Calculate dynamic radius: wider on zoom-out, tighter on zoom-in
     int radius = 45;
-    if (currentZoom < 5.0) {
-      radius = 90;
-    } else if (currentZoom >= 5.0 && currentZoom < 8.0) {
-      radius = 75;
-    } else if (currentZoom >= 8.0 && currentZoom < 12.0) {
-      radius = 60;
+    if (currentZoom < 4.0) {
+      radius = 120; // Massive global coverage!
+    } else if (currentZoom >= 4.0 && currentZoom < 6.0) {
+      radius = 95;  // Large country-level blobs
+    } else if (currentZoom >= 6.0 && currentZoom < 9.0) {
+      radius = 75;  // Regional/city-level clusters
+    } else if (currentZoom >= 9.0 && currentZoom < 12.0) {
+      radius = 55;  // Local district clusters
+    } else if (currentZoom >= 12.0 && currentZoom < 14.0) {
+      radius = 40;  // Street-level glow
     } else {
-      radius = 45;
+      radius = 25;  // Very tight pinpoint glow before vanishing
     }
 
     return {
@@ -210,7 +242,7 @@ class ExploreMarkerBuilder {
         heatmapId: const HeatmapId('explore_heatmap'),
         data: points,
         radius: HeatmapRadius.fromPixels(radius),
-        dissipating: true, // Let it dissipate normally so it is fully compatible and displays correctly on all platforms
+        dissipating: true,
         opacity: opacity,
         gradient: const HeatmapGradient(
           [

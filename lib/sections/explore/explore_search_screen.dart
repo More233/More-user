@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'widgets/sheets/explore_filter_sheet.dart';
-import 'models/filter_state.dart';
-import 'models/explore_search_state.dart';
 import 'view_models/explore_search_view_model.dart';
 import 'widgets/search/explore_search_header.dart';
 import 'widgets/search/explore_search_lists.dart';
@@ -56,35 +53,6 @@ class _ExploreSearchScreenState extends ConsumerState<ExploreSearchScreen> {
     super.dispose();
   }
 
-  void _openFilterBottomSheet(ExploreSearchState state, ExploreSearchViewModel viewModel) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return ExploreFilterSheet(
-          initialState: FilterState(
-            visited: state.localFilterState['visited'] as bool? ?? false,
-            saved: state.localFilterState['saved'] as bool? ?? false,
-            priceRange: state.localFilterState['priceLevel'] == 'Any' ? null : state.localFilterState['priceLevel'] as String?,
-            minRating: (state.localFilterState['ratingMin'] as num?)?.toDouble() ?? 0.0,
-            openNow: state.localFilterState['openNow'] as bool? ?? false,
-          ),
-          onApply: (newState) {
-            final updated = {
-              'visited': newState.visited,
-              'saved': newState.saved,
-              'priceLevel': newState.priceRange ?? 'Any',
-              'ratingMin': newState.minRating ?? 0.0,
-              'openNow': newState.openNow,
-            };
-            viewModel.updateFilterState(updated);
-            widget.onFilterStateChanged(updated);
-          },
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +81,17 @@ class _ExploreSearchScreenState extends ConsumerState<ExploreSearchScreen> {
                 _searchController.clear();
                 viewModel.onSearchChanged("", widget.userLat, widget.userLng);
               },
-              onFilterTap: () => _openFilterBottomSheet(state, viewModel),
+              onCategoryTap: (categoryType) {
+                Navigator.pop(context, {
+                  'type': 'category',
+                  'category': categoryType,
+                });
+              },
+              onCurrentLocationTap: () {
+                Navigator.pop(context, {
+                  'type': 'current_location',
+                });
+              },
             ),
             Expanded(
               child: ExploreSearchLists(

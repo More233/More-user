@@ -9,8 +9,8 @@ class ExploreSearchHeader extends StatelessWidget {
   final String searchQuery;
   final VoidCallback onBackTap;
   final VoidCallback onClearTap;
-  final VoidCallback onFilterTap;
-
+  final ValueChanged<String> onCategoryTap;
+  final VoidCallback onCurrentLocationTap;
   final FocusNode? focusNode;
 
   const ExploreSearchHeader({
@@ -22,116 +22,176 @@ class ExploreSearchHeader extends StatelessWidget {
     required this.searchQuery,
     required this.onBackTap,
     required this.onClearTap,
-    required this.onFilterTap,
+    required this.onCategoryTap,
+    required this.onCurrentLocationTap,
     this.focusNode,
   });
+
+  Widget _buildCategoryChip(String label, IconData icon, String type) {
+    return GestureDetector(
+      onTap: () => onCategoryTap(type),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F3F5),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: const Color(0xFFE8E8E8)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: const Color(0xFF1A1A2E)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF1A1A2E),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      color: Colors.white,
       padding: EdgeInsets.only(
-        top: topPadding + 12,
-        bottom: 16,
+        top: topPadding + 8,
+        bottom: 12,
         left: 16,
         right: 16,
       ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Back button
-          GestureDetector(
-            onTap: onBackTap,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              child: const Icon(
-                Icons.arrow_back_ios_new,
-                color: Color(0xFF1A1A2E),
-                size: 20,
-              ),
+          // Unified grey card containing Search input and Current Location
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F3F5),
+              borderRadius: BorderRadius.circular(16),
             ),
-          ),
-          const SizedBox(width: 8),
-          // Search input field
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                onChanged: onChanged,
-                autofocus: true,
-                style: GoogleFonts.ibmPlexSansArabic(fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: "Find a place",
-                  hintStyle: GoogleFonts.ibmPlexSansArabic(
-                    color: const Color(0x9A1A1A2E),
-                    fontSize: 15,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF82858C),
-                    size: 20,
-                  ),
-                  suffixIcon: isSearching
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF7C57FC),
-                              ),
-                            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Row 1: Back arrow + Search Input
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: onBackTap,
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 12, right: 8, top: 12, bottom: 12),
+                        child: Icon(
+                          Icons.chevron_left,
+                          color: Color(0xFF1A1A2E),
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        onChanged: onChanged,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 16,
+                          color: const Color(0xFF1A1A2E),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: "Find a place",
+                          hintStyle: GoogleFonts.ibmPlexSansArabic(
+                            color: const Color(0xFF82858C),
+                            fontSize: 16,
                           ),
-                        )
-                      : (searchQuery.isNotEmpty
-                          ? GestureDetector(
-                              onTap: onClearTap,
-                              child: const Icon(
-                                Icons.close,
-                                color: Color(0xFF82858C),
-                                size: 18,
-                              ),
-                            )
-                          : null),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          suffixIcon: isSearching
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Color(0xFF7C57FC),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : (searchQuery.isNotEmpty
+                                  ? GestureDetector(
+                                      onTap: onClearTap,
+                                      child: const Icon(
+                                        Icons.close,
+                                        color: Color(0xFF82858C),
+                                        size: 18,
+                                      ),
+                                    )
+                                  : null),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+                // Subtle horizontal divider
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    height: 1,
+                    color: Color(0xFFE2E4E6),
+                  ),
+                ),
+                // Row 2: Current Location
+                GestureDetector(
+                  onTap: onCurrentLocationTap,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    color: Colors.transparent, // Ensure full area is clickable
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          color: Color(0xFF1A1A2E),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Current Location",
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF1A1A2E),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 12),
-          // Filter button
-          GestureDetector(
-            onTap: onFilterTap,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE8E8E8)),
-              ),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.tune,
-                color: Color(0xFF82858C),
-                size: 18,
-              ),
+          const SizedBox(height: 12),
+          // Horizontal Category Pills
+          SizedBox(
+            height: 38,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.zero,
+              children: [
+                _buildCategoryChip("Restaurants", Icons.restaurant, "Restaurant"),
+                _buildCategoryChip("Coffee", Icons.local_cafe, "Coffee"),
+                _buildCategoryChip("Bakery", Icons.breakfast_dining, "Bakery"),
+                _buildCategoryChip("Bars", Icons.local_bar, "Bars"),
+                _buildCategoryChip("Desserts", Icons.icecream, "Desserts"),
+              ],
             ),
           ),
         ],

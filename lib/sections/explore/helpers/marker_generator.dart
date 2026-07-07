@@ -861,6 +861,141 @@ class MarkerGenerator {
       return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
     }
 
+    final bool isCheckIn = place['isCheckIn'] as bool? ?? false;
+
+
+    // If it's a standard venue (not a checkin post) and has a rating, draw speech bubble / circular pin
+    if (!isCheckIn && rating > 0.0) {
+      if (isSelected) {
+        // Draw the large Circular icon pin (e.g. for selected venue)
+        final double canvasWidth = 56.0;
+        final double canvasHeight = 56.0;
+        final double cx = 28.0;
+        final double cy = 28.0;
+
+        canvas.scale(dpr);
+
+        // 1. Draw outer shadow/glow
+        final Paint glowPaint = Paint()
+          ..color = const Color(0xFFE05638).withValues(alpha: 0.2)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(cx, cy), 26.0, glowPaint);
+
+        // 2. Draw outer white circle
+        final Paint outerPaint = Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(cx, cy), 22.0, outerPaint);
+
+        // 3. Draw inner orange/red circle
+        final Paint innerPaint = Paint()
+          ..color = const Color(0xFFE05638)
+          ..style = PaintingStyle.fill;
+        canvas.drawCircle(Offset(cx, cy), 18.0, innerPaint);
+
+        // 4. Draw white icon in center
+        final TextPainter iconPainter = TextPainter(textDirection: TextDirection.ltr);
+        iconPainter.text = TextSpan(
+          text: String.fromCharCode(iconData.codePoint),
+          style: TextStyle(
+            fontSize: 16.0,
+            fontFamily: iconData.fontFamily,
+            package: iconData.fontPackage,
+            color: Colors.white,
+          ),
+        );
+        iconPainter.layout();
+        iconPainter.paint(
+          canvas,
+          Offset(cx - iconPainter.width / 2, cy - iconPainter.height / 2),
+        );
+
+        final ui.Image image = await pictureRecorder.endRecording().toImage(
+          (canvasWidth * dpr).toInt(),
+          (canvasHeight * dpr).toInt(),
+        );
+        final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData == null) return BitmapDescriptor.defaultMarker;
+        final Uint8List uint8list = byteData.buffer.asUint8List();
+        return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
+      } else {
+        // Draw the Rating Speech Bubble (e.g. 🍴 8.9)
+        final double canvasWidth = 64.0;
+        final double canvasHeight = 42.0;
+
+        canvas.scale(dpr);
+
+        final paint = Paint()
+          ..color = const Color(0xFFE05638)
+          ..style = PaintingStyle.fill;
+
+        final borderPaint = Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.0;
+
+        // Draw speech bubble rounded rect
+        final RRect rrect = RRect.fromRectAndRadius(
+          const Rect.fromLTWH(2, 2, 60, 28),
+          const Radius.circular(14),
+        );
+        canvas.drawRRect(rrect, paint);
+        canvas.drawRRect(rrect, borderPaint);
+
+        // Draw pointer triangle at bottom center (x=32)
+        final path = Path()
+          ..moveTo(27, 30)
+          ..lineTo(37, 30)
+          ..lineTo(32, 36)
+          ..close();
+        canvas.drawPath(path, paint);
+        
+        // Stroke only bottom parts of the pointer to blend nicely
+        final pointerStroke = Path()
+          ..moveTo(27, 30)
+          ..lineTo(32, 36)
+          ..lineTo(37, 30);
+        canvas.drawPath(pointerStroke, borderPaint);
+
+        // Draw White Icon on the left
+        final TextPainter iconPainter = TextPainter(textDirection: TextDirection.ltr);
+        iconPainter.text = TextSpan(
+          text: String.fromCharCode(iconData.codePoint),
+          style: TextStyle(
+            fontSize: 12.0,
+            fontFamily: iconData.fontFamily,
+            package: iconData.fontPackage,
+            color: Colors.white,
+          ),
+        );
+        iconPainter.layout();
+        iconPainter.paint(canvas, Offset(8, 16 - iconPainter.height / 2));
+
+        // Draw Rating Text on the right
+        final String ratingStr = rating.toStringAsFixed(1);
+        final TextPainter ratingPainter = TextPainter(textDirection: TextDirection.ltr);
+        ratingPainter.text = TextSpan(
+          text: ratingStr,
+          style: const TextStyle(
+            fontSize: 12.0,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        );
+        ratingPainter.layout();
+        ratingPainter.paint(canvas, Offset(28, 16 - ratingPainter.height / 2));
+
+        final ui.Image image = await pictureRecorder.endRecording().toImage(
+          (canvasWidth * dpr).toInt(),
+          (canvasHeight * dpr).toInt(),
+        );
+        final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        if (byteData == null) return BitmapDescriptor.defaultMarker;
+        final Uint8List uint8list = byteData.buffer.asUint8List();
+        return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
+      }
+    }
+
     final double finalScale = isSelected ? 1.1 : 0.9;
     final double pinWidth = 27.75 * finalScale;
     final double pinHeight = 30.833 * finalScale;

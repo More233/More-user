@@ -78,10 +78,10 @@ class ExploreCategoryFilters extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF7C57FC) : Colors.white,
+          color: isSelected ? const Color(0xFFF1F3F5) : Colors.white,
           borderRadius: BorderRadius.circular(100),
           border: Border.all(
-            color: isSelected ? Colors.transparent : const Color(0xFFE8E8E8),
+            color: const Color(0xFFE8E8E8),
             width: 1,
           ),
           boxShadow: [
@@ -98,7 +98,7 @@ class ExploreCategoryFilters extends StatelessWidget {
             Icon(
               icon,
               size: 16,
-              color: isSelected ? Colors.white : const Color(0xFF333333),
+              color: isSelected ? const Color(0xFF1A1A2E) : const Color(0xFF82858C),
             ),
             const SizedBox(width: 6),
             Text(
@@ -106,7 +106,7 @@ class ExploreCategoryFilters extends StatelessWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.white : const Color(0xFF333333),
+                color: isSelected ? const Color(0xFF1A1A2E) : const Color(0xFF82858C),
               ),
             ),
           ],

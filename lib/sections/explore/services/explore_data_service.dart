@@ -389,11 +389,11 @@ class ExploreDataService {
     };
   }
 
-  static Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(double lat, double lng) async {
+  static Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(double lat, double lng, {double radius = 3000}) async {
     try {
       final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
           '?location=$lat,$lng'
-          '&radius=3000'
+          '&radius=${radius.toInt()}'
           '&key=$googlePlacesApiKey';
 
       final response = await http.get(Uri.parse(url));
@@ -617,6 +617,7 @@ class ExploreDataService {
           parsedVisitors.add({
             'name': name.isEmpty ? 'Anonymous' : name,
             'avatarUrl': author['avatar_url'] as String?,
+            'createdAt': v['created_at'] as String? ?? '',
           });
         }
       }
@@ -643,7 +644,7 @@ class ExploreDataService {
     return placeMap;
   }
 
-  static Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng) async {
+  static Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5}) async {
     final List<Map<String, dynamic>> checkins = [];
     final List<Map<String, dynamic>> customVenues = [];
     List<Map<String, dynamic>> postResults = [];
@@ -651,27 +652,37 @@ class ExploreDataService {
     try {
       final client = Supabase.instance.client;
       
-      final double latMin = lat - 0.5;
-      final double latMax = lat + 0.5;
-      final double lngMin = lng - 0.5;
-      final double lngMax = lng + 0.5;
+      var postsQuery = client
+          .from('posts')
+          .select('*, author:profiles!posts_user_id_fkey(*)')
+          .eq('is_private', false);
+          
+      var venuesQuery = client
+          .from('custom_venues')
+          .select('*, creator:profiles(*)');
+
+      if (boxSize != null) {
+        final double latMin = lat - boxSize;
+        final double latMax = lat + boxSize;
+        final double lngMin = lng - boxSize;
+        final double lngMax = lng + boxSize;
+
+        postsQuery = postsQuery
+            .gte('latitude', latMin)
+            .lte('latitude', latMax)
+            .gte('longitude', lngMin)
+            .lte('longitude', lngMax);
+
+        venuesQuery = venuesQuery
+            .gte('latitude', latMin)
+            .lte('latitude', latMax)
+            .gte('longitude', lngMin)
+            .lte('longitude', lngMax);
+      }
 
       final results = await Future.wait<dynamic>([
-        client
-            .from('posts')
-            .select('*, author:profiles!posts_user_id_fkey(*)')
-            .eq('is_private', false)
-            .gte('latitude', latMin)
-            .lte('latitude', latMax)
-            .gte('longitude', lngMin)
-            .lte('longitude', lngMax),
-        client
-            .from('custom_venues')
-            .select('*, creator:profiles(*)')
-            .gte('latitude', latMin)
-            .lte('latitude', latMax)
-            .gte('longitude', lngMin)
-            .lte('longitude', lngMax),
+        postsQuery,
+        venuesQuery,
       ]);
 
       final postsResponse = results[0];
@@ -712,6 +723,7 @@ class ExploreDataService {
           'authorAvatar': authorAvatar,
           'description': res['description'] as String? ?? '',
           'stickerIndex': res['sticker_index'] as int? ?? -1,
+          'createdAt': res['created_at'] as String? ?? '',
         });
       }
 
@@ -778,6 +790,7 @@ class ExploreDataService {
           parsedVisitors.add({
             'name': name.isEmpty ? 'Anonymous' : name,
             'avatarUrl': author['avatar_url'] as String?,
+            'createdAt': v['created_at'] as String? ?? '',
           });
         }
       }

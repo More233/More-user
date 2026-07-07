@@ -7,6 +7,9 @@ class FilterState {
   final bool saved;
   final bool newToMe;
   final bool onList;
+  final String sortBy; // 'Relevance', 'Distance', 'Rating'
+  final bool openAt;
+  final bool liked;
 
   FilterState({
     this.maxDistance,
@@ -17,6 +20,9 @@ class FilterState {
     this.saved = false,
     this.newToMe = false,
     this.onList = false,
+    this.sortBy = 'Relevance',
+    this.openAt = false,
+    this.liked = false,
   });
 
   FilterState copyWith({
@@ -28,6 +34,9 @@ class FilterState {
     bool? saved,
     bool? newToMe,
     bool? onList,
+    String? sortBy,
+    bool? openAt,
+    bool? liked,
   }) {
     return FilterState(
       maxDistance: maxDistance != null ? maxDistance() : this.maxDistance,
@@ -38,6 +47,9 @@ class FilterState {
       saved: saved ?? this.saved,
       newToMe: newToMe ?? this.newToMe,
       onList: onList ?? this.onList,
+      sortBy: sortBy ?? this.sortBy,
+      openAt: openAt ?? this.openAt,
+      liked: liked ?? this.liked,
     );
   }
 
@@ -49,6 +61,9 @@ class FilterState {
         visited ||
         saved ||
         newToMe ||
-        onList;
+        onList ||
+        sortBy != 'Relevance' ||
+        openAt ||
+        liked;
   }
 }

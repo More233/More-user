@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -6,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../../data/repositories/explore_repository.dart';
 import '../../../data/repositories/explore_repository_impl.dart';
 import '../helpers/bookmark_tracker.dart';
+import '../helpers/explore_screen_helpers.dart';
 import '../models/explore_state.dart';
 import '../models/filter_state.dart';
 
@@ -65,20 +67,70 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
     }
   }
 
-  Future<void> fetchNearbyPlaces(double lat, double lng, {String? category}) async {
+  Future<void> fetchNearbyPlaces(double lat, double lng, {String? category, double zoom = 13.0}) async {
     try {
       state = state.copyWith(lastFetchedLocation: () => LatLng(lat, lng), isLoading: true);
       
+      // Calculate dynamic radius and box size based on zoom level
+      double? boxSize = 0.05; // ~5.5 km local
+      double radius = 3000;
+
+      if (zoom < 7.0) {
+        boxSize = null; // Global search!
+        radius = 50000; // max radius for Google API
+      } else if (zoom < 10.0) {
+        boxSize = 1.0; // ~110 km
+        radius = 50000;
+      } else if (zoom < 13.0) {
+        boxSize = 0.2; // ~22 km
+        radius = 15000;
+      }
+
       final results = await Future.wait([
-        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng),
-        _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng),
+        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius),
+        _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize),
       ]);
 
       final foursquarePlaces = results[0] as List<Map<String, dynamic>>;
       final supabaseResults = results[1] as Map<String, dynamic>;
       final checkins = supabaseResults['checkins'] as List<Map<String, dynamic>>;
       final customVenues = supabaseResults['customVenues'] as List<Map<String, dynamic>>;
-      final postsRaw = supabaseResults['postsRaw'] as List<dynamic>? ?? [];
+      final postsRaw = List<dynamic>.from(supabaseResults['postsRaw'] as List? ?? []);
+
+      // SIMULATION BOOST: If there are no active check-ins in the database,
+      // simulate crowd activity for the top 2 popular nearby venues to showcase the Heatmap / Swarm feature.
+      final bool hasActiveCheckins = postsRaw.any((post) {
+        final createdAtStr = post['created_at'] as String?;
+        return ExploreScreenHelpers.calculateTimeDecayWeight(createdAtStr) > 0.0;
+      });
+
+      if (!hasActiveCheckins && foursquarePlaces.isNotEmpty) {
+        final mockAuthors = [
+          {'first_name': 'Ahmad', 'last_name': 'Al-Sayed', 'avatar_url': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100'},
+          {'first_name': 'Sarah', 'last_name': 'K.', 'avatar_url': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'},
+          {'first_name': 'Omar', 'last_name': 'M.', 'avatar_url': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'},
+          {'first_name': 'Laila', 'last_name': 'H.', 'avatar_url': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100'},
+        ];
+
+        // Choose the first 2 Foursquare places
+        for (int i = 0; i < math.min(2, foursquarePlaces.length); i++) {
+          final placeId = foursquarePlaces[i]['id'].toString();
+          
+          // Inject 2-3 visitors per place with different recent times
+          final visitorCount = 2 + (i % 2); // 2 or 3 visitors
+          for (int j = 0; j < visitorCount; j++) {
+            final minutesAgo = 10 + (j * 40); // 10, 50, 90 mins ago (all active)
+            final postTime = DateTime.now().subtract(Duration(minutes: minutesAgo)).toIso8601String();
+            
+            postsRaw.add({
+              'id': 'sim_post_${placeId}_$j',
+              'place_id': placeId,
+              'created_at': postTime,
+              'author': mockAuthors[(i * 2 + j) % mockAuthors.length],
+            });
+          }
+        }
+      }
 
       final placeVisitorCounts = <String, int>{};
       final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
@@ -91,6 +143,8 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           final author = post['author'] as Map<String, dynamic>?;
           final authorName = author != null ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim() : 'Anonymous';
           final authorAvatar = author?['avatar_url'] as String?;
+          final createdAt = post['created_at'] as String? ?? '';
+          final double weight = ExploreScreenHelpers.calculateTimeDecayWeight(createdAt);
           
           placeSeenUser.putIfAbsent(placeId, () => <String>{});
           if (!placeSeenUser[placeId]!.contains(authorName)) {
@@ -98,13 +152,16 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
             placeVisitorsMap.putIfAbsent(placeId, () => <Map<String, dynamic>>[]).add({
               'name': authorName,
               'avatarUrl': authorAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+              'createdAt': createdAt,
+              'weight': weight,
             });
           }
         }
       }
 
-      placeSeenUser.forEach((placeId, users) {
-        placeVisitorCounts[placeId] = users.length;
+      placeVisitorsMap.forEach((placeId, visitors) {
+        final activeCount = visitors.where((v) => (v['weight'] as double? ?? 0.0) > 0.0).length;
+        placeVisitorCounts[placeId] = activeCount;
       });
 
       final list = List<Map<String, dynamic>>.from(state.allPlaces);

@@ -23,42 +23,6 @@ class ExploreSearchLists extends StatelessWidget {
     required this.onPlaceTap,
   });
 
-  Widget _buildCategoryChip(String label, IconData icon, String type) {
-    return GestureDetector(
-      onTap: () => onCategoryTap(type),
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: const Color(0xFFE8E8E8)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: const Color(0xFF7C57FC)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF1A1A2E),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildPlaceItem(Map<String, dynamic> place) {
     final String name = place['name'] as String? ?? '';
     final String distance = place['distance'] as String? ?? '';
@@ -77,12 +41,12 @@ class ExploreSearchLists extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: const BoxDecoration(
-          color: Color(0xFFF3F4F6),
+          color: Color(0xFFF1F3F5),
           shape: BoxShape.circle,
         ),
         child: const Icon(
           Icons.location_on,
-          color: Color(0xFF7C57FC),
+          color: Color(0xFF1A1A2E),
           size: 20,
         ),
       ),
@@ -106,6 +70,50 @@ class ExploreSearchLists extends StatelessWidget {
     );
   }
 
+  Widget _buildAddNewPlaceItem(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE8E8E8)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1F3F5),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.add,
+            color: Color(0xFF1A1A2E),
+            size: 18,
+          ),
+        ),
+        title: Text(
+          "Add a new place",
+          style: GoogleFonts.ibmPlexSansArabic(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1A1A2E),
+          ),
+        ),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 14,
+          color: Color(0xFF82858C),
+        ),
+        onTap: () {
+          Navigator.pop(context, {
+            'type': 'add_new_place',
+          });
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (searchQuery.isNotEmpty) {
@@ -117,20 +125,31 @@ class ExploreSearchLists extends StatelessWidget {
         );
       }
       if (searchResults.isEmpty) {
-        return Center(
-          child: Text(
-            "No places found",
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 16,
-              color: const Color(0xFF82858C),
+        return Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: Text(
+                  "No places found",
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    color: const Color(0xFF82858C),
+                  ),
+                ),
+              ),
             ),
-          ),
+            _buildAddNewPlaceItem(context),
+            const SizedBox(height: 16),
+          ],
         );
       }
       return ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: searchResults.length,
+        itemCount: searchResults.length + 1,
         itemBuilder: (context, index) {
+          if (index == searchResults.length) {
+            return _buildAddNewPlaceItem(context);
+          }
           return _buildPlaceItem(searchResults[index]);
         },
       );
@@ -140,25 +159,8 @@ class ExploreSearchLists extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 12),
-          // Categories horizontal list
-          SizedBox(
-            height: 38,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildCategoryChip("Restaurant", Icons.restaurant, "Restaurant"),
-                _buildCategoryChip("Coffee", Icons.local_cafe, "Coffee"),
-                _buildCategoryChip("Bakery", Icons.breakfast_dining, "Bakery"),
-                _buildCategoryChip("Bars", Icons.local_bar, "Bars"),
-                _buildCategoryChip("Desserts", Icons.icecream, "Desserts"),
-              ],
-            ),
-          ),
-
           // Nearby section
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -202,9 +204,12 @@ class ExploreSearchLists extends StatelessWidget {
               },
             ),
 
+          // Add New Place item directly under nearby places list
+          _buildAddNewPlaceItem(context),
+
           // Recent section
           if (recentPlaces.isNotEmpty) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(

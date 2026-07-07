@@ -18,6 +18,8 @@ class ExploreFilterSheet extends StatefulWidget {
 
 class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
   late FilterState _state;
+  bool _isGoodForExpanded = false;
+  bool _isFeaturesExpanded = false;
 
   @override
   void initState() {
@@ -27,69 +29,50 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12, top: 16),
+      padding: const EdgeInsets.only(bottom: 12, top: 20),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF3C3C43).withValues(alpha: 0.6),
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFF1A1A2E),
         ),
       ),
     );
   }
 
-  Widget _buildChip<T>({
+  Widget _buildFilterButton<T>({
     required String label,
     required T value,
     required T? selectedValue,
     required ValueChanged<T?> onChanged,
-    IconData? icon,
-    Widget? prefix,
   }) {
     final bool isSelected = value == selectedValue;
-    return GestureDetector(
-      onTap: () {
-        if (isSelected) {
-          onChanged(null);
-        } else {
-          onChanged(value);
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEDE6FC) : Colors.white,
-          borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
-            width: 1,
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (isSelected) {
+            onChanged(null);
+          } else {
+            onChanged(value);
+          }
+        },
+        child: Container(
+          height: 40,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFF1F3F5),
+            borderRadius: BorderRadius.circular(100),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (prefix != null) ...[
-              prefix,
-              const SizedBox(width: 6),
-            ] else if (icon != null) ...[
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFF636268),
-              ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.ibmPlexSansArabic(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? Colors.white : const Color(0xFF1A1A2E),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -99,40 +82,34 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
     required String label,
     required bool isActive,
     required ValueChanged<bool> onChanged,
-    IconData? icon,
+    required IconData icon,
   }) {
     return GestureDetector(
       onTap: () {
         onChanged(!isActive);
       },
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        margin: const EdgeInsets.only(right: 8, bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFEDE6FC) : Colors.white,
+          color: isActive ? const Color(0xFF7C57FC) : const Color(0xFFF1F3F5),
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(
-            color: isActive ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
-            width: 1,
-          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 16,
-                color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-              ),
-              const SizedBox(width: 6),
-            ],
+            Icon(
+              icon,
+              size: 16,
+              color: isActive ? Colors.white : const Color(0xFF1A1A2E),
+            ),
+            const SizedBox(width: 6),
             Text(
               label,
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF636268),
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                color: isActive ? Colors.white : const Color(0xFF1A1A2E),
               ),
             ),
           ],
@@ -141,10 +118,51 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
     );
   }
 
+  Widget _buildSortBySelector() {
+    final options = ['Relevance', 'Distance', 'Rating'];
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F3F5),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        children: options.map((opt) {
+          final isSelected = _state.sortBy == opt;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _state = _state.copyWith(sortBy: opt);
+                });
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  opt,
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? Colors.white : const Color(0xFF1A1A2E),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool isApplyActive = _state.isModified;
-
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
+    
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -172,290 +190,244 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              const SizedBox(width: 36), // Spacer for centering
               Text(
-                "Filters",
+                "Filter",
                 style: GoogleFonts.ibmPlexSansArabic(
-                  fontSize: 22,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1F242E),
+                  color: const Color(0xFF1A1A2E),
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _state = FilterState();
-                  });
-                },
-                child: Text(
-                  "Reset",
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF9E8BFC),
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F3F5),
+                    shape: BoxShape.circle,
                   ),
+                  child: const Icon(Icons.close, size: 18, color: Color(0xFF1A1A2E)),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
-          // Content scroll area
+          // Main Scroll Area
           Flexible(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Distance Section
-                  _buildSectionTitle("Distance"),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildChip<double>(
-                          label: "1 km",
-                          value: 1.0,
-                          selectedValue: _state.maxDistance,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(maxDistance: () => val)),
-                        ),
-                        _buildChip<double>(
-                          label: "2 km",
-                          value: 2.0,
-                          selectedValue: _state.maxDistance,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(maxDistance: () => val)),
-                        ),
-                        _buildChip<double>(
-                          label: "3 km",
-                          value: 3.0,
-                          selectedValue: _state.maxDistance,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(maxDistance: () => val)),
-                        ),
-                        _buildChip<double>(
-                          label: "4 km",
-                          value: 4.0,
-                          selectedValue: _state.maxDistance,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(maxDistance: () => val)),
-                        ),
-                        _buildChip<double>(
-                          label: "10 km",
-                          value: 10.0,
-                          selectedValue: _state.maxDistance,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(maxDistance: () => val)),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Sort By
+                  _buildSectionTitle("Sort by"),
+                  _buildSortBySelector(),
 
-                  // Open Now Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Open now",
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF3C3C43).withValues(alpha: 0.6),
-                          ),
-                        ),
-                        Switch.adaptive(
-                          value: _state.openNow,
-                          activeTrackColor: const Color(0xFF7C57FC),
-                          onChanged: (val) => setState(() => _state = _state.copyWith(openNow: val)),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Rating Section
-                  _buildSectionTitle("Rating"),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildChip<double>(
-                          label: "5.0",
-                          value: 5.0,
-                          selectedValue: _state.minRating,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(minRating: () => val)),
-                          prefix: const Icon(Icons.star, color: Colors.amber, size: 16),
-                        ),
-                        _buildChip<double>(
-                          label: "4.7",
-                          value: 4.7,
-                          selectedValue: _state.minRating,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(minRating: () => val)),
-                          prefix: const Icon(Icons.star, color: Colors.amber, size: 16),
-                        ),
-                        _buildChip<double>(
-                          label: "4.5",
-                          value: 4.5,
-                          selectedValue: _state.minRating,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(minRating: () => val)),
-                          prefix: const Icon(Icons.star, color: Colors.amber, size: 16),
-                        ),
-                        _buildChip<double>(
-                          label: "4.0",
-                          value: 4.0,
-                          selectedValue: _state.minRating,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(minRating: () => val)),
-                          prefix: const Icon(Icons.star, color: Colors.amber, size: 16),
-                        ),
-                        _buildChip<double>(
-                          label: "3.0",
-                          value: 3.0,
-                          selectedValue: _state.minRating,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(minRating: () => val)),
-                          prefix: const Icon(Icons.star, color: Colors.amber, size: 16),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Price Section
+                  // Price
                   _buildSectionTitle("Price"),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildChip<String>(
-                          label: "\$",
-                          value: "\$",
-                          selectedValue: _state.priceRange,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
-                        ),
-                        _buildChip<String>(
-                          label: "\$\$",
-                          value: "\$\$",
-                          selectedValue: _state.priceRange,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
-                        ),
-                        _buildChip<String>(
-                          label: "\$\$\$",
-                          value: "\$\$\$",
-                          selectedValue: _state.priceRange,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
-                        ),
-                        _buildChip<String>(
-                          label: "\$\$\$\$",
-                          value: "\$\$\$\$",
-                          selectedValue: _state.priceRange,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
-                        ),
-                      ],
-                    ),
+                  Row(
+                    children: [
+                      _buildFilterButton<String>(
+                        label: "\$",
+                        value: "\$",
+                        selectedValue: _state.priceRange,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
+                      ),
+                      _buildFilterButton<String>(
+                        label: "\$\$",
+                        value: "\$\$",
+                        selectedValue: _state.priceRange,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
+                      ),
+                      _buildFilterButton<String>(
+                        label: "\$\$\$",
+                        value: "\$\$\$",
+                        selectedValue: _state.priceRange,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
+                      ),
+                      _buildFilterButton<String>(
+                        label: "\$\$\$\$",
+                        value: "\$\$\$\$",
+                        selectedValue: _state.priceRange,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(priceRange: () => val)),
+                      ),
+                    ],
                   ),
 
-                  // Places Section
-                  _buildSectionTitle("Places"),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildToggleChip(
-                          label: "Visited",
-                          isActive: _state.visited,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(visited: val)),
-                          icon: Icons.history,
-                        ),
-                        _buildToggleChip(
-                          label: "Saved",
-                          isActive: _state.saved,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(saved: val)),
-                          icon: Icons.bookmark,
-                        ),
-                        _buildToggleChip(
-                          label: "New to me",
-                          isActive: _state.newToMe,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(newToMe: val)),
-                          icon: Icons.auto_awesome,
-                        ),
-                        _buildToggleChip(
-                          label: "On list",
-                          isActive: _state.onList,
-                          onChanged: (val) => setState(() => _state = _state.copyWith(onList: val)),
-                          icon: Icons.format_list_bulleted,
-                        ),
-                      ],
-                    ),
+                  // Time
+                  _buildSectionTitle("Time"),
+                  Row(
+                    children: [
+                      _buildFilterButton<bool>(
+                        label: "Open now",
+                        value: true,
+                        selectedValue: _state.openNow ? true : null,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(openNow: val ?? false)),
+                      ),
+                      _buildFilterButton<bool>(
+                        label: "Open at",
+                        value: true,
+                        selectedValue: _state.openAt ? true : null,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(openAt: val ?? false)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
+
+                  // Places
+                  _buildSectionTitle("Places"),
+                  Wrap(
+                    children: [
+                      _buildToggleChip(
+                        label: "Visited",
+                        isActive: _state.visited,
+                        icon: Icons.history,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(visited: val)),
+                      ),
+                      _buildToggleChip(
+                        label: "New to me",
+                        isActive: _state.newToMe,
+                        icon: Icons.explore,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(newToMe: val)),
+                      ),
+                      _buildToggleChip(
+                        label: "Saved",
+                        isActive: _state.saved,
+                        icon: Icons.bookmark,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(saved: val)),
+                      ),
+                      _buildToggleChip(
+                        label: "Liked",
+                        isActive: _state.liked,
+                        icon: Icons.sentiment_satisfied_alt,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(liked: val)),
+                      ),
+                      _buildToggleChip(
+                        label: "On my list",
+                        isActive: _state.onList,
+                        icon: Icons.format_list_bulleted,
+                        onChanged: (val) => setState(() => _state = _state.copyWith(onList: val)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(color: Color(0xFFF1F3F5)),
+
+                  // Good For
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      "Good for",
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    trailing: Icon(
+                      _isGoodForExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: const Color(0xFF1A1A2E),
+                    ),
+                    onTap: () => setState(() => _isGoodForExpanded = !_isGoodForExpanded),
+                  ),
+                  if (_isGoodForExpanded) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        "Mock values: Brunch, Date, Quiet, Large groups",
+                        style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF82858C)),
+                      ),
+                    ),
+                  ],
+                  const Divider(color: Color(0xFFF1F3F5)),
+
+                  // Features
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      "Features",
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1A1A2E),
+                      ),
+                    ),
+                    trailing: Icon(
+                      _isFeaturesExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      color: const Color(0xFF1A1A2E),
+                    ),
+                    onTap: () => setState(() => _isFeaturesExpanded = !_isFeaturesExpanded),
+                  ),
+                  if (_isFeaturesExpanded) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        "Mock values: Wi-Fi, Outdoor seating, Delivery",
+                        style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF82858C)),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
           ),
 
-          // Actions
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
+          // Bottom Bar (Clear All / Apply)
+          Container(
+            padding: EdgeInsets.only(bottom: bottomPadding + 8, top: 12),
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFF1F3F5))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
                   onTap: () {
-                    Navigator.pop(context);
+                    setState(() {
+                      _state = FilterState();
+                    });
                   },
-                  child: Container(
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFE8E8E8),
-                        width: 1.5,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      "Cancel",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF636268),
-                      ),
+                  child: Text(
+                    "Clear all",
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline,
+                      color: const Color(0xFF1A1A2E),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: isApplyActive
-                      ? () {
-                          widget.onApply(_state);
-                          Navigator.pop(context);
-                        }
-                      : null,
-                  child: Container(
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: isApplyActive ? const Color(0xFF7C57FC) : const Color(0xFF7C57FC).withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: isApplyActive
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF7C57FC).withValues(alpha: 0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : null,
+                SizedBox(
+                  width: 140,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      widget.onApply(_state);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C57FC),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      elevation: 0,
                     ),
-                    alignment: Alignment.center,
                     child: Text(
                       "Apply",
                       style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );

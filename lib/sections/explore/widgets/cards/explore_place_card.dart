@@ -43,13 +43,6 @@ class ExplorePlaceCard extends StatelessWidget {
     return "📍";
   }
 
-  static IconData _getActionIcon(String actionType) {
-    if (actionType == 'Order') return Icons.shopping_bag;
-    if (actionType == 'Book') return Icons.calendar_today;
-    if (actionType == 'check-in') return Icons.location_on;
-    return Icons.arrow_forward;
-  }
-
   static Widget buildCardBadge({
     required IconData icon,
     required String label,
@@ -210,7 +203,6 @@ class ExplorePlaceCard extends StatelessWidget {
                 ),
                 if (place['stickerIndex'] != null && (place['stickerIndex'] as int) != -1) ...[
                   const SizedBox(width: 8),
-                  // Render a small sticker badge
                   SizedBox(
                     width: 32,
                     height: 32,
@@ -226,7 +218,6 @@ class ExplorePlaceCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            // Action button for Check-in
             Row(
               children: [
                 Expanded(
@@ -253,7 +244,7 @@ class ExplorePlaceCard extends StatelessWidget {
               ],
             ),
           ] else ...[
-            // Normal Place Card UI
+            // Normal Place Card UI (Clean Google Maps / Foursquare style)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -265,40 +256,34 @@ class ExplorePlaceCard extends StatelessWidget {
                       placeName: place['name']?.toString() ?? '',
                       iconUrl: place['iconUrl']?.toString(),
                       imageUrl: place['imageUrl']?.toString(),
-                      width: 90,
-                      height: 90,
+                      width: 80,
+                      height: 80,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     Positioned(
-                      top: 6,
-                      left: 6,
+                      top: 4,
+                      left: 4,
                       child: GestureDetector(
                         onTap: () {
                           onSavedChanged(!(place['isSaved'] as bool? ?? false));
                         },
-                        child: Builder(
-                          builder: (context) {
-                            final bool isSaved = place['isSaved'] as bool? ?? false;
-                            final bool hasImage = place['imageUrl'] != null && place['imageUrl'].toString().isNotEmpty;
-                            return Container(
-                              width: 32,
-                              height: 32,
-                              alignment: Alignment.center,
-                              child: SvgPicture.asset(
-                                isSaved
-                                    ? 'assets/home/icons/bookmark_02_1.svg'
-                                    : 'assets/home/icons/bookmark_02.svg',
-                                width: 22,
-                                height: 22,
-                                colorFilter: ColorFilter.mode(
-                                  hasImage
-                                      ? Colors.white
-                                      : const Color(0xFF7C57FC),
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                            );
-                          }
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
+                          child: SvgPicture.asset(
+                            place['isSaved'] as bool? ?? false
+                                ? 'assets/home/icons/bookmark_02_1.svg'
+                                : 'assets/home/icons/bookmark_02.svg',
+                            width: 20,
+                            height: 20,
+                            colorFilter: ColorFilter.mode(
+                              place['imageUrl'] != null && place['imageUrl'].toString().isNotEmpty
+                                  ? Colors.white
+                                  : const Color(0xFF7C57FC),
+                              BlendMode.srcIn,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -314,16 +299,24 @@ class ExplorePlaceCard extends StatelessWidget {
                       Text(
                         place['name']?.toString() ?? '',
                         style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF333333),
+                          color: const Color(0xFF1A1A2E),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "${place['type']} • ${place['address']}",
+                        place['type']?.toString() ?? 'Cafe',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          color: const Color(0xFF82858C),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        place['address']?.toString() ?? '',
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 14,
                           color: const Color(0xFF82858C),
@@ -332,221 +325,34 @@ class ExplorePlaceCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 6),
-
-                      // Badges row
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
+                      // Rating Row: Smile icon, Rating value, total reviews
+                      Row(
                         children: [
-                          // Distance Badge
-                          buildCardBadge(
-                            icon: Icons.directions_walk,
-                            label: place['distance']?.toString() ?? '',
+                          const Icon(
+                            Icons.sentiment_satisfied_alt,
+                            color: Color(0xFF1A1A2E),
+                            size: 16,
                           ),
-                          // Status Badge
-                          buildCardBadge(
-                            icon: Icons.circle,
-                            iconColor: Colors.green,
-                            label: "Open Now",
+                          const SizedBox(width: 4),
+                          Text(
+                            place['rating']?.toString() ?? '8.0',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1A1A2E),
+                            ),
                           ),
-                          // Rating Badge
-                          buildCardBadge(
-                            icon: Icons.star,
-                            iconColor: Colors.amber,
-                            label: "${place['rating']} (${place['reviewsCount']})",
+                          const SizedBox(width: 4),
+                          Text(
+                            "(${place['reviewsCount']?.toString() ?? '0'})",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 13,
+                              color: const Color(0xFF82858C),
+                            ),
                           ),
                         ],
                       ),
                     ],
-                  ),
-                ),
-              ],
-            ),
-
-            // Visitors list (moved below the row)
-            if (place['visitors'] != null && (place['visitors'] as List).isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Builder(
-                    builder: (context) {
-                      final visitors = List<Map<String, dynamic>>.from(place['visitors'] as List);
-                      final int total = visitors.length;
-                      final int countToShow = total > 3 ? 3 : total;
-                      return SizedBox(
-                        width: total == 1 ? 20.0 : (total == 2 ? 32.0 : 44.0),
-                        height: 20,
-                        child: Stack(
-                          children: List.generate(countToShow, (index) {
-                            if (total > 3 && index == 2) {
-                              return Positioned(
-                                left: index * 12.0,
-                                child: CircleAvatar(
-                                  radius: 10,
-                                  backgroundColor: Colors.white,
-                                  child: CircleAvatar(
-                                    radius: 9,
-                                    backgroundColor: const Color(0xFFEDE6FC),
-                                    child: Text(
-                                      '+${total - 2}',
-                                      style: const TextStyle(
-                                        fontSize: 7,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF7C57FC),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-                            
-                            final visitor = visitors[index];
-                            final avatarUrl = visitor['avatarUrl'] as String?;
-                            Widget avatarChild;
-                            if (avatarUrl != null && avatarUrl.isNotEmpty) {
-                              avatarChild = CircleAvatar(
-                                radius: 9,
-                                backgroundImage: NetworkImage(avatarUrl),
-                              );
-                            } else {
-                              final initials = visitor['name']
-                                  .toString()
-                                  .split(' ')
-                                  .map((e) => e.isNotEmpty ? e[0] : '')
-                                  .take(2)
-                                  .join()
-                                  .toUpperCase();
-                              avatarChild = CircleAvatar(
-                                radius: 9,
-                                backgroundColor: const Color(0xFFEDE6FC),
-                                child: Text(
-                                  initials.isNotEmpty ? initials : '?',
-                                  style: const TextStyle(
-                                    fontSize: 7,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF7C57FC),
-                                  ),
-                                ),
-                              );
-                            }
-                            return Positioned(
-                              left: index * 12.0,
-                              child: CircleAvatar(
-                                radius: 10,
-                                backgroundColor: Colors.white,
-                                child: avatarChild,
-                              ),
-                            );
-                          }),
-                        ),
-                      );
-                    }
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Builder(
-                      builder: (context) {
-                        final visitors = List<Map<String, dynamic>>.from(place['visitors'] as List);
-                        final int count = visitors.length;
-                        String text = '';
-                        if (count == 1) {
-                          text = '${visitors[0]['name']} is here';
-                        } else if (count == 2) {
-                          text = '${visitors[0]['name']} and ${visitors[1]['name']} are here';
-                        } else {
-                          text = '${visitors[0]['name']}, ${visitors[1]['name']} and ${count - 2} others are here';
-                        }
-                        return Text(
-                          text,
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 13,
-                            color: const Color(0xFF636268),
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
-
-            // Card Action Buttons
-            Row(
-              children: [
-                // View Button
-                Expanded(
-                  child: GestureDetector(
-                    onTap: onViewPressed,
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF7C57FC), width: 1.5),
-                      ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.visibility, color: Color(0xFF7C57FC), size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            "View",
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF7C57FC),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Dynamic Action Button (Order, Book, check-in)
-                Expanded(
-                  child: GestureDetector(
-                    onTap: onActionTriggered,
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF7C57FC),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF7C57FC).withValues(alpha: 0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _getActionIcon(place['actionType'] as String? ?? 'Order'),
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            (place['actionType'] == 'check-in') ? 'Check-in' : (place['actionType'] as String? ?? 'Order'),
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ),
               ],
@@ -557,4 +363,3 @@ class ExplorePlaceCard extends StatelessWidget {
     );
   }
 }
-
