@@ -31,7 +31,7 @@ class StorySendSheetContent extends ConsumerWidget {
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFF1C1C1E),
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
@@ -45,7 +45,7 @@ class StorySendSheetContent extends ConsumerWidget {
               width: 36,
               height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFE5E5EA),
+                color: Colors.white24,
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
@@ -53,7 +53,7 @@ class StorySendSheetContent extends ConsumerWidget {
             Text(
               "Send",
               style: GoogleFonts.ibmPlexSansArabic(
-                color: Colors.black,
+                color: Colors.white,
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
               ),
@@ -62,24 +62,24 @@ class StorySendSheetContent extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: const Color(0xFF2C2C2E),
                 borderRadius: BorderRadius.circular(100),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.search, color: Color(0xFF82858C), size: 20),
+                  const Icon(Icons.search, color: Colors.white54, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       onChanged: notifier.searchFriends,
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 15,
-                        color: const Color(0xFF1F242E),
+                        color: Colors.white,
                       ),
                       decoration: InputDecoration(
                         hintText: "Search",
                         hintStyle: GoogleFonts.ibmPlexSansArabic(
-                          color: const Color(0xFF9CA3AF),
+                          color: Colors.white30,
                           fontSize: 15,
                         ),
                         border: InputBorder.none,
@@ -105,7 +105,7 @@ class StorySendSheetContent extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Text(
                   "No friends found",
-                  style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
+                  style: GoogleFonts.ibmPlexSansArabic(color: Colors.white30),
                 ),
               )
             else
@@ -130,7 +130,7 @@ class StorySendSheetContent extends ConsumerWidget {
                           children: [
                             CircleAvatar(
                               radius: 20,
-                              backgroundColor: Colors.grey[200],
+                              backgroundColor: Colors.white10,
                               backgroundImage: _getAvatarProvider(avatar),
                             ),
                             const SizedBox(width: 12),
@@ -141,7 +141,7 @@ class StorySendSheetContent extends ConsumerWidget {
                                   Text(
                                     name,
                                     style: GoogleFonts.ibmPlexSansArabic(
-                                      color: const Color(0xFF1F1F1F),
+                                      color: Colors.white,
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -149,7 +149,7 @@ class StorySendSheetContent extends ConsumerWidget {
                                   Text(
                                     "@$username",
                                     style: GoogleFonts.ibmPlexSansArabic(
-                                      color: Colors.grey,
+                                      color: Colors.white54,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -159,6 +159,7 @@ class StorySendSheetContent extends ConsumerWidget {
                             Checkbox(
                               value: isSelected,
                               activeColor: const Color(0xFF7C57FC),
+                              side: const BorderSide(color: Colors.white24),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -185,7 +186,7 @@ class StorySendSheetContent extends ConsumerWidget {
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7C57FC),
-                  disabledBackgroundColor: const Color(0xFFE5E5EA),
+                  disabledBackgroundColor: Colors.white10,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -194,7 +195,7 @@ class StorySendSheetContent extends ConsumerWidget {
                 child: Text(
                   "Send",
                   style: GoogleFonts.ibmPlexSansArabic(
-                    color: state.selectedUsernames.isEmpty ? const Color(0xFF8E8E93) : Colors.white,
+                    color: state.selectedUsernames.isEmpty ? Colors.white24 : Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),

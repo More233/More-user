@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../profile_screen.dart';
+import '../../followers_following_screen.dart';
 import '../saved/saved_screen.dart';
 import '../../notifications_screen.dart';
 import '../../../settings/widgets/language_sheet.dart';
@@ -167,37 +168,79 @@ class _UserDrawerState extends State<UserDrawer> {
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            Text(
-                              '$_followingCount',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Following',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 14,
-                                color: const Color(0xFF687684),
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                widget.onCloseMenu?.call();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FollowersFollowingScreen(
+                                      userId: Supabase.instance.client.auth.currentUser?.id ?? '',
+                                      username: _username,
+                                      initialTabIndex: 1, // Following tab
+                                    ),
+                                  ),
+                                );
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '$_followingCount',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Following',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      fontSize: 14,
+                                      color: const Color(0xFF687684),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 16),
-                            Text(
-                              '$_followersCount',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Followers',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 14,
-                                color: const Color(0xFF687684),
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                widget.onCloseMenu?.call();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FollowersFollowingScreen(
+                                      userId: Supabase.instance.client.auth.currentUser?.id ?? '',
+                                      username: _username,
+                                      initialTabIndex: 0, // Followers tab
+                                    ),
+                                  ),
+                                );
+                              },
+                              behavior: HitTestBehavior.opaque,
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '$_followersCount',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Followers',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      fontSize: 14,
+                                      color: const Color(0xFF687684),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],

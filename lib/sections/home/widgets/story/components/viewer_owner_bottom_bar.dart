@@ -143,26 +143,6 @@ class ViewerOwnerBottomBar extends StatelessWidget {
             onTap: onHighlightTap,
           ),
           _buildBottomBarItem(
-            icon: SvgPicture.asset(
-              'assets/home/icons/sent.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            ),
-            label: "Send",
-            onTap: onSendTap,
-          ),
-          _buildBottomBarItem(
-            icon: SvgPicture.asset(
-              'assets/home/icons/at.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-            ),
-            label: "Mention",
-            onTap: onMentionTap,
-          ),
-          _buildBottomBarItem(
             icon: SvgPicture.string(
               '''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 7H20M4 12H20M4 17H20" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>

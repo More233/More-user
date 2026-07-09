@@ -134,7 +134,7 @@ extension _StoryViewerLogic on _StoryViewerState {
   void _nextStory() {
     ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier).nextStory(
       widget.storyGroups,
-      () => Navigator.pop(context),
+      _safePop,
     );
   }
 

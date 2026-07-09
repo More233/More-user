@@ -18,6 +18,7 @@ import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
 import 'widgets/feed/check_in_composer_screen.dart';
 import '../settings/screens/edit_profile_screen.dart';
 import 'widgets/common/custom_loading_indicator.dart';
+import 'followers_following_screen.dart';
 
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -607,37 +608,77 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       // Following / Followers
                       Row(
                         children: [
-                          Text(
-                            '$_followingCount',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Following',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              color: const Color(0xFF687684),
+                          GestureDetector(
+                            onTap: () {
+                              final targetUserId = widget.userId ?? Supabase.instance.client.auth.currentUser?.id ?? '';
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FollowersFollowingScreen(
+                                    userId: targetUserId,
+                                    username: _username,
+                                    initialTabIndex: 1, // Following tab
+                                  ),
+                                ),
+                              ).then((_) => _fetchProfileData());
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              children: [
+                                Text(
+                                  '$_followingCount',
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Following',
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    fontSize: 14,
+                                    color: const Color(0xFF687684),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Text(
-                            '$_followersCount',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Followers',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 14,
-                              color: const Color(0xFF687684),
+                          GestureDetector(
+                            onTap: () {
+                              final targetUserId = widget.userId ?? Supabase.instance.client.auth.currentUser?.id ?? '';
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => FollowersFollowingScreen(
+                                    userId: targetUserId,
+                                    username: _username,
+                                    initialTabIndex: 0, // Followers tab
+                                  ),
+                                ),
+                              ).then((_) => _fetchProfileData());
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              children: [
+                                Text(
+                                  '$_followersCount',
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Followers',
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    fontSize: 14,
+                                    color: const Color(0xFF687684),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],

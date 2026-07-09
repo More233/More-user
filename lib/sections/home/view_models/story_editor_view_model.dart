@@ -209,6 +209,7 @@ class StoryEditorViewModel extends StateNotifier<StoryEditorState> {
     bool? isBold,
     String? backgroundStyle,
     String? effect,
+    double? fontSize,
   }) {
     state = state.copyWith(
       selectedTextColor: color,
@@ -219,6 +220,7 @@ class StoryEditorViewModel extends StateNotifier<StoryEditorState> {
       selectedIsBold: isBold,
       selectedBackgroundStyle: backgroundStyle,
       selectedEffect: effect,
+      selectedFontSize: fontSize,
     );
   }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 
@@ -8,7 +9,6 @@ import '../../models/story_overlay_item.dart';
 import '../../view_models/story_editor_view_model.dart';
 
 // Import modular components
-import 'components/top_action_bar.dart';
 import 'components/sidebar_buttons.dart';
 import 'components/text_editor_panel.dart';
 import 'components/mention_input_panel.dart';
@@ -118,6 +118,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
         'isBold': state.selectedIsBold,
         'backgroundStyle': state.selectedBackgroundStyle,
         'effect': state.selectedEffect,
+        'fontSize': state.selectedFontSize,
       };
 
       final existingIndex = state.overlays.indexWhere((o) => o.id == state.selectedOverlayId && o.type == 'text');
@@ -366,6 +367,30 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
             style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
           ),
         );
+      case 'location':
+        final Map locationData = data as Map;
+        final name = locationData['name'] as String? ?? 'Location';
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF00C8FF),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.location_on, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                name,
+                style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        );
       case 'sticker':
         final emoji = data as String;
         return Material(
@@ -383,6 +408,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
         final TextAlign alignment;
         final bool isBold;
         final String backgroundStyle;
+        final double fontSize;
         
         if (data is Map) {
           final dataMap = Map<String, dynamic>.from(data);
@@ -394,6 +420,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
           alignment = alignStr == 'left' ? TextAlign.left : (alignStr == 'right' ? TextAlign.right : TextAlign.center);
           isBold = dataMap['isBold'] as bool? ?? false;
           backgroundStyle = dataMap['backgroundStyle'] as String? ?? 'normal';
+          fontSize = (dataMap['fontSize'] as num?)?.toDouble() ?? 26.0;
         } else {
           text = data as String? ?? '';
           textColor = Colors.white;
@@ -402,11 +429,12 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
           alignment = TextAlign.center;
           isBold = false;
           backgroundStyle = 'normal';
+          fontSize = 26.0;
         }
 
         TextStyle textStyle = _getFontFamilyStyle(fontFamily).copyWith(
           color: textColor,
-          fontSize: 18,
+          fontSize: fontSize,
           fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
         );
 
@@ -496,180 +524,295 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     final state = ref.watch(storyEditorViewModelProvider);
     final notifier = ref.read(storyEditorViewModelProvider.notifier);
 
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
         top: false,
-        bottom: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            _canvasWidth = constraints.maxWidth;
-            _canvasHeight = constraints.maxHeight;
+        bottom: true,
+        child: Column(
+          children: [
+            // Top black spacer for status bar
+            Container(
+              height: topPadding,
+              color: Colors.black,
+            ),
+            
+            // Viewfinder Card (rounded corners, expands to fill space)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      _canvasWidth = constraints.maxWidth;
+                      _canvasHeight = constraints.maxHeight;
 
-            return Stack(
-              children: [
-                // 1. Repaint Boundary Canvas
-                RepaintBoundary(
-                  key: _repaintKey,
-                  child: SizedBox(
-                    width: _canvasWidth,
-                    height: _canvasHeight,
-                    child: Stack(
-                      children: [
-                        // Background Video or Image using ValueListenableBuilder (No local setState)
-                        Positioned.fill(
-                          child: ValueListenableBuilder<VideoPlayerController?>(
-                            valueListenable: _videoControllerNotifier,
-                            builder: (context, controller, child) {
-                              if (controller != null && controller.value.isInitialized) {
-                                return SizedBox.expand(
-                                  child: FittedBox(
-                                    fit: BoxFit.cover,
-                                    child: SizedBox(
-                                      width: controller.value.size.width,
-                                      height: controller.value.size.height,
-                                      child: VideoPlayer(controller),
+                      return Stack(
+                        children: [
+                          // 1. Repaint Boundary Canvas
+                          RepaintBoundary(
+                            key: _repaintKey,
+                            child: SizedBox(
+                              width: _canvasWidth,
+                              height: _canvasHeight,
+                              child: Stack(
+                                children: [
+                                  // Background Video or Image using ValueListenableBuilder (No local setState)
+                                  Positioned.fill(
+                                    child: ValueListenableBuilder<VideoPlayerController?>(
+                                      valueListenable: _videoControllerNotifier,
+                                      builder: (context, controller, child) {
+                                        if (controller != null && controller.value.isInitialized) {
+                                          return SizedBox.expand(
+                                            child: FittedBox(
+                                              fit: BoxFit.cover,
+                                              child: SizedBox(
+                                                width: controller.value.size.width,
+                                                height: controller.value.size.height,
+                                                child: VideoPlayer(controller),
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          return Image.file(
+                                            File(widget.imagePath),
+                                            fit: BoxFit.cover,
+                                          );
+                                        }
+                                      },
                                     ),
                                   ),
-                                );
-                              } else {
-                                return Image.file(
-                                  File(widget.imagePath),
-                                  fit: BoxFit.cover,
-                                );
-                              }
-                            },
+                                  
+                                  // Overlays stack
+                                  ...state.overlays.map((item) {
+                                    return OverlayItemWidget(
+                                      item: item,
+                                      canvasWidth: _canvasWidth,
+                                      canvasHeight: _canvasHeight,
+                                      buildOverlayContent: _buildOverlayContentWidget,
+                                      onDoubleTapText: () => _onDoubleTapTextOverlay(item),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
                           ),
+
+                          // 2. Guidelines (Center lines overlay)
+                          if (state.showVerticalCenterGuide)
+                            Positioned(
+                              left: _canvasWidth / 2 - 1,
+                              top: 0,
+                              bottom: 0,
+                              width: 2,
+                              child: Container(color: Colors.amber.withValues(alpha: 0.8)),
+                            ),
+                          if (state.showHorizontalCenterGuide)
+                            Positioned(
+                              top: _canvasHeight / 2 - 1,
+                              left: 0,
+                              right: 0,
+                              height: 2,
+                              child: Container(color: Colors.amber.withValues(alpha: 0.8)),
+                            ),
+                          if (state.showLeftGuide)
+                            Positioned(
+                              left: 24,
+                              top: 0,
+                              bottom: 0,
+                              width: 1,
+                              child: Container(color: Colors.blue.withValues(alpha: 0.5)),
+                            ),
+                          if (state.showRightGuide)
+                            Positioned(
+                              left: _canvasWidth - 24,
+                              top: 0,
+                              bottom: 0,
+                              width: 1,
+                              child: Container(color: Colors.blue.withValues(alpha: 0.5)),
+                            ),
+                          if (state.showTopGuide)
+                            Positioned(
+                              top: 24,
+                              left: 0,
+                              right: 0,
+                              height: 1,
+                              child: Container(color: Colors.blue.withValues(alpha: 0.5)),
+                            ),
+                          if (state.showBottomGuide)
+                            Positioned(
+                              top: _canvasHeight - 24,
+                              left: 0,
+                              right: 0,
+                              height: 1,
+                              child: Container(color: Colors.blue.withValues(alpha: 0.5)),
+                            ),
+
+                          // 3. Floating Back Button (Top Left)
+                          Positioned(
+                            top: 16,
+                            left: 16,
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              behavior: HitTestBehavior.opaque,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.black54,
+                                ),
+                                child: SvgPicture.asset(
+                                  'assets/home/icons/arrow_left_01.svg',
+                                  width: 24,
+                                  height: 24,
+                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // 4. Sidebar tools panel Component
+                          if (!state.isEditingText && !state.isEditingMention)
+                            SidebarButtons(
+                              hasVideo: _videoPlayerController != null,
+                              onVolumeTap: _toggleMute,
+                              onTextTap: () {
+                                notifier.selectOverlay(null);
+                                notifier.setEditingText(true);
+                                _textOverlayController.clear();
+                                notifier.updateTextStyling(
+                                  color: Colors.white,
+                                  bgColor: Colors.black87,
+                                  fontFamily: 'Default',
+                                  alignment: TextAlign.center,
+                                  isBold: false,
+                                  backgroundStyle: 'normal',
+                                  effect: 'none',
+                                );
+                                _textOverlayFocus.requestFocus();
+                              },
+                              onStickerTap: _showStickersDrawer,
+                              onMentionTap: () {
+                                notifier.setEditingMention(true);
+                                _mentionController.clear();
+                                _mentionFocus.requestFocus();
+                              },
+                              onMoreTap: _showMoreOptionsSheet,
+                            ),
+
+                          // 5. Rich Text Editor Panel Component (No local setState)
+                          TextEditorPanel(
+                            controller: _textOverlayController,
+                            focusNode: _textOverlayFocus,
+                            onSubmit: _onTextSubmit,
+                            canvasKey: _repaintKey,
+                          ),
+
+                          // 6. Mention Input Panel Component (No local setState)
+                          MentionInputPanel(
+                            controller: _mentionController,
+                            focusNode: _mentionFocus,
+                            onSubmit: _onMentionSubmit,
+                          ),
+
+                          // 7. Loading publisher overlay spinner
+                          if (state.isPublishing)
+                            Positioned.fill(
+                              child: Container(
+                                color: Colors.black54,
+                                alignment: Alignment.center,
+                                child: const CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                              ),
+                            ),
+
+                          // 8. Trash can overlay at bottom center Component
+                          const TrashCanOverlay(),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+            
+            // 9. White Bottom Action Bar (Same design as original)
+            if (!state.isEditingText && !state.isEditingMention && MediaQuery.of(context).viewInsets.bottom == 0)
+              Container(
+                color: Colors.white,
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 16,
+                  bottom: bottomPadding > 0 ? bottomPadding + 12 : 16,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Close Friends Button
+                    GestureDetector(
+                      onTap: _publishStory,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          border: Border.all(color: const Color(0xFFE5E5E5), width: 1),
+                          borderRadius: BorderRadius.circular(999),
                         ),
-                        
-                        // Overlays stack
-                        ...state.overlays.map((item) {
-                          return OverlayItemWidget(
-                            item: item,
-                            canvasWidth: _canvasWidth,
-                            canvasHeight: _canvasHeight,
-                            buildOverlayContent: _buildOverlayContentWidget,
-                            onDoubleTapText: () => _onDoubleTapTextOverlay(item),
-                          );
-                        }),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SvgPicture.asset(
+                              'assets/home/icons/star_circle.svg',
+                              width: 24,
+                              height: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Close Friends",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                color: const Color(0xFF464646),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-
-                // 2. Guidelines (Center lines overlay)
-                if (state.showVerticalCenterGuide)
-                  Positioned(
-                    left: _canvasWidth / 2 - 1,
-                    top: 0,
-                    bottom: 0,
-                    width: 2,
-                    child: Container(color: Colors.amber.withValues(alpha: 0.8)),
-                  ),
-                if (state.showHorizontalCenterGuide)
-                  Positioned(
-                    top: _canvasHeight / 2 - 1,
-                    left: 0,
-                    right: 0,
-                    height: 2,
-                    child: Container(color: Colors.amber.withValues(alpha: 0.8)),
-                  ),
-                if (state.showLeftGuide)
-                  Positioned(
-                    left: 24,
-                    top: 0,
-                    bottom: 0,
-                    width: 1,
-                    child: Container(color: Colors.blue.withValues(alpha: 0.5)),
-                  ),
-                if (state.showRightGuide)
-                  Positioned(
-                    left: _canvasWidth - 24,
-                    top: 0,
-                    bottom: 0,
-                    width: 1,
-                    child: Container(color: Colors.blue.withValues(alpha: 0.5)),
-                  ),
-                if (state.showTopGuide)
-                  Positioned(
-                    top: 24,
-                    left: 0,
-                    right: 0,
-                    height: 1,
-                    child: Container(color: Colors.blue.withValues(alpha: 0.5)),
-                  ),
-                if (state.showBottomGuide)
-                  Positioned(
-                    top: _canvasHeight - 24,
-                    left: 0,
-                    right: 0,
-                    height: 1,
-                    child: Container(color: Colors.blue.withValues(alpha: 0.5)),
-                  ),
-
-                // 3. Top Action Bar Component
-                TopActionBar(
-                  hasVideo: _videoPlayerController != null,
-                  onBackTap: () => Navigator.pop(context),
-                  onVolumeTap: _toggleMute,
-                  onPostTap: _publishStory,
-                ),
-
-                // 4. Sidebar tools panel Component
-                SidebarButtons(
-                  onTextTap: () {
-                    notifier.selectOverlay(null);
-                    notifier.setEditingText(true);
-                    _textOverlayController.clear();
-                    notifier.updateTextStyling(
-                      color: Colors.white,
-                      bgColor: Colors.black87,
-                      fontFamily: 'Default',
-                      alignment: TextAlign.center,
-                      isBold: false,
-                      backgroundStyle: 'normal',
-                      effect: 'none',
-                    );
-                    _textOverlayFocus.requestFocus();
-                  },
-                  onStickerTap: _showStickersDrawer,
-                  onMentionTap: () {
-                    notifier.setEditingMention(true);
-                    _mentionController.clear();
-                    _mentionFocus.requestFocus();
-                  },
-                  onMoreTap: _showMoreOptionsSheet,
-                ),
-
-                // 5. Rich Text Editor Panel Component (No local setState)
-                TextEditorPanel(
-                  controller: _textOverlayController,
-                  focusNode: _textOverlayFocus,
-                  onSubmit: _onTextSubmit,
-                ),
-
-                // 6. Mention Input Panel Component (No local setState)
-                MentionInputPanel(
-                  controller: _mentionController,
-                  focusNode: _mentionFocus,
-                  onSubmit: _onMentionSubmit,
-                ),
-
-                // 7. Loading publisher overlay spinner
-                if (state.isPublishing)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black54,
-                      alignment: Alignment.center,
-                      child: const CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                    
+                    // Send Button (Purple circular icon with sent.svg)
+                    GestureDetector(
+                      onTap: _publishStory,
+                      child: Container(
+                        width: 52,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7C57FC),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        alignment: Alignment.center,
+                        child: state.isPublishing
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : SvgPicture.asset(
+                                'assets/home/icons/sent.svg',
+                                width: 24,
+                                height: 24,
+                                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                              ),
+                      ),
                     ),
-                  ),
-
-                // 8. Trash can overlay at bottom center Component
-                const TrashCanOverlay(),
-              ],
-            );
-          },
+                  ],
+                ),
+              ),
+          ],
         ),
       ),
     );

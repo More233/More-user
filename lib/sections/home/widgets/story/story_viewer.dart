@@ -50,6 +50,13 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
   final Map<String, VideoPlayerController> _videoControllers = {};
   final Set<String> _initializingUrls = {};
 
+  bool _isPopped = false;
+  void _safePop() {
+    if (!mounted || _isPopped) return;
+    _isPopped = true;
+    Navigator.of(context).pop();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -197,12 +204,12 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                 if (isRtl) {
                                   notifier.previousGroup(widget.storyGroups);
                                 } else {
-                                  notifier.nextGroup(widget.storyGroups, () => Navigator.pop(context));
+                                  notifier.nextGroup(widget.storyGroups, _safePop);
                                 }
                               } else if (details.primaryVelocity! > 100) {
                                 // Dragged right
                                 if (isRtl) {
-                                  notifier.nextGroup(widget.storyGroups, () => Navigator.pop(context));
+                                  notifier.nextGroup(widget.storyGroups, _safePop);
                                 } else {
                                   notifier.previousGroup(widget.storyGroups);
                                 }
@@ -224,7 +231,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                 );
                               }
                             } else if (details.primaryVelocity != null && details.primaryVelocity! > 100) {
-                              Navigator.pop(context);
+                              _safePop();
                             }
                           },
                           child: LayoutBuilder(
@@ -394,7 +401,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                     storyState.currentStoryIndex < currentGroup.createdTimes.length
                                 ? currentGroup.createdTimes[storyState.currentStoryIndex]
                                 : null,
-                            onClose: () => Navigator.pop(context),
+                            onClose: _safePop,
                           ),
                         ],
                       ),

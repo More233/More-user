@@ -19,39 +19,39 @@ class ComposerTopControls extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(storyComposerViewModelProvider);
-    final topPadding = MediaQuery.of(context).padding.top;
 
     return Positioned(
-      top: topPadding + 16,
+      top: 16,
       left: 16,
       right: 16,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Close button
+          // Flash toggle button (Top Left)
+          if (state.isCameraInitialized)
+            GestureDetector(
+              onTap: onToggleFlash,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black54,
+                ),
+                child: Icon(
+                  state.flashMode == FlashMode.torch ? Icons.flash_on : Icons.flash_off,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            )
+          else
+            const SizedBox.shrink(),
+
+          // Close button (Top Right)
           StoryIconButton(
-            svgAsset: 'assets/home/icons/cancel.svg',
+            svgAsset: 'assets/home/icons/cancel_01.svg',
             onTap: onClose,
           ),
-          
-          // Flash & Switch camera
-          if (state.isCameraInitialized)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                StoryIconButton(
-                  svgAsset: state.flashMode == FlashMode.torch
-                      ? 'assets/home/icons/flash.svg'
-                      : 'assets/home/icons/flash_off.svg',
-                  onTap: onToggleFlash,
-                ),
-                const SizedBox(width: 12),
-                StoryIconButton(
-                  svgAsset: 'assets/home/icons/camera_switch.svg',
-                  onTap: onToggleCamera,
-                ),
-              ],
-            ),
         ],
       ),
     );

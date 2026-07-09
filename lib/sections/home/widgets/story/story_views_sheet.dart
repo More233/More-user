@@ -87,7 +87,7 @@ class StoryViewsSheet extends StatelessWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF1C1C1E),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
@@ -107,7 +107,7 @@ class StoryViewsSheet extends StatelessWidget {
             width: 36,
             height: 5,
             decoration: BoxDecoration(
-              color: const Color(0xFFE5E5EA),
+              color: Colors.white24,
               borderRadius: BorderRadius.circular(2.5),
             ),
           ),
@@ -122,13 +122,13 @@ class StoryViewsSheet extends StatelessWidget {
                     'assets/home/icons/user_multiple.svg',
                     width: 22,
                     height: 22,
-                    colorFilter: const ColorFilter.mode(Color(0xFF1F1F1F), BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     "$displayViewsCount",
                     style: GoogleFonts.ibmPlexSansArabic(
-                      color: const Color(0xFF1F1F1F),
+                      color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
@@ -144,13 +144,13 @@ class StoryViewsSheet extends StatelessWidget {
                   'assets/home/icons/delete_03.svg',
                   width: 24,
                   height: 24,
-                  colorFilter: const ColorFilter.mode(Color(0xFFE53935), BlendMode.srcIn),
+                  colorFilter: const ColorFilter.mode(Color(0xFFFF453A), BlendMode.srcIn),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          const Divider(color: Color(0xFFEFEFEF), thickness: 1),
+          const Divider(color: Colors.white12, thickness: 1),
           const SizedBox(height: 10),
           // Viewers list
           if (listToShow.isEmpty) ...[
@@ -159,7 +159,7 @@ class StoryViewsSheet extends StatelessWidget {
               child: Center(
                 child: Text(
                   "No views yet",
-                  style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey[400]),
+                  style: GoogleFonts.ibmPlexSansArabic(color: Colors.white54),
                 ),
               ),
             ),
@@ -206,7 +206,7 @@ class StoryViewsSheet extends StatelessWidget {
                               Text(
                                 username,
                                 style: GoogleFonts.ibmPlexSansArabic(
-                                  color: const Color(0xFF1F1F1F),
+                                  color: Colors.white,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -215,7 +215,7 @@ class StoryViewsSheet extends StatelessWidget {
                                 Text(
                                   fullName,
                                   style: GoogleFonts.ibmPlexSansArabic(
-                                    color: Colors.grey[500],
+                                    color: Colors.white54,
                                     fontSize: 12,
                                   ),
                                 ),

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'full_screen_image_viewer.dart';
 
 class PostImageSlider extends StatefulWidget {
   final List<String> imageUrls;
@@ -24,7 +25,20 @@ class _PostImageSliderState extends State<PostImageSlider> {
   Widget build(BuildContext context) {
     if (widget.imageUrls.isEmpty) return const SizedBox.shrink();
     if (widget.imageUrls.length == 1) {
-      return _buildSingleImage(widget.imageUrls.first);
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FullScreenImageViewer(
+                imageUrls: widget.imageUrls,
+                initialIndex: 0,
+              ),
+            ),
+          );
+        },
+        child: _buildSingleImage(widget.imageUrls.first),
+      );
     }
 
     return Stack(
@@ -42,7 +56,20 @@ class _PostImageSliderState extends State<PostImageSlider> {
                 });
               },
               itemBuilder: (context, index) {
-                return _buildSingleImage(widget.imageUrls[index], applyBorderRadius: false);
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FullScreenImageViewer(
+                          imageUrls: widget.imageUrls,
+                          initialIndex: index,
+                        ),
+                      ),
+                    );
+                  },
+                  child: _buildSingleImage(widget.imageUrls[index], applyBorderRadius: false),
+                );
               },
             ),
           ),

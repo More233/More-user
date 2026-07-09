@@ -17,17 +17,26 @@ class StoryHighlightSheet extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("New Highlight", style: GoogleFonts.ibmPlexSansArabic(fontSize: 16, fontWeight: FontWeight.bold)),
+          backgroundColor: const Color(0xFF2C2C2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            "New Highlight", 
+            style: GoogleFonts.ibmPlexSansArabic(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
+          ),
           content: TextField(
             controller: textController,
+            style: const TextStyle(color: Colors.white),
             decoration: const InputDecoration(
               hintText: "Enter highlight name",
+              hintStyle: TextStyle(color: Colors.white30),
+              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF7C57FC))),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Cancel", style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey)),
+              child: Text("Cancel", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white54)),
             ),
             TextButton(
               onPressed: () {
@@ -37,7 +46,7 @@ class StoryHighlightSheet extends StatelessWidget {
                 }
                 Navigator.pop(context);
               },
-              child: Text("Create", style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF7C57FC))),
+              child: Text("Create", style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF7C57FC), fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -54,7 +63,7 @@ class StoryHighlightSheet extends StatelessWidget {
       builder: (context, selectedHighlight, child) {
         return Container(
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFF1C1C1E),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
@@ -73,7 +82,7 @@ class StoryHighlightSheet extends StatelessWidget {
                 width: 36,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5EA),
+                  color: Colors.white24,
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -81,7 +90,7 @@ class StoryHighlightSheet extends StatelessWidget {
               Text(
                 "Add to highlight",
                 style: GoogleFonts.ibmPlexSansArabic(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
                 ),
@@ -104,7 +113,7 @@ class StoryHighlightSheet extends StatelessWidget {
                             border: Border.all(
                               color: selectedHighlight == "Highlight"
                                   ? const Color(0xFF7C57FC)
-                                  : Colors.grey[300]!,
+                                  : Colors.white24,
                               width: 2.5,
                             ),
                           ),
@@ -112,7 +121,7 @@ class StoryHighlightSheet extends StatelessWidget {
                           child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.grey[200],
+                              color: Colors.white.withValues(alpha: 0.08),
                             ),
                             child: ClipOval(
                               child: currentMediaUrl.startsWith('http')
@@ -125,7 +134,7 @@ class StoryHighlightSheet extends StatelessWidget {
                         Text(
                           "Highlight",
                           style: GoogleFonts.ibmPlexSansArabic(
-                            color: const Color(0xFF1F1F1F),
+                            color: Colors.white,
                             fontSize: 13,
                             fontWeight: selectedHighlight == "Highlight"
                                 ? FontWeight.w600
@@ -148,7 +157,7 @@ class StoryHighlightSheet extends StatelessWidget {
                             border: Border.all(
                               color: selectedHighlight != "Highlight"
                                   ? const Color(0xFF7C57FC)
-                                  : Colors.grey[300]!,
+                                  : Colors.white24,
                               width: 2.0,
                             ),
                           ),
@@ -160,7 +169,7 @@ class StoryHighlightSheet extends StatelessWidget {
                         Text(
                           selectedHighlight != "Highlight" ? selectedHighlight : "New",
                           style: GoogleFonts.ibmPlexSansArabic(
-                            color: const Color(0xFF1F1F1F),
+                            color: Colors.white,
                             fontSize: 13,
                             fontWeight: selectedHighlight != "Highlight"
                                 ? FontWeight.w600

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'story_icon_button.dart';
+import 'volume_button.dart';
 
 class SidebarButtons extends StatelessWidget {
   final VoidCallback onTextTap;
   final VoidCallback onStickerTap;
   final VoidCallback onMentionTap;
   final VoidCallback onMoreTap;
+  final bool hasVideo;
+  final VoidCallback? onVolumeTap;
 
   const SidebarButtons({
     super.key,
@@ -13,14 +16,14 @@ class SidebarButtons extends StatelessWidget {
     required this.onStickerTap,
     required this.onMentionTap,
     required this.onMoreTap,
+    this.hasVideo = false,
+    this.onVolumeTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
-
     return Positioned(
-      top: topPadding + 80,
+      top: 16,
       right: 16,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -41,10 +44,16 @@ class SidebarButtons extends StatelessWidget {
           
           // Mention button
           StoryIconButton(
-            svgAsset: 'assets/home/icons/user_add.svg',
+            svgAsset: 'assets/home/icons/at.svg',
             onTap: onMentionTap,
           ),
           const SizedBox(height: 12),
+
+          // Volume button (if story has video)
+          if (hasVideo && onVolumeTap != null) ...[
+            VolumeButton(onTap: onVolumeTap!),
+            const SizedBox(height: 12),
+          ],
           
           // More options button
           StoryIconButton(

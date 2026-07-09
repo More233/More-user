@@ -19,6 +19,7 @@ class StoryEditorState {
   final bool selectedIsBold;
   final String selectedBackgroundStyle;
   final String selectedEffect;
+  final double selectedFontSize;
 
   // Dragging and guides
   final bool isDragging;
@@ -46,6 +47,7 @@ class StoryEditorState {
     required this.selectedIsBold,
     required this.selectedBackgroundStyle,
     required this.selectedEffect,
+    required this.selectedFontSize,
     required this.isDragging,
     required this.isNearTrash,
     required this.showVerticalCenterGuide,
@@ -73,6 +75,7 @@ class StoryEditorState {
       selectedIsBold: false,
       selectedBackgroundStyle: 'normal',
       selectedEffect: 'none',
+      selectedFontSize: 26.0,
       isDragging: false,
       isNearTrash: false,
       showVerticalCenterGuide: false,
@@ -102,6 +105,7 @@ class StoryEditorState {
     bool? selectedIsBold,
     String? selectedBackgroundStyle,
     String? selectedEffect,
+    double? selectedFontSize,
     bool? isDragging,
     bool? isNearTrash,
     bool? showVerticalCenterGuide,
@@ -127,6 +131,7 @@ class StoryEditorState {
       selectedIsBold: selectedIsBold ?? this.selectedIsBold,
       selectedBackgroundStyle: selectedBackgroundStyle ?? this.selectedBackgroundStyle,
       selectedEffect: selectedEffect ?? this.selectedEffect,
+      selectedFontSize: selectedFontSize ?? this.selectedFontSize,
       isDragging: isDragging ?? this.isDragging,
       isNearTrash: isNearTrash ?? this.isNearTrash,
       showVerticalCenterGuide: showVerticalCenterGuide ?? this.showVerticalCenterGuide,
