@@ -371,12 +371,12 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
         final Map locationData = data as Map;
         final name = locationData['name'] as String? ?? 'Location';
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF00C8FF),
-            borderRadius: BorderRadius.circular(16),
+            color: const Color(0xFF7C57FC), // brand purple
+            borderRadius: BorderRadius.circular(20),
             boxShadow: const [
-              BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+              BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3)),
             ],
           ),
           child: Row(
@@ -436,6 +436,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
           color: textColor,
           fontSize: fontSize,
           fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+          height: 1.2,
         );
 
         if (backgroundStyle == 'neon') {
@@ -450,7 +451,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
         }
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: backgroundStyle == 'normal' && bgColor != null
               ? BoxDecoration(
                   color: bgColor,

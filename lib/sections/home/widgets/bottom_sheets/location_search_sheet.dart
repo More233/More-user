@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class LocationSearchSheet extends StatefulWidget {
   static const List<Map<String, dynamic>> locations = [
@@ -123,6 +124,9 @@ class LocationSearchSheet extends StatefulWidget {
 class _LocationSearchSheetState extends State<LocationSearchSheet> {
   final TextEditingController _searchController = TextEditingController();
 
+  Map<String, dynamic>? _selectedLocation;
+  Map<String, dynamic>? _selectedLocationForPreview;
+
   bool _isLoading = true;
   bool _isSearching = false;
   double _latitude = 29.378033; // Default Fayoum coordinates
@@ -132,6 +136,8 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
   String _searchQuery = '';
   Timer? _debounce;
   String? _apiErrorMessage;
+
+
 
   static const String googlePlacesApiKey = String.fromEnvironment(
     'GOOGLE_PLACES_API_KEY',
@@ -529,11 +535,152 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
   }
 
 
-
   @override
   Widget build(BuildContext context) {
     final double keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
     final double sheetHeight = MediaQuery.of(context).size.height * 0.85;
+
+    if (_selectedLocationForPreview != null) {
+      final name = _selectedLocationForPreview!['name'] as String;
+      final lat = _selectedLocationForPreview!['latitude'] as double;
+      final lng = _selectedLocationForPreview!['longitude'] as double;
+      
+      return GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: sheetHeight,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(bottom: keyboardPadding),
+          child: Column(
+            children: [
+              Container(
+                width: 36,
+                height: 5,
+                margin: const EdgeInsets.only(top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedLocationForPreview = null;
+                        });
+                      },
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          color: const Color(0xFF82858C),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        'Map preview',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          color: const Color(0xFF1F242E),
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your content will show up here',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  color: const Color(0xFF82858C),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  name,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    color: const Color(0xFF1F242E),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(lat, lng),
+                        zoom: 15.0,
+                      ),
+                      myLocationEnabled: false,
+                      zoomControlsEnabled: false,
+                      mapToolbarEnabled: false,
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('preview_marker'),
+                          position: LatLng(lat, lng),
+                        ),
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context, _selectedLocationForPreview);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C57FC),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Add',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return GestureDetector(
       onTap: () {
@@ -550,69 +697,34 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
         child: Column(
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 36,
+              height: 5,
               margin: const EdgeInsets.only(top: 8, bottom: 8),
               decoration: BoxDecoration(
                 color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2.5),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
+                  const Icon(
+                    Icons.near_me,
+                    color: Color(0xFF1F242E),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.search,
-                            color: Color(0xFF82858C),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              onChanged: _onSearchChanged,
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 15,
-                                color: const Color(0xFF1F242E),
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Search for places',
-                                hintStyle: GoogleFonts.ibmPlexSansArabic(
-                                  fontSize: 15,
-                                  color: const Color(0xFF9CA3AF),
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                          if (_searchQuery.isNotEmpty)
-                            GestureDetector(
-                              onTap: () {
-                                _searchController.clear();
-                                _onSearchChanged('');
-                              },
-                              child: const Icon(
-                                Icons.close,
-                                color: Color(0xFF82858C),
-                                size: 18,
-                              ),
-                            ),
-                        ],
+                    child: Text(
+                      'Locations',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        color: const Color(0xFF1F242E),
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () {
                       FocusScope.of(context).unfocus();
@@ -630,6 +742,86 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Choose a location to tag',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: const Color(0xFF1F242E),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'People you share this content with can see the location you tag and view this content on the map.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: const Color(0xFF82858C),
+                      fontSize: 13,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.search,
+                      color: Color(0xFF82858C),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: _onSearchChanged,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15,
+                          color: const Color(0xFF1F242E),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search',
+                          hintStyle: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 15,
+                            color: const Color(0xFF9CA3AF),
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    if (_searchQuery.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                        child: const Icon(
+                          Icons.close,
+                          color: Color(0xFF82858C),
+                          size: 18,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             const Divider(height: 1, color: Color(0xFFE5E7EB)),
             Expanded(
               child: _isLoading
@@ -645,7 +837,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                             'Finding nearby places...',
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 16,
-                              color: const Color(0xFF82858C),
+                              color: Color(0xFF82858C),
                             ),
                           ),
                         ],
@@ -700,7 +892,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                                         'No places found',
                                         style: GoogleFonts.ibmPlexSansArabic(
                                           fontSize: 16,
-                                          color: const Color(0xFF82858C),
+                                          color: Color(0xFF82858C),
                                         ),
                                       ),
                                     ),
@@ -716,10 +908,14 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                                     ),
                                     itemBuilder: (context, index) {
                                       final loc = _filteredLocations[index];
+                                      final isSelected = _selectedLocation != null &&
+                                          _selectedLocation!['placeId'] == loc['placeId'];
                                       return ListTile(
                                         onTap: () {
                                           FocusScope.of(context).unfocus();
-                                          Navigator.pop(context, loc);
+                                          setState(() {
+                                            _selectedLocation = loc;
+                                          });
                                         },
                                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                         leading: Container(
@@ -752,11 +948,17 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                                             color: const Color(0xFF6B7280),
                                           ),
                                         ),
-                                        trailing: const Icon(
-                                          Icons.info_outline,
-                                          color: Color(0xFF9CA3AF),
-                                          size: 20,
-                                        ),
+                                        trailing: isSelected
+                                            ? const Icon(
+                                                Icons.check,
+                                                color: Color(0xFF7C57FC),
+                                                size: 20,
+                                              )
+                                            : const Icon(
+                                                Icons.info_outline,
+                                                color: Color(0xFF9CA3AF),
+                                                size: 20,
+                                              ),
                                       );
                                     },
                                   ),
@@ -764,6 +966,38 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                         ),
                       ],
                     ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _selectedLocation == null
+                      ? null
+                      : () {
+                          setState(() {
+                            _selectedLocationForPreview = _selectedLocation;
+                          });
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C57FC),
+                    disabledBackgroundColor: const Color(0xFFF3F4F6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Add location',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: _selectedLocation == null ? const Color(0xFF9CA3AF) : Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

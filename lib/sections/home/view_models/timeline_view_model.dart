@@ -21,7 +21,7 @@ class TimelineViewModel extends StateNotifier<TimelineState> {
       : super(TimelineState.initial());
 
   Future<void> init() async {
-    state = state.copyWith(selectedNavIndex: 1);
+    state = state.copyWith(selectedNavIndex: 0);
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
       _currentUserId = user.id;

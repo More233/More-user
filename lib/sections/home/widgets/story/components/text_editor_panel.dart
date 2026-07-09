@@ -228,7 +228,7 @@ class _TextEditorPanelState extends ConsumerState<TextEditorPanel> {
                       child: Padding(
                         padding: const EdgeInsets.only(left: 64, right: 32),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: state.selectedBackgroundStyle == 'normal' && state.selectedBgColor != null
                               ? BoxDecoration(
                                   color: state.selectedBgColor,
@@ -254,6 +254,7 @@ class _TextEditorPanelState extends ConsumerState<TextEditorPanel> {
                               color: state.selectedTextColor,
                               fontSize: state.selectedFontSize,
                               fontWeight: state.selectedIsBold ? FontWeight.bold : FontWeight.w500,
+                              height: 1.2,
                               shadows: state.selectedBackgroundStyle == 'neon'
                                   ? [
                                       Shadow(
@@ -268,6 +269,8 @@ class _TextEditorPanelState extends ConsumerState<TextEditorPanel> {
                               hintText: "Type something...",
                               hintStyle: TextStyle(color: Colors.white30),
                               border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 4, horizontal: 0),
                             ),
                             onSubmitted: (_) => widget.onSubmit(),
                           ),

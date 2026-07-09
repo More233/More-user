@@ -66,6 +66,7 @@ class StoryViewModel extends StateNotifier<StoryViewState> {
   Future<void> fetchStoryViews(String storyId) async {
     try {
       final viewersList = await _storyRepository.fetchStoryViewers(storyId);
+      if (!mounted) return;
       state = state.copyWith(
         viewers: viewersList,
         viewsCount: viewersList.length,
@@ -88,7 +89,9 @@ class StoryViewModel extends StateNotifier<StoryViewState> {
     final cleanContent = content.trim();
     if (cleanContent.isEmpty) return;
 
-    state = state.copyWith(isSending: true);
+    if (mounted) {
+      state = state.copyWith(isSending: true);
+    }
 
     try {
       final currentUser = Supabase.instance.client.auth.currentUser;
@@ -117,7 +120,9 @@ class StoryViewModel extends StateNotifier<StoryViewState> {
       debugPrint("Error sending story reply: $e");
       rethrow;
     } finally {
-      state = state.copyWith(isSending: false);
+      if (mounted) {
+        state = state.copyWith(isSending: false);
+      }
     }
   }
 
