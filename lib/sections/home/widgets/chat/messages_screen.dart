@@ -3,8 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'conversation_screen.dart';
-import '../story/story_viewer.dart';
-import '../story/story_composer_screen.dart';
 import '../../helpers/story_tracker.dart';
 import '../../models/user_story_group.dart';
 import '../../view_models/messages_view_model.dart';
@@ -146,11 +144,13 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
         final createdAtStr = row['created_at'] as String;
         final createdAt = DateTime.parse(createdAtStr);
         final storyId = row['id'] as String;
+        final storyOverlays = row['overlays'] as List<dynamic>? ?? [];
 
         if (grouped.containsKey(uId)) {
           grouped[uId]!.mediaUrls.add(mediaUrl);
           grouped[uId]!.createdTimes.add(createdAt);
           grouped[uId]!.storyIds.add(storyId);
+          grouped[uId]!.overlays.add(storyOverlays);
         } else {
           grouped[uId] = UserStoryGroup(
             userId: uId,
@@ -159,6 +159,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
             mediaUrls: [mediaUrl],
             createdTimes: [createdAt],
             storyIds: [storyId],
+            overlays: [storyOverlays],
           );
         }
       }
@@ -489,178 +490,6 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
     );
   }
 
-  Widget _buildStoriesRow() {
-    if (_storyGroups.isEmpty) return const SizedBox.shrink();
-    
-    final currentUserUsername = _profilesList.firstWhere(
-      (p) => p['id'] == _currentUserId,
-      orElse: () => {},
-    )['username'] as String? ?? 'unknown';
-
-    final currentUserAvatarUrl = _currentUserAvatarUrl;
-
-    final currentUserGroup = _storyGroups.firstWhere(
-      (g) => g.userId == _currentUserId,
-      orElse: () => UserStoryGroup(userId: '', username: '', avatarUrl: null, mediaUrls: [], createdTimes: [], storyIds: []),
-    );
-    final hasOwnStory = currentUserGroup.userId.isNotEmpty;
-
-    return Container(
-      height: 96,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          // Your Story Bubble
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        if (hasOwnStory) {
-                          final index = _storyGroups.indexOf(currentUserGroup);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => StoryViewer(
-                                storyGroups: _storyGroups,
-                                initialGroupIndex: index,
-                              ),
-                            ),
-                          ).then((_) => _fetchStories());
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const StoryComposerScreen(),
-                            ),
-                          ).then((_) => _fetchStories());
-                        }
-                      },
-                      child: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: hasOwnStory
-                                ? (StoryTracker().isGroupViewed(currentUserGroup.mediaUrls)
-                                    ? const Color(0xFFE9E9E9)
-                                    : const Color(0xFF7C57FC))
-                                : const Color(0xFFE9E9E9),
-                            width: hasOwnStory ? 2 : 1,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(2),
-                        child: CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: _getAvatarProvider(currentUserUsername, currentUserAvatarUrl),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const StoryComposerScreen(),
-                            ),
-                          ).then((_) => _fetchStories());
-                        },
-                        child: Container(
-                          width: 20,
-                          height: 20,
-                          decoration: const BoxDecoration(
-                            color: Colors.black,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Your Story',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 12,
-                    color: const Color(0xFF5A5D67),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Followed user stories
-          ..._storyGroups.where((g) => g.userId != _currentUserId).map((group) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: GestureDetector(
-                onTap: () {
-                  final index = _storyGroups.indexOf(group);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => StoryViewer(
-                        storyGroups: _storyGroups,
-                        initialGroupIndex: index,
-                      ),
-                    ),
-                  ).then((_) => _fetchStories());
-                },
-                child: Column(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: StoryTracker().isGroupViewed(group.mediaUrls)
-                              ? const Color(0xFFE9E9E9)
-                              : const Color(0xFF7C57FC),
-                          width: 2,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(2),
-                      child: CircleAvatar(
-                        radius: 30,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: _getAvatarProvider(group.username, group.avatarUrl),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      group.username,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 12,
-                        color: const Color(0xFF5A5D67),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -916,14 +745,6 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                   ),
                 ),
                 const Divider(height: 1, color: Color(0xFFE8E8E8)),
-
-                // Stories row
-                _buildStoriesRow(),
-                const SizedBox(height: 4),
-
-                // Divider below stories
-                if (_storyGroups.isNotEmpty)
-                  const Divider(height: 1, color: Color(0xFFF0F0F0)),
 
                 // Messages thread list / empty state
                 Expanded(

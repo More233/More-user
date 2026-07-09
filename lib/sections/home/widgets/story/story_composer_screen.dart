@@ -1,77 +1,64 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:photo_manager/photo_manager.dart';
-import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'story_editor_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class StoryComposerScreen extends StatefulWidget {
+import 'story_editor_screen.dart';
+import '../../view_models/story_composer_view_model.dart';
+
+// Modular UI Components
+import 'components/composer_camera_preview.dart';
+import 'components/composer_top_controls.dart';
+import 'components/composer_bottom_controls.dart';
+
+class StoryComposerScreen extends ConsumerStatefulWidget {
   const StoryComposerScreen({super.key});
 
   @override
-  State<StoryComposerScreen> createState() => _StoryComposerScreenState();
+  ConsumerState<StoryComposerScreen> createState() => _StoryComposerScreenState();
 }
 
-class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsBindingObserver {
+class _StoryComposerScreenState extends ConsumerState<StoryComposerScreen> with WidgetsBindingObserver {
   final ImagePicker _picker = ImagePicker();
-  bool _isFrontCamera = false;
-  AssetEntity? _latestAsset;
-
-  // Video recording state variables
-  bool _isRecording = false;
-  double _recordingProgress = 0.0;
-  int _recordingSeconds = 0;
-  Timer? _recordingTimer;
-  FlashMode _flashMode = FlashMode.off;
-
+  
   CameraController? _cameraController;
   List<CameraDescription> _cameras = [];
-  bool _isCameraInitialized = false;
-  bool _isPermissionDenied = false;
 
-  // Zoom state variables
+  // Local camera helper values for zoom
   double _baseZoomLevel = 1.0;
-  double _currentZoomLevel = 1.0;
   double _minZoomLevel = 1.0;
   double _maxZoomLevel = 1.0;
-  bool _showZoomIndicator = false;
-  Timer? _zoomIndicatorTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    // Check permission and initialize camera
     _checkPermissionsAndInitCamera();
-    _loadLatestAsset();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _recordingTimer?.cancel();
-    _zoomIndicatorTimer?.cancel();
     _cameraController?.dispose();
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     final CameraController? cameraController = _cameraController;
+    if (cameraController == null || !cameraController.value.isInitialized) return;
 
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
 
-    if (state == AppLifecycleState.inactive) {
+    if (lifecycleState == AppLifecycleState.inactive) {
       cameraController.dispose();
-      setState(() {
-        _isCameraInitialized = false;
-      });
-    } else if (state == AppLifecycleState.resumed) {
+      notifier.setCameraInitialized(false);
+    } else if (lifecycleState == AppLifecycleState.resumed) {
       _checkPermissionsAndInitCamera();
     }
   }
@@ -80,20 +67,18 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
     final cameraStatus = await Permission.camera.request();
     await Permission.microphone.request();
 
-    if (mounted) {
-      setState(() {
-        _isPermissionDenied = !cameraStatus.isGranted;
-      });
-    }
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
+    notifier.setPermissionDenied(!cameraStatus.isGranted);
 
     if (cameraStatus.isGranted) {
       await _initializeCamera();
-    } else {
-      debugPrint("Camera permission was denied");
     }
   }
 
   Future<void> _initializeCamera() async {
+    final state = ref.read(storyComposerViewModelProvider);
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
+
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) {
@@ -102,7 +87,7 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
       }
 
       final camera = _cameras.firstWhere(
-        (cam) => cam.lensDirection == (_isFrontCamera ? CameraLensDirection.front : CameraLensDirection.back),
+        (cam) => cam.lensDirection == (state.isFrontCamera ? CameraLensDirection.front : CameraLensDirection.back),
         orElse: () => _cameras.first,
       );
 
@@ -132,12 +117,9 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
 
       _minZoomLevel = await controller.getMinZoomLevel();
       _maxZoomLevel = await controller.getMaxZoomLevel();
-      _currentZoomLevel = 1.0;
 
       if (mounted) {
-        setState(() {
-          _isCameraInitialized = true;
-        });
+        notifier.setCameraInitialized(true);
       }
     } catch (e) {
       debugPrint("Error initializing camera: $e");
@@ -146,45 +128,41 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
 
   void _toggleCamera() async {
     if (_cameras.isEmpty) return;
-    setState(() {
-      _isFrontCamera = !_isFrontCamera;
-      _isCameraInitialized = false;
-      _flashMode = FlashMode.off;
-    });
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
+    
+    notifier.toggleCameraDirection();
+    notifier.setCameraInitialized(false);
+    notifier.setFlashMode(FlashMode.off);
+    
     await _initializeCamera();
   }
 
-  Future<void> _loadLatestAsset() async {
+  void _toggleFlash() async {
+    if (_cameraController == null) return;
+    final state = ref.read(storyComposerViewModelProvider);
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
+
     try {
-      final PermissionState ps = await PhotoManager.requestPermissionExtend();
-      if (ps.isAuth) {
-        List<AssetPathEntity> albums = await PhotoManager.getAssetPathList(
-          type: RequestType.image,
-        );
-        if (albums.isNotEmpty) {
-          final int count = await albums[0].assetCountAsync;
-          if (count > 0) {
-            List<AssetEntity> assets = await albums[0].getAssetListRange(start: 0, end: 1);
-            if (assets.isNotEmpty && mounted) {
-              setState(() {
-                _latestAsset = assets[0];
-              });
-            }
-          }
-        }
+      if (state.flashMode == FlashMode.off) {
+        notifier.setFlashMode(FlashMode.torch);
+        await _cameraController!.setFlashMode(FlashMode.torch);
+      } else {
+        notifier.setFlashMode(FlashMode.off);
+        await _cameraController!.setFlashMode(FlashMode.off);
       }
     } catch (e) {
-      debugPrint("Error loading latest asset for story composer: $e");
+      debugPrint("Error toggling flash: $e");
     }
   }
 
   void _onShutterTap() async {
-    if (_isRecording) {
+    final state = ref.read(storyComposerViewModelProvider);
+    if (state.isRecording) {
       _stopRecordingVideo();
       return;
     }
 
-    if (_isCameraInitialized && _cameraController != null) {
+    if (state.isCameraInitialized && _cameraController != null) {
       try {
         final XFile image = await _cameraController!.takePicture();
         if (!mounted) return;
@@ -216,83 +194,44 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
   }
 
   void _startRecordingVideo() async {
-    if (_isRecording) return;
-    final int maxSeconds = 30; // 30s limit for story video
+    final state = ref.read(storyComposerViewModelProvider);
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
+
+    if (state.isRecording) return;
     
-    if (_isCameraInitialized && _cameraController != null) {
+    if (state.isCameraInitialized && _cameraController != null) {
       try {
-        if (_flashMode == FlashMode.torch) {
+        if (state.flashMode == FlashMode.torch) {
           await _cameraController!.setFlashMode(FlashMode.torch);
         }
-
         await _cameraController!.startVideoRecording();
-        
-        setState(() {
-          _isRecording = true;
-          _recordingProgress = 0.0;
-          _recordingSeconds = 0;
-        });
-        
-        _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-          final elapsedMs = timer.tick * 100;
-          final totalMs = maxSeconds * 1000;
-          
-          if (elapsedMs >= totalMs) {
-            _stopRecordingVideo();
-          } else {
-            setState(() {
-              _recordingProgress = elapsedMs / totalMs;
-              _recordingSeconds = elapsedMs ~/ 1000;
-            });
-          }
-        });
+        notifier.startRecordingProgress();
       } catch (e) {
         debugPrint("Error starting video recording: $e");
       }
     } else {
-      // Simulate video recording on simulator
-      setState(() {
-        _isRecording = true;
-        _recordingProgress = 0.0;
-        _recordingSeconds = 0;
-      });
-      
-      _recordingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-        final elapsedMs = timer.tick * 100;
-        final totalMs = maxSeconds * 1000;
-        
-        if (elapsedMs >= totalMs) {
-          _stopRecordingVideo();
-        } else {
-          setState(() {
-            _recordingProgress = elapsedMs / totalMs;
-            _recordingSeconds = elapsedMs ~/ 1000;
-          });
-        }
-      });
+      // Simulator fallback: start recording progress
+      notifier.startRecordingProgress();
     }
   }
 
   void _stopRecordingVideo() async {
-    if (!_isRecording) return;
+    final state = ref.read(storyComposerViewModelProvider);
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
+
+    if (!state.isRecording) return;
     
-    _recordingTimer?.cancel();
-    _recordingTimer = null;
+    notifier.stopRecordingTimer();
     
-    if (_isCameraInitialized && _cameraController != null) {
+    if (state.isCameraInitialized && _cameraController != null) {
       try {
         final XFile videoFile = await _cameraController!.stopVideoRecording();
         
-        setState(() {
-          _isRecording = false;
-          _recordingProgress = 0.0;
-        });
-        
-        if (_flashMode == FlashMode.torch) {
+        if (state.flashMode == FlashMode.torch) {
           await _cameraController!.setFlashMode(FlashMode.off);
         }
         
-        if (_recordingSeconds < 1) {
+        if (state.recordingSeconds < 1) {
           debugPrint("Video recording was too short");
           return;
         }
@@ -310,19 +249,9 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
         );
       } catch (e) {
         debugPrint("Error stopping video recording: $e");
-        setState(() {
-          _isRecording = false;
-          _recordingProgress = 0.0;
-        });
       }
     } else {
-      // Simulate stop recording on simulator: copy mock file and proceed
-      setState(() {
-        _isRecording = false;
-        _recordingProgress = 0.0;
-      });
-      
-      if (_recordingSeconds < 1) {
+      if (state.recordingSeconds < 1) {
         debugPrint("Simulated video recording was too short");
         return;
       }
@@ -340,19 +269,28 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
     }
   }
 
-  void _toggleFlash() async {
-    if (_cameraController == null) return;
+  void _onGalleryTap() async {
     try {
-      if (_flashMode == FlashMode.off) {
-        _flashMode = FlashMode.torch;
-        await _cameraController!.setFlashMode(FlashMode.torch);
-      } else {
-        _flashMode = FlashMode.off;
-        await _cameraController!.setFlashMode(FlashMode.off);
-      }
-      setState(() {});
+      final XFile? media = await _picker.pickMedia(
+        maxWidth: 1080,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (media == null) return;
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StoryEditorScreen(
+            imagePath: media.path,
+            isReels: false,
+          ),
+        ),
+      );
     } catch (e) {
-      debugPrint("Error toggling flash: $e");
+      debugPrint("Error picking story media: $e");
     }
   }
 
@@ -364,34 +302,11 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
     return '$minutesStr:$secondsStr';
   }
 
-  void _onGalleryTap() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1080,
-        maxHeight: 1920,
-        imageQuality: 85,
-      );
-
-      if (image == null) return;
-      if (!mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StoryEditorScreen(
-            imagePath: image.path,
-            isReels: false,
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint("Error picking story image: $e");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(storyComposerViewModelProvider);
+    final notifier = ref.read(storyComposerViewModelProvider.notifier);
+
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
@@ -403,382 +318,127 @@ class _StoryComposerScreenState extends State<StoryComposerScreen> with WidgetsB
             height: topPadding,
             color: Colors.black,
           ),
-          // Viewfinder Card (rounded corners, expands to fill space, touching left/right screen edges)
+          
+          // Viewfinder Card
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: Stack(
-                  children: [
-                    // Viewfinder background / camera preview
-                     Positioned.fill(
-                      child: _isPermissionDenied
-                          ? Container(
-                              color: const Color(0xFF1E1E1E),
-                              padding: const EdgeInsets.symmetric(horizontal: 32),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(24),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.05),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.videocam_off_outlined,
-                                      color: Color(0xFF7C57FC),
-                                      size: 64,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  Text(
-                                    Directionality.of(context) == TextDirection.rtl
-                                        ? 'مطلوب إذن الكاميرا'
-                                        : 'Camera Access Required',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    Directionality.of(context) == TextDirection.rtl
-                                        ? 'يرجى تمكين إذن الكاميرا من إعدادات الهاتف لالتقاط ونشر القصص.'
-                                        : 'Please enable camera access in your device settings to capture and post stories.',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      color: Colors.white54,
-                                      fontSize: 14,
-                                      height: 1.5,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 32),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 50,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF7C57FC),
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16),
-                                        ),
-                                      ),
-                                      onPressed: () => openAppSettings(),
-                                      child: Text(
-                                        Directionality.of(context) == TextDirection.rtl
-                                            ? 'فتح الإعدادات'
-                                            : 'Open Settings',
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : (_isCameraInitialized && _cameraController != null
-                              ? GestureDetector(
-                                  onScaleStart: (details) {
-                                    _baseZoomLevel = _currentZoomLevel;
-                                    setState(() {
-                                      _showZoomIndicator = true;
-                                    });
-                                    _zoomIndicatorTimer?.cancel();
-                                  },
-                                  onScaleUpdate: (details) async {
-                                    if (_cameraController == null || !_isCameraInitialized) return;
-                                    double newZoom = (_baseZoomLevel * details.scale).clamp(_minZoomLevel, _maxZoomLevel);
-                                    if (newZoom != _currentZoomLevel) {
-                                      _currentZoomLevel = newZoom;
-                                      await _cameraController!.setZoomLevel(newZoom);
-                                      setState(() {
-                                        _showZoomIndicator = true;
-                                      });
-                                      _zoomIndicatorTimer?.cancel();
-                                    }
-                                  },
-                                  onScaleEnd: (details) {
-                                    _zoomIndicatorTimer?.cancel();
-                                    _zoomIndicatorTimer = Timer(const Duration(milliseconds: 1500), () {
-                                      if (mounted) {
-                                        setState(() {
-                                          _showZoomIndicator = false;
-                                        });
-                                      }
-                                    });
-                                  },
-                                  child: FittedBox(
-                                    fit: BoxFit.cover,
-                                    child: SizedBox(
-                                      width: _cameraController!.value.previewSize?.height ?? 1080,
-                                      height: _cameraController!.value.previewSize?.width ?? 1920,
-                                      child: CameraPreview(_cameraController!),
-                                    ),
-                                  ),
-                                )
-                              : Container(
-                                  color: Colors.black,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      color: Color(0xFF7C57FC),
-                                    ),
-                                  ),
-                                )),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Stack(
+                children: [
+                  // Camera preview
+                  Positioned.fill(
+                    child: GestureDetector(
+                      onScaleStart: (details) {
+                        _baseZoomLevel = state.currentZoomLevel;
+                        notifier.updateZoomLevel(_baseZoomLevel);
+                      },
+                      onScaleUpdate: (details) async {
+                        if (_cameraController == null || !state.isCameraInitialized) return;
+                        double newZoom = (_baseZoomLevel * details.scale).clamp(_minZoomLevel, _maxZoomLevel);
+                        if (newZoom != state.currentZoomLevel) {
+                          await _cameraController!.setZoomLevel(newZoom);
+                          notifier.updateZoomLevel(newZoom);
+                        }
+                      },
+                      child: ComposerCameraPreview(
+                        cameraController: _cameraController,
+                        onGrantPermission: _checkPermissionsAndInitCamera,
+                      ),
                     ),
-                    
-                    // Flash Toggle Button (Top Left)
-                    if (!_isRecording)
-                      Positioned(
-                        top: 16,
-                        left: 20,
-                        child: GestureDetector(
-                          onTap: _toggleFlash,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.black,
-                            ),
-                            child: Icon(
-                              _flashMode == FlashMode.torch ? Icons.flash_on : Icons.flash_off,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
+                  ),
 
-                    // Top Center Timer chip during recording
-                    if (_isRecording)
-                      Positioned(
-                        top: 20,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _formatDuration(_recordingSeconds),
-                                  style: GoogleFonts.ibmPlexSansArabic(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Close / Cancel Button (Top Right)
-                    if (!_isRecording)
-                      Positioned(
-                        top: 16,
-                        right: 20,
-                        child: GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.black,
-                            ),
-                            child: SvgPicture.asset(
-                              'assets/home/icons/cancel_01.svg',
-                              width: 18,
-                              height: 18,
-                              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                            ),
-                          ),
-                        ),
-                      ),
-                    
-                    // Zoom Level Indicator Pill
+                  // Top Centered Timer pill during recording
+                  if (state.isRecording)
                     Positioned(
-                      bottom: 120,
+                      top: 20,
                       left: 0,
                       right: 0,
                       child: Center(
-                        child: IgnorePointer(
-                          ignoring: !_showZoomIndicator,
-                          child: AnimatedOpacity(
-                            opacity: _showZoomIndicator ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(100),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  width: 1.0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white,
                                 ),
                               ),
-                              child: Text(
-                                "${_currentZoomLevel.toStringAsFixed(1)}x",
+                              const SizedBox(width: 6),
+                              Text(
+                                _formatDuration(state.recordingSeconds),
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                 ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Zoom level Indicator Pill
+                  Positioned(
+                    bottom: 120,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: IgnorePointer(
+                        ignoring: !state.showZoomIndicator,
+                        child: AnimatedOpacity(
+                          opacity: state.showZoomIndicator ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                width: 1.0,
+                              ),
+                            ),
+                            child: Text(
+                              "${state.currentZoomLevel.toStringAsFixed(1)}x",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
+                  ),
 
-                    // Bottom Controls Layer
-                    Positioned(
-                      bottom: 24,
-                      left: 24,
-                      right: 24,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Gallery Thumbnail Button
-                          if (!_isRecording)
-                            GestureDetector(
-                              onTap: _onGalleryTap,
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.2),
-                                      blurRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                child: ClipOval(
-                                  child: _latestAsset != null
-                                      ? AssetEntityImage(
-                                          _latestAsset!,
-                                          isOriginal: false,
-                                          thumbnailSize: const ThumbnailSize(80, 80),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : Container(
-                                          color: Colors.white10,
-                                          padding: const EdgeInsets.all(8),
-                                          child: SvgPicture.asset(
-                                            'assets/home/icons/google_photos.svg',
-                                            width: 20,
-                                            height: 20,
-                                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            )
-                          else
-                            const SizedBox(width: 44),
-                          
-                          // Shutter Button (Tap for photo, Long-press for video)
-                          GestureDetector(
-                            onTap: _onShutterTap,
-                            onLongPressStart: (_) => _startRecordingVideo(),
-                            onLongPressEnd: (_) => _stopRecordingVideo(),
-                            onLongPressCancel: () => _stopRecordingVideo(),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // Outer Ring
-                                Container(
-                                  width: 84,
-                                  height: 84,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withValues(alpha: 0.25),
-                                    border: Border.all(
-                                      color: _isRecording ? Colors.red : Colors.white.withValues(alpha: 0.6),
-                                      width: 4,
-                                    ),
-                                  ),
-                                ),
-                                // Recording Progress Indicator
-                                if (_isRecording)
-                                  SizedBox(
-                                    width: 84,
-                                    height: 84,
-                                    child: CircularProgressIndicator(
-                                      value: _recordingProgress,
-                                      color: Colors.red,
-                                      strokeWidth: 4,
-                                      backgroundColor: Colors.transparent,
-                                    ),
-                                  ),
-                                // Inner solid button
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: _isRecording ? 40 : 58,
-                                  height: _isRecording ? 40 : 58,
-                                  decoration: BoxDecoration(
-                                    shape: _isRecording ? BoxShape.rectangle : BoxShape.circle,
-                                    borderRadius: _isRecording ? BorderRadius.circular(8) : null,
-                                    color: _isRecording ? Colors.red : Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Flip Camera Button
-                          if (!_isRecording)
-                            GestureDetector(
-                              onTap: _toggleCamera,
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: const BoxDecoration(
-                                  color: Colors.black,
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: SvgPicture.asset(
-                                  'assets/home/icons/change_camera.svg',
-                                  width: 24,
-                                  height: 24,
-                                  colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                                ),
-                              ),
-                            )
-                          else
-                            const SizedBox(width: 44),
-                        ],
-                      ),
+                  // Top actions controls
+                  if (!state.isRecording)
+                    ComposerTopControls(
+                      onClose: () => Navigator.pop(context),
+                      onToggleFlash: _toggleFlash,
+                      onToggleCamera: _toggleCamera,
                     ),
-                  ],
-                ),
+
+                  // Bottom actions controls
+                  ComposerBottomControls(
+                    onGalleryTap: _onGalleryTap,
+                    onShutterTap: _onShutterTap,
+                    onLongPressStart: (_) => _startRecordingVideo(),
+                    onLongPressEnd: (_) => _stopRecordingVideo(),
+                    onLongPressCancel: _stopRecordingVideo,
+                    onToggleCamera: _toggleCamera,
+                  ),
+                ],
               ),
             ),
           ),

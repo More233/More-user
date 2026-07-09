@@ -235,37 +235,37 @@ class RewardDialog extends StatelessWidget {
                             const SizedBox(width: 14),
                             // Details
                             Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "New sticker unlocked!",
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF7C57FC),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "New sticker unlocked!",
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF7C57FC),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "First Check-In",
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "First Check-In",
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "You checked in at your first place.",
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      fontSize: 12,
-                                      color: const Color(0xFF82858C),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "You checked in at your first place.",
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 12,
+                                        color: const Color(0xFF82858C),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
                             // Right arrow SVG
                             SvgPicture.asset(
                               'assets/home/icons/arrow_right_1.svg',

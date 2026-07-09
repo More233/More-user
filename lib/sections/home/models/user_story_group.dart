@@ -5,6 +5,7 @@ class UserStoryGroup {
   final List<String> mediaUrls;
   final List<DateTime> createdTimes;
   final List<String> storyIds;
+  final List<List<dynamic>> overlays;
 
   UserStoryGroup({
     required this.userId,
@@ -13,5 +14,6 @@ class UserStoryGroup {
     required this.mediaUrls,
     required this.createdTimes,
     required this.storyIds,
+    required this.overlays,
   });
 }

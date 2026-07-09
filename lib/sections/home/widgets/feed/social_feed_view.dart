@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../helpers/story_tracker.dart';
+import '../../helpers/story_preloader.dart';
+import 'package:video_player/video_player.dart';
 import '../../models/timeline_post.dart';
 import 'post_image_slider.dart';
 import 'engagement_button.dart';
@@ -70,6 +72,12 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
     final state = ref.watch(socialFeedViewModelProvider);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
+    ref.listen(socialFeedViewModelProvider, (previous, next) {
+      if (previous?.storyGroups != next.storyGroups) {
+        HomeStoryPreloader.instance.preloadFeedStories(context, next.storyGroups);
+      }
+    });
+
     final currentUserGroup = state.storyGroups.firstWhere(
       (g) => g.userId == currentUserId,
       orElse: () => UserStoryGroup(
@@ -79,6 +87,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
         mediaUrls: [],
         createdTimes: [],
         storyIds: [],
+        overlays: [],
       ),
     );
     final hasOwnStory = currentUserGroup.userId.isNotEmpty;
@@ -216,10 +225,12 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                 child: Container(
                                   color: Colors.grey[300],
                                   child: currentUserGroup.mediaUrls.isNotEmpty
-                                      ? Image.network(
-                                          currentUserGroup.mediaUrls.first,
-                                          fit: BoxFit.cover,
-                                        )
+                                      ? (_isVideoFile(currentUserGroup.mediaUrls.first)
+                                          ? VideoThumbnailPreview(videoUrl: currentUserGroup.mediaUrls.first)
+                                          : Image.network(
+                                              currentUserGroup.mediaUrls.first,
+                                              fit: BoxFit.cover,
+                                            ))
                                       : widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
                                           ? (widget.currentUserAvatarUrl!.startsWith('http')
                                               ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
@@ -333,14 +344,16 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                   child: Container(
                                     color: Colors.grey[300],
                                     child: group.mediaUrls.isNotEmpty
-                                        ? Image.network(
-                                            group.mediaUrls.first,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => Image.asset(
-                                              'assets/home/images/element.png',
-                                              fit: BoxFit.cover,
-                                            ),
-                                          )
+                                        ? (_isVideoFile(group.mediaUrls.first)
+                                            ? VideoThumbnailPreview(videoUrl: group.mediaUrls.first)
+                                            : Image.network(
+                                                group.mediaUrls.first,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => Image.asset(
+                                                  'assets/home/images/element.png',
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ))
                                         : Image.asset(
                                             'assets/home/images/element.png',
                                             fit: BoxFit.cover,
@@ -970,6 +983,86 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
     const SizedBox(height: 16),
   ],
 );
+  }
+}
+
+bool _isVideoFile(String path) {
+  final lower = path.toLowerCase();
+  return lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.avi') || lower.endsWith('.m4v');
+}
+
+class VideoThumbnailPreview extends StatefulWidget {
+  final String videoUrl;
+  const VideoThumbnailPreview({super.key, required this.videoUrl});
+
+  @override
+  State<VideoThumbnailPreview> createState() => _VideoThumbnailPreviewState();
+}
+
+class _VideoThumbnailPreviewState extends State<VideoThumbnailPreview> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initController();
+  }
+
+  Future<void> _initController() async {
+    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+    try {
+      await _controller!.initialize();
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error initializing video thumbnail: $e");
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant VideoThumbnailPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.videoUrl != widget.videoUrl) {
+      _controller?.dispose();
+      _isInitialized = false;
+      _initController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isInitialized && _controller != null) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _controller!.value.size.width,
+            height: _controller!.value.size.height,
+            child: VideoPlayer(_controller!),
+          ),
+        ),
+      );
+    }
+    return Container(
+      color: Colors.grey[300],
+      child: const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C57FC)),
+        ),
+      ),
+    );
   }
 }
 

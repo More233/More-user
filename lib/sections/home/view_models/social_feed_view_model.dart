@@ -87,11 +87,13 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
         final createdAtStr = row['created_at'] as String;
         final createdAt = DateTime.parse(createdAtStr);
         final storyId = row['id'] as String;
+        final storyOverlays = row['overlays'] as List<dynamic>? ?? [];
 
         if (grouped.containsKey(uId)) {
           grouped[uId]!.mediaUrls.add(mediaUrl);
           grouped[uId]!.createdTimes.add(createdAt);
           grouped[uId]!.storyIds.add(storyId);
+          grouped[uId]!.overlays.add(storyOverlays);
         } else {
           grouped[uId] = UserStoryGroup(
             userId: uId,
@@ -100,6 +102,7 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
             mediaUrls: [mediaUrl],
             createdTimes: [createdAt],
             storyIds: [storyId],
+            overlays: [storyOverlays],
           );
         }
       }

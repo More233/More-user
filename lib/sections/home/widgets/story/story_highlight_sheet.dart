@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class StoryHighlightSheet extends StatefulWidget {
+class StoryHighlightSheet extends StatelessWidget {
   final String currentMediaUrl;
   final ValueChanged<String> onCompleted;
 
@@ -11,14 +11,7 @@ class StoryHighlightSheet extends StatefulWidget {
     required this.onCompleted,
   });
 
-  @override
-  State<StoryHighlightSheet> createState() => _StoryHighlightSheetState();
-}
-
-class _StoryHighlightSheetState extends State<StoryHighlightSheet> {
-  String selectedHighlight = "Highlight";
-
-  void _showCreateHighlightDialog(BuildContext context) {
+  void _showCreateHighlightDialog(BuildContext context, ValueNotifier<String> selectedHighlightNotifier) {
     final textController = TextEditingController();
     showDialog(
       context: context,
@@ -40,9 +33,7 @@ class _StoryHighlightSheetState extends State<StoryHighlightSheet> {
               onPressed: () {
                 final name = textController.text.trim();
                 if (name.isNotEmpty) {
-                  setState(() {
-                    selectedHighlight = name;
-                  });
+                  selectedHighlightNotifier.value = name;
                 }
                 Navigator.pop(context);
               },
@@ -56,154 +47,159 @@ class _StoryHighlightSheetState extends State<StoryHighlightSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        24,
-        12,
-        24,
-        MediaQuery.of(context).padding.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 36,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E5EA),
-              borderRadius: BorderRadius.circular(2.5),
+    final selectedHighlightNotifier = ValueNotifier<String>("Highlight");
+
+    return ValueListenableBuilder<String>(
+      valueListenable: selectedHighlightNotifier,
+      builder: (context, selectedHighlight, child) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            "Add to highlight",
-            style: GoogleFonts.ibmPlexSansArabic(
-              color: Colors.black,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            12,
+            24,
+            MediaQuery.of(context).padding.bottom + 20,
           ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedHighlight = "Highlight";
-                  });
-                },
-                child: Column(
-                  children: [
-                    Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selectedHighlight == "Highlight"
-                              ? const Color(0xFF7C57FC)
-                              : Colors.grey[300]!,
-                          width: 2.5,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(2.5),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey[200],
-                        ),
-                        child: ClipOval(
-                          child: widget.currentMediaUrl.startsWith('http')
-                              ? Image.network(widget.currentMediaUrl, fit: BoxFit.cover)
-                              : Image.asset(widget.currentMediaUrl, fit: BoxFit.cover),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Highlight",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        color: const Color(0xFF1F1F1F),
-                        fontSize: 13,
-                        fontWeight: selectedHighlight == "Highlight"
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                  ],
+              Container(
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5EA),
+                  borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
-              const SizedBox(width: 32),
-              GestureDetector(
-                onTap: () => _showCreateHighlightDialog(context),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: selectedHighlight != "Highlight"
-                              ? const Color(0xFF7C57FC)
-                              : Colors.grey[300]!,
-                          width: 2.0,
+              const SizedBox(height: 16),
+              Text(
+                "Add to highlight",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  color: Colors.black,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      selectedHighlightNotifier.value = "Highlight";
+                    },
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selectedHighlight == "Highlight"
+                                  ? const Color(0xFF7C57FC)
+                                  : Colors.grey[300]!,
+                              width: 2.5,
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(2.5),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey[200],
+                            ),
+                            child: ClipOval(
+                              child: currentMediaUrl.startsWith('http')
+                                  ? Image.network(currentMediaUrl, fit: BoxFit.cover)
+                                  : Image.asset(currentMediaUrl, fit: BoxFit.cover),
+                            ),
+                          ),
                         ),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.add, color: Color(0xFF7C57FC), size: 28),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Highlight",
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            color: const Color(0xFF1F1F1F),
+                            fontSize: 13,
+                            fontWeight: selectedHighlight == "Highlight"
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      selectedHighlight != "Highlight" ? selectedHighlight : "New",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        color: const Color(0xFF1F1F1F),
-                        fontSize: 13,
-                        fontWeight: selectedHighlight != "Highlight"
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
+                  ),
+                  const SizedBox(width: 32),
+                  GestureDetector(
+                    onTap: () => _showCreateHighlightDialog(context, selectedHighlightNotifier),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selectedHighlight != "Highlight"
+                                  ? const Color(0xFF7C57FC)
+                                  : Colors.grey[300]!,
+                              width: 2.0,
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.add, color: Color(0xFF7C57FC), size: 28),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          selectedHighlight != "Highlight" ? selectedHighlight : "New",
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            color: const Color(0xFF1F1F1F),
+                            fontSize: 13,
+                            fontWeight: selectedHighlight != "Highlight"
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  onCompleted(selectedHighlight);
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C57FC),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    "Continue",
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              widget.onCompleted(selectedHighlight);
-            },
-            child: Container(
-              width: double.infinity,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C57FC),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                "Continue",
-                style: GoogleFonts.ibmPlexSansArabic(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

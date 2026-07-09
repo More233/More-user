@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../models/timeline_post.dart';
-import '../reels/reward_dialog.dart';
+import 'reward_dialog.dart';
 
 class PostingLoadingScreen extends StatefulWidget {
   final TimelinePost newPost;
