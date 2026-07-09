@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'package:geolocator/geolocator.dart';
 import '../models/explore_state.dart';
+import 'world_cities_data.dart';
 
 class ExploreScreenHelpers {
   static double calculateTimeDecayWeight(String? createdAtStr) {
@@ -15,13 +17,110 @@ class ExploreScreenHelpers {
       return 0.0;
     }
 
-    // Exponential decay formula: e^(-t / 60.0)
+    // Exponential time decay function
     // At t=0: weight = 1.0
     // At t=60: weight = 0.36
     // At t=120: weight = 0.13
     // At t=180: weight = 0.05
     final double exponent = -diffInMinutes / 60.0;
     return math.exp(exponent);
+  }
+
+  static List<Map<String, dynamic>> getGlobalSwarmLandmarks(double userLat, double userLng) {
+    return [
+      {
+        'id': 'global_swarm_toronto_yyz',
+        'name': 'Toronto Pearson International Airport (YYZ)',
+        'arabicName': 'مطار تورونتو بيرسون الدولي (YYZ)',
+        'address': 'Toronto, ON, Canada',
+        'latitude': 43.6777,
+        'longitude': -79.6248,
+        'rating': 4.5,
+        'reviewsCount': 79,
+        'price': r'$$',
+        'peopleCount': 79,
+        'basePeopleCount': 79,
+        'type': 'Airport',
+        'imageUrl': 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500',
+        'isSaved': false,
+        'isVisited': false,
+        'actionType': 'Other',
+        'isRegistered': true,
+        'visitors': <Map<String, dynamic>>[],
+      },
+      {
+        'id': 'global_swarm_kafd_riyadh',
+        'name': 'King Abdullah Financial District',
+        'arabicName': 'مركز الملك عبدالله المالي (KAFD)',
+        'address': 'Riyadh, Saudi Arabia',
+        'latitude': 24.7622,
+        'longitude': 46.6409,
+        'rating': 4.8,
+        'reviewsCount': 164,
+        'price': r'$$$',
+        'peopleCount': 164,
+        'basePeopleCount': 164,
+        'type': 'Other',
+        'imageUrl': 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=500',
+        'isSaved': false,
+        'isVisited': false,
+        'actionType': 'Other',
+        'isRegistered': true,
+        'visitors': <Map<String, dynamic>>[],
+      },
+      {
+        'id': 'global_swarm_tokyo_hnd',
+        'name': 'Tokyo International (Haneda) Airport (HND)',
+        'arabicName': 'مطار طوكيو هانيدا الدولي (HND)',
+        'address': 'Tokyo, Japan',
+        'latitude': 35.5494,
+        'longitude': 139.7798,
+        'rating': 4.7,
+        'reviewsCount': 51,
+        'price': r'$$',
+        'peopleCount': 51,
+        'basePeopleCount': 51,
+        'type': 'Airport',
+        'imageUrl': 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500',
+        'isSaved': false,
+        'isVisited': false,
+        'actionType': 'Other',
+        'isRegistered': true,
+        'visitors': <Map<String, dynamic>>[],
+      },
+      {
+        'id': 'global_swarm_singapore_sin',
+        'name': 'Singapore Changi Airport (SIN)',
+        'arabicName': 'مطار سنغافورة تشانغي (SIN)',
+        'address': 'Singapore',
+        'latitude': 1.3644,
+        'longitude': 103.9915,
+        'rating': 4.9,
+        'reviewsCount': 25,
+        'price': r'$$',
+        'peopleCount': 25,
+        'basePeopleCount': 25,
+        'type': 'Airport',
+        'imageUrl': 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500',
+        'isSaved': false,
+        'isVisited': false,
+        'actionType': 'Other',
+        'isRegistered': true,
+        'visitors': <Map<String, dynamic>>[],
+      },
+    ].map((landmark) {
+      final double lat = landmark['latitude'] as double;
+      final double lng = landmark['longitude'] as double;
+      final double meters = Geolocator.distanceBetween(userLat, userLng, lat, lng);
+      final double km = meters / 1000;
+      final String distanceStr = km < 1 
+          ? '${meters.toStringAsFixed(0)} m' 
+          : '${km.toStringAsFixed(1)} km';
+      
+      final Map<String, dynamic> copy = Map<String, dynamic>.from(landmark);
+      copy['distance'] = distanceStr;
+      return copy;
+    }).toList();
   }
 
   static double calculateHybridWeight({
@@ -54,6 +153,25 @@ class ExploreScreenHelpers {
       reviewsContribution = 2.0;
     }
 
+    // Base density contribution from current/base people count (essential for global swarm landmarks)
+    final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+    double peopleDensityContribution = 0.0;
+    if (peopleCount >= 150) {
+      peopleDensityContribution = 18.0;
+    } else if (peopleCount >= 100) {
+      peopleDensityContribution = 14.0;
+    } else if (peopleCount >= 50) {
+      peopleDensityContribution = 10.0;
+    } else if (peopleCount >= 20) {
+      peopleDensityContribution = 6.0;
+    } else if (peopleCount >= 5) {
+      peopleDensityContribution = 3.0;
+    } else if (peopleCount > 0) {
+      peopleDensityContribution = 1.5;
+    }
+
+    final double baselinePopularity = math.max(reviewsContribution, peopleDensityContribution);
+
     // 3. Place Quality / Rating contribution
     final double rating = (place['rating'] as num? ?? 0.0).toDouble();
     double ratingContribution = 1.0;
@@ -64,7 +182,7 @@ class ExploreScreenHelpers {
     }
 
     // 4. Baseline Real-world Crowd Density (combines popularity and rating)
-    final double baselineDensity = reviewsContribution * ratingContribution;
+    final double baselineDensity = baselinePopularity * ratingContribution;
 
     // 5. App Active Check-ins Multiplier (Amplifies the heatmap dynamically in real-time)
     final double activeMultiplier = 1.0 + (activeCheckins * 4.0);
@@ -76,6 +194,49 @@ class ExploreScreenHelpers {
     final double totalWeight = (baselineDensity * activeMultiplier) + savedBonus;
 
     return totalWeight;
+  }
+
+  static List<Map<String, dynamic>> generateMockWorldPlaces() {
+    final List<Map<String, dynamic>> mockPlaces = [];
+    final random = math.Random(42); // Seeded random for consistent layout
+    
+    for (final city in WorldCitiesData.cities) {
+      final String cityName = city['name'] as String;
+      final double lat = city['lat'] as double;
+      final double lng = city['lng'] as double;
+      final double density = city['density'] as double;
+      
+      // Number of places is proportional to the city density factor
+      final int placeCount = (density * 10).toInt();
+      
+      for (int i = 0; i < placeCount; i++) {
+        // Offset radius concentrates heat in the center
+        final double maxOffset = 0.05 + (random.nextDouble() * 0.15);
+        final double angle = random.nextDouble() * 2 * math.pi;
+        final double offsetLat = lat + maxOffset * math.sin(angle);
+        final double offsetLng = lng + maxOffset * math.cos(angle);
+        
+        mockPlaces.add({
+          'id': 'mock_world_${cityName.toLowerCase()}_$i',
+          'name': 'Mock Place $i in $cityName',
+          'arabicName': 'مكان افتراضي $i في $cityName',
+          'address': '$cityName, World',
+          'latitude': offsetLat,
+          'longitude': offsetLng,
+          'rating': 4.0 + (random.nextDouble() * 1.0),
+          'reviewsCount': 10 + random.nextInt(100),
+          'peopleCount': 0,
+          'type': i % 3 == 0 ? 'Restaurant' : (i % 3 == 1 ? 'Coffee' : 'Bars'),
+          'imageUrl': '',
+          'isSaved': false,
+          'isVisited': false,
+          'actionType': 'Other',
+          'isRegistered': false,
+          'visitors': <Map<String, dynamic>>[],
+        });
+      }
+    }
+    return mockPlaces;
   }
 
   static double? parseDistance(String? distanceStr) {
@@ -136,6 +297,10 @@ class ExploreScreenHelpers {
     bool forHeatmap = false,
   }) {
     final unfiltered = state.allPlaces.where((place) {
+      final String id = place['id'].toString();
+      if (id.startsWith('mock_world_') && !forHeatmap) {
+        return false;
+      }
       if (state.searchQuery.isNotEmpty) {
         final query = state.searchQuery.toLowerCase();
         final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
@@ -218,12 +383,21 @@ class ExploreScreenHelpers {
           place: place,
           isSaved: place['isSaved'] as bool? ?? false,
         );
-        if (currentZoom < 8.0) {
-          return hybridWeight >= 0.7; // Very popular only
-        } else if (currentZoom >= 8.0 && currentZoom < 12.0) {
-          return hybridWeight >= 0.5; // Moderately popular
+        final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+        final bool isGlobal = place['id'].toString().startsWith('global_swarm_');
+        
+        if (currentZoom < 6.0) {
+          // Global view: only show major global landmarks or selected place
+          return isGlobal || isSelected;
+        } else if (currentZoom < 10.0) {
+          // Continental view: only show global landmarks, selected place, and places with high swarm
+          return isGlobal || isSelected || peopleCount >= 10;
+        } else if (currentZoom < 13.0) {
+          // Regional view: show landmarks, selected place, and moderate swarms
+          return isGlobal || isSelected || peopleCount >= 3;
         } else {
-          return hybridWeight >= 0.3; // All relevant swarms
+          // Local view: show all relevant swarms
+          return hybridWeight >= 0.3;
         }
       }
 

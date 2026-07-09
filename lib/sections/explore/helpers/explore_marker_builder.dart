@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'explore_screen_helpers.dart';
@@ -170,7 +171,7 @@ class ExploreMarkerBuilder {
     if (state.selectedMapTab != 2) return {};
 
     // Hide heatmap completely at street level zoom
-    if (currentZoom >= 16.5) {
+    if (currentZoom >= 15.0) {
       debugPrint("buildHeatmaps: hidden due to close zoom = $currentZoom");
       return {};
     }
@@ -189,7 +190,48 @@ class ExploreMarkerBuilder {
 
     final List<WeightedLatLng> points = [];
 
-    for (final place in filtered) {
+    // Filter out mock places when zoomed in close (zoom >= 11.0)
+    final List<Map<String, dynamic>> placesToHeat = filtered.where((place) {
+      final String id = place['id'].toString();
+      final bool isMock = id.startsWith('mock_world_');
+      if (isMock && currentZoom >= 11.0) return false;
+      return true;
+    }).toList();
+
+    // Calculate dynamic neighbor radius in degrees based on zoom level (divides professionally as you zoom in)
+    double neighborRadiusDegrees = 0.25;
+    if (currentZoom < 5.0) {
+      neighborRadiusDegrees = 0.6;
+    } else if (currentZoom >= 5.0 && currentZoom < 8.0) {
+      neighborRadiusDegrees = 0.3;
+    } else {
+      neighborRadiusDegrees = 0.12;
+    }
+
+    final List<int> neighborCounts = List.filled(placesToHeat.length, 0);
+    for (int i = 0; i < placesToHeat.length; i++) {
+      final double latI = (placesToHeat[i]['latitude'] as num? ?? 0.0).toDouble();
+      final double lngI = (placesToHeat[i]['longitude'] as num? ?? 0.0).toDouble();
+      
+      int count = 0;
+      for (int j = 0; j < placesToHeat.length; j++) {
+        if (i == j) continue;
+        final double latJ = (placesToHeat[j]['latitude'] as num? ?? 0.0).toDouble();
+        final double lngJ = (placesToHeat[j]['longitude'] as num? ?? 0.0).toDouble();
+        
+        final double dx = latI - latJ;
+        final double dy = lngI - lngJ;
+        final double distDegrees = math.sqrt(dx * dx + dy * dy);
+        
+        if (distDegrees <= neighborRadiusDegrees) {
+          count++;
+        }
+      }
+      neighborCounts[i] = count;
+    }
+
+    for (int i = 0; i < placesToHeat.length; i++) {
+      final place = placesToHeat[i];
       final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
       final double lng = (place['longitude'] as num? ?? 0.0).toDouble();
 
@@ -203,9 +245,13 @@ class ExploreMarkerBuilder {
         debugPrint("buildHeatmaps LOOP: name=${place['name']}, peopleCount=$peopleCount, weight=$heatWeight, lat=$lat, lng=$lng");
       }
 
+      // Dynamic crowding boost based on neighboring places count
+      final int neighbors = neighborCounts[i];
+      final double crowdingMultiplier = 1.0 + (neighbors * 0.12); // Each neighbor adds 12% weight
+
       // Only add to heatmap if the weight is above a threshold to avoid noise
       if (heatWeight > 0.5) {
-        final double finalWeight = (heatWeight * weightBoost * 2.0).clamp(0.5, 200.0);
+        final double finalWeight = (heatWeight * crowdingMultiplier * weightBoost * 2.0).clamp(0.5, 200.0);
         points.add(WeightedLatLng(LatLng(lat, lng), weight: finalWeight));
       }
     }
@@ -213,12 +259,12 @@ class ExploreMarkerBuilder {
     debugPrint("buildHeatmaps: points count = ${points.length}, zoom = $currentZoom, weightBoost = $weightBoost");
     if (points.isEmpty) return {};
 
-    // Calculate dynamic opacity: fades out between 14.0 and 16.5
+    // Calculate dynamic opacity: fades out gradually between 11.5 and 15.0
     double opacity = 0.85;
-    if (currentZoom >= 14.0) {
-      opacity = (0.80 * (1.0 - (currentZoom - 14.0) / 2.5)).clamp(0.0, 0.80);
-    } else if (currentZoom >= 10.0) {
-      opacity = (0.85 - (currentZoom - 10.0) * 0.05).clamp(0.65, 0.85);
+    if (currentZoom >= 11.5) {
+      opacity = (0.85 * (1.0 - (currentZoom - 11.5) / 3.5)).clamp(0.0, 0.85);
+    } else if (currentZoom >= 8.0) {
+      opacity = (0.85 - (currentZoom - 8.0) * 0.05).clamp(0.70, 0.85);
     }
 
     // Calculate dynamic radius: wider on zoom-out, tighter on zoom-in

@@ -34,6 +34,16 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         list.add(sp);
       }
     }
+
+    // Generate and add mock world places for dynamic density mapping
+    final mockPlaces = ExploreScreenHelpers.generateMockWorldPlaces();
+    for (final mp in mockPlaces) {
+      final mpIdStr = mp['id'].toString();
+      if (!existingIds.contains(mpIdStr)) {
+        list.add(mp);
+      }
+    }
+
     state = state.copyWith(allPlaces: list);
     await getUserLocation();
   }
@@ -167,15 +177,18 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final list = List<Map<String, dynamic>>.from(state.allPlaces);
       final existingIds = list.map((p) => p['id'].toString()).toSet();
 
+      final globalLandmarks = ExploreScreenHelpers.getGlobalSwarmLandmarks(lat, lng);
+
       Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
         final pid = p['id'].toString();
         final updated = Map<String, dynamic>.from(p);
         updated['isSaved'] = BookmarkTracker().isBookmarked(pid);
+        final int baseCount = p['basePeopleCount'] as int? ?? 0;
         if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
-          updated['peopleCount'] = placeVisitorCounts[pid];
+          updated['peopleCount'] = (placeVisitorCounts[pid] ?? 0) + baseCount;
           updated['visitors'] = placeVisitorsMap[pid];
         } else {
-          updated['peopleCount'] = 0;
+          updated['peopleCount'] = baseCount;
           updated['visitors'] = <Map<String, dynamic>>[];
         }
         return updated;
@@ -206,6 +219,18 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           list.add(updated);
         } else {
           final index = list.indexWhere((x) => x['id'].toString() == vidStr);
+          if (index != -1) {
+            list[index] = updatePlaceData(list[index]);
+          }
+        }
+      }
+      for (final gl in globalLandmarks) {
+        final glIdStr = gl['id'].toString();
+        final updated = updatePlaceData(gl);
+        if (!existingIds.contains(glIdStr)) {
+          list.add(updated);
+        } else {
+          final index = list.indexWhere((x) => x['id'].toString() == glIdStr);
           if (index != -1) {
             list[index] = updatePlaceData(list[index]);
           }

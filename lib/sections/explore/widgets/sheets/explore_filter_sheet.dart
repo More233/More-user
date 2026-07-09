@@ -316,21 +316,29 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
                   const Divider(color: Color(0xFFF1F3F5)),
 
                   // Good For
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      "Good for",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1A1A2E),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _isGoodForExpanded = !_isGoodForExpanded),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Good for",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1A1A2E),
+                            ),
+                          ),
+                          Icon(
+                            _isGoodForExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            color: const Color(0xFF1A1A2E),
+                          ),
+                        ],
                       ),
                     ),
-                    trailing: Icon(
-                      _isGoodForExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                      color: const Color(0xFF1A1A2E),
-                    ),
-                    onTap: () => setState(() => _isGoodForExpanded = !_isGoodForExpanded),
                   ),
                   if (_isGoodForExpanded) ...[
                     Padding(
@@ -344,21 +352,29 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
                   const Divider(color: Color(0xFFF1F3F5)),
 
                   // Features
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      "Features",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1A1A2E),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _isFeaturesExpanded = !_isFeaturesExpanded),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Features",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF1A1A2E),
+                            ),
+                          ),
+                          Icon(
+                            _isFeaturesExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            color: const Color(0xFF1A1A2E),
+                          ),
+                        ],
                       ),
                     ),
-                    trailing: Icon(
-                      _isFeaturesExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                      color: const Color(0xFF1A1A2E),
-                    ),
-                    onTap: () => setState(() => _isFeaturesExpanded = !_isFeaturesExpanded),
                   ),
                   if (_isFeaturesExpanded) ...[
                     Padding(

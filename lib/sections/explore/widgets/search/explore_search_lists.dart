@@ -71,45 +71,53 @@ class ExploreSearchLists extends StatelessWidget {
   }
 
   Widget _buildAddNewPlaceItem(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE8E8E8)),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: Color(0xFFF1F3F5),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.add,
-            color: Color(0xFF1A1A2E),
-            size: 18,
-          ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context, {
+          'type': 'add_new_place',
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE8E8E8)),
         ),
-        title: Text(
-          "Add a new place",
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1A1A2E),
-          ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F3F5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.add,
+                color: Color(0xFF1A1A2E),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                "Add a new place",
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1A1A2E),
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Color(0xFF82858C),
+            ),
+          ],
         ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 14,
-          color: Color(0xFF82858C),
-        ),
-        onTap: () {
-          Navigator.pop(context, {
-            'type': 'add_new_place',
-          });
-        },
       ),
     );
   }
