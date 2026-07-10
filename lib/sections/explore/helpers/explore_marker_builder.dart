@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'explore_screen_helpers.dart';
 import 'marker_generator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/explore_state.dart';
 
 class ExploreMarkerBuilder {
@@ -14,7 +15,23 @@ class ExploreMarkerBuilder {
     required void Function(Map<String, dynamic> place, LatLng position) onMarkerTap,
   }) {
     final Set<Marker> markers = {};
-    final List<Map<String, dynamic>> placesToDraw = List.from(filtered);
+    List<Map<String, dynamic>> placesToDraw = List.from(filtered);
+
+    if (state.selectedMapTab == 2) {
+      placesToDraw = placesToDraw.where((place) {
+        final String id = place['id'].toString();
+        if (id.startsWith('mock_world_')) {
+          return false;
+        }
+        final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+        final List<dynamic> visitors = place['visitors'] as List<dynamic>? ?? [];
+        final bool hasCheckIns = visitors.isNotEmpty;
+        if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
+          return true;
+        }
+        return hasCheckIns || peopleCount > 0;
+      }).toList();
+    }
 
     if (state.selectedPlace != null) {
       final selectedId = state.selectedPlace!['id'];
@@ -43,8 +60,57 @@ class ExploreMarkerBuilder {
       double anchorX = 0.5;
       double anchorY = 1.0;
 
-      final bool isProminent = ExploreScreenHelpers.isProminentPlace(place);
-      final bool showAsPin = isSelected || isProminent || currentZoom >= 15.0 || state.selectedMapTab == 2;
+      bool isProminent = ExploreScreenHelpers.isProminentPlace(place);
+      bool showAsPin = isSelected || isProminent || currentZoom >= 15.0 || state.selectedMapTab == 2;
+
+      if (state.selectedMapTab == 0) {
+        bool isProminentInDiscover = false;
+        if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
+          isProminentInDiscover = true;
+        } else {
+          final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+          final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
+          final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+          if (peopleCount > 0) {
+            isProminentInDiscover = true;
+          } else if (currentZoom >= 15.0) {
+            isProminentInDiscover = rating >= 4.0 && reviewsCount >= 30;
+          } else if (currentZoom >= 14.0) {
+            isProminentInDiscover = rating >= 4.2 && reviewsCount >= 60;
+          } else if (currentZoom >= 13.0) {
+            isProminentInDiscover = rating >= 4.4 && reviewsCount >= 100;
+          } else {
+            isProminentInDiscover = rating >= 4.6 && reviewsCount >= 180;
+          }
+        }
+        showAsPin = isSelected || isProminentInDiscover || currentZoom >= 15.5;
+      }
+
+      if (state.selectedMapTab == 1) {
+        bool isProminentInEvents = false;
+        if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
+          isProminentInEvents = true;
+        } else {
+          final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+          final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
+          if (currentZoom >= 15.0) {
+            isProminentInEvents = rating >= 3.8 && reviewsCount >= 10;
+          } else if (currentZoom >= 14.0) {
+            isProminentInEvents = rating >= 4.0 && reviewsCount >= 30;
+          } else if (currentZoom >= 13.0) {
+            isProminentInEvents = rating >= 4.2 && reviewsCount >= 60;
+          } else {
+            isProminentInEvents = rating >= 4.5 && reviewsCount >= 100;
+          }
+        }
+        showAsPin = isSelected || isProminentInEvents || currentZoom >= 13.5;
+      }
+
+      final bool isSaved = place['isSaved'] as bool? ?? false;
+      final bool isVisited = place['isVisited'] as bool? ?? false;
+      if (isSaved || isVisited) {
+        showAsPin = true;
+      }
 
       if (isManualTapped) {
         icon = BitmapDescriptor.defaultMarkerWithHue(
@@ -52,8 +118,49 @@ class ExploreMarkerBuilder {
         );
       } else if (isCheckIn && authorAvatar != null && markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
         icon = markerGenerator.avatarMarkerCache[authorAvatar]!;
+      } else if (isSaved && markerGenerator.userSavedMarker != null) {
+        icon = markerGenerator.userSavedMarker!;
+        anchorX = 0.5;
+        anchorY = 0.95;
+      } else if (isVisited) {
+        final List<dynamic> visitors = place['visitors'] as List<dynamic>? ?? [];
+        final String? currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        final bool userVisited = visitors.any((v) => v is Map && v['userId'] == currentUserId);
+        
+        if (userVisited && markerGenerator.userVisitedMarker != null) {
+          icon = markerGenerator.userVisitedMarker!;
+          anchorX = 0.5;
+          anchorY = 0.95;
+        } else if (visitors.isNotEmpty) {
+          final String? friendAvatar = visitors.firstWhere(
+            (v) => v is Map && v['avatarUrl'] != null,
+            orElse: () => null,
+          )?['avatarUrl'] as String?;
+          
+          if (friendAvatar != null && markerGenerator.avatarMarkerCache.containsKey(friendAvatar)) {
+            icon = markerGenerator.avatarMarkerCache[friendAvatar]!;
+            anchorX = 0.5;
+            anchorY = 0.95;
+          } else {
+            if (isSelected) {
+              icon = markerGenerator.discoverSelectedIcons[type] ?? markerGenerator.discoverSelectedIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            } else {
+              icon = markerGenerator.discoverNormalIcons[type] ?? markerGenerator.discoverNormalIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            }
+            anchorX = 0.5;
+            anchorY = 0.95;
+          }
+        } else {
+          if (isSelected) {
+            icon = markerGenerator.discoverSelectedIcons[type] ?? markerGenerator.discoverSelectedIcons['default'] ?? BitmapDescriptor.defaultMarker;
+          } else {
+            icon = markerGenerator.discoverNormalIcons[type] ?? markerGenerator.discoverNormalIcons['default'] ?? BitmapDescriptor.defaultMarker;
+          }
+          anchorX = 0.5;
+          anchorY = 0.95;
+        }
       } else if (showAsPin) {
-        final bool showCustomLabel = (isSelected || currentZoom >= 15.0 || state.selectedMapTab == 2) && normalCustomCache.containsKey(place['id'].toString());
+        final bool showCustomLabel = state.selectedMapTab == 2 && normalCustomCache.containsKey(place['id'].toString());
         
         if (showCustomLabel) {
           if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
@@ -125,23 +232,43 @@ class ExploreMarkerBuilder {
             icon = markerGenerator.heatmapCircleIcons[type] ?? markerGenerator.heatmapCircleIcons['default'] ?? BitmapDescriptor.defaultMarker;
             anchorX = 0.5;
             anchorY = 0.5;
-          } else if (isSelected) {
-            icon = markerGenerator.selectedMarkerIcons[type] ?? markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+          } else if (state.selectedMapTab == 0 || state.selectedMapTab == 1 || state.selectedMapTab == 3) {
+            if (isSelected) {
+              icon = markerGenerator.selectedMarkerIcons[type] ?? markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            } else {
+              icon = markerGenerator.normalMarkerIcons[type] ?? markerGenerator.normalMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            }
+            anchorX = 0.5;
+            anchorY = 1.0;
           } else {
-            icon = markerGenerator.normalMarkerIcons[type] ?? markerGenerator.normalMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            if (isSelected) {
+              icon = markerGenerator.selectedMarkerIcons[type] ?? markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            } else {
+              icon = markerGenerator.normalMarkerIcons[type] ?? markerGenerator.normalMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            }
+            anchorX = 0.5;
+            anchorY = 1.0;
           }
         }
-      } else if (iconUrl != null &&
-          (isSelected ? markerGenerator.networkIconsSelectedCache : markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
-        icon = (isSelected ? markerGenerator.networkIconsSelectedCache : markerGenerator.networkIconsNormalCache)[iconUrl]!;
-      } else if (markerGenerator.iconsLoaded) {
-        icon = markerGenerator.dotMarkerIcons[type] ?? markerGenerator.dotMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
-        anchorX = 0.5;
-        anchorY = 0.5;
       } else {
-        icon = BitmapDescriptor.defaultMarkerWithHue(
-          isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed,
-        );
+        if (state.selectedMapTab == 0 || state.selectedMapTab == 1) {
+          icon = markerGenerator.dotMarkerIcons[type] ?? markerGenerator.dotMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+          anchorX = 0.5;
+          anchorY = 0.5;
+        } else {
+          if (iconUrl != null &&
+              (isSelected ? markerGenerator.networkIconsSelectedCache : markerGenerator.networkIconsNormalCache).containsKey(iconUrl)) {
+            icon = (isSelected ? markerGenerator.networkIconsSelectedCache : markerGenerator.networkIconsNormalCache)[iconUrl]!;
+          } else if (markerGenerator.iconsLoaded) {
+            icon = markerGenerator.dotMarkerIcons[type] ?? markerGenerator.dotMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            anchorX = 0.5;
+            anchorY = 0.5;
+          } else {
+            icon = BitmapDescriptor.defaultMarkerWithHue(
+              isSelected ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed,
+            );
+          }
+        }
       }
 
       final LatLng position = LatLng(
@@ -158,6 +285,8 @@ class ExploreMarkerBuilder {
           onTap: () => onMarkerTap(place, position),
         ),
       );
+
+
     }
     return markers;
   }
@@ -170,8 +299,8 @@ class ExploreMarkerBuilder {
     // Show heatmap only on Swarming (2) tab
     if (state.selectedMapTab != 2) return {};
 
-    // Hide heatmap completely at street level zoom
-    if (currentZoom >= 15.0) {
+    // Hide heatmap completely at extreme close zoom
+    if (currentZoom >= 19.5) {
       debugPrint("buildHeatmaps: hidden due to close zoom = $currentZoom");
       return {};
     }
@@ -190,12 +319,35 @@ class ExploreMarkerBuilder {
 
     final List<WeightedLatLng> points = [];
 
-    // Filter out mock places when zoomed in close (zoom >= 11.0)
+    // Filter places strictly for heatmap to avoid noise and show actual hot spots
     final List<Map<String, dynamic>> placesToHeat = filtered.where((place) {
       final String id = place['id'].toString();
       final bool isMock = id.startsWith('mock_world_');
-      if (isMock && currentZoom >= 11.0) return false;
-      return true;
+      
+      if (isMock) {
+        if (currentZoom >= 11.0) return false;
+        // Only show mock world places with reviewsCount > 60 when zoomed out to avoid global noise
+        final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
+        return reviewsCount > 60;
+      }
+
+      final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+      final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
+      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+      
+      final List<dynamic> visitors = place['visitors'] as List<dynamic>? ?? [];
+      final bool hasCheckIns = visitors.isNotEmpty;
+
+      if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
+        return true;
+      }
+
+      // Only include places on the heatmap if they have active check-ins, simulated live activity, or high rating/popularity
+      if (hasCheckIns) return true;
+      if (peopleCount > 0) return true;
+      if (rating >= 4.4 && reviewsCount >= 120) return true;
+
+      return false;
     }).toList();
 
     // Calculate dynamic neighbor radius in degrees based on zoom level (divides professionally as you zoom in)

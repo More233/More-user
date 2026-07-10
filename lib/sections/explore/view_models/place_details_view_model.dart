@@ -52,6 +52,16 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
 
       final List<Map<String, dynamic>> postsList = List<Map<String, dynamic>>.from(postsRes as List);
       
+      // If postsList is empty and googleReviews are available, populate them
+      if (postsList.isEmpty && place['googleReviews'] != null) {
+        final List<dynamic> rawGoogleReviews = place['googleReviews'] as List<dynamic>;
+        for (final review in rawGoogleReviews) {
+          if (review is Map) {
+            postsList.add(Map<String, dynamic>.from(review));
+          }
+        }
+      }
+
       // Extract people images
       final List<String> imageUrls = [];
       for (final p in postsList) {

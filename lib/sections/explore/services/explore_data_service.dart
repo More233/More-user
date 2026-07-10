@@ -99,9 +99,13 @@ class ExploreDataService {
     final cat = categories.first;
     final String name = (cat['name'] as String? ?? '').toLowerCase();
 
-    if (name.contains('cinema') ||
-        name.contains('theater') ||
-        name.contains('movie') ||
+    if (name.contains('cinema') || name.contains('movie')) {
+      return 'Movies';
+    }
+    if (name.contains('stadium') || name.contains('sports') || name.contains('gym') || name.contains('basketball') || name.contains('soccer') || name.contains('athletic')) {
+      return 'Sports';
+    }
+    if (name.contains('theater') ||
         name.contains('museum') ||
         name.contains('entertainment') ||
         name.contains('ticket') ||
@@ -110,9 +114,8 @@ class ExploreDataService {
         name.contains('art gallery') ||
         name.contains('aquarium') ||
         name.contains('zoo') ||
-        name.contains('stadium') ||
         name.contains('theme park')) {
-      return 'Ticket';
+      return 'Concerts';
     }
 
     if (name.contains('restaurant') ||
@@ -274,17 +277,21 @@ class ExploreDataService {
     if (types.isEmpty) return 'Other';
     final typesLower = types.map((t) => (t as String).toLowerCase()).toList();
 
-    if (typesLower.contains('movie_theater') ||
-        typesLower.contains('museum') ||
+    if (typesLower.contains('movie_theater')) {
+      return 'Movies';
+    }
+    if (typesLower.contains('stadium')) {
+      return 'Sports';
+    }
+    if (typesLower.contains('museum') ||
         typesLower.contains('art_gallery') ||
-        typesLower.contains('stadium') ||
         typesLower.contains('amusement_park') ||
         typesLower.contains('zoo') ||
         typesLower.contains('aquarium') ||
         typesLower.contains('bowling_alley') ||
         typesLower.contains('casino') ||
         typesLower.contains('theater')) {
-      return 'Ticket';
+      return 'Concerts';
     }
 
     if (typesLower.contains('cafe') || typesLower.contains('coffee') || typesLower.contains('tea_room')) {
@@ -363,6 +370,34 @@ class ExploreDataService {
     final website = place['website'] as String?;
     final phone = place['formatted_phone_number'] as String?;
 
+    final openingHours = place['opening_hours'] as Map<String, dynamic>?;
+    final bool? openNow = openingHours?['open_now'] as bool?;
+    final List<dynamic>? weekdayText = openingHours?['weekday_text'] as List<dynamic>?;
+
+    // Parse Google Reviews if present
+    final List<dynamic>? rawReviews = place['reviews'] as List<dynamic>?;
+    final List<Map<String, dynamic>> googleReviews = [];
+    if (rawReviews != null) {
+      for (final r in rawReviews) {
+        final String authorName = r['author_name'] as String? ?? 'Anonymous';
+        final names = authorName.split(' ');
+        final String firstName = names.isNotEmpty ? names.first : 'Anonymous';
+        final String lastName = names.length > 1 ? names.sublist(1).join(' ') : '';
+        googleReviews.add({
+          'id': 'google_review_${r['time']}_${authorName.hashCode}',
+          'place_id': id,
+          'title': '',
+          'description': r['text'] as String? ?? '',
+          'created_at': DateTime.fromMillisecondsSinceEpoch((r['time'] as int? ?? 0) * 1000).toIso8601String(),
+          'author': {
+            'first_name': firstName,
+            'last_name': lastName,
+            'avatar_url': r['profile_photo_url'] as String? ?? '',
+          }
+        });
+      }
+    }
+
     return {
       'id': id,
       'name': name,
@@ -386,21 +421,36 @@ class ExploreDataService {
       'visitors': <Map<String, dynamic>>[],
       'website': website,
       'phone': phone,
+      'googleReviews': googleReviews,
+      'openNow': openNow,
+      'weekdayText': weekdayText != null ? List<String>.from(weekdayText) : null,
     };
   }
 
-  static Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(double lat, double lng, {double radius = 3000}) async {
+  static Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(
+    double lat,
+    double lng, {
+    double radius = 3000,
+    String? keyword,
+  }) async {
     try {
-      final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+      String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
           '?location=$lat,$lng'
           '&radius=${radius.toInt()}'
           '&key=$googlePlacesApiKey';
+
+      if (keyword != null && keyword.isNotEmpty) {
+        url += '&keyword=${Uri.encodeComponent(keyword)}';
+      }
 
       final response = await http.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        debugPrint("Google Places API URL: $url");
+        debugPrint("Google Places API Response Status: ${data['status']}, error_message: ${data['error_message']}");
         final results = data['results'] as List<dynamic>? ?? [];
+        debugPrint("Google Places API results count: ${results.length}");
         final List<Map<String, dynamic>> places = [];
         for (final item in results) {
           final place = item as Map<String, dynamic>;
@@ -615,6 +665,7 @@ class ExploreDataService {
         if (author != null) {
           final String name = '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim();
           parsedVisitors.add({
+            'userId': author['id'] as String?,
             'name': name.isEmpty ? 'Anonymous' : name,
             'avatarUrl': author['avatar_url'] as String?,
             'createdAt': v['created_at'] as String? ?? '',
@@ -868,7 +919,7 @@ class ExploreDataService {
 
   static String getActionTypeForPlaceType(String type) {
     final t = type.toLowerCase().trim();
-    if (t == 'hotel' || t == 'ticket') {
+    if (t == 'hotel' || t == 'ticket' || t == 'movies' || t == 'sports' || t == 'concerts') {
       return 'Book';
     } else if (t == 'restaurant' ||
         t == 'bakery' ||

@@ -136,14 +136,62 @@ class PlaceDetailsInfo extends StatelessWidget {
         const SizedBox(height: 12),
 
         // Access hours row
-        _buildInfoRow(
-          icon: Icons.access_time,
-          child: Row(
-            children: [
-              _buildGreyPillButton("Add hours", onAddHoursTap),
-            ],
-          ),
-        ),
+        () {
+          final weekdayText = place['weekdayText'] as List<dynamic>?;
+          String? todayHours;
+          if (weekdayText != null && weekdayText.length >= 7) {
+            final int weekday = DateTime.now().weekday; // 1 (Mon) - 7 (Sun)
+            final rawDayText = weekdayText[weekday - 1].toString();
+            final colonIndex = rawDayText.indexOf(':');
+            if (colonIndex != -1) {
+              todayHours = rawDayText.substring(colonIndex + 1).trim();
+            } else {
+              todayHours = rawDayText;
+            }
+          }
+
+          final bool? openNow = place['openNow'] as bool?;
+
+          return _buildInfoRow(
+            icon: Icons.access_time,
+            child: todayHours != null
+                ? Row(
+                    children: [
+                      Text(
+                        todayHours,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF1F242E),
+                        ),
+                      ),
+                      if (openNow != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: openNow ? const Color(0xFFE6F7ED) : const Color(0xFFFDECEB),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            openNow ? "Open Now" : "Closed",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: openNow ? const Color(0xFF1B5E20) : const Color(0xFFC62828),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  )
+                : Row(
+                    children: [
+                      _buildGreyPillButton("Add opening hours", onAddHoursTap),
+                    ],
+                  ),
+          );
+        }(),
 
         // Phone row
         if (place['phone'] != null && place['phone'].toString().isNotEmpty)

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -32,15 +31,6 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final spIdStr = sp['id'].toString();
       if (!existingIds.contains(spIdStr)) {
         list.add(sp);
-      }
-    }
-
-    // Generate and add mock world places for dynamic density mapping
-    final mockPlaces = ExploreScreenHelpers.generateMockWorldPlaces();
-    for (final mp in mockPlaces) {
-      final mpIdStr = mp['id'].toString();
-      if (!existingIds.contains(mpIdStr)) {
-        list.add(mp);
       }
     }
 
@@ -99,48 +89,26 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final results = await Future.wait([
         _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius),
         _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize),
+        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, keyword: 'cinema|stadium|museum|theater|concert|sports'),
       ]);
 
-      final foursquarePlaces = results[0] as List<Map<String, dynamic>>;
+      final normalPlaces = results[0] as List<Map<String, dynamic>>;
       final supabaseResults = results[1] as Map<String, dynamic>;
+      final eventPlaces = results[2] as List<Map<String, dynamic>>;
+
+      // Merge places and remove duplicates by ID
+      final Map<String, Map<String, dynamic>> combinedFoursquareMap = {};
+      for (final p in normalPlaces) {
+        combinedFoursquareMap[p['id'].toString()] = p;
+      }
+      for (final p in eventPlaces) {
+        combinedFoursquareMap[p['id'].toString()] = p;
+      }
+      final foursquarePlaces = combinedFoursquareMap.values.toList();
+
       final checkins = supabaseResults['checkins'] as List<Map<String, dynamic>>;
       final customVenues = supabaseResults['customVenues'] as List<Map<String, dynamic>>;
       final postsRaw = List<dynamic>.from(supabaseResults['postsRaw'] as List? ?? []);
-
-      // SIMULATION BOOST: If there are no active check-ins in the database,
-      // simulate crowd activity for the top 2 popular nearby venues to showcase the Heatmap / Swarm feature.
-      final bool hasActiveCheckins = postsRaw.any((post) {
-        final createdAtStr = post['created_at'] as String?;
-        return ExploreScreenHelpers.calculateTimeDecayWeight(createdAtStr) > 0.0;
-      });
-
-      if (!hasActiveCheckins && foursquarePlaces.isNotEmpty) {
-        final mockAuthors = [
-          {'first_name': 'Ahmad', 'last_name': 'Al-Sayed', 'avatar_url': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100'},
-          {'first_name': 'Sarah', 'last_name': 'K.', 'avatar_url': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100'},
-          {'first_name': 'Omar', 'last_name': 'M.', 'avatar_url': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100'},
-          {'first_name': 'Laila', 'last_name': 'H.', 'avatar_url': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100'},
-        ];
-
-        // Choose the first 2 Foursquare places
-        for (int i = 0; i < math.min(2, foursquarePlaces.length); i++) {
-          final placeId = foursquarePlaces[i]['id'].toString();
-          
-          // Inject 2-3 visitors per place with different recent times
-          final visitorCount = 2 + (i % 2); // 2 or 3 visitors
-          for (int j = 0; j < visitorCount; j++) {
-            final minutesAgo = 10 + (j * 40); // 10, 50, 90 mins ago (all active)
-            final postTime = DateTime.now().subtract(Duration(minutes: minutesAgo)).toIso8601String();
-            
-            postsRaw.add({
-              'id': 'sim_post_${placeId}_$j',
-              'place_id': placeId,
-              'created_at': postTime,
-              'author': mockAuthors[(i * 2 + j) % mockAuthors.length],
-            });
-          }
-        }
-      }
 
       final placeVisitorCounts = <String, int>{};
       final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
@@ -160,6 +128,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           if (!placeSeenUser[placeId]!.contains(authorName)) {
             placeSeenUser[placeId]!.add(authorName);
             placeVisitorsMap.putIfAbsent(placeId, () => <Map<String, dynamic>>[]).add({
+              'userId': author?['id'] as String?,
               'name': authorName,
               'avatarUrl': authorAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
               'createdAt': createdAt,
@@ -176,8 +145,6 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
 
       final list = List<Map<String, dynamic>>.from(state.allPlaces);
       final existingIds = list.map((p) => p['id'].toString()).toSet();
-
-      final globalLandmarks = ExploreScreenHelpers.getGlobalSwarmLandmarks(lat, lng);
 
       Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
         final pid = p['id'].toString();
@@ -219,18 +186,6 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           list.add(updated);
         } else {
           final index = list.indexWhere((x) => x['id'].toString() == vidStr);
-          if (index != -1) {
-            list[index] = updatePlaceData(list[index]);
-          }
-        }
-      }
-      for (final gl in globalLandmarks) {
-        final glIdStr = gl['id'].toString();
-        final updated = updatePlaceData(gl);
-        if (!existingIds.contains(glIdStr)) {
-          list.add(updated);
-        } else {
-          final index = list.indexWhere((x) => x['id'].toString() == glIdStr);
           if (index != -1) {
             list[index] = updatePlaceData(list[index]);
           }

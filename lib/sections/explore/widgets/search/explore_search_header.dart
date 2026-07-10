@@ -12,6 +12,7 @@ class ExploreSearchHeader extends StatelessWidget {
   final ValueChanged<String> onCategoryTap;
   final VoidCallback onCurrentLocationTap;
   final FocusNode? focusNode;
+  final ValueChanged<String>? onSubmitted;
 
   const ExploreSearchHeader({
     super.key,
@@ -25,6 +26,7 @@ class ExploreSearchHeader extends StatelessWidget {
     required this.onCategoryTap,
     required this.onCurrentLocationTap,
     this.focusNode,
+    this.onSubmitted,
   });
 
   Widget _buildCategoryChip(String label, IconData icon, String type) {
@@ -99,6 +101,7 @@ class ExploreSearchHeader extends StatelessWidget {
                         controller: controller,
                         focusNode: focusNode,
                         onChanged: onChanged,
+                        onSubmitted: onSubmitted,
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 16,
                           color: const Color(0xFF1A1A2E),

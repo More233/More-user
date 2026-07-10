@@ -81,6 +81,14 @@ class _ExploreSearchScreenState extends ConsumerState<ExploreSearchScreen> {
                 _searchController.clear();
                 viewModel.onSearchChanged("", widget.userLat, widget.userLng);
               },
+              onSubmitted: (query) {
+                if (query.trim().isNotEmpty) {
+                  Navigator.pop(context, {
+                    'type': 'search_query',
+                    'query': query.trim(),
+                  });
+                }
+              },
               onCategoryTap: (categoryType) {
                 Navigator.pop(context, {
                   'type': 'category',

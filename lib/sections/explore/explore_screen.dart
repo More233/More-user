@@ -24,7 +24,6 @@ import 'widgets/sheets/explore_filter_sheet.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'widgets/search/explore_list_view.dart';
 import 'add_place_screen.dart';
-import 'widgets/search/explore_view_toggle_pill.dart';
 import 'explore_search_screen.dart';
 import '../home/view_models/timeline_view_model.dart';
 import '../home/widgets/bottom_sheets/follow_friends_bottom_sheet.dart';
@@ -92,6 +91,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         }
       },
     );
+    if (widget.userAvatarUrl != null && widget.userAvatarUrl!.isNotEmpty) {
+      _markerGenerator.initUserSavedVisitedMarkers(widget.userAvatarUrl!).then((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
@@ -104,6 +108,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void didUpdateWidget(ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.userAvatarUrl != oldWidget.userAvatarUrl && widget.userAvatarUrl != null && widget.userAvatarUrl!.isNotEmpty) {
+      _markerGenerator.initUserSavedVisitedMarkers(widget.userAvatarUrl!).then((_) {
+        if (mounted) setState(() {});
+      });
+    }
     if (widget.initialLatitude != oldWidget.initialLatitude ||
         widget.initialLongitude != oldWidget.initialLongitude) {
       if (widget.initialLatitude != null && widget.initialLongitude != null) {
@@ -654,6 +663,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         final bool isSelected = state.selectedCategory == category;
         ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
         ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
+      } else if (result['type'] == 'search_query') {
+        final query = result['query'] as String;
+        _searchController.text = query;
+        ref.read(exploreViewModelProvider.notifier).updateSearchQuery(query);
+        ref.read(exploreViewModelProvider.notifier).searchPlaces(query);
       } else if (result['type'] == 'add_new_place') {
         final added = await Navigator.push<bool>(
           context,
@@ -724,7 +738,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     
     final double navBarHeight = 70 + (bottomPadding > 0 ? bottomPadding + 6 : 16);
     final double controlsBottom = 70 + bottomPadding;
-    final double overlaysBottom = controlsBottom + 56 + 12;
+    final double overlaysBottom = state.selectedPlace != null ? controlsBottom : (controlsBottom + 56 + 12);
 
     final bool showCategoryResultsMode = state.selectedCategory.isNotEmpty ||
         state.searchQuery.isNotEmpty ||
@@ -734,46 +748,11 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          if (state.isListView) ...[
-            Positioned.fill(
-              child: ExploreListView(
-                topPadding: topPadding,
-                navBarHeight: navBarHeight,
-                filteredPlaces: filteredPlaces,
-                userAvatarUrl: widget.userAvatarUrl,
-                onAvatarTapped: widget.onAvatarTapped,
-                searchController: _searchController,
-                isSearching: state.isSearching,
-                searchQuery: state.searchQuery,
-                onBackToTimeline: widget.onBackToTimeline,
-                onFilterPressed: () => _openFilterBottomSheet(state),
-                onSearchChanged: (_) {},
-                onSearchSubmitted: (value) async {
-                  if (value.trim().isNotEmpty) {
-                    await ref.read(exploreViewModelProvider.notifier).searchPlaces(value);
-                  }
-                },
-                onPlaceActionTriggered: _handlePlaceAction,
-                onCategoryTapped: (category) {
-                  final bool isSelected = state.selectedCategory == category;
-                  ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
-                  final lat = state.userLocation?.latitude ?? 24.7136;
-                  final lng = state.userLocation?.longitude ?? 46.6753;
-                  ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
-                },
-                selectedCategory: state.selectedCategory,
-                onClearSearch: () {
-                  ref.read(exploreViewModelProvider.notifier).updateSearchQuery("");
-                  _searchController.clear();
-                  ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
-                  ref.read(exploreViewModelProvider.notifier).updateListView(false);
-                },
-                onSearchTap: () => _openSearchScreen(state),
-              ),
-            ),
-          ] else ...[
-            Positioned.fill(
+          Positioned.fill(
+            child: Offstage(
+              offstage: state.isListView,
               child: ExploreMapWidget(
+                key: const ValueKey('explore_map_widget_wrapper_key'),
                 mapStyleJson: _mapStyleJson,
                 initialCameraPosition: CameraPosition(
                   target: (widget.initialLatitude != null && widget.initialLongitude != null)
@@ -850,6 +829,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                       }
                     });
                   }
+                  if (mounted) setState(() {});
                 },
                 onTap: (latLng) {
                   ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
@@ -859,9 +839,49 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 },
               ),
             ),
+          ),
+          if (state.isListView)
+            Positioned.fill(
+              child: ExploreListView(
+                topPadding: topPadding,
+                navBarHeight: navBarHeight,
+                filteredPlaces: filteredPlaces,
+                userAvatarUrl: widget.userAvatarUrl,
+                onAvatarTapped: widget.onAvatarTapped,
+                searchController: _searchController,
+                isSearching: state.isSearching,
+                searchQuery: state.searchQuery,
+                onBackToTimeline: widget.onBackToTimeline,
+                onFilterPressed: () => _openFilterBottomSheet(state),
+                onSearchChanged: (_) {},
+                onSearchSubmitted: (value) async {
+                  if (value.trim().isNotEmpty) {
+                    await ref.read(exploreViewModelProvider.notifier).searchPlaces(value);
+                  }
+                },
+                onPlaceActionTriggered: _handlePlaceAction,
+                onCategoryTapped: (category) {
+                  final bool isSelected = state.selectedCategory == category;
+                  ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
+                  final lat = state.userLocation?.latitude ?? 24.7136;
+                  final lng = state.userLocation?.longitude ?? 46.6753;
+                  ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
+                },
+                selectedCategory: state.selectedCategory,
+                onClearSearch: () {
+                  ref.read(exploreViewModelProvider.notifier).updateSearchQuery("");
+                  _searchController.clear();
+                  ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
+                  ref.read(exploreViewModelProvider.notifier).updateListView(false);
+                  final lat = state.userLocation?.latitude ?? 24.7136;
+                  final lng = state.userLocation?.longitude ?? 46.6753;
+                  ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
+                },
+                onSearchTap: () => _openSearchScreen(state),
+              ),
+            ),
 
-
-
+          if (!state.isListView) ...[
             if (state.selectedMapTab != 2 && state.selectedCategory.isEmpty)
               Positioned(
                 top: 0,
@@ -869,14 +889,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 right: 0,
                 child: ExploreSearchBar(
                   searchController: _searchController,
-                  isSearching: false,
-                  searchQuery: "",
+                  isSearching: state.isSearching,
+                  searchQuery: state.searchQuery,
                   suggestions: const [],
                   userAvatarUrl: widget.userAvatarUrl,
                   onAvatarTapped: widget.onAvatarTapped,
                   onSearchChanged: (_) {},
                   onSearchSubmitted: (_) {},
-                  onClearSearch: () {},
+                  onClearSearch: () {
+                    ref.read(exploreViewModelProvider.notifier).updateSearchQuery("");
+                    _searchController.clear();
+                    ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
+                    ref.read(exploreViewModelProvider.notifier).updateListView(false);
+                    final lat = state.userLocation?.latitude ?? 24.7136;
+                    final lng = state.userLocation?.longitude ?? 46.6753;
+                    ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
+                  },
                   onBackToTimeline: widget.onBackToTimeline,
                   onSuggestionTapped: (_) {},
                   iconDataGetter: (type) => _markerGenerator.getIconDataForType(type),
@@ -889,7 +917,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 ),
               ),
 
-            if (state.selectedMapTab != 2 && state.selectedCategory.isEmpty)
+            if (state.selectedMapTab != 2)
               Positioned(
                 top: topPadding + 64,
                 left: 0,
@@ -1071,7 +1099,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 ),
               ),
 
-            if (!showCategoryResultsMode)
+            if (!showCategoryResultsMode && state.selectedPlace == null)
               Positioned(
                 left: 16,
                 right: 16,
@@ -1085,7 +1113,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     String msg = "";
                     if (index == 0) msg = "Discover";
                     if (index == 1) msg = "Events";
-                    if (index == 2) msg = "Swarming now";
+                    if (index == 2) msg = "Live Now";
                     if (index == 3) msg = "You";
                     _triggerStatusBadge(msg);
                   },
@@ -1139,12 +1167,57 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               ),
             ),
 
-            if (showCategoryResultsMode && state.selectedPlace == null)
+            if (showCategoryResultsMode && state.selectedPlace == null) ...[
+              if (!state.isListView)
+                Positioned(
+                  left: 16,
+                  bottom: controlsBottom,
+                  child: GestureDetector(
+                    onTap: () => _animateToUserLocation(state.userLocation),
+                    child: ClipOval(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 0.8,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: SvgPicture.asset(
+                            'assets/explore/sent.svg',
+                            width: 22,
+                            height: 22,
+                            fit: BoxFit.contain,
+                            colorFilter: const ColorFilter.mode(
+                              Color(0xFF7C57FC),
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 left: 16,
-                bottom: controlsBottom,
+                bottom: state.isListView ? controlsBottom : (controlsBottom + 64),
                 child: GestureDetector(
-                  onTap: () => _animateToUserLocation(state.userLocation),
+                  onTap: () {
+                    ref.read(exploreViewModelProvider.notifier).updateListView(!state.isListView);
+                  },
                   child: ClipOval(
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -1167,38 +1240,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ],
                         ),
                         alignment: Alignment.center,
-                        child: SvgPicture.asset(
-                          'assets/explore/sent.svg',
-                          width: 22,
-                          height: 22,
-                          fit: BoxFit.contain,
-                          colorFilter: const ColorFilter.mode(
-                            Color(0xFF7C57FC),
-                            BlendMode.srcIn,
-                          ),
+                        child: Icon(
+                          state.isListView ? Icons.map_outlined : Icons.format_list_bulleted,
+                          color: const Color(0xFF7C57FC),
+                          size: 22,
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-
+            ],
           ],
-
-          if (state.selectedPlace == null && (state.isListView || showCategoryResultsMode))
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: controlsBottom,
-              child: Center(
-                child: ExploreViewTogglePill(
-                  isListView: state.isListView,
-                  onViewChanged: (isList) {
-                    ref.read(exploreViewModelProvider.notifier).updateListView(isList);
-                  },
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -1312,6 +1365,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           backgroundColor: Color(0xFF7C57FC),
         ),
       );
+      final exploreState = ref.read(exploreViewModelProvider);
+      final lat = exploreState.userLocation?.latitude ?? 24.7136;
+      final lng = exploreState.userLocation?.longitude ?? 46.6753;
+      ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
       widget.onBackToTimeline();
     }
   }

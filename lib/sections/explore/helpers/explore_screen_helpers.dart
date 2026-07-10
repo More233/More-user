@@ -321,14 +321,18 @@ class ExploreScreenHelpers {
 
       if (state.selectedMapTab == 0 && state.selectedCategory.isNotEmpty) {
         final type = place['type'] as String? ?? 'Other';
-        if (state.selectedCategory == "Restaurant" && type != "Restaurant") return false;
-        if (state.selectedCategory == "Coffee" && type != "Coffee") return false;
-        if (state.selectedCategory == "Bakery" && type != "Bakery") return false;
-        if (state.selectedCategory == "Bars" && type != "Bars") return false;
+        if (type != state.selectedCategory) return false;
       }
 
       if (state.selectedMapTab == 1) {
-        return place['actionType'] == 'Book';
+        final type = place['type'] as String? ?? 'Other';
+        if (state.selectedCategory.isNotEmpty) {
+          if (type != state.selectedCategory) return false;
+        } else {
+          if (type != 'Movies' && type != 'Sports' && type != 'Concerts' && type != 'Ticket') {
+            return false;
+          }
+        }
       }
       if (state.selectedMapTab == 2 && !forHeatmap) {
         final double hybridWeight = calculateHybridWeight(

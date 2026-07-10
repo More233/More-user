@@ -29,7 +29,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 186,
+          height: 200,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: similarPlaces.length,

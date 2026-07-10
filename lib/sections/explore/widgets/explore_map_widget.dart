@@ -30,6 +30,7 @@ class ExploreMapWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GoogleMap(
+      key: const ValueKey('explore_google_map_widget_key'),
       initialCameraPosition: initialCameraPosition,
       onMapCreated: (controller) {
         if (mapStyleJson != null) {

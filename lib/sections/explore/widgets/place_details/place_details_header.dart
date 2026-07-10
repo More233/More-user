@@ -23,56 +23,52 @@ class PlaceDetailsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!hasPhotos) {
+      return Container(
+        color: Colors.white,
+        padding: EdgeInsets.only(top: topPadding, left: 8, right: 8),
+        height: topPadding + 56,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.arrow_back,
+                color: Color(0xFF1F242E),
+                size: 24,
+              ),
+              onPressed: onBackTap,
+            ),
+            IconButton(
+              icon: const Icon(
+                Icons.more_horiz,
+                color: Color(0xFF1F242E),
+                size: 24,
+              ),
+              onPressed: onMoreTap ?? () {},
+            ),
+          ],
+        ),
+      );
+    }
+
     return Stack(
       children: [
-        if (hasPhotos)
-          SizedBox(
-            height: 280,
-            child: PageView.builder(
-              itemCount: images.length,
-              onPageChanged: onPageChanged,
-              itemBuilder: (context, index) {
-                return Image.network(
-                  images[index],
-                  width: double.infinity,
-                  height: 280,
-                  fit: BoxFit.cover,
-                );
-              },
-            ),
-          )
-        else
-          // Premium header placeholder
-          Container(
-            height: 280,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFF9FAFB), Color(0xFFF3F4F6)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.photo_camera_back_outlined,
-                  color: Color(0xFF82858C),
-                  size: 48,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  "No images available for this place",
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF82858C),
-                  ),
-                ),
-              ],
-            ),
+        SizedBox(
+          height: 280,
+          child: PageView.builder(
+            itemCount: images.length,
+            onPageChanged: onPageChanged,
+            itemBuilder: (context, index) {
+              return Image.network(
+                images[index],
+                width: double.infinity,
+                height: 280,
+                fit: BoxFit.cover,
+              );
+            },
           ),
+        ),
 
         // Back button (dark circular card)
         Positioned(

@@ -66,15 +66,54 @@ class PlaceTipsSection extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                                  ? NetworkImage(avatarUrl)
-                                  : null,
-                              backgroundColor: const Color(0xFFF5F6F8),
-                              child: avatarUrl == null || avatarUrl.isEmpty
-                                  ? const Icon(Icons.person, color: Color(0xFF82858C))
-                                  : null,
+                            Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                ClipOval(
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    color: const Color(0xFFF5F6F8),
+                                    child: avatarUrl != null && avatarUrl.trim().isNotEmpty
+                                        ? Image.network(
+                                            avatarUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) {
+                                              return const Icon(Icons.person, color: Color(0xFF82858C), size: 20);
+                                            },
+                                          )
+                                        : const Icon(Icons.person, color: Color(0xFF82858C), size: 20),
+                                  ),
+                                ),
+                                Positioned(
+                                  right: -2,
+                                  bottom: -2,
+                                  child: Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFAE34), // Gold/Orange star badge
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.2),
+                                          blurRadius: 2,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.star,
+                                      color: Colors.white,
+                                      size: 8,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -151,15 +190,54 @@ class PlaceTipsSection extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                        ? NetworkImage(avatarUrl)
-                        : null,
-                    backgroundColor: const Color(0xFFF5F6F8),
-                    child: avatarUrl == null || avatarUrl.isEmpty
-                        ? const Icon(Icons.person, color: Color(0xFF82858C))
-                        : null,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      ClipOval(
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          color: const Color(0xFFF5F6F8),
+                          child: avatarUrl != null && avatarUrl.trim().isNotEmpty
+                              ? Image.network(
+                                  avatarUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(Icons.person, color: Color(0xFF82858C), size: 20);
+                                  },
+                                )
+                              : const Icon(Icons.person, color: Color(0xFF82858C), size: 20),
+                        ),
+                      ),
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFAE34), // Gold/Orange star badge
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.star,
+                            color: Colors.white,
+                            size: 8,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(width: 12),
                   Expanded(

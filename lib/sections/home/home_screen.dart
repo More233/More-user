@@ -237,13 +237,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       ref.read(timelineViewModelProvider.notifier).loadPosts();
       ref.read(timelineViewModelProvider.notifier).completeFirstCheckIn();
       ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
-      final currentNavIndex = ref.read(timelineViewModelProvider).selectedNavIndex;
-      if (currentNavIndex == 1) {
-        final exploreState = ref.read(exploreViewModelProvider);
-        final lat = exploreState.userLocation?.latitude ?? 24.7136;
-        final lng = exploreState.userLocation?.longitude ?? 46.6753;
-        ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
-      }
+      final exploreState = ref.read(exploreViewModelProvider);
+      final lat = exploreState.userLocation?.latitude ?? 24.7136;
+      final lng = exploreState.userLocation?.longitude ?? 46.6753;
+      ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
     }
   }
 
@@ -344,7 +341,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(timelineViewModelProvider);
-    debugPrint("HomeScreen: build() called, isLoading=${state.isLoading}, selectedNavIndex=${state.selectedNavIndex}");
+    final exploreState = ref.watch(exploreViewModelProvider);
+    final bool isPlaceSelectedOnMap = exploreState.selectedPlace != null && state.selectedNavIndex == 1;
+    debugPrint("HomeScreen: build() called, isLoading=${state.isLoading}, selectedNavIndex=${state.selectedNavIndex}, isPlaceSelectedOnMap=$isPlaceSelectedOnMap");
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final navBarHeight = 50.0 + bottomPadding;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -509,14 +508,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                       curve: Curves.easeInOut,
                                       right: 16,
                                       bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
-                                      child: IgnorePointer(
-                                        ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3),
-                                        child: AnimatedOpacity(
-                                          duration: const Duration(milliseconds: 200),
-                                          opacity: (state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) ? 1.0 : 0.0,
-                                          child: _buildFAB(state),
-                                        ),
-                                      ),
+                                       child: IgnorePointer(
+                                         ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) || isPlaceSelectedOnMap,
+                                         child: AnimatedOpacity(
+                                           duration: const Duration(milliseconds: 200),
+                                           opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
+                                           child: _buildFAB(state),
+                                         ),
+                                       ),
                                     ),
                                   ],
                                 ),
@@ -573,7 +572,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             child: GestureDetector(
               onTap: _onAvatarTapped,
               child: Hero(
-                 tag: 'user-avatar',
+                tag: 'user-avatar',
                 child: Container(
                   width: 32,
                   height: 32,

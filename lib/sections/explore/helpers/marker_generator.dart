@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 class MarkerGenerator {
   final Map<String, BitmapDescriptor> normalMarkerIcons = {};
   final Map<String, BitmapDescriptor> selectedMarkerIcons = {};
+  final Map<String, BitmapDescriptor> discoverNormalIcons = {};
+  final Map<String, BitmapDescriptor> discoverSelectedIcons = {};
   /// Large colored circle icons with white icon inside (Live Now / heatmap mode, zoom >= 15)
   final Map<String, BitmapDescriptor> heatmapCircleIcons = {};
   /// Compact teardrop icons for heatmap fallback
@@ -20,6 +22,8 @@ class MarkerGenerator {
   final Map<String, BitmapDescriptor> networkIconsNormalCache = {};
   final Map<String, BitmapDescriptor> networkIconsSelectedCache = {};
   final Map<String, BitmapDescriptor> avatarMarkerCache = {};
+  BitmapDescriptor? userSavedMarker;
+  BitmapDescriptor? userVisitedMarker;
   final Map<String, Uint8List> iconBytesCache = {};
   final Map<String, BitmapDescriptor> customPlaceMarkersNormal = {};
   final Map<String, BitmapDescriptor> customPlaceMarkersSelected = {};
@@ -134,7 +138,7 @@ class MarkerGenerator {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
 
-    final double radius = 7.0 * scale;
+    final double radius = 4.5 * scale;
     final double width = (radius * 2) + 4.0;
     final double height = (radius * 2) + 4.0;
 
@@ -234,6 +238,133 @@ class MarkerGenerator {
     final Uint8List uint8list = byteData.buffer.asUint8List();
     return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
   }
+
+  /// Custom teardrop pin with a category icon inside, white stroke, and a small dot underneath
+  Future<BitmapDescriptor> createCustomCircleDotPin(
+    IconData iconData,
+    Color color, {
+    required bool isSelected,
+    double scale = 1.0,
+  }) async {
+    final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+    final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+
+    final double finalScale = (isSelected ? 1.05 : 0.85) * scale;
+    final double dx = 8.0;
+    final double dy = 6.0;
+
+    final double gap = 4.0 * finalScale;
+    final double dotRadius = 3.8 * finalScale;
+
+    final double width = (27.75 * finalScale) + 16.0;
+    final double height = (30.833 * finalScale) + gap + (dotRadius * 2) + 16.0;
+
+    canvas.scale(dpr);
+
+    final Path path = Path();
+    path.moveTo(dx + 13.875 * finalScale, dy);
+    path.cubicTo(
+      dx + 21.538 * finalScale,
+      dy,
+      dx + 27.75 * finalScale,
+      dy + 6.13575 * finalScale,
+      dx + 27.75 * finalScale,
+      dy + 13.7041 * finalScale,
+    );
+    path.cubicTo(
+      dx + 27.7497 * finalScale,
+      dy + 21.2724 * finalScale,
+      dx + 19.078 * finalScale,
+      dy + 30.833 * finalScale,
+      dx + 13.875 * finalScale,
+      dy + 30.833 * finalScale,
+    );
+    path.cubicTo(
+      dx + 8.67197 * finalScale,
+      dy + 30.833 * finalScale,
+      dx + 0.000303757 * finalScale,
+      dy + 21.2724 * finalScale,
+      dx,
+      dy + 13.7041 * finalScale,
+    );
+    path.cubicTo(
+      dx,
+      dy + 6.13575 * finalScale,
+      dx + 6.21205 * finalScale,
+      dy,
+      dx + 13.875 * finalScale,
+      dy,
+    );
+    path.close();
+
+    // 1. Draw Shadow for teardrop pin
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.15)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    canvas.drawPath(path, shadowPaint);
+
+    // 2. Draw Teardrop pin (Fill)
+    final Paint fillPaint = Paint()..color = color;
+    canvas.drawPath(path, fillPaint);
+
+    // 3. Draw White Border around teardrop pin
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2 * finalScale;
+    canvas.drawPath(path, borderPaint);
+
+    // 4. Draw White Icon inside teardrop pin circular head
+    final double iconCx = dx + 13.875 * finalScale;
+    final double iconCy = dy + 13.7 * finalScale;
+
+    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: (isSelected ? 14.5 : 12.0) * scale,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: Colors.white,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(iconCx - textPainter.width / 2, iconCy - textPainter.height / 2),
+    );
+
+    // 5. Draw Bottom Dot Shadow
+    final double dotCx = iconCx;
+    final double tipY = dy + 30.833 * finalScale;
+    final double dotCy = tipY + gap + dotRadius;
+    canvas.drawCircle(Offset(dotCx, dotCy + 1.0), dotRadius, shadowPaint);
+
+    // 6. Draw Bottom Dot (Fill)
+    final Paint dotPaint = Paint()..color = color;
+    canvas.drawCircle(Offset(dotCx, dotCy), dotRadius, dotPaint);
+
+    // 7. Draw White Border around bottom dot
+    final Paint dotBorderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0 * finalScale;
+    canvas.drawCircle(Offset(dotCx, dotCy), dotRadius, dotBorderPaint);
+
+    final ui.Image image = await pictureRecorder.endRecording().toImage(
+      (width * dpr).toInt(),
+      (height * dpr).toInt(),
+    );
+    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return BitmapDescriptor.defaultMarker;
+    final Uint8List uint8list = byteData.buffer.asUint8List();
+    return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
+  }
+
+
 
   Future<BitmapDescriptor?> downloadAndProcessNetworkIcon(
     String url,
@@ -397,6 +528,9 @@ class MarkerGenerator {
 
   IconData getIconDataForType(String type) {
     final String t = type.toLowerCase().trim();
+    if (t.contains('movie') || t.contains('cinema')) return Icons.movie;
+    if (t.contains('sports') || t.contains('stadium') || t.contains('arena') || t.contains('soccer') || t.contains('gym')) return Icons.sports_soccer;
+    if (t.contains('concert') || t.contains('music') || t.contains('gig')) return Icons.music_note;
     if (t.contains('restaurant') || t.contains('food') || t.contains('dining')) return Icons.restaurant;
     if (t.contains('coffee') || t.contains('cafe') || t.contains('café')) return Icons.local_cafe;
     if (t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') || t.contains('pastry')) return Icons.cake;
@@ -413,6 +547,15 @@ class MarkerGenerator {
 
   Color getMarkerColor(String type) {
     final String t = type.toLowerCase().trim();
+    if (t.contains('movie') || t.contains('cinema')) {
+      return const Color(0xFFCB3D8D); // Pink
+    }
+    if (t.contains('sports') || t.contains('stadium') || t.contains('arena') || t.contains('soccer') || t.contains('gym')) {
+      return const Color(0xFF388E3C); // Sports Green
+    }
+    if (t.contains('concert') || t.contains('music') || t.contains('gig')) {
+      return const Color(0xFF00B0FF); // Concerts Sky Blue
+    }
     if (t.contains('restaurant') || t.contains('food') || t.contains('dining')) {
       return const Color(0xFFE96D2B); // Orange
     }
@@ -432,8 +575,8 @@ class MarkerGenerator {
     if (t.contains('hotel') || t.contains('booking') || t.contains('motel') || t.contains('resort') || t.contains('stay') || t.contains('bed')) {
       return const Color(0xFF3649E1); // Blue
     }
-    if (t.contains('supermarket') || t.contains('shopping') || t.contains('mall') || t.contains('store') || t.contains('shop')) {
-      return const Color(0xFF3649E1); // Blue
+    if (t.contains('supermarket') || t.contains('shopping') || t.contains('mall') || t.contains('store') || t.contains('shop') || t.contains('clothing')) {
+      return const Color(0xFF00A896); // Teal
     }
     
     if (t.contains('bakery') || t.contains('mkhbazat') || t.contains('bread')) {
@@ -457,7 +600,7 @@ class MarkerGenerator {
     }
     
     if (t.contains('pharmacy') || t.contains('hospital') || t.contains('clinic')) {
-      return const Color(0xFF5A5D67); // Grey
+      return const Color(0xFF00A896); // Teal
     }
     
     return const Color(0xFF5A5D67); // Grey default
@@ -476,6 +619,9 @@ class MarkerGenerator {
         'Hotel',
         'Supermarket',
         'Bakery',
+        'Movies',
+        'Sports',
+        'Concerts',
         'default',
       ];
       final double scale = (zoom / 13.0).clamp(0.6, 1.8);
@@ -496,6 +642,18 @@ class MarkerGenerator {
           isSelected: true,
           scale: scale,
         );
+        discoverNormalIcons[type] = await createCustomCircleDotPin(
+          iconData,
+          color,
+          isSelected: false,
+          scale: scale,
+        );
+        discoverSelectedIcons[type] = await createCustomCircleDotPin(
+          iconData,
+          color,
+          isSelected: true,
+          scale: scale,
+        );
         heatmapMarkerIcons[type] = await createTeardropIcon(
           iconData,
           const Color(0xFF7C57FC),
@@ -509,12 +667,12 @@ class MarkerGenerator {
         // Live Now close-zoom: large circle icon in each type's own color (not all purple)
         heatmapCircleIcons[type] = await createLiveNowCircleIcon(
           iconData,
-          const Color(0xFF7C57FC),
+          color,
           scale: scale,
         );
         // Live Now far-zoom: small dot in each type's own color
         heatmapDotIcons[type] = await createCircularDotIcon(
-          const Color(0xFF7C57FC),
+          color,
           scale: scale * 0.9,
         );
       }
@@ -539,11 +697,11 @@ class MarkerGenerator {
       final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
       final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
 
-      final double finalScale = 0.85;
-      final double width = 27.75 * finalScale + 4.0;
-      final double height = 30.833 * finalScale + 4.0;
-      final double dx = 2.0;
-      final double dy = 2.0;
+      final double finalScale = 1.3;
+      final double width = 27.75 * finalScale + 24.0;
+      final double height = 30.833 * finalScale + 24.0;
+      final double dx = 12.0;
+      final double dy = 12.0;
 
       final int avatarSize = (22.0 * finalScale * dpr).toInt();
       final ui.Codec codec = await ui.instantiateImageCodec(
@@ -690,6 +848,8 @@ class MarkerGenerator {
         customPlaceMarkersSelectedHeatmap[id] = selectedMarker;
         needsUpdate = true;
       }
+
+
     }
     if (needsUpdate) {
       onUpdate();
@@ -708,7 +868,7 @@ class MarkerGenerator {
     final String price = place['price']?.toString() ?? r'$$';
 
     final IconData iconData = getIconDataForType(type);
-    final Color color = isHeatmap ? const Color(0xFF7C57FC) : getMarkerColor(type);
+    final Color color = getMarkerColor(type);
 
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
@@ -717,7 +877,7 @@ class MarkerGenerator {
     final Canvas canvas = Canvas(pictureRecorder);
 
     if (isHeatmap) {
-      // Swarm design: Circle icon at top (purple fill, white icon, glow ring),
+      // Swarm design: Circle icon at top (fill, white icon, glow ring),
       // and text (place name + visitors count) centered directly below it.
       final double finalScale = isSelected ? 1.1 : 0.9;
       final double radius = 16.0 * finalScale;
@@ -739,7 +899,7 @@ class MarkerGenerator {
         style: TextStyle(
           fontSize: 12.0,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF7C57FC),
+          color: color, // Use category's own color!
           shadows: [
             Shadow(
               blurRadius: 4.0,
@@ -810,14 +970,14 @@ class MarkerGenerator {
 
       canvas.scale(dpr);
 
-      // 1. Draw Glow Ring
+      // 1. Draw Glow Ring using category's color
       final Paint glowPaint = Paint()
-        ..color = const Color(0xFF7C57FC).withValues(alpha: 0.25)
+        ..color = color.withValues(alpha: 0.25)
         ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(cx, cy), glowRadius, glowPaint);
 
-      // 2. Draw Fill Circle
-      final Paint fillPaint = Paint()..color = const Color(0xFF7C57FC);
+      // 2. Draw Fill Circle using category's color
+      final Paint fillPaint = Paint()..color = color;
       canvas.drawCircle(Offset(cx, cy), radius, fillPaint);
 
       // 3. Draw White Border
@@ -1185,5 +1345,171 @@ class MarkerGenerator {
     if (byteData == null) return BitmapDescriptor.defaultMarker;
     final Uint8List uint8list = byteData.buffer.asUint8List();
     return BitmapDescriptor.bytes(uint8list, imagePixelRatio: dpr);
+  }
+
+  Future<void> initUserSavedVisitedMarkers(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) throw Exception("Failed to fetch");
+      final Uint8List bytes = response.bodyBytes;
+
+      final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+      final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+      final double finalScale = 1.3;
+      final double width = 27.75 * finalScale + 24.0;
+      final double height = 30.833 * finalScale + 24.0;
+      final double dx = 12.0;
+      final double dy = 12.0;
+
+      final int avatarSize = (22.0 * finalScale * dpr).toInt();
+      
+      final ui.Codec codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: avatarSize,
+        targetHeight: avatarSize,
+      );
+      final ui.FrameInfo fi = await codec.getNextFrame();
+      final ui.Image avatarImage = fi.image;
+
+      userSavedMarker = await _drawUserMarker(
+        avatarImage,
+        dpr,
+        finalScale,
+        width,
+        height,
+        dx,
+        dy,
+        showCheckmark: false,
+      );
+
+      userVisitedMarker = await _drawUserMarker(
+        avatarImage,
+        dpr,
+        finalScale,
+        width,
+        height,
+        dx,
+        dy,
+        showCheckmark: true,
+      );
+    } catch (e) {
+      debugPrint("Error initializing user saved/visited markers: $e");
+    }
+  }
+
+  Future<BitmapDescriptor> _drawUserMarker(
+    ui.Image avatarImage,
+    double dpr,
+    double finalScale,
+    double width,
+    double height,
+    double dx,
+    double dy, {
+    required bool showCheckmark,
+  }) async {
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+
+    canvas.scale(dpr);
+
+    final Path path = Path();
+    path.moveTo(dx + 13.875 * finalScale, dy);
+    path.cubicTo(
+      dx + 21.538 * finalScale,
+      dy,
+      dx + 27.75 * finalScale,
+      dy + 6.13575 * finalScale,
+      dx + 27.75 * finalScale,
+      dy + 13.7041 * finalScale,
+    );
+    path.cubicTo(
+      dx + 27.7497 * finalScale,
+      dy + 21.2724 * finalScale,
+      dx + 19.078 * finalScale,
+      dy + 30.833 * finalScale,
+      dx + 13.875 * finalScale,
+      dy + 30.833 * finalScale,
+    );
+    path.cubicTo(
+      dx + 8.67197 * finalScale,
+      dy + 30.833 * finalScale,
+      dx + 0.000303757 * finalScale,
+      dy + 21.2724 * finalScale,
+      dx,
+      dy + 13.7041 * finalScale,
+    );
+    path.cubicTo(
+      dx,
+      dy + 6.13575 * finalScale,
+      dx + 6.21205 * finalScale,
+      dy,
+      dx + 13.875 * finalScale,
+      dy,
+    );
+    path.close();
+
+    final Paint paint = Paint()..color = const Color(0xFF1F242E);
+    canvas.drawPath(path, paint);
+
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0 * finalScale;
+    canvas.drawPath(path, borderPaint);
+
+    canvas.save();
+    final Path clipPath = Path()
+      ..addOval(Rect.fromCircle(
+        center: Offset(dx + 13.875 * finalScale, dy + 13.7041 * finalScale),
+        radius: 11.0 * finalScale,
+      ));
+    canvas.clipPath(clipPath);
+
+    canvas.drawImageRect(
+      avatarImage,
+      Rect.fromLTWH(0, 0, avatarImage.width.toDouble(), avatarImage.height.toDouble()),
+      Rect.fromCircle(
+        center: Offset(dx + 13.875 * finalScale, dy + 13.7041 * finalScale),
+        radius: 11.0 * finalScale,
+      ),
+      Paint(),
+    );
+    canvas.restore();
+
+    if (showCheckmark) {
+      final double badgeX = dx + 20.0 * finalScale;
+      final double badgeY = dy + 20.0 * finalScale;
+      final double badgeRadius = 6.0 * finalScale;
+
+      final Paint badgeBgPaint = Paint()..color = const Color(0xFF7C57FC);
+      canvas.drawCircle(Offset(badgeX, badgeY), badgeRadius, badgeBgPaint);
+
+      final Paint badgeBorderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0 * finalScale;
+      canvas.drawCircle(Offset(badgeX, badgeY), badgeRadius, badgeBorderPaint);
+
+      final Paint checkPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5 * finalScale
+        ..strokeCap = StrokeCap.round;
+
+      final Path checkPath = Path();
+      checkPath.moveTo(badgeX - 2.5 * finalScale, badgeY);
+      checkPath.lineTo(badgeX - 0.5 * finalScale, badgeY + 2.0 * finalScale);
+      checkPath.lineTo(badgeX + 3.0 * finalScale, badgeY - 1.5 * finalScale);
+      canvas.drawPath(checkPath, checkPaint);
+    }
+
+    final ui.Image markerImage = await pictureRecorder.endRecording().toImage(
+      (width * dpr).toInt(),
+      (height * dpr).toInt(),
+    );
+    final ByteData? markerByteData = await markerImage.toByteData(format: ui.ImageByteFormat.png);
+    if (markerByteData == null) return BitmapDescriptor.defaultMarker;
+    return BitmapDescriptor.bytes(markerByteData.buffer.asUint8List(), imagePixelRatio: dpr);
   }
 }

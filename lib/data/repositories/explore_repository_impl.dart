@@ -8,8 +8,8 @@ final exploreRepositoryProvider = Provider<ExploreRepository>((ref) {
 
 class ExploreRepositoryImpl implements ExploreRepository {
   @override
-  Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(double lat, double lng, {double radius = 3000}) {
-    return ExploreDataService.fetchNearbyFoursquarePlaces(lat, lng, radius: radius);
+  Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(double lat, double lng, {double radius = 3000, String? keyword}) {
+    return ExploreDataService.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, keyword: keyword);
   }
 
   @override
