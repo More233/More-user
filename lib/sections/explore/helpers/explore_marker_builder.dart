@@ -23,13 +23,7 @@ class ExploreMarkerBuilder {
         if (id.startsWith('mock_world_')) {
           return false;
         }
-        final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
-        final List<dynamic> visitors = place['visitors'] as List<dynamic>? ?? [];
-        final bool hasCheckIns = visitors.isNotEmpty;
-        if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
-          return true;
-        }
-        return hasCheckIns || peopleCount > 0;
+        return true;
       }).toList();
     }
 
@@ -61,7 +55,7 @@ class ExploreMarkerBuilder {
       double anchorY = 1.0;
 
       bool isProminent = ExploreScreenHelpers.isProminentPlace(place);
-      bool showAsPin = isSelected || isProminent || currentZoom >= 15.0 || state.selectedMapTab == 2;
+      bool showAsPin = isSelected || isProminent || currentZoom >= 15.0;
 
       if (state.selectedMapTab == 0) {
         bool isProminentInDiscover = false;
@@ -106,9 +100,31 @@ class ExploreMarkerBuilder {
         showAsPin = isSelected || isProminentInEvents || currentZoom >= 13.5;
       }
 
+      if (state.selectedMapTab == 2) {
+        double threshold = 15.5;
+        final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+        if (peopleCount > 0) {
+          threshold -= 2.0; // Hot spots with active people show up early (zoom 13.5)
+        } else {
+          final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+          final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
+          if (rating >= 4.5 && reviewsCount >= 100) {
+            threshold -= 1.5; // High profile venues show up at zoom 14.0
+          } else if (rating >= 4.0 && reviewsCount >= 30) {
+            threshold -= 0.75; // Medium profile venues show up at zoom 14.75
+          }
+        }
+        // Add a small unique jitter to prevent uniform block resizing
+        final int hash = place['id'].toString().hashCode.abs();
+        final double jitter = ((hash % 100) / 100.0 - 0.5) * 0.6; // range [-0.3, 0.3]
+        threshold += jitter;
+
+        showAsPin = isSelected || currentZoom >= threshold;
+      }
+
       final bool isSaved = place['isSaved'] as bool? ?? false;
       final bool isVisited = place['isVisited'] as bool? ?? false;
-      if (isSaved || isVisited) {
+      if ((isSaved || isVisited) && state.selectedMapTab != 2) {
         showAsPin = true;
       }
 
@@ -118,6 +134,59 @@ class ExploreMarkerBuilder {
         );
       } else if (isCheckIn && authorAvatar != null && markerGenerator.avatarMarkerCache.containsKey(authorAvatar)) {
         icon = markerGenerator.avatarMarkerCache[authorAvatar]!;
+      } else if (state.selectedMapTab == 2) {
+        // Live Now/Swarm Tab: enforce circular shapes or category dots, bypass all standard teardrop styling!
+        final bool showCustomLabel = normalCustomCache.containsKey(place['id'].toString());
+        if (showAsPin) {
+          if (showCustomLabel) {
+            if (isSelected && selectedCustomCache.containsKey(place['id'].toString())) {
+              icon = selectedCustomCache[place['id'].toString()]!;
+            } else {
+              icon = normalCustomCache[place['id'].toString()]!;
+            }
+            final double finalScale = isSelected ? 1.1 : 0.9;
+            final double radius = 16.0 * finalScale;
+            final double glowRadius = radius + 4.0;
+            final double canvasWidth = 150.0;
+            final double cy = glowRadius + 4.0;
+            final double textSpacing = 4.0;
+            final double textTop = cy + glowRadius + 6.0;
+
+            final name = place['name']?.toString() ?? '';
+            final TextPainter namePainter = TextPainter(
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              ellipsis: '...',
+            )..text = TextSpan(
+              text: name,
+              style: const TextStyle(fontSize: 12.0, fontWeight: FontWeight.bold),
+            )..layout(maxWidth: canvasWidth - 16.0);
+
+            final int peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
+            final String visitorsText = peopleCount == 1 ? "1 person here" : "$peopleCount people here";
+            final TextPainter visitorsPainter = TextPainter(
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+            )..text = TextSpan(
+              text: visitorsText,
+              style: const TextStyle(fontSize: 10.0, fontWeight: FontWeight.w600),
+            )..layout(maxWidth: canvasWidth - 16.0);
+
+            final double canvasHeight = textTop + namePainter.height + textSpacing + visitorsPainter.height + 8.0;
+            anchorX = 0.5;
+            anchorY = cy / canvasHeight;
+          } else {
+            icon = markerGenerator.heatmapCircleIcons[type] ?? markerGenerator.heatmapCircleIcons['default'] ?? BitmapDescriptor.defaultMarker;
+            anchorX = 0.5;
+            anchorY = 0.5;
+          }
+        } else {
+          icon = markerGenerator.heatmapDotIcons[type] ?? markerGenerator.heatmapDotIcons['default'] ?? BitmapDescriptor.defaultMarker;
+          anchorX = 0.5;
+          anchorY = 0.5;
+        }
       } else if (isSaved && markerGenerator.userSavedMarker != null) {
         icon = markerGenerator.userSavedMarker!;
         anchorX = 0.5;
@@ -232,14 +301,15 @@ class ExploreMarkerBuilder {
             icon = markerGenerator.heatmapCircleIcons[type] ?? markerGenerator.heatmapCircleIcons['default'] ?? BitmapDescriptor.defaultMarker;
             anchorX = 0.5;
             anchorY = 0.5;
-          } else if (state.selectedMapTab == 0 || state.selectedMapTab == 1 || state.selectedMapTab == 3) {
+          } else if (state.selectedMapTab == 0 || state.selectedMapTab == 1) {
+            // Discover & Events: use the pin-with-dot-below style for all categories
             if (isSelected) {
-              icon = markerGenerator.selectedMarkerIcons[type] ?? markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+              icon = markerGenerator.discoverSelectedIcons[type] ?? markerGenerator.discoverSelectedIcons['default'] ?? BitmapDescriptor.defaultMarker;
             } else {
-              icon = markerGenerator.normalMarkerIcons[type] ?? markerGenerator.normalMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
+              icon = markerGenerator.discoverNormalIcons[type] ?? markerGenerator.discoverNormalIcons['default'] ?? BitmapDescriptor.defaultMarker;
             }
             anchorX = 0.5;
-            anchorY = 1.0;
+            anchorY = 0.95;
           } else {
             if (isSelected) {
               icon = markerGenerator.selectedMarkerIcons[type] ?? markerGenerator.selectedMarkerIcons['default'] ?? BitmapDescriptor.defaultMarker;
@@ -299,9 +369,8 @@ class ExploreMarkerBuilder {
     // Show heatmap only on Swarming (2) tab
     if (state.selectedMapTab != 2) return {};
 
-    // Hide heatmap completely at extreme close zoom
-    if (currentZoom >= 19.5) {
-      debugPrint("buildHeatmaps: hidden due to close zoom = $currentZoom");
+    // Hide heatmap only at extreme close zoom (street level)
+    if (currentZoom >= 18.0) {
       return {};
     }
 
@@ -331,23 +400,8 @@ class ExploreMarkerBuilder {
         return reviewsCount > 60;
       }
 
-      final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
-      final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
-      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-      
-      final List<dynamic> visitors = place['visitors'] as List<dynamic>? ?? [];
-      final bool hasCheckIns = visitors.isNotEmpty;
-
-      if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
-        return true;
-      }
-
-      // Only include places on the heatmap if they have active check-ins, simulated live activity, or high rating/popularity
-      if (hasCheckIns) return true;
-      if (peopleCount > 0) return true;
-      if (rating >= 4.4 && reviewsCount >= 120) return true;
-
-      return false;
+      // Include all regular/real places for place density calculation
+      return true;
     }).toList();
 
     // Calculate dynamic neighbor radius in degrees based on zoom level (divides professionally as you zoom in)
@@ -387,36 +441,23 @@ class ExploreMarkerBuilder {
       final double lat = (place['latitude'] as num? ?? 0.0).toDouble();
       final double lng = (place['longitude'] as num? ?? 0.0).toDouble();
 
-      final double heatWeight = ExploreScreenHelpers.calculateHybridWeight(
-        place: place,
-        isSaved: place['isSaved'] as bool? ?? false,
-      );
-
-      final int peopleCount = (place['peopleCount'] as num?)?.toInt() ?? 0;
-      if (peopleCount > 0) {
-        debugPrint("buildHeatmaps LOOP: name=${place['name']}, peopleCount=$peopleCount, weight=$heatWeight, lat=$lat, lng=$lng");
-      }
-
-      // Dynamic crowding boost based on neighboring places count
+      // Density-based weight: 1.0 (base) + neighbors count
       final int neighbors = neighborCounts[i];
-      final double crowdingMultiplier = 1.0 + (neighbors * 0.12); // Each neighbor adds 12% weight
+      final double densityWeight = (neighbors + 1).toDouble() * 3.0;
 
-      // Only add to heatmap if the weight is above a threshold to avoid noise
-      if (heatWeight > 0.5) {
-        final double finalWeight = (heatWeight * crowdingMultiplier * weightBoost * 2.0).clamp(0.5, 200.0);
-        points.add(WeightedLatLng(LatLng(lat, lng), weight: finalWeight));
-      }
+      final double finalWeight = (densityWeight * weightBoost).clamp(0.5, 200.0);
+      points.add(WeightedLatLng(LatLng(lat, lng), weight: finalWeight));
     }
 
     debugPrint("buildHeatmaps: points count = ${points.length}, zoom = $currentZoom, weightBoost = $weightBoost");
     if (points.isEmpty) return {};
 
-    // Calculate dynamic opacity: fades out gradually between 11.5 and 15.0
+    // Calculate dynamic opacity: fades out gradually only at close zoom (street level)
     double opacity = 0.85;
-    if (currentZoom >= 11.5) {
-      opacity = (0.85 * (1.0 - (currentZoom - 11.5) / 3.5)).clamp(0.0, 0.85);
+    if (currentZoom >= 16.5) {
+      opacity = (0.85 * (1.0 - (currentZoom - 16.5) / 1.5)).clamp(0.0, 0.85);
     } else if (currentZoom >= 8.0) {
-      opacity = (0.85 - (currentZoom - 8.0) * 0.05).clamp(0.70, 0.85);
+      opacity = (0.85 - (currentZoom - 8.0) * 0.02).clamp(0.75, 0.85);
     }
 
     // Calculate dynamic radius: wider on zoom-out, tighter on zoom-in
@@ -429,7 +470,7 @@ class ExploreMarkerBuilder {
       radius = 75;  // Regional/city-level clusters
     } else if (currentZoom >= 9.0 && currentZoom < 12.0) {
       radius = 55;  // Local district clusters
-    } else if (currentZoom >= 12.0 && currentZoom < 14.0) {
+    } else if (currentZoom >= 12.0 && currentZoom < 15.0) {
       radius = 40;  // Street-level glow
     } else {
       radius = 25;  // Very tight pinpoint glow before vanishing

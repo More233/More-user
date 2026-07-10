@@ -334,13 +334,7 @@ class ExploreScreenHelpers {
           }
         }
       }
-      if (state.selectedMapTab == 2 && !forHeatmap) {
-        final double hybridWeight = calculateHybridWeight(
-          place: place,
-          isSaved: place['isSaved'] as bool? ?? false,
-        );
-        if (hybridWeight < 0.3) return false;
-      }
+
 
       if (state.filterState.maxDistance != null) {
         final double? dist = parseDistance(place['distance'] as String?);
@@ -383,25 +377,30 @@ class ExploreScreenHelpers {
       if (isManual) return true;
 
       if (state.selectedMapTab == 2) {
-        final double hybridWeight = calculateHybridWeight(
-          place: place,
-          isSaved: place['isSaved'] as bool? ?? false,
-        );
-        final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
         final bool isGlobal = place['id'].toString().startsWith('global_swarm_');
         
         if (currentZoom < 6.0) {
-          // Global view: only show major global landmarks or selected place
           return isGlobal || isSelected;
-        } else if (currentZoom < 10.0) {
-          // Continental view: only show global landmarks, selected place, and places with high swarm
-          return isGlobal || isSelected || peopleCount >= 10;
-        } else if (currentZoom < 13.0) {
-          // Regional view: show landmarks, selected place, and moderate swarms
-          return isGlobal || isSelected || peopleCount >= 3;
+        } else if (currentZoom < 11.0) {
+          return isGlobal || isSelected;
+        }
+
+        final double rating = (place['rating'] as num? ?? 0.0).toDouble();
+        final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
+
+        if (currentZoom >= 11.0 && currentZoom < 13.0) {
+          return rating >= 4.7 && reviews >= 30;
+        } else if (currentZoom >= 13.0 && currentZoom < 14.5) {
+          return rating >= 4.2 && reviews >= 10;
         } else {
-          // Local view: show all relevant swarms
-          return hybridWeight >= 0.3;
+          final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+          if (currentZoom >= 14.5 && currentZoom < 15.5) {
+            return peopleCount > 0 || (rating >= 4.0 && reviews >= 15);
+          } else if (currentZoom >= 15.5 && currentZoom < 16.5) {
+            return peopleCount > 0 || (rating >= 3.5 && reviews >= 5);
+          } else {
+            return true;
+          }
         }
       }
 

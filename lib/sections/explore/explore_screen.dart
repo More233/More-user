@@ -791,7 +791,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 onCameraMove: (position) {
                   final double oldZoom = _currentZoom;
                   _currentZoom = position.zoom;
-                  if (state.selectedMapTab == 2 || (oldZoom < 11.0 && _currentZoom >= 11.0) || (oldZoom >= 11.0 && _currentZoom < 11.0)) {
+                  final bool crossedThreshold = (oldZoom < 11.0 && _currentZoom >= 11.0) || 
+                                                (oldZoom >= 11.0 && _currentZoom < 11.0);
+                  if (crossedThreshold) {
                     if (mounted) setState(() {});
                   }
                 },
@@ -819,10 +821,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           center.latitude,
                           center.longitude,
                         );
-                        // Scale the fetch threshold based on zoom level
+                        // Scale the fetch threshold based on zoom level (using 5000m for local zoom to leverage wider area preload cache)
                         final double threshold = _currentZoom < 7.0
                             ? 1000000.0 // 1000 km
-                            : (_currentZoom < 10.0 ? 50000.0 : (_currentZoom < 13.0 ? 15000.0 : 1500.0));
+                            : (_currentZoom < 10.0 ? 50000.0 : (_currentZoom < 13.0 ? 15000.0 : 5000.0));
                         if (distance > threshold) {
                           ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
                         }

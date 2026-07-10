@@ -72,8 +72,8 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       state = state.copyWith(lastFetchedLocation: () => LatLng(lat, lng), isLoading: true);
       
       // Calculate dynamic radius and box size based on zoom level
-      double? boxSize = 0.05; // ~5.5 km local
-      double radius = 3000;
+      double? boxSize = 0.15; // ~16.5 km local area preload
+      double radius = 8000;   // 8 km Foursquare/Google Places radius
 
       if (zoom < 7.0) {
         boxSize = null; // Global search!

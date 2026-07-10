@@ -186,8 +186,8 @@ class MarkerGenerator {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
 
-    // Figma size: 32px circle. We scale it.
-    final double radius = 16.0 * scale;
+    // Figma size: 24px circle (smaller and more compact)
+    final double radius = 12.0 * scale;
     final double size = (radius * 2) + 6.0;
 
     canvas.scale(dpr);
@@ -199,7 +199,7 @@ class MarkerGenerator {
     final Paint glowPaint = Paint()
       ..color = color.withValues(alpha: 0.20)
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx, cy), radius + 4.0, glowPaint);
+    canvas.drawCircle(Offset(cx, cy), radius + 3.0, glowPaint);
 
     // Fill circle
     final Paint fillPaint = Paint()..color = color;
@@ -209,7 +209,7 @@ class MarkerGenerator {
     final Paint borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5 * scale;
+      ..strokeWidth = 1.2 * scale;
     canvas.drawCircle(Offset(cx, cy), radius, borderPaint);
 
     // White icon inside
@@ -217,7 +217,7 @@ class MarkerGenerator {
     textPainter.text = TextSpan(
       text: String.fromCharCode(iconData.codePoint),
       style: TextStyle(
-        fontSize: 14.0 * scale,
+        fontSize: 11.0 * scale,
         fontFamily: iconData.fontFamily,
         package: iconData.fontPackage,
         color: Colors.white,

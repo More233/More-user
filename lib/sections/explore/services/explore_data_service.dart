@@ -456,6 +456,33 @@ class ExploreDataService {
           final place = item as Map<String, dynamic>;
           places.add(parseGooglePlace(place, lat, lng));
         }
+
+        // Handle pagination to fetch up to 60 places (3 pages)
+        String? nextPageToken = data['next_page_token'] as String?;
+        int pageCount = 1;
+        while (nextPageToken != null && nextPageToken.isNotEmpty && pageCount < 3) {
+          // Google Places API token has a small delay before it becomes valid
+          await Future<void>.delayed(const Duration(milliseconds: 2000));
+          
+          final String nextPageUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+              '?pagetoken=$nextPageToken'
+              '&key=$googlePlacesApiKey';
+              
+          final nextPageResponse = await http.get(Uri.parse(nextPageUrl));
+          if (nextPageResponse.statusCode == 200) {
+            final nextPageData = json.decode(nextPageResponse.body);
+            final nextPageResults = nextPageData['results'] as List<dynamic>? ?? [];
+            for (final item in nextPageResults) {
+              final place = item as Map<String, dynamic>;
+              places.add(parseGooglePlace(place, lat, lng));
+            }
+            nextPageToken = nextPageData['next_page_token'] as String?;
+            pageCount++;
+          } else {
+            break;
+          }
+        }
+
         return places;
       }
     } catch (e) {
@@ -502,6 +529,32 @@ class ExploreDataService {
         for (final item in resultsList) {
           final place = item as Map<String, dynamic>;
           places.add(parseGooglePlace(place, lat, lng));
+        }
+
+        // Handle pagination to fetch up to 60 places (3 pages)
+        String? nextPageToken = data['next_page_token'] as String?;
+        int pageCount = 1;
+        while (nextPageToken != null && nextPageToken.isNotEmpty && pageCount < 3) {
+          // Google Places API token has a small delay before it becomes valid
+          await Future<void>.delayed(const Duration(milliseconds: 2000));
+          
+          final String nextPageUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
+              '?pagetoken=$nextPageToken'
+              '&key=$googlePlacesApiKey';
+              
+          final nextPageResponse = await http.get(Uri.parse(nextPageUrl));
+          if (nextPageResponse.statusCode == 200) {
+            final nextPageData = json.decode(nextPageResponse.body);
+            final nextPageResults = nextPageData['results'] as List<dynamic>? ?? [];
+            for (final item in nextPageResults) {
+              final place = item as Map<String, dynamic>;
+              places.add(parseGooglePlace(place, lat, lng));
+            }
+            nextPageToken = nextPageData['next_page_token'] as String?;
+            pageCount++;
+          } else {
+            break;
+          }
         }
       }
 

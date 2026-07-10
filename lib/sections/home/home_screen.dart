@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../explore/explore_screen.dart';
 import '../explore/view_models/explore_view_model.dart';
@@ -503,20 +504,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                         },
                                       ),
                                     ),
-                                    AnimatedPositioned(
-                                      duration: const Duration(milliseconds: 250),
-                                      curve: Curves.easeInOut,
-                                      right: 16,
-                                      bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
+                                    // The Map Button next to Plus Button
+                                     AnimatedPositioned(
+                                       duration: const Duration(milliseconds: 250),
+                                       curve: Curves.easeInOut,
+                                       right: (state.selectedNavIndex == 1 && exploreState.isListView) ? 88 : 16,
+                                       bottom: _isNavBarVisible ? 75 + bottomPadding : 25 + bottomPadding,
                                        child: IgnorePointer(
-                                         ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) || isPlaceSelectedOnMap,
+                                         ignoring: !(state.selectedNavIndex == 1 && exploreState.isListView),
                                          child: AnimatedOpacity(
                                            duration: const Duration(milliseconds: 200),
-                                           opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
-                                           child: _buildFAB(state),
+                                           opacity: (state.selectedNavIndex == 1 && exploreState.isListView) ? 1.0 : 0.0,
+                                           child: GestureDetector(
+                                             onTap: () {
+                                               HapticFeedback.lightImpact();
+                                               ref.read(exploreViewModelProvider.notifier).updateListView(false);
+                                             },
+                                             child: Container(
+                                               height: 50,
+                                               padding: const EdgeInsets.symmetric(horizontal: 20),
+                                               decoration: BoxDecoration(
+                                                 color: Colors.white,
+                                                 borderRadius: BorderRadius.circular(100),
+                                                 border: Border.all(
+                                                   color: const Color(0xFF7C57FC).withValues(alpha: 0.15),
+                                                   width: 1,
+                                                 ),
+                                                 boxShadow: [
+                                                   BoxShadow(
+                                                     color: Colors.black.withValues(alpha: 0.1),
+                                                     blurRadius: 8,
+                                                     offset: const Offset(0, 2),
+                                                   ),
+                                                 ],
+                                               ),
+                                               child: Row(
+                                                 mainAxisSize: MainAxisSize.min,
+                                                 children: [
+                                                   const Icon(
+                                                     Icons.map_outlined,
+                                                     color: Color(0xFF7C57FC),
+                                                     size: 20,
+                                                   ),
+                                                   const SizedBox(width: 8),
+                                                   Text(
+                                                     "Map",
+                                                     style: GoogleFonts.ibmPlexSansArabic(
+                                                       color: const Color(0xFF7C57FC),
+                                                       fontWeight: FontWeight.bold,
+                                                       fontSize: 14,
+                                                     ),
+                                                   ),
+                                                 ],
+                                               ),
+                                             ),
+                                           ),
                                          ),
                                        ),
-                                    ),
+                                     ),
+                                     AnimatedPositioned(
+                                       duration: const Duration(milliseconds: 250),
+                                       curve: Curves.easeInOut,
+                                       right: 16,
+                                       bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
+                                        child: IgnorePointer(
+                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) || isPlaceSelectedOnMap,
+                                          child: AnimatedOpacity(
+                                            duration: const Duration(milliseconds: 200),
+                                            opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
+                                            child: _buildFAB(state),
+                                          ),
+                                        ),
+                                     ),
                                   ],
                                 ),
                               ),
