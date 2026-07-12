@@ -77,9 +77,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       _pointAnnotationManager = manager;
       
       await manager.setIconAllowOverlap(true);
-      await manager.setTextAllowOverlap(true);
+      await manager.setTextAllowOverlap(false);
       await manager.setIconIgnorePlacement(true);
-      await manager.setTextIgnorePlacement(true);
+      await manager.setTextIgnorePlacement(false);
       
       // Register click listener
       manager.addOnPointAnnotationClickListener(_MarkerClickListener((annotation) {
@@ -291,7 +291,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           
           textField = mainName;
           textAnchor = mapbox.TextAnchor.LEFT;
-          textOffset = [1.3, -1.0]; // Offset next to the pin, centered vertically
+          textOffset = isSelected ? [1.3, -3.0] : [1.3, -2.1]; // Centered vertically with the teardrop head
           textSize = isSelected ? 13.5 : 12.0;
           textColor = color.toARGB32();
           textHaloColor = 0xFFFFFFFF;
