@@ -11,6 +11,9 @@ class ExploreDataService {
     defaultValue: 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug',
   );
 
+  static final Map<String, List<Map<String, dynamic>>> _placesCache = {};
+  static final Map<String, Map<String, dynamic>> _supabaseCache = {};
+
   static const List<String> _coffeeImages = [
     'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500',
     'https://images.unsplash.com/photo-1498804103079-a6351b050096?w=500',
@@ -433,6 +436,15 @@ class ExploreDataService {
     double radius = 3000,
     String? keyword,
   }) async {
+    final int roundedLat = (lat * 100).round();
+    final int roundedLng = (lng * 100).round();
+    final String cacheKey = '${roundedLat}_${roundedLng}_${radius.toInt()}_${keyword ?? ''}';
+
+    if (_placesCache.containsKey(cacheKey)) {
+      debugPrint("ExploreDataService: Returning cached Google places for key: $cacheKey");
+      return _placesCache[cacheKey]!;
+    }
+
     try {
       String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
           '?location=$lat,$lng'
@@ -457,10 +469,13 @@ class ExploreDataService {
           places.add(parseGooglePlace(place, lat, lng));
         }
 
-        // Handle pagination to fetch up to 60 places (3 pages)
+        // Determine dynamic maxPages based on radius to speed up loading
+        final int maxPages = radius <= 8000 ? 1 : (radius <= 15000 ? 2 : 3);
+
+        // Handle pagination to fetch up to 60 places (maxPages)
         String? nextPageToken = data['next_page_token'] as String?;
         int pageCount = 1;
-        while (nextPageToken != null && nextPageToken.isNotEmpty && pageCount < 3) {
+        while (nextPageToken != null && nextPageToken.isNotEmpty && pageCount < maxPages) {
           // Google Places API token has a small delay before it becomes valid
           await Future<void>.delayed(const Duration(milliseconds: 2000));
           
@@ -483,6 +498,7 @@ class ExploreDataService {
           }
         }
 
+        _placesCache[cacheKey] = places;
         return places;
       }
     } catch (e) {
@@ -749,6 +765,15 @@ class ExploreDataService {
   }
 
   static Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5}) async {
+    final int roundedLat = (lat * 100).round();
+    final int roundedLng = (lng * 100).round();
+    final String cacheKey = '${roundedLat}_${roundedLng}_${boxSize ?? 'global'}';
+
+    if (_supabaseCache.containsKey(cacheKey)) {
+      debugPrint("ExploreDataService: Returning cached Supabase checkins/venues for key: $cacheKey");
+      return _supabaseCache[cacheKey]!;
+    }
+
     final List<Map<String, dynamic>> checkins = [];
     final List<Map<String, dynamic>> customVenues = [];
     List<Map<String, dynamic>> postResults = [];
@@ -865,11 +890,13 @@ class ExploreDataService {
       debugPrint("Error fetching Supabase checkins and venues: $e");
     }
 
-    return {
+    final Map<String, dynamic> finalResult = {
       'checkins': checkins,
       'customVenues': customVenues,
       'postsRaw': postResults,
     };
+    _supabaseCache[cacheKey] = finalResult;
+    return finalResult;
   }
 
   static Future<Map<String, dynamic>?> fetchVisitorsForNonFoursquare(Map<String, dynamic> place) async {
