@@ -56,8 +56,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     final bool placesChanged = !_arePlacesEqual(widget.places, oldWidget.places);
     final bool selectedChanged = widget.selectedPlace?['id']?.toString() != oldWidget.selectedPlace?['id']?.toString();
     
-    if (placesChanged || selectedChanged) {
+    if (placesChanged) {
       _updateMarkers();
+    } else if (selectedChanged) {
+      _updateSelection(oldWidget.selectedPlace, widget.selectedPlace);
     }
   }
 
@@ -336,6 +338,124 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     } catch (e, stackTrace) {
       debugPrint("ExploreMapWidget: Error in _updateMarkers(): $e");
       debugPrint(stackTrace.toString());
+    }
+  }
+
+  Future<void> _updateSelection(Map<String, dynamic>? oldSelected, Map<String, dynamic>? newSelected) async {
+    if (_pointAnnotationManager == null) return;
+    
+    try {
+      // 1. Reset old selected pin if it exists
+      if (oldSelected != null) {
+        final String oldId = oldSelected['id']?.toString() ?? '';
+        final oldAnnotation = _placeIdToAnnotationMap[oldId];
+        if (oldAnnotation != null) {
+          final String type = oldSelected['type']?.toString() ?? 'default';
+          final double? lat = double.tryParse(oldSelected['latitude']?.toString() ?? '');
+          final double? lng = double.tryParse(oldSelected['longitude']?.toString() ?? '');
+          if (lat != null && lng != null) {
+            final bool showAsPin = _shouldShowAsPin(oldSelected, false, _currentZoom, widget.selectedMapTab);
+            
+            Uint8List imageBytes;
+            if (showAsPin) {
+              imageBytes = await MarkerGenerator.getNormalPin(type);
+            } else {
+              imageBytes = await MarkerGenerator.getDotPin(type);
+            }
+            
+            // Delete the old annotation
+            await _pointAnnotationManager!.delete(oldAnnotation);
+            _annotationToPlaceMap.remove(oldAnnotation.id);
+            _placeIdToAnnotationMap.remove(oldId);
+            
+            // Create a new one with normal options
+            final double sortKey = double.tryParse(oldSelected['rating']?.toString() ?? '0') ?? 0.0;
+            final option = mapbox.PointAnnotationOptions(
+              geometry: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+              image: imageBytes,
+              iconAnchor: showAsPin ? mapbox.IconAnchor.BOTTOM : mapbox.IconAnchor.CENTER,
+              symbolSortKey: sortKey,
+            );
+            
+            final newAnnotation = await _pointAnnotationManager!.create(option);
+            _annotationToPlaceMap[newAnnotation.id] = oldSelected;
+            _placeIdToAnnotationMap[oldId] = newAnnotation;
+          }
+        }
+      }
+      
+      // 2. Set new selected pin if it exists
+      if (newSelected != null) {
+        final String newId = newSelected['id']?.toString() ?? '';
+        final oldAnnotation = _placeIdToAnnotationMap[newId];
+        if (oldAnnotation != null) {
+          final String type = newSelected['type']?.toString() ?? 'default';
+          final double? lat = double.tryParse(newSelected['latitude']?.toString() ?? '');
+          final double? lng = double.tryParse(newSelected['longitude']?.toString() ?? '');
+          if (lat != null && lng != null) {
+            final color = MarkerGenerator.getMarkerColor(type);
+            final bool showAsPin = _shouldShowAsPin(newSelected, true, _currentZoom, widget.selectedMapTab);
+            
+            Uint8List imageBytes;
+            if (showAsPin) {
+              imageBytes = await MarkerGenerator.getSelectedPin(type);
+            } else {
+              imageBytes = await MarkerGenerator.getDotPin(type);
+            }
+            
+            // Delete the old annotation
+            await _pointAnnotationManager!.delete(oldAnnotation);
+            _annotationToPlaceMap.remove(oldAnnotation.id);
+            _placeIdToAnnotationMap.remove(newId);
+            
+            // Create a new one with selected options (including text label)
+            String? textField;
+            mapbox.TextAnchor? textAnchor;
+            List<double>? textOffset;
+            double? textSize;
+            int? textColor;
+            int? textHaloColor;
+            double? textHaloWidth;
+            mapbox.TextJustify? textJustify;
+            
+            if (showAsPin) {
+              final String name = newSelected['name']?.toString() ?? '';
+              final String arName = newSelected['arabicName']?.toString() ?? '';
+              final String mainName = arName.isNotEmpty ? arName : name;
+              
+              textField = mainName;
+              textAnchor = mapbox.TextAnchor.LEFT;
+              textOffset = [1.3, -3.0];
+              textSize = 13.5;
+              textColor = color.toARGB32();
+              textHaloColor = 0xFFFFFFFF;
+              textHaloWidth = 1.5;
+              textJustify = mapbox.TextJustify.LEFT;
+            }
+            
+            final option = mapbox.PointAnnotationOptions(
+              geometry: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+              image: imageBytes,
+              iconAnchor: showAsPin ? mapbox.IconAnchor.BOTTOM : mapbox.IconAnchor.CENTER,
+              textField: textField,
+              textAnchor: textAnchor,
+              textOffset: textOffset,
+              textSize: textSize,
+              textColor: textColor,
+              textHaloColor: textHaloColor,
+              textHaloWidth: textHaloWidth,
+              textJustify: textJustify,
+              symbolSortKey: 1000.0,
+            );
+            
+            final newAnnotation = await _pointAnnotationManager!.create(option);
+            _annotationToPlaceMap[newAnnotation.id] = newSelected;
+            _placeIdToAnnotationMap[newId] = newAnnotation;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("ExploreMapWidget: Error in _updateSelection(): $e");
     }
   }
 

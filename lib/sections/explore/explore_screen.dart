@@ -723,7 +723,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 },
                 onCameraMove: (zoom) {
                   _currentZoom = zoom;
-                  ref.read(exploreViewModelProvider.notifier).updateZoom(_currentZoom);
                 },
                 onCameraIdle: () {
                   if (_mapController != null) {
@@ -743,8 +742,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           center.longitude,
                         );
                         final double threshold = _currentZoom < 7.0
-                            ? 1000000.0 // 1000 km
-                            : (_currentZoom < 10.0 ? 50000.0 : (_currentZoom < 13.0 ? 15000.0 : 5000.0));
+                            ? 200000.0 // 200 km
+                            : (_currentZoom < 10.0
+                                ? 30000.0 // 30 km
+                                : (_currentZoom < 13.0
+                                    ? 10000.0 // 10 km
+                                    : (_currentZoom < 15.0 ? 3000.0 : 1500.0))); // 3 km or 1.5 km
                         if (distance > threshold) {
                           ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
                         }
