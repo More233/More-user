@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import '../../models/timeline_post.dart';
 import '../../gallery_picker_screen.dart';
 import '../bottom_sheets/add_friends_bottom_sheet.dart';
@@ -30,19 +30,7 @@ class CheckInComposerScreen extends StatefulWidget {
 }
 
 class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
-  static const String _mapStyleJson = '''
-[
-  {
-    "featureType": "poi",
-    "elementType": "labels",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  }
-]
-''';
+
 
   final TextEditingController _captionController = TextEditingController();
   String _locationName = "Helnan Auberge El Fayoum Hotel";
@@ -57,7 +45,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
   String? _currentUserAvatarUrl;
   bool _isSaving = false;
 
-  GoogleMapController? _mapController;
+  mapbox.MapboxMap? _mapController;
   double _latitude = 29.378033;
   double _longitude = 30.697478;
   String? _placeId;
@@ -615,24 +603,18 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
               SizedBox(
                 width: double.infinity,
                 height: 220 + topPadding,
-                child: GoogleMap(
-                  style: _mapStyleJson,
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(_latitude, _longitude),
+                child: mapbox.MapWidget(
+                  resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew")),
+                  styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+                  cameraOptions: mapbox.CameraOptions(
+                    center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
                     zoom: 15.0,
                   ),
-                  onMapCreated: (controller) {
+                  onMapCreated: (controller) async {
                     _mapController = controller;
+                    await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
+                    await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
                   },
-                  zoomControlsEnabled: false,
-                  mapToolbarEnabled: false,
-                  myLocationButtonEnabled: false,
-                  myLocationEnabled: false,
-                  compassEnabled: false,
-                  rotateGesturesEnabled: false,
-                  scrollGesturesEnabled: true,
-                  zoomGesturesEnabled: true,
-                  tiltGesturesEnabled: false,
                 ),
               ),
 
@@ -1525,13 +1507,12 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
         _longitude = selected['longitude'] as double;
         _placeId = selected['placeId'] as String?;
       });
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(_latitude, _longitude),
-            zoom: 15.0,
-          ),
+      _mapController?.easeTo(
+        mapbox.CameraOptions(
+          center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+          zoom: 15.0,
         ),
+        mapbox.MapAnimationOptions(duration: 500),
       );
     }
   }

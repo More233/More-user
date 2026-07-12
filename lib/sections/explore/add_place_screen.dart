@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'location_picker_screen.dart';
 
@@ -36,7 +36,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
   late double _latitude;
   late double _longitude;
   String _address = "Cairo, Cairo 11568, Egypt";
-  GoogleMapController? _mapController;
+  mapbox.MapboxMap? _mapController;
 
   // Selected Category
   String _category = "";
@@ -90,8 +90,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
         _longitude = result['longitude'] as double;
         _address = result['address'] as String;
       });
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLng(LatLng(_latitude, _longitude)),
+      _mapController?.easeTo(
+        mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson()),
+        mapbox.MapAnimationOptions(duration: 500),
       );
     }
   }
@@ -508,20 +509,19 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                         borderRadius: BorderRadius.circular(12),
                         child: Stack(
                           children: [
-                            GoogleMap(
-                              initialCameraPosition: CameraPosition(
-                                target: LatLng(_latitude, _longitude),
-                                zoom: 15.0,
+                              mapbox.MapWidget(
+                                resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew")),
+                                styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+                                cameraOptions: mapbox.CameraOptions(
+                                  center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+                                  zoom: 15.0,
+                                ),
+                                onMapCreated: (controller) async {
+                                  _mapController = controller;
+                                  await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
+                                  await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
+                                },
                               ),
-                              onMapCreated: (controller) => _mapController = controller,
-                              myLocationEnabled: false,
-                              myLocationButtonEnabled: false,
-                              zoomControlsEnabled: false,
-                              scrollGesturesEnabled: false,
-                              zoomGesturesEnabled: false,
-                              tiltGesturesEnabled: false,
-                              rotateGesturesEnabled: false,
-                            ),
                             // Selection pin in center of mini map
                             Center(
                               child: Padding(

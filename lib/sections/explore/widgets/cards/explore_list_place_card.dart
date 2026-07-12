@@ -46,6 +46,7 @@ class ExploreListPlaceCard extends StatelessWidget {
             placeName: place['name']?.toString() ?? '',
             iconUrl: place['iconUrl']?.toString(),
             imageUrl: place['imageUrl']?.toString(),
+            placeType: place['type']?.toString(),
             width: 80,
             height: 80,
             borderRadius: BorderRadius.circular(8),

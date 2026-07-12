@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 
 class LocationSearchSheet extends StatefulWidget {
   static const List<Map<String, dynamic>> locations = [
@@ -630,20 +630,28 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: LatLng(lat, lng),
-                        zoom: 15.0,
-                      ),
-                      myLocationEnabled: false,
-                      zoomControlsEnabled: false,
-                      mapToolbarEnabled: false,
-                      markers: {
-                        Marker(
-                          markerId: const MarkerId('preview_marker'),
-                          position: LatLng(lat, lng),
+                    child: Stack(
+                      children: [
+                        mapbox.MapWidget(
+                          resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew")),
+                          styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+                          cameraOptions: mapbox.CameraOptions(
+                            center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+                            zoom: 15.0,
+                          ),
+                          onMapCreated: (controller) async {
+                            await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
+                            await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
+                          },
                         ),
-                      },
+                        const Center(
+                          child: Icon(
+                            Icons.location_on,
+                            color: Colors.red,
+                            size: 32,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

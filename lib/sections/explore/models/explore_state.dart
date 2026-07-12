@@ -1,4 +1,4 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:moor/shared/models/lat_lng.dart';
 import 'filter_state.dart';
 
 class ExploreState {
@@ -14,6 +14,10 @@ class ExploreState {
   final List<Map<String, dynamic>> recentPlaces;
   final LatLng? lastFetchedLocation;
   final bool isLoading;
+  final double currentZoom;
+  final int markersLoadedVersion;
+  final bool showStatusBadge;
+  final String statusMessage;
 
   ExploreState({
     required this.allPlaces,
@@ -28,6 +32,10 @@ class ExploreState {
     required this.recentPlaces,
     this.lastFetchedLocation,
     required this.isLoading,
+    required this.currentZoom,
+    required this.markersLoadedVersion,
+    required this.showStatusBadge,
+    required this.statusMessage,
   });
 
   factory ExploreState.initial() {
@@ -44,6 +52,10 @@ class ExploreState {
       recentPlaces: [],
       lastFetchedLocation: null,
       isLoading: false,
+      currentZoom: 13.0,
+      markersLoadedVersion: 0,
+      showStatusBadge: false,
+      statusMessage: "",
     );
   }
 
@@ -60,6 +72,10 @@ class ExploreState {
     List<Map<String, dynamic>>? recentPlaces,
     LatLng? Function()? lastFetchedLocation,
     bool? isLoading,
+    double? currentZoom,
+    int? markersLoadedVersion,
+    bool? showStatusBadge,
+    String? statusMessage,
   }) {
     return ExploreState(
       allPlaces: allPlaces ?? this.allPlaces,
@@ -74,6 +90,10 @@ class ExploreState {
       recentPlaces: recentPlaces ?? this.recentPlaces,
       lastFetchedLocation: lastFetchedLocation != null ? lastFetchedLocation() : this.lastFetchedLocation,
       isLoading: isLoading ?? this.isLoading,
+      currentZoom: currentZoom ?? this.currentZoom,
+      markersLoadedVersion: markersLoadedVersion ?? this.markersLoadedVersion,
+      showStatusBadge: showStatusBadge ?? this.showStatusBadge,
+      statusMessage: statusMessage ?? this.statusMessage,
     );
   }
 }

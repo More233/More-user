@@ -3,11 +3,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'helpers/explore_screen_helpers.dart';
-import 'helpers/explore_marker_builder.dart';
 import 'widgets/explore_map_widget.dart';
 import 'widgets/explore_floating_controls.dart';
 import 'widgets/explore_status_badge.dart';
@@ -15,8 +15,8 @@ import 'widgets/explore_status_badge.dart';
 import '../home/widgets/feed/check_in_composer_screen.dart';
 import 'place_details_screen.dart';
 import 'services/explore_data_service.dart';
-import 'helpers/marker_generator.dart';
 import 'helpers/bookmark_tracker.dart';
+import 'helpers/marker_generator.dart';
 import 'widgets/cards/explore_place_card.dart';
 import 'widgets/search/explore_search_bar.dart';
 import 'widgets/search/explore_category_filters.dart';
@@ -53,29 +53,11 @@ class ExploreScreen extends ConsumerStatefulWidget {
 }
 
 class _ExploreScreenState extends ConsumerState<ExploreScreen> {
-  static const String _mapStyleJson = '''
-[
-  {
-    "featureType": "poi",
-    "elementType": "labels",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  }
-]
-''';
 
-  GoogleMapController? _mapController;
-  int _lastRoundedZoom = 13;
+
+  mapbox.MapboxMap? _mapController;
   double _currentZoom = 13.0;
   final TextEditingController _searchController = TextEditingController();
-  final MarkerGenerator _markerGenerator = MarkerGenerator();
-
-  bool _showStatusBadge = false;
-  String _statusMessage = "";
-  Timer? _statusBadgeTimer;
 
   @override
   void initState() {
@@ -83,24 +65,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     Future.microtask(() {
       ref.read(exploreViewModelProvider.notifier).init();
     });
-    _markerGenerator.initMarkerIcons(
-      zoom: 13.0,
-      onUpdate: () {
-        if (mounted) {
-          setState(() {});
-        }
-      },
-    );
-    if (widget.userAvatarUrl != null && widget.userAvatarUrl!.isNotEmpty) {
-      _markerGenerator.initUserSavedVisitedMarkers(widget.userAvatarUrl!).then((_) {
-        if (mounted) setState(() {});
-      });
-    }
   }
 
   @override
   void dispose() {
-    _statusBadgeTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -108,11 +76,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void didUpdateWidget(ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.userAvatarUrl != oldWidget.userAvatarUrl && widget.userAvatarUrl != null && widget.userAvatarUrl!.isNotEmpty) {
-      _markerGenerator.initUserSavedVisitedMarkers(widget.userAvatarUrl!).then((_) {
-        if (mounted) setState(() {});
-      });
-    }
     if (widget.initialLatitude != oldWidget.initialLatitude ||
         widget.initialLongitude != oldWidget.initialLongitude) {
       if (widget.initialLatitude != null && widget.initialLongitude != null) {
@@ -127,7 +90,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   void _moveToInitialLocation(double lat, double lng, String? address) {
     final latLng = LatLng(lat, lng);
-    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 15.0));
+    _mapController?.easeTo(
+      mapbox.CameraOptions(
+        center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+        zoom: 15.0,
+      ),
+      mapbox.MapAnimationOptions(duration: 1000),
+    );
     _onMapTapped(latLng, ref.read(exploreViewModelProvider));
   }
 
@@ -149,15 +118,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       );
       if (place != null && place['id'].toString().isNotEmpty && !place['id'].toString().startsWith('tapped_') && mounted) {
         ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(place);
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(latLng),
+        _mapController?.easeTo(
+          mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(latLng.longitude, latLng.latitude)).toJson()),
+          mapbox.MapAnimationOptions(duration: 500),
         );
-        _markerGenerator.preloadNetworkIconsForPlaces([place], () {
-          if (mounted) setState(() {});
-        });
-        _markerGenerator.preloadPlaceMarkers([place], () {
-          if (mounted) setState(() {});
-        });
         return;
       }
     } catch (e) {
@@ -193,33 +157,21 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
     if (mounted) {
       ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(fallbackPlace);
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLng(latLng),
+      _mapController?.easeTo(
+        mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(latLng.longitude, latLng.latitude)).toJson()),
+        mapbox.MapAnimationOptions(duration: 500),
       );
     }
   }
 
-  void _triggerStatusBadge(String message) {
-    _statusBadgeTimer?.cancel();
-    setState(() {
-      _statusMessage = message;
-      _showStatusBadge = true;
-    });
-    _statusBadgeTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _showStatusBadge = false;
-        });
-      }
-    });
-  }
-
   void _animateToUserLocation(LatLng? location) {
     if (location != null) {
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: location, zoom: 15.0),
+      _mapController?.easeTo(
+        mapbox.CameraOptions(
+          center: mapbox.Point(coordinates: mapbox.Position(location.longitude, location.latitude)).toJson(),
+          zoom: 15.0,
         ),
+        mapbox.MapAnimationOptions(duration: 1000),
       );
     }
   }
@@ -637,25 +589,31 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         _searchController.text = updatedPlace['name']?.toString() ?? '';
         
         ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(updatedPlace);
-        _markerGenerator.preloadNetworkIconsForPlaces([place], () {
-          if (mounted) setState(() {});
-        });
-        _markerGenerator.preloadPlaceMarkers([place], () {
-          if (mounted) setState(() {});
-        });
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(
-            LatLng((place['latitude'] as num? ?? 0.0).toDouble(), (place['longitude'] as num? ?? 0.0).toDouble()),
-            15.0,
+        _mapController?.easeTo(
+          mapbox.CameraOptions(
+            center: mapbox.Point(
+              coordinates: mapbox.Position(
+                (place['longitude'] as num? ?? 0.0).toDouble(),
+                (place['latitude'] as num? ?? 0.0).toDouble(),
+              ),
+            ).toJson(),
+            zoom: 15.0,
           ),
+          mapbox.MapAnimationOptions(duration: 1000),
         );
       } else if (result['type'] == 'current_location') {
         if (state.userLocation != null) {
-          _mapController?.animateCamera(
-            CameraUpdate.newLatLngZoom(
-              LatLng(state.userLocation!.latitude, state.userLocation!.longitude),
-              15.0,
+          _mapController?.easeTo(
+            mapbox.CameraOptions(
+              center: mapbox.Point(
+                coordinates: mapbox.Position(
+                  state.userLocation!.longitude,
+                  state.userLocation!.latitude,
+                ),
+              ).toJson(),
+              zoom: 15.0,
             ),
+            mapbox.MapAnimationOptions(duration: 1000),
           );
         }
       } else if (result['type'] == 'category') {
@@ -716,22 +674,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       },
     );
 
-    ref.listen<List<Map<String, dynamic>>>(
-      exploreViewModelProvider.select((s) => s.allPlaces),
-      (previous, next) {
-        if (next.isNotEmpty) {
-          final activePlaces = next.where((p) => (p['peopleCount'] as num? ?? 0) > 0).toList();
-          if (activePlaces.isNotEmpty) {
-            _markerGenerator.preloadPlaceMarkers(activePlaces, () {
-              if (mounted) setState(() {});
-            });
-          }
-        }
-      },
-    );
 
-    final filteredPlaces = ExploreScreenHelpers.getFilteredPlaces(state, _currentZoom);
-    final heatmapPlaces = ExploreScreenHelpers.getFilteredPlaces(state, _currentZoom, forHeatmap: true);
+
+    final filteredPlaces = ExploreScreenHelpers.getFilteredPlaces(state, state.currentZoom);
 
     final double topPadding = MediaQuery.of(context).padding.top;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -753,31 +698,19 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               offstage: state.isListView,
               child: ExploreMapWidget(
                 key: const ValueKey('explore_map_widget_wrapper_key'),
-                mapStyleJson: _mapStyleJson,
                 initialCameraPosition: CameraPosition(
                   target: (widget.initialLatitude != null && widget.initialLongitude != null)
                       ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
                       : (state.userLocation ?? const LatLng(24.7136, 46.6753)),
                   zoom: (widget.initialLatitude != null && widget.initialLongitude != null) ? 15.0 : 13.0,
                 ),
-                markers: ExploreMarkerBuilder.buildMarkers(
-                  state: state,
-                  filtered: filteredPlaces,
-                  currentZoom: _currentZoom,
-                  markerGenerator: _markerGenerator,
-                  onMarkerTap: (place, position) {
-                    ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
-                    _mapController?.animateCamera(
-                      CameraUpdate.newLatLng(position),
-                    );
-                  },
-                ),
-                heatmaps: ExploreMarkerBuilder.buildHeatmaps(
-                  state: state,
-                  filtered: heatmapPlaces,
-                  currentZoom: _currentZoom,
-                ),
                 myLocationEnabled: state.userLocation != null,
+                places: filteredPlaces,
+                selectedPlace: state.selectedPlace,
+                selectedMapTab: state.selectedMapTab,
+                onPlaceTap: (place) {
+                  ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
+                },
                 onMapCreated: (controller) {
                   _mapController = controller;
                   if (widget.initialLatitude != null && widget.initialLongitude != null) {
@@ -788,29 +721,17 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     );
                   }
                 },
-                onCameraMove: (position) {
-                  final double oldZoom = _currentZoom;
-                  _currentZoom = position.zoom;
-                  final bool crossedThreshold = (oldZoom < 11.0 && _currentZoom >= 11.0) || 
-                                                (oldZoom >= 11.0 && _currentZoom < 11.0);
-                  if (crossedThreshold) {
-                    if (mounted) setState(() {});
-                  }
+                onCameraMove: (zoom) {
+                  _currentZoom = zoom;
+                  ref.read(exploreViewModelProvider.notifier).updateZoom(_currentZoom);
                 },
                 onCameraIdle: () {
-                  final int roundedZoom = _currentZoom.round();
-                  if (roundedZoom != _lastRoundedZoom) {
-                    _lastRoundedZoom = roundedZoom;
-                    _markerGenerator.initMarkerIcons(
-                      zoom: _currentZoom,
-                      onUpdate: () { if (mounted) setState(() {}); },
-                    );
-                  }
                   if (_mapController != null) {
-                    _mapController!.getVisibleRegion().then((bounds) {
+                    _mapController!.getCameraState().then((cameraState) {
+                      final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(cameraState.center));
                       final center = LatLng(
-                        (bounds.northeast.latitude + bounds.southwest.latitude) / 2,
-                        (bounds.northeast.longitude + bounds.southwest.longitude) / 2,
+                        centerPoint.coordinates.lat.toDouble(),
+                        centerPoint.coordinates.lng.toDouble(),
                       );
                       if (state.lastFetchedLocation == null) {
                         ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
@@ -821,7 +742,6 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           center.latitude,
                           center.longitude,
                         );
-                        // Scale the fetch threshold based on zoom level (using 5000m for local zoom to leverage wider area preload cache)
                         final double threshold = _currentZoom < 7.0
                             ? 1000000.0 // 1000 km
                             : (_currentZoom < 10.0 ? 50000.0 : (_currentZoom < 13.0 ? 15000.0 : 5000.0));
@@ -829,9 +749,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
                         }
                       }
+                      ref.read(exploreViewModelProvider.notifier).updateZoom(_currentZoom);
                     });
                   }
-                  if (mounted) setState(() {});
                 },
                 onTap: (latLng) {
                   ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
@@ -909,7 +829,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   },
                   onBackToTimeline: widget.onBackToTimeline,
                   onSuggestionTapped: (_) {},
-                  iconDataGetter: (type) => _markerGenerator.getIconDataForType(type),
+                  iconDataGetter: (type) => MarkerGenerator.getIconDataForType(type),
                   topPadding: topPadding,
                   onTap: () => _openSearchScreen(state),
                   onAddFriendTapped: _openFollowFriendsBottomSheet,
@@ -1117,7 +1037,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     if (index == 1) msg = "Events";
                     if (index == 2) msg = "Live Now";
                     if (index == 3) msg = "You";
-                    _triggerStatusBadge(msg);
+                    ref.read(exploreViewModelProvider.notifier).triggerStatusBadge(msg);
                   },
                 ),
               ),
@@ -1163,8 +1083,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               right: 0,
               bottom: controlsBottom + 64,
               child: ExploreStatusBadge(
-                show: _showStatusBadge,
-                message: _statusMessage,
+                show: state.showStatusBadge,
+                message: state.statusMessage,
                 bottom: controlsBottom + 64,
               ),
             ),

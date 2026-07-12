@@ -1,6 +1,5 @@
 import Flutter
 import UIKit
-import GoogleMaps
 import AVFoundation
 
 @main
@@ -9,7 +8,6 @@ import AVFoundation
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GMSServices.provideAPIKey("AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug")
     
     let controller = window?.rootViewController as! FlutterViewController
     let videoChannel = FlutterMethodChannel(name: "com.app.more/video_utils", binaryMessenger: controller.binaryMessenger)

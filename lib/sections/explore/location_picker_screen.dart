@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
 
 class LocationPickerScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class LocationPickerScreen extends StatefulWidget {
 
 class _LocationPickerScreenState extends State<LocationPickerScreen> {
   late LatLng _currentCenter;
-  GoogleMapController? _mapController;
+  mapbox.MapboxMap? _mapController;
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
@@ -49,16 +50,34 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     // If they searched Riyadh, center Riyadh
     if (query.toLowerCase().contains("riyadh")) {
       final target = const LatLng(24.7136, 46.6753);
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 14.0));
+      _mapController?.easeTo(
+        mapbox.CameraOptions(
+          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+          zoom: 14.0,
+        ),
+        mapbox.MapAnimationOptions(duration: 1000),
+      );
       setState(() => _currentCenter = target);
     } else if (query.toLowerCase().contains("cairo")) {
       final target = const LatLng(30.0444, 31.2357);
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 14.0));
+      _mapController?.easeTo(
+        mapbox.CameraOptions(
+          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+          zoom: 14.0,
+        ),
+        mapbox.MapAnimationOptions(duration: 1000),
+      );
       setState(() => _currentCenter = target);
     } else {
       // Simulate slight offset from current map center
       final target = LatLng(_currentCenter.latitude + 0.01, _currentCenter.longitude + 0.01);
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 14.0));
+      _mapController?.easeTo(
+        mapbox.CameraOptions(
+          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+          zoom: 14.0,
+        ),
+        mapbox.MapAnimationOptions(duration: 1000),
+      );
       setState(() => _currentCenter = target);
     }
   }
@@ -72,21 +91,28 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
         children: [
           // Fullscreen Google Map
           Positioned.fill(
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _currentCenter,
+            child: mapbox.MapWidget(
+              resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew")),
+              styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+              cameraOptions: mapbox.CameraOptions(
+                center: mapbox.Point(coordinates: mapbox.Position(_currentCenter.longitude, _currentCenter.latitude)).toJson(),
                 zoom: 15.0,
               ),
-              onMapCreated: (controller) => _mapController = controller,
-              onCameraMove: (position) {
-                _currentCenter = position.target;
+              onMapCreated: (controller) async {
+                _mapController = controller;
+                await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
+                await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
               },
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              mapToolbarEnabled: false,
-              // Keep map clean - no markers other than the center selection pin
-              markers: const {},
+              onCameraChangeListener: (event) {
+                if (_mapController != null) {
+                  _mapController!.getCameraState().then((state) {
+                    final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(state.center));
+                    setState(() {
+                      _currentCenter = LatLng(centerPoint.coordinates.lat.toDouble(), centerPoint.coordinates.lng.toDouble());
+                    });
+                  });
+                }
+              },
             ),
           ),
 
@@ -241,7 +267,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                 try {
                   final pos = await Geolocator.getCurrentPosition();
                   final target = LatLng(pos.latitude, pos.longitude);
-                  _mapController?.animateCamera(CameraUpdate.newLatLngZoom(target, 15.0));
+                  _mapController?.easeTo(
+                    mapbox.CameraOptions(
+                      center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+                      zoom: 15.0,
+                    ),
+                    mapbox.MapAnimationOptions(duration: 1000),
+                  );
                   setState(() => _currentCenter = target);
                 } catch (e) {
                   debugPrint("Error locating user: $e");

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:moor/sections/explore/helpers/marker_generator.dart';
 
 class DynamicPlaceImage extends StatelessWidget {
   final String placeId;
   final String placeName;
   final String? iconUrl;
   final String? imageUrl;
+  final String? placeType;
   final double? width;
   final double? height;
   final BorderRadius? borderRadius;
@@ -16,6 +18,7 @@ class DynamicPlaceImage extends StatelessWidget {
     required this.placeName,
     this.iconUrl,
     this.imageUrl,
+    this.placeType,
     this.width,
     this.height,
     this.borderRadius,
@@ -73,6 +76,10 @@ class DynamicPlaceImage extends StatelessWidget {
   }
 
   Widget _buildFallbackIcon() {
+    final String type = placeType ?? 'Other';
+    final IconData iconData = MarkerGenerator.getIconDataForType(type);
+    final Color color = MarkerGenerator.getMarkerColor(type);
+
     return Container(
       width: width,
       height: height,
@@ -83,18 +90,18 @@ class DynamicPlaceImage extends StatelessWidget {
               iconUrl!,
               width: 32,
               height: 32,
-              color: const Color(0xFF7C57FC),
+              color: color,
               errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.location_on,
-                  color: Color(0xFF7C57FC),
+                return Icon(
+                  iconData,
+                  color: color,
                   size: 28,
                 );
               },
             )
-          : const Icon(
-              Icons.location_on,
-              color: Color(0xFF7C57FC),
+          : Icon(
+              iconData,
+              color: color,
               size: 28,
             ),
     );

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../data/repositories/explore_repository.dart';
 import '../../../data/repositories/explore_repository_impl.dart';
@@ -354,5 +354,31 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
 
   void updateAllPlacesManual(List<Map<String, dynamic>> list) {
     state = state.copyWith(allPlaces: list);
+  }
+
+  void updateZoom(double zoom) {
+    state = state.copyWith(currentZoom: zoom);
+  }
+
+  void incrementMarkersVersion() {
+    state = state.copyWith(markersLoadedVersion: state.markersLoadedVersion + 1);
+  }
+
+  Timer? _statusBadgeTimer;
+  void triggerStatusBadge(String message) {
+    _statusBadgeTimer?.cancel();
+    state = state.copyWith(
+      statusMessage: message,
+      showStatusBadge: true,
+    );
+    _statusBadgeTimer = Timer(const Duration(seconds: 2), () {
+      state = state.copyWith(showStatusBadge: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _statusBadgeTimer?.cancel();
+    super.dispose();
   }
 }

@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
 import '../models/explore_state.dart';
-import 'world_cities_data.dart';
 
 class ExploreScreenHelpers {
   static double calculateTimeDecayWeight(String? createdAtStr) {
@@ -196,48 +195,7 @@ class ExploreScreenHelpers {
     return totalWeight;
   }
 
-  static List<Map<String, dynamic>> generateMockWorldPlaces() {
-    final List<Map<String, dynamic>> mockPlaces = [];
-    final random = math.Random(42); // Seeded random for consistent layout
-    
-    for (final city in WorldCitiesData.cities) {
-      final String cityName = city['name'] as String;
-      final double lat = city['lat'] as double;
-      final double lng = city['lng'] as double;
-      final double density = city['density'] as double;
-      
-      // Number of places is proportional to the city density factor
-      final int placeCount = (density * 10).toInt();
-      
-      for (int i = 0; i < placeCount; i++) {
-        // Offset radius concentrates heat in the center
-        final double maxOffset = 0.05 + (random.nextDouble() * 0.15);
-        final double angle = random.nextDouble() * 2 * math.pi;
-        final double offsetLat = lat + maxOffset * math.sin(angle);
-        final double offsetLng = lng + maxOffset * math.cos(angle);
-        
-        mockPlaces.add({
-          'id': 'mock_world_${cityName.toLowerCase()}_$i',
-          'name': 'Mock Place $i in $cityName',
-          'arabicName': 'مكان افتراضي $i في $cityName',
-          'address': '$cityName, World',
-          'latitude': offsetLat,
-          'longitude': offsetLng,
-          'rating': 4.0 + (random.nextDouble() * 1.0),
-          'reviewsCount': 10 + random.nextInt(100),
-          'peopleCount': 0,
-          'type': i % 3 == 0 ? 'Restaurant' : (i % 3 == 1 ? 'Coffee' : 'Bars'),
-          'imageUrl': '',
-          'isSaved': false,
-          'isVisited': false,
-          'actionType': 'Other',
-          'isRegistered': false,
-          'visitors': <Map<String, dynamic>>[],
-        });
-      }
-    }
-    return mockPlaces;
-  }
+
 
   static double? parseDistance(String? distanceStr) {
     if (distanceStr == null) return null;
@@ -297,10 +255,6 @@ class ExploreScreenHelpers {
     bool forHeatmap = false,
   }) {
     final unfiltered = state.allPlaces.where((place) {
-      final String id = place['id'].toString();
-      if (id.startsWith('mock_world_') && !forHeatmap) {
-        return false;
-      }
       if (state.searchQuery.isNotEmpty) {
         final query = state.searchQuery.toLowerCase();
         final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
@@ -319,9 +273,15 @@ class ExploreScreenHelpers {
         return true;
       }
 
-      if (state.selectedMapTab == 0 && state.selectedCategory.isNotEmpty) {
+      if (state.selectedMapTab == 0) {
         final type = place['type'] as String? ?? 'Other';
-        if (type != state.selectedCategory) return false;
+        if (state.selectedCategory.isNotEmpty) {
+          if (type != state.selectedCategory) return false;
+        } else {
+          if (type == 'Movies' || type == 'Sports' || type == 'Concerts' || type == 'Ticket') {
+            return false;
+          }
+        }
       }
 
       if (state.selectedMapTab == 1) {
@@ -368,61 +328,7 @@ class ExploreScreenHelpers {
       return unfiltered;
     }
 
-    // Progressive zoom density filtering
-    return unfiltered.where((place) {
-      final isSelected = state.selectedPlace != null && state.selectedPlace!['id'] == place['id'];
-      if (isSelected) return true;
-
-      final isManual = place['id'].toString().startsWith('tapped_');
-      if (isManual) return true;
-
-      if (state.selectedMapTab == 2) {
-        final bool isGlobal = place['id'].toString().startsWith('global_swarm_');
-        
-        if (currentZoom < 6.0) {
-          return isGlobal || isSelected;
-        } else if (currentZoom < 11.0) {
-          return isGlobal || isSelected;
-        }
-
-        final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-        final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
-
-        if (currentZoom >= 11.0 && currentZoom < 13.0) {
-          return rating >= 4.7 && reviews >= 30;
-        } else if (currentZoom >= 13.0 && currentZoom < 14.5) {
-          return rating >= 4.2 && reviews >= 10;
-        } else {
-          final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
-          if (currentZoom >= 14.5 && currentZoom < 15.5) {
-            return peopleCount > 0 || (rating >= 4.0 && reviews >= 15);
-          } else if (currentZoom >= 15.5 && currentZoom < 16.5) {
-            return peopleCount > 0 || (rating >= 3.5 && reviews >= 5);
-          } else {
-            return true;
-          }
-        }
-      }
-
-      if (currentZoom < 11.0) {
-        // Zoomed out very far: show absolutely nothing except selected/dropped pins
-        return false;
-      }
-
-      final isCheckIn = place['isCheckIn'] as bool? ?? false;
-      if (isCheckIn) return true;
-
-      final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-      final int reviews = (place['reviewsCount'] as num? ?? 0).toInt();
-
-      if (currentZoom >= 11.0 && currentZoom < 13.0) {
-        return rating >= 4.7 && reviews >= 30;
-      } else if (currentZoom >= 13.0 && currentZoom < 14.5) {
-        return rating >= 4.2 && reviews >= 10;
-      } else {
-        // Zoom >= 14.5: show everything
-        return true;
-      }
-    }).toList();
+    // Return all unfiltered places directly. They will be rendered as dots when zoomed out and pins when zoomed in.
+    return unfiltered;
   }
 }
