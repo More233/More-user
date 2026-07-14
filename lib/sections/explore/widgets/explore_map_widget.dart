@@ -608,7 +608,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "step",
         ["zoom"],
         ["concat", "dot-", ["get", "place_type"]],
-        1.2,
+        2.0,
         [
           "case",
           ["==", ["get", "id"], selectedId],
@@ -668,7 +668,25 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       // --- Clusters Layer Styles ---
       final String clusterIconImageExpression = jsonEncode([
         "case",
-        // 60% of clusters render as normal teardrop pins:
+        // If zoom is less than 2.0, all clusters render as dots
+        ["<", ["zoom"], 2.0],
+        [
+          "case",
+          ["==", ["%", ["get", "cluster_id"], 7], 0],
+          "dot-restaurant",
+          ["==", ["%", ["get", "cluster_id"], 7], 1],
+          "dot-coffee",
+          ["==", ["%", ["get", "cluster_id"], 7], 2],
+          "dot-hotel",
+          ["==", ["%", ["get", "cluster_id"], 7], 3],
+          "dot-park",
+          ["==", ["%", ["get", "cluster_id"], 7], 4],
+          "dot-movies",
+          ["==", ["%", ["get", "cluster_id"], 7], 5],
+          "dot-concerts",
+          "dot-other"
+        ],
+        // Otherwise, if zoom >= 2.0, apply the 60% normal pins / 40% dots mix
         ["<", ["%", ["get", "cluster_id"], 5], 3],
         [
           "case",
@@ -686,7 +704,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           "normal-concerts",
           "normal-other"
         ],
-        // 40% render as dots:
+        // The remaining 40% render as dots
         [
           "case",
           ["==", ["%", ["get", "cluster_id"], 7], 0],

@@ -211,7 +211,7 @@ class MarkerGenerator {
       return const Color(0xFF00B0FF); // Concerts Sky Blue
     }
     if (t.contains('coffee') || t.contains('cafe') || t.contains('café') || t.contains('local_cafe')) {
-      return const Color(0xFFFC8A15); // Swarm Coffee Amber
+      return const Color(0xFFFF5A19); // Swarm Food Orange-Red (Same as restaurant)
     }
     if (t.contains('restaurant') || t.contains('food') || t.contains('dining') ||
         t.contains('bakery') || t.contains('bread') || t.contains('mkhbazat') ||
