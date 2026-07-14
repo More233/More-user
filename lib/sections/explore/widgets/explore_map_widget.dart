@@ -208,21 +208,37 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       try {
-        final clustersLayer = mapbox.SymbolLayer(
-          id: "clusters-layer",
+        final clustersDotsLayer = mapbox.SymbolLayer(
+          id: "clusters-dots-layer",
           sourceId: "places-source",
           iconAllowOverlap: true,
           iconIgnorePlacement: true,
           textAllowOverlap: true,
           textIgnorePlacement: true,
-          textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
+          maxZoom: 1.5,
         );
-        await mapboxMap.style.addLayer(clustersLayer);
-        await mapboxMap.style.setStyleLayerProperty("clusters-layer", "filter", '["has", "point_count"]');
-        await mapboxMap.style.setStyleLayerProperty("clusters-layer", "visibility", "visible");
-        await mapboxMap.style.setStyleLayerProperty("clusters-layer", "text-anchor", "center");
+        await mapboxMap.style.addLayer(clustersDotsLayer);
+        await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "filter", '["has", "point_count"]');
+        await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "visibility", "visible");
       } catch (e) {
-        debugPrint("clusters-layer already exists or error: $e");
+        debugPrint("clusters-dots-layer already exists or error: $e");
+      }
+
+      try {
+        final clustersPinsLayer = mapbox.SymbolLayer(
+          id: "clusters-pins-layer",
+          sourceId: "places-source",
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+          textAllowOverlap: true,
+          textIgnorePlacement: true,
+          minZoom: 1.5,
+        );
+        await mapboxMap.style.addLayer(clustersPinsLayer);
+        await mapboxMap.style.setStyleLayerProperty("clusters-pins-layer", "filter", '["has", "point_count"]');
+        await mapboxMap.style.setStyleLayerProperty("clusters-pins-layer", "visibility", "visible");
+      } catch (e) {
+        debugPrint("clusters-pins-layer already exists or error: $e");
       }
     } catch (e) {
       debugPrint("ExploreMapWidget: Error initializing native clustering: $e");
@@ -608,7 +624,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "step",
         ["zoom"],
         ["concat", "dot-", ["get", "place_type"]],
-        2.0,
+        1.5,
         [
           "case",
           ["==", ["get", "id"], selectedId],
@@ -626,7 +642,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "step",
         ["zoom"],
         "",
-        11.5,
+        1.5,
         ["get", "title"]
       ]);
       try {
@@ -666,28 +682,26 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       // --- Clusters Layer Styles ---
-      final String clusterIconImageExpression = jsonEncode([
+      final String clusterDotsIconImageExpression = jsonEncode([
         "case",
-        // If zoom is less than 2.0, all clusters render as dots
-        ["<", ["zoom"], 2.0],
-        [
-          "case",
-          ["==", ["%", ["get", "cluster_id"], 7], 0],
-          "dot-restaurant",
-          ["==", ["%", ["get", "cluster_id"], 7], 1],
-          "dot-coffee",
-          ["==", ["%", ["get", "cluster_id"], 7], 2],
-          "dot-hotel",
-          ["==", ["%", ["get", "cluster_id"], 7], 3],
-          "dot-park",
-          ["==", ["%", ["get", "cluster_id"], 7], 4],
-          "dot-movies",
-          ["==", ["%", ["get", "cluster_id"], 7], 5],
-          "dot-concerts",
-          "dot-other"
-        ],
-        // Otherwise, if zoom >= 2.0, apply the 60% normal pins / 40% dots mix
-        ["<", ["%", ["get", "cluster_id"], 5], 3],
+        ["==", ["%", ["get", "cluster_id"], 7], 0],
+        "dot-restaurant",
+        ["==", ["%", ["get", "cluster_id"], 7], 1],
+        "dot-coffee",
+        ["==", ["%", ["get", "cluster_id"], 7], 2],
+        "dot-hotel",
+        ["==", ["%", ["get", "cluster_id"], 7], 3],
+        "dot-park",
+        ["==", ["%", ["get", "cluster_id"], 7], 4],
+        "dot-movies",
+        ["==", ["%", ["get", "cluster_id"], 7], 5],
+        "dot-concerts",
+        "dot-other"
+      ]);
+
+      final String clusterPinsIconImageExpression = jsonEncode([
+        "case",
+        ["==", ["%", ["get", "cluster_id"], 5], 0],
         [
           "case",
           ["==", ["%", ["get", "cluster_id"], 7], 0],
@@ -704,7 +718,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           "normal-concerts",
           "normal-other"
         ],
-        // The remaining 40% render as dots
         [
           "case",
           ["==", ["%", ["get", "cluster_id"], 7], 0],
@@ -722,49 +735,57 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           "dot-other"
         ]
       ]);
+
       final String clusterIconSizeExpression = jsonEncode([
         "step",
         ["get", "point_count"],
-        0.65, // Small clusters (< 10 points)
+        0.4, // Small clusters (< 10 points)
         10,
-        0.8,  // Medium clusters (10-99 points)
+        0.55,  // Medium clusters (10-99 points)
         100,
-        0.95   // Large clusters (>= 100 points)
+        0.7   // Large clusters (>= 100 points)
       ]);
-      try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-image", clusterIconImageExpression);
-      } catch (e) {
-        debugPrint("Error setting clusters-layer icon-image: $e");
-      }
 
-      try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-size", clusterIconSizeExpression);
-      } catch (e) {
-        debugPrint("Error setting clusters-layer icon-size: $e");
-      }
+      for (final layerId in ["clusters-dots-layer", "clusters-pins-layer"]) {
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(
+            layerId,
+            "icon-image",
+            layerId == "clusters-dots-layer" ? clusterDotsIconImageExpression : clusterPinsIconImageExpression
+          );
+        } catch (e) {
+          debugPrint("Error setting $layerId icon-image: $e");
+        }
 
-      try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-field", "");
-      } catch (e) {
-        debugPrint("Error setting clusters-layer text-field: $e");
-      }
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(layerId, "icon-size", clusterIconSizeExpression);
+        } catch (e) {
+          debugPrint("Error setting $layerId icon-size: $e");
+        }
 
-      try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-size", 0.0);
-      } catch (e) {
-        debugPrint("Error setting clusters-layer text-size: $e");
-      }
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-field", "");
+        } catch (e) {
+          debugPrint("Error setting $layerId text-field: $e");
+        }
 
-      try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-opacity", 0.0);
-      } catch (e) {
-        debugPrint("Error setting clusters-layer text-opacity: $e");
-      }
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-size", 0.0);
+        } catch (e) {
+          debugPrint("Error setting $layerId text-size: $e");
+        }
 
-      try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-color", "#FFFFFF");
-      } catch (e) {
-        debugPrint("Error setting clusters-layer text-color: $e");
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-opacity", 0.0);
+        } catch (e) {
+          debugPrint("Error setting $layerId text-opacity: $e");
+        }
+
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-color", "#FFFFFF");
+        } catch (e) {
+          debugPrint("Error setting $layerId text-color: $e");
+        }
       }
 
       // Repeatedly enforce hiding default road labels, shields, and intersections to override Mapbox async style loads
