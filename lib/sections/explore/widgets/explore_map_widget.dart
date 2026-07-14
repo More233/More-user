@@ -229,6 +229,28 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       try {
+        final clustersMediumLayer = mapbox.SymbolLayer(
+          id: "clusters-medium-layer",
+          sourceId: "places-source",
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+          textAllowOverlap: false,
+          textIgnorePlacement: false,
+          textVariableAnchor: ["right", "left"],
+          textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
+          textHaloColor: 0xFFFFFFFF.toSigned(32),
+          textHaloWidth: 1.5,
+          minZoom: 1.5,
+          maxZoom: 4.2,
+        );
+        await mapboxMap.style.addLayer(clustersMediumLayer);
+        await mapboxMap.style.setStyleLayerProperty("clusters-medium-layer", "filter", '["has", "point_count"]');
+        await mapboxMap.style.setStyleLayerProperty("clusters-medium-layer", "visibility", "visible");
+      } catch (e) {
+        debugPrint("clusters-medium-layer already exists or error: $e");
+      }
+
+      try {
         final clustersPinsLayer = mapbox.SymbolLayer(
           id: "clusters-pins-layer",
           sourceId: "places-source",
@@ -240,7 +262,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
           textHaloColor: 0xFFFFFFFF.toSigned(32),
           textHaloWidth: 1.5,
-          minZoom: 1.5,
+          minZoom: 4.2,
         );
         await mapboxMap.style.addLayer(clustersPinsLayer);
         await mapboxMap.style.setStyleLayerProperty("clusters-pins-layer", "filter", '["has", "point_count"]');
@@ -653,6 +675,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         1.5,
         ["get", "title"]
       ]);
+
       try {
         await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-field", textFieldExpression);
       } catch (e) {
@@ -782,9 +805,46 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         debugPrint("Error styling clusters-dots-layer: $e");
       }
 
-      // Style clusters-pins-layer (pins and dots mix starting from zoom 1.5, shows text next to pins)
+      final String cluster100PinsIconImageExpression = jsonEncode([
+        "case",
+        ["==", ["%", ["get", "cluster_id"], 7], 0],
+        "normal-restaurant",
+        ["==", ["%", ["get", "cluster_id"], 7], 1],
+        "normal-coffee",
+        ["==", ["%", ["get", "cluster_id"], 7], 2],
+        "normal-hotel",
+        ["==", ["%", ["get", "cluster_id"], 7], 3],
+        "normal-park",
+        ["==", ["%", ["get", "cluster_id"], 7], 4],
+        "normal-movies",
+        ["==", ["%", ["get", "cluster_id"], 7], 5],
+        "normal-concerts",
+        "normal-other"
+      ]);
+
+      // Style clusters-medium-layer (pins and dots mix starting from zoom 1.5 to 4.2)
       try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-image", clusterPinsIconImageExpression);
+        final String clusterMediumTextFieldExpression = jsonEncode([
+          "case",
+          ["==", ["%", ["get", "cluster_id"], 5], 0],
+          ["get", "title"],
+          ""
+        ]);
+
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "icon-image", clusterPinsIconImageExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "icon-size", clusterIconSizeExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-field", clusterMediumTextFieldExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-size", textSizeExpr);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-opacity", 1.0);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-color", clusterTextColorExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-radial-offset", textRadialOffsetExpr);
+      } catch (e) {
+        debugPrint("Error styling clusters-medium-layer: $e");
+      }
+
+      // Style clusters-pins-layer (100% pins starting from zoom 4.2)
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-image", cluster100PinsIconImageExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-size", clusterIconSizeExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-field", textFieldExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-size", textSizeExpr);
