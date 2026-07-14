@@ -76,7 +76,7 @@ class DynamicPlaceImage extends StatelessWidget {
   }
 
   Widget _buildFallbackIcon() {
-    final String type = placeType ?? 'Other';
+    final String type = MarkerGenerator.resolveType(placeType ?? '', placeName);
     final IconData iconData = MarkerGenerator.getIconDataForType(type);
     final Color color = MarkerGenerator.getMarkerColor(type);
 

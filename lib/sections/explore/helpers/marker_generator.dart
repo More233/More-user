@@ -227,4 +227,48 @@ class MarkerGenerator {
     }
     return const Color(0xFF5A5D67); // Swarm Charcoal/Grey default
   }
+
+  static String resolveType(String rawType, String name, [String arabicName = '']) {
+    final String r = rawType.toLowerCase().trim();
+    final String n = name.toLowerCase();
+    final String ar = arabicName.toLowerCase();
+    
+    // First, if the type contains any of the known categories directly:
+    if (r.contains('restaurant') || r.contains('food') || r.contains('dining') || r.contains('pizza') || r.contains('burger') || r.contains('sushi')) return 'restaurant';
+    if (r.contains('coffee') || r.contains('cafe') || r.contains('café')) return 'coffee';
+    if (r.contains('hotel') || r.contains('motel') || r.contains('resort') || r.contains('stay') || r.contains('suites')) return 'hotel';
+    if (r.contains('park') || r.contains('garden')) return 'park';
+    if (r.contains('movie') || r.contains('cinema')) return 'movies';
+    if (r.contains('concert') || r.contains('music') || r.contains('gig')) return 'concerts';
+    if (r.contains('bar') || r.contains('pub') || r.contains('club')) return 'bars';
+    if (r.contains('airport') || r.contains('flight') || r.contains('plane')) return 'airport';
+    if (r.contains('bakery') || r.contains('bread')) return 'bakery';
+    if (r.contains('supermarket') || r.contains('grocery') || r.contains('mall')) return 'supermarket';
+    if (r.contains('pharmacy') || r.contains('drugstore')) return 'pharmacy';
+    if (r.contains('school') || r.contains('university') || r.contains('college')) return 'school';
+    if (r.contains('mosque') || r.contains('masjid')) return 'mosque';
+    if (r.contains('library')) return 'library';
+    if (r.contains('museum')) return 'museum';
+    if (r.contains('exhibition') || r.contains('exhibit')) return 'exhibition';
+
+    // Second, check the name of the place:
+    if (n.contains('restaurant') || n.contains('dining') || n.contains('pizza') || n.contains('burger') || n.contains('sushi') || ar.contains('مطعم') || ar.contains('بيتزا') || ar.contains('برجر') || ar.contains('سوشي')) return 'restaurant';
+    if (n.contains('coffee') || n.contains('cafe') || n.contains('café') || n.contains('espresso') || ar.contains('قهوة') || ar.contains('كافيه') || ar.contains('مقهى')) return 'coffee';
+    if (n.contains('hotel') || n.contains('motel') || n.contains('resort') || n.contains('suites') || ar.contains('فندق') || ar.contains('أجنحة') || ar.contains('منتجع')) return 'hotel';
+    if (n.contains('park') || n.contains('garden') || ar.contains('حديقة') || ar.contains('منتزه')) return 'park';
+    if (n.contains('cinema') || n.contains('movie') || ar.contains('سينما')) return 'movies';
+    if (n.contains('concert') || n.contains('theatre') || n.contains('music') || ar.contains('مسرح') || ar.contains('حفلة')) return 'concerts';
+    if (n.contains('bar') || n.contains('pub') || n.contains('club') || ar.contains('نادي') || ar.contains('بار')) return 'bars';
+    if (n.contains('airport') || ar.contains('مطار')) return 'airport';
+    if (n.contains('bakery') || n.contains('pastry') || ar.contains('مخبز') || ar.contains('مخابز') || ar.contains('حلويات')) return 'bakery';
+    if (n.contains('supermarket') || n.contains('hypermarket') || n.contains('grocery') || n.contains('mall') || ar.contains('سوبرماركت') || ar.contains('هايبرماركت') || ar.contains('بقالة') || ar.contains('مول')) return 'supermarket';
+    if (n.contains('pharmacy') || ar.contains('صيدلية')) return 'pharmacy';
+    if (n.contains('school') || n.contains('university') || n.contains('college') || ar.contains('مدرسة') || ar.contains('جامعة')) return 'school';
+    if (n.contains('mosque') || n.contains('masjid') || ar.contains('مسجد') || ar.contains('جامع')) return 'mosque';
+    if (n.contains('library') || ar.contains('مكتبة')) return 'library';
+    if (n.contains('museum') || ar.contains('متحف')) return 'museum';
+    if (n.contains('exhibition') || n.contains('exhibit') || ar.contains('معرض') || ar.contains('معارض')) return 'exhibition';
+
+    return 'other';
+  }
 }

@@ -125,7 +125,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "step",
         ["zoom"],
         ["concat", "dot-", ["get", "place_type"]],
-        11.5,
+        1.5,
         [
           "case",
           ["==", ["get", "id"], selectedId],
@@ -441,28 +441,11 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   }
 
   String _resolvePlaceType(Map<String, dynamic> p) {
-    final String rawType = p['type']?.toString().toLowerCase().trim() ?? 'default';
-    final String name = p['name']?.toString().toLowerCase() ?? '';
-    final String arName = p['arabicName']?.toString() ?? '';
-    
-    if (rawType == 'other' || rawType == 'default') {
-      if (name.contains('mosque') || arName.contains('مسجد') || arName.contains('جامع')) {
-        return 'mosque';
-      }
-      if (name.contains('school') || name.contains('university') || arName.contains('مدرسة') || arName.contains('جامعة')) {
-        return 'school';
-      }
-      if (name.contains('library') || arName.contains('مكتبة')) {
-        return 'library';
-      }
-      if (name.contains('museum') || arName.contains('متحف')) {
-        return 'museum';
-      }
-      if (name.contains('exhibition') || name.contains('exhibits') || arName.contains('معارض') || arName.contains('معرض')) {
-        return 'exhibition';
-      }
-    }
-    return rawType;
+    return MarkerGenerator.resolveType(
+      p['type']?.toString() ?? '',
+      p['name']?.toString() ?? '',
+      p['arabicName']?.toString() ?? '',
+    );
   }
 
   Future<void> _updateMarkers() async {

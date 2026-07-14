@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:moor/sections/explore/helpers/marker_generator.dart';
 import 'dynamic_place_image.dart';
 
 class ExplorePlaceCard extends StatelessWidget {
@@ -183,7 +184,12 @@ class ExplorePlaceCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            place['name']?.toString() ?? '',
+                            (() {
+                              final String name = place['arabicName']?.toString().isNotEmpty == true
+                                  ? place['arabicName'].toString()
+                                  : (place['name']?.toString() ?? '');
+                              return name.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+                            })(),
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
@@ -194,7 +200,15 @@ class ExplorePlaceCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            place['type']?.toString() ?? 'Cafe',
+                            (() {
+                              final String resolved = MarkerGenerator.resolveType(
+                                place['type']?.toString() ?? '',
+                                place['name']?.toString() ?? '',
+                                place['arabicName']?.toString() ?? '',
+                              );
+                              if (resolved == 'other') return 'Other';
+                              return resolved[0].toUpperCase() + resolved.substring(1);
+                            })(),
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 14,
                               color: const Color(0xFF82858C),
