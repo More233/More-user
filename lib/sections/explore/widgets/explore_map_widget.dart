@@ -179,7 +179,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           clusterRadius: 50.0,
           clusterMaxZoom: 11.5,
           clusterProperties: {
-            "dominant_rating_and_type": ["max", ["get", "rating_and_type"]],
+            "dominant_type_code": ["max", ["get", "place_type_code"]],
           },
         );
         await mapboxMap.style.addSource(source);
@@ -371,7 +371,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     // Zoom threshold: 3.0
     // Zoom < 3.0 -> Hide labels/borders
     // Zoom >= 3.0 -> Show labels/borders
-    final bool shouldBeVisible = zoom >= 3.0;
+    final bool shouldBeVisible = zoom >= 1.5;
 
     if (_isBaseLayersVisible == shouldBeVisible) return;
     _isBaseLayersVisible = shouldBeVisible;
@@ -511,6 +511,27 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final double rating = double.tryParse(p['rating']?.toString() ?? '') ?? 0.0;
         final String ratingAndType = "${rating.toStringAsFixed(2)}_$placeType";
 
+        int placeTypeCode = 1; // other / default
+        if (placeType == 'restaurant') {
+          placeTypeCode = 2;
+        } else if (placeType == 'supermarket') {
+          placeTypeCode = 3;
+        } else if (placeType == 'pharmacy') {
+          placeTypeCode = 4;
+        } else if (placeType == 'bakery') {
+          placeTypeCode = 5;
+        } else if (placeType == 'bars') {
+          placeTypeCode = 6;
+        } else if (placeType == 'coffee') {
+          placeTypeCode = 7;
+        } else if (placeType == 'hotel') {
+          placeTypeCode = 8;
+        } else if (placeType == 'park') {
+          placeTypeCode = 9;
+        } else if (placeType == 'airport') {
+          placeTypeCode = 10;
+        }
+
         features.add({
           "type": "Feature",
           "id": p['id'].toString(),
@@ -523,6 +544,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             "place_type": placeType,
             "title": mainName,
             "rating_and_type": ratingAndType,
+            "place_type_code": placeTypeCode,
           }
         });
       }
@@ -583,7 +605,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "step",
         ["zoom"],
         ["concat", "dot-", ["get", "place_type"]],
-        11.5,
+        2.0,
         [
           "case",
           ["==", ["get", "id"], selectedId],
@@ -643,23 +665,23 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       // --- Clusters Layer Styles ---
       final String clusterIconImageExpression = jsonEncode([
         "case",
-        ["in", "restaurant", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 2],
         "dot-restaurant",
-        ["in", "coffee", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 7],
         "dot-coffee",
-        ["in", "hotel", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 8],
         "dot-hotel",
-        ["in", "park", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 9],
         "dot-park",
-        ["in", "bars", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 5],
         "dot-bars",
-        ["in", "bakery", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 6],
         "dot-bakery",
-        ["in", "pharmacy", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 4],
         "dot-pharmacy",
-        ["in", "supermarket", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 3],
         "dot-supermarket",
-        ["in", "airport", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
+        ["==", ["get", "dominant_type_code"], 10],
         "dot-airport",
         "dot-other"
       ]);
@@ -834,7 +856,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
             // Restrict camera bounds to prevent excessive zoom out while showing flat map
             try {
-              await mapboxMap.setBounds(mapbox.CameraBoundsOptions(minZoom: 1.5));
+              await mapboxMap.setBounds(mapbox.CameraBoundsOptions(minZoom: 1.2));
             } catch (e) {
               debugPrint("Error setting map bounds: $e");
             }
