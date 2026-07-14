@@ -176,8 +176,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           id: "places-source",
           data: '{"type": "FeatureCollection", "features": []}',
           cluster: true,
-          clusterRadius: 50.0,
-          clusterMaxZoom: 11.5,
+          clusterRadius: 20.0,
+          clusterMaxZoom: 16.2,
           clusterProperties: {
             "dominant_type_code": ["max", ["get", "place_type_code"]],
           },
@@ -421,6 +421,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         'park',
         'airport',
         'other',
+        'movies',
+        'concerts',
+        'sports',
       ];
       final uniqueTypes = widget.places
           .map((p) => p['type']?.toString().toLowerCase().trim() ?? 'default')
@@ -605,7 +608,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "step",
         ["zoom"],
         ["concat", "dot-", ["get", "place_type"]],
-        2.0,
+        1.2,
         [
           "case",
           ["==", ["get", "id"], selectedId],
@@ -665,34 +668,50 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       // --- Clusters Layer Styles ---
       final String clusterIconImageExpression = jsonEncode([
         "case",
-        ["==", ["get", "dominant_type_code"], 2],
-        "dot-restaurant",
-        ["==", ["get", "dominant_type_code"], 7],
-        "dot-coffee",
-        ["==", ["get", "dominant_type_code"], 8],
-        "dot-hotel",
-        ["==", ["get", "dominant_type_code"], 9],
-        "dot-park",
-        ["==", ["get", "dominant_type_code"], 5],
-        "dot-bars",
-        ["==", ["get", "dominant_type_code"], 6],
-        "dot-bakery",
-        ["==", ["get", "dominant_type_code"], 4],
-        "dot-pharmacy",
-        ["==", ["get", "dominant_type_code"], 3],
-        "dot-supermarket",
-        ["==", ["get", "dominant_type_code"], 10],
-        "dot-airport",
-        "dot-other"
+        // 60% of clusters render as normal teardrop pins:
+        ["<", ["%", ["get", "cluster_id"], 5], 3],
+        [
+          "case",
+          ["==", ["%", ["get", "cluster_id"], 7], 0],
+          "normal-restaurant",
+          ["==", ["%", ["get", "cluster_id"], 7], 1],
+          "normal-coffee",
+          ["==", ["%", ["get", "cluster_id"], 7], 2],
+          "normal-hotel",
+          ["==", ["%", ["get", "cluster_id"], 7], 3],
+          "normal-park",
+          ["==", ["%", ["get", "cluster_id"], 7], 4],
+          "normal-movies",
+          ["==", ["%", ["get", "cluster_id"], 7], 5],
+          "normal-concerts",
+          "normal-other"
+        ],
+        // 40% render as dots:
+        [
+          "case",
+          ["==", ["%", ["get", "cluster_id"], 7], 0],
+          "dot-restaurant",
+          ["==", ["%", ["get", "cluster_id"], 7], 1],
+          "dot-coffee",
+          ["==", ["%", ["get", "cluster_id"], 7], 2],
+          "dot-hotel",
+          ["==", ["%", ["get", "cluster_id"], 7], 3],
+          "dot-park",
+          ["==", ["%", ["get", "cluster_id"], 7], 4],
+          "dot-movies",
+          ["==", ["%", ["get", "cluster_id"], 7], 5],
+          "dot-concerts",
+          "dot-other"
+        ]
       ]);
       final String clusterIconSizeExpression = jsonEncode([
         "step",
         ["get", "point_count"],
-        0.45, // Small clusters (< 10 points)
+        0.65, // Small clusters (< 10 points)
         10,
-        0.6,  // Medium clusters (10-99 points)
+        0.8,  // Medium clusters (10-99 points)
         100,
-        0.8   // Large clusters (>= 100 points)
+        0.95   // Large clusters (>= 100 points)
       ]);
       try {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-image", clusterIconImageExpression);
