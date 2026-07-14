@@ -1,5 +1,7 @@
-import 'dart:math';
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:moor/shared/models/lat_lng.dart' as model;
@@ -17,6 +19,7 @@ class ExploreMapWidget extends StatefulWidget {
   final Map<String, dynamic>? selectedPlace;
   final int selectedMapTab;
   final void Function(Map<String, dynamic> place)? onPlaceTap;
+  final VoidCallback? onGestureStart;
 
   const ExploreMapWidget({
     super.key,
@@ -31,6 +34,7 @@ class ExploreMapWidget extends StatefulWidget {
     this.selectedPlace,
     required this.selectedMapTab,
     this.onPlaceTap,
+    this.onGestureStart,
   });
 
   @override
@@ -39,14 +43,17 @@ class ExploreMapWidget extends StatefulWidget {
 
 class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   mapbox.MapboxMap? _mapboxMap;
-  mapbox.PointAnnotationManager? _pointAnnotationManager;
-  final Map<String, mapbox.PointAnnotation> _placeIdToAnnotationMap = {};
-  final Map<String, Map<String, dynamic>> _annotationToPlaceMap = {};
+  final Set<String> _registeredImageIds = {};
   double _currentZoom = 13.0;
-  int _lastAnnotationClickTime = 0;
+
+  bool _isDeselecting = false;
+  int _activePointers = 0;
+  bool _needsGlobalDeselect = false;
 
   final List<String> _dynamicLayerIds = [];
   bool? _isBaseLayersVisible;
+  bool _isUpdatingMarkers = false;
+  bool _needsUpdateAgain = false;
 
   static const List<String> _permanentHideKeywords = [
     'poi',
@@ -73,6 +80,12 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     'shop',
     'food',
     'beverage',
+    'intersection',
+    'entrance',
+    'parking',
+    'crosswalk',
+    'turning',
+    'road-label',
   ];
 
   @override
@@ -84,6 +97,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   @override
   void didUpdateWidget(ExploreMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.selectedPlace == null ||
+        widget.selectedPlace?['id']?.toString() != oldWidget.selectedPlace?['id']?.toString()) {
+      _isDeselecting = false;
+    }
     final bool placesChanged = !_arePlacesEqual(
       widget.places,
       oldWidget.places,
@@ -92,8 +109,51 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         widget.selectedPlace?['id']?.toString() !=
         oldWidget.selectedPlace?['id']?.toString();
 
-    if (placesChanged || selectedChanged) {
+    if (placesChanged) {
       _updateMarkers();
+    } else if (selectedChanged) {
+      _updateSelectionStyle();
+    }
+  }
+
+  Future<void> _updateSelectionStyle() async {
+    if (_mapboxMap == null) return;
+    try {
+      final String selectedId = widget.selectedPlace?['id']?.toString() ?? 'none';
+
+      final String iconImageExpression = jsonEncode([
+        "step",
+        ["zoom"],
+        ["concat", "dot-", ["get", "place_type"]],
+        11.5,
+        [
+          "case",
+          ["==", ["get", "id"], selectedId],
+          ["concat", "selected-", ["get", "place_type"]],
+          ["concat", "normal-", ["get", "place_type"]]
+        ]
+      ]);
+      await _mapboxMap!.style.setStyleLayerProperty("places-layer", "icon-image", iconImageExpression);
+
+      final String textSizeExpr = jsonEncode([
+        "case",
+        ["==", ["get", "id"], selectedId],
+        13.5,
+        12.0
+      ]);
+      await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-size", textSizeExpr);
+
+      final String textRadialOffsetExpr = jsonEncode([
+        "case",
+        ["==", ["get", "id"], selectedId],
+        1.6,
+        1.4
+      ]);
+      await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-radial-offset", textRadialOffsetExpr);
+      
+      debugPrint("ExploreMapWidget: Fast selection style update succeeded. selectedId: $selectedId");
+    } catch (e) {
+      debugPrint("Error in _updateSelectionStyle(): $e");
     }
   }
 
@@ -109,38 +169,79 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     return true;
   }
 
-  Future<void> _initAnnotationManager() async {
-    if (_mapboxMap == null) return;
+  Future<void> _initNativeClusteringSourceAndLayers(mapbox.MapboxMap mapboxMap) async {
     try {
-      final manager = await _mapboxMap!.annotations
-          .createPointAnnotationManager();
-      _pointAnnotationManager = manager;
+      try {
+        final source = mapbox.GeoJsonSource(
+          id: "places-source",
+          data: '{"type": "FeatureCollection", "features": []}',
+          cluster: true,
+          clusterRadius: 55.0,
+          clusterMaxZoom: 13.5,
+          clusterProperties: {
+            "dominant_rating_and_type": ["max", ["get", "rating_and_type"]],
+            "dominant_title": ["max", ["get", "title"]],
+            "dominant_id": ["max", ["get", "id"]],
+          },
+        );
+        await mapboxMap.style.addSource(source);
+      } catch (e) {
+        debugPrint("places-source already exists or error: $e");
+      }
 
-      await manager.setIconAllowOverlap(true);
-      await manager.setTextAllowOverlap(false);
-      await manager.setIconIgnorePlacement(true);
-      await manager.setTextIgnorePlacement(false);
+      try {
+        final placesLayer = mapbox.SymbolLayer(
+          id: "places-layer",
+          sourceId: "places-source",
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+          textAllowOverlap: false,
+          textIgnorePlacement: false,
+          textVariableAnchor: ["right", "left"],
+          textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
+          textHaloColor: 0xFFFFFFFF.toSigned(32),
+          textHaloWidth: 1.5,
+        );
+        await mapboxMap.style.addLayer(placesLayer);
+        await mapboxMap.style.setStyleLayerProperty("places-layer", "filter", '["!", ["has", "point_count"]]');
+        await mapboxMap.style.setStyleLayerProperty("places-layer", "visibility", "visible");
+      } catch (e) {
+        debugPrint("places-layer already exists or error: $e");
+      }
 
-      // Register click listener
-      // Register click listener
-      manager.addOnPointAnnotationClickListener(
-        _MarkerClickListener((annotation) {
-          _lastAnnotationClickTime = DateTime.now().millisecondsSinceEpoch;
-          final place = _annotationToPlaceMap[annotation.id];
-          if (place != null && widget.onPlaceTap != null) {
-            widget.onPlaceTap!(place);
-          }
-        }),
-      );
-
-      debugPrint(
-        "ExploreMapWidget: Successfully initialized PointAnnotationManager.",
-      );
+      try {
+        final clustersLayer = mapbox.SymbolLayer(
+          id: "clusters-layer",
+          sourceId: "places-source",
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
+          textAllowOverlap: false,
+          textIgnorePlacement: false,
+          textVariableAnchor: ["right", "left"],
+          textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
+          textHaloColor: 0xFFFFFFFF.toSigned(32),
+          textHaloWidth: 1.5,
+        );
+        await mapboxMap.style.addLayer(clustersLayer);
+        await mapboxMap.style.setStyleLayerProperty("clusters-layer", "filter", '["has", "point_count"]');
+        await mapboxMap.style.setStyleLayerProperty("clusters-layer", "visibility", "visible");
+      } catch (e) {
+        debugPrint("clusters-layer already exists or error: $e");
+      }
     } catch (e) {
-      debugPrint(
-        "ExploreMapWidget: Error initializing PointAnnotationManager: $e",
-      );
+      debugPrint("ExploreMapWidget: Error initializing native clustering: $e");
     }
+  }
+
+  Future<mapbox.MbxImage> _convertPngToMbxImage(Uint8List pngBytes) async {
+    final ui.Codec codec = await ui.instantiateImageCodec(pngBytes);
+    final ui.FrameInfo fi = await codec.getNextFrame();
+    final ui.Image image = fi.image;
+    return mapbox.MbxImage(
+      width: image.width,
+      height: image.height,
+      data: pngBytes,
+    );
   }
 
   Future<void> _hideDefaultLayers(mapbox.MapboxMap mapboxMap) async {
@@ -150,10 +251,37 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         if (layerInfo != null) {
           final String idLower = layerInfo.id.toLowerCase();
           // Skip our own annotation layers
-          if (idLower.contains('mapbox-android-pointannotation') ||
+          if (idLower.contains('places-') ||
+              idLower.contains('clusters-') ||
+              idLower.contains('mapbox-android-pointannotation') ||
               idLower.contains('pointannotation') ||
               idLower.contains('custom') && idLower.contains('annotation')) {
             continue;
+          }
+
+          // Simplify default label layers' text-fields to only use the 'name' field, removing inline reference shield icons (e.g. ••••)
+          if (idLower.contains('label')) {
+            try {
+              await mapboxMap.style.setStyleLayerProperty(
+                layerInfo.id,
+                'text-field',
+                jsonEncode(['get', 'name']),
+              );
+              debugPrint("ExploreMapWidget: Simplified label layer ${layerInfo.id} text-field successfully.");
+            } catch (e) {
+              // Ignore if layer doesn't support text-field
+            }
+          }
+
+          // Try to clear default icon images (like road shields) to prevent broken placeholder dots (e.g. ••••)
+          try {
+            await mapboxMap.style.setStyleLayerProperty(
+              layerInfo.id,
+              'icon-image',
+              jsonEncode(''),
+            );
+          } catch (e) {
+            // Ignore if layer doesn't support icon-image
           }
 
           bool shouldHide = false;
@@ -171,8 +299,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
                 'visibility',
                 'none',
               );
+              debugPrint("ExploreMapWidget: Hidden layer ${layerInfo.id} successfully.");
             } catch (e) {
-              // Ignore layers that do not support visibility property
+              debugPrint("ExploreMapWidget: Failed to hide layer ${layerInfo.id}: $e");
             }
           }
         }
@@ -265,329 +394,316 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     }
   }
 
-  bool _shouldShowAsPin(
-    Map<String, dynamic> place,
-    bool isSelected,
-    double currentZoom,
-    int selectedMapTab,
-  ) {
-    if (isSelected) return true;
-
-    // Check if place is saved or visited
-    final bool isSaved = place['isSaved'] as bool? ?? false;
-    final bool isVisited = place['isVisited'] as bool? ?? false;
-    if ((isSaved || isVisited) && selectedMapTab != 2) {
-      return true;
-    }
-
-    if (selectedMapTab == 0) {
-      bool isProminentInDiscover = false;
-      if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
-        isProminentInDiscover = true;
-      } else {
-        final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-        final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
-        if (currentZoom >= 15.0) {
-          isProminentInDiscover = rating >= 3.8 && reviewsCount >= 10;
-        } else if (currentZoom >= 14.0) {
-          isProminentInDiscover = rating >= 4.0 && reviewsCount >= 30;
-        } else if (currentZoom >= 13.0) {
-          isProminentInDiscover = rating >= 4.2 && reviewsCount >= 60;
-        } else {
-          isProminentInDiscover = rating >= 4.5 && reviewsCount >= 100;
-        }
-      }
-      return isProminentInDiscover || currentZoom >= 15.5;
-    }
-
-    if (selectedMapTab == 1) {
-      bool isProminentInEvents = false;
-      if (place['isCustomVenue'] == true || place['isRegistered'] == true) {
-        isProminentInEvents = true;
-      } else {
-        final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-        final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
-        if (currentZoom >= 15.0) {
-          isProminentInEvents = rating >= 3.8 && reviewsCount >= 10;
-        } else if (currentZoom >= 14.0) {
-          isProminentInEvents = rating >= 4.0 && reviewsCount >= 30;
-        } else if (currentZoom >= 13.0) {
-          isProminentInEvents = rating >= 4.2 && reviewsCount >= 60;
-        } else {
-          isProminentInEvents = rating >= 4.5 && reviewsCount >= 100;
-        }
-      }
-      return isProminentInEvents || currentZoom >= 13.5;
-    }
-
-    if (selectedMapTab == 2) {
-      double threshold = 15.5;
-      final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
-      if (peopleCount > 0) {
-        threshold -= 2.0;
-      } else {
-        final double rating = (place['rating'] as num? ?? 0.0).toDouble();
-        final int reviewsCount = (place['reviewsCount'] as num? ?? 0).toInt();
-        if (rating >= 4.5 && reviewsCount >= 100) {
-          threshold -= 1.5;
-        } else if (rating >= 4.0 && reviewsCount >= 30) {
-          threshold -= 0.75;
-        }
-      }
-      final int hash = place['id'].toString().hashCode.abs();
-      final double jitter = ((hash % 100) / 100.0 - 0.5) * 0.6;
-      threshold += jitter;
-
-      return currentZoom >= threshold;
-    }
-
-    return currentZoom >= 14.5;
-  }
-
   Future<void> _updateMarkers() async {
-    if (_pointAnnotationManager == null) return;
+    if (_mapboxMap == null) return;
+
+    if (_isUpdatingMarkers) {
+      _needsUpdateAgain = true;
+      return;
+    }
+    _isUpdatingMarkers = true;
+    _needsUpdateAgain = false;
 
     try {
       debugPrint(
-        "ExploreMapWidget: _updateMarkers() called with ${widget.places.length} places",
+        "ExploreMapWidget: _updateMarkers() called with ${widget.places.length} places (native)",
       );
-      await _pointAnnotationManager!.deleteAll();
-      _annotationToPlaceMap.clear();
-      _placeIdToAnnotationMap.clear();
 
-      final List<_MapCluster> clusters = _clusterPlaces(widget.places, _currentZoom);
-      final List<mapbox.PointAnnotationOptions> optionsList = [];
-      final Map<int, Map<String, dynamic>> tempIndexToPlace = {};
+      // 1. Gather all unique types in places
+      final uniqueTypes = widget.places
+          .map((p) => p['type']?.toString().toLowerCase().trim() ?? 'default')
+          .toSet();
 
-      int index = 0;
-      for (final cluster in clusters) {
-        final Map<String, dynamic> place = cluster.representative;
-        final String id = place['id']?.toString() ?? '';
-        if (id.isEmpty) continue;
+      final double dpr = ui.PlatformDispatcher.instance.views.isNotEmpty
+          ? ui.PlatformDispatcher.instance.views.first.devicePixelRatio
+          : 3.0;
 
-        final double lat = cluster.latitude;
-        final double lng = cluster.longitude;
+      // 2. Register style images on demand
+      for (final type in uniqueTypes) {
+        bool registeredAny = false;
+        if (!_registeredImageIds.contains("normal-$type")) {
+          try {
+            final pngBytes = await MarkerGenerator.getNormalPin(type);
+            final mbxImage = await _convertPngToMbxImage(pngBytes);
+            await _mapboxMap!.style.addStyleImage(
+              "normal-$type",
+              dpr,
+              mbxImage,
+              false,
+              <mapbox.ImageStretches?>[],
+              <mapbox.ImageStretches?>[],
+              mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
+            );
+            _registeredImageIds.add("normal-$type");
+            registeredAny = true;
+          } catch (e) {
+            debugPrint("Error registering normal-$type: $e");
+          }
+        }
+        if (!_registeredImageIds.contains("selected-$type")) {
+          try {
+            final pngBytes = await MarkerGenerator.getSelectedPin(type);
+            final mbxImage = await _convertPngToMbxImage(pngBytes);
+            await _mapboxMap!.style.addStyleImage(
+              "selected-$type",
+              dpr,
+              mbxImage,
+              false,
+              <mapbox.ImageStretches?>[],
+              <mapbox.ImageStretches?>[],
+              mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
+            );
+            _registeredImageIds.add("selected-$type");
+            registeredAny = true;
+          } catch (e) {
+            debugPrint("Error registering selected-$type: $e");
+          }
+        }
+        if (!_registeredImageIds.contains("dot-$type")) {
+          try {
+            final pngBytes = await MarkerGenerator.getDotPin(type);
+            final mbxImage = await _convertPngToMbxImage(pngBytes);
+            await _mapboxMap!.style.addStyleImage(
+              "dot-$type",
+              dpr,
+              mbxImage,
+              false,
+              <mapbox.ImageStretches?>[],
+              <mapbox.ImageStretches?>[],
+              mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
+            );
+            _registeredImageIds.add("dot-$type");
+            registeredAny = true;
+          } catch (e) {
+            debugPrint("Error registering dot-$type: $e");
+          }
+        }
+        if (registeredAny) {
+          debugPrint("ExploreMapWidget: Registered style images for type: $type");
+        }
+      }
 
-        final String type = place['type']?.toString() ?? 'default';
-        final bool isSelected =
-            widget.selectedPlace != null &&
-            widget.selectedPlace!['id'].toString() == id;
+      // 3. Construct GeoJSON features
+      final List<Map<String, dynamic>> features = [];
+      for (final p in widget.places) {
+        final double lat = double.tryParse(p['latitude']?.toString() ?? '') ?? 0.0;
+        final double lng = double.tryParse(p['longitude']?.toString() ?? '') ?? 0.0;
+        if (lat == 0.0 || lng == 0.0) continue;
+
+        final String name = p['name']?.toString() ?? '';
+        final String arName = p['arabicName']?.toString() ?? '';
+        final String mainName = arName.isNotEmpty ? arName : name;
+
+        final String placeType = p['type']?.toString().toLowerCase().trim() ?? 'default';
+        final double rating = double.tryParse(p['rating']?.toString() ?? '') ?? 0.0;
+        final String ratingAndType = "${rating.toStringAsFixed(2)}_$placeType";
+
+        features.add({
+          "type": "Feature",
+          "id": p['id'].toString(),
+          "geometry": {
+            "type": "Point",
+            "coordinates": [lng, lat]
+          },
+          "properties": {
+            "id": p['id'].toString(),
+            "place_type": placeType,
+            "title": mainName,
+            "rating_and_type": ratingAndType,
+          }
+        });
+      }
+
+      final geojson = {
+        "type": "FeatureCollection",
+        "features": features
+      };
+
+      debugPrint("ExploreMapWidget: Generated ${features.length} GeoJSON features.");
+
+      final String geojsonStr = jsonEncode(geojson);
+      await _mapboxMap!.style.setStyleSourceProperty("places-source", "data", geojsonStr);
+
+      // 4. Build color match expressions for labels
+      String colorToHex(Color color) {
+        final int r = (color.r * 255.0).round().clamp(0, 255);
+        final int g = (color.g * 255.0).round().clamp(0, 255);
+        final int b = (color.b * 255.0).round().clamp(0, 255);
+        return '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
+      }
+
+      final List<dynamic> colorMatchExpr = ["match", ["get", "place_type"]];
+      for (final type in uniqueTypes) {
         final color = MarkerGenerator.getMarkerColor(type);
-
-        final bool showAsPin = _shouldShowAsPin(
-          place,
-          isSelected,
-          _currentZoom,
-          widget.selectedMapTab,
-        );
-
-        Uint8List imageBytes;
-        if (showAsPin) {
-          if (isSelected) {
-            imageBytes = await MarkerGenerator.getSelectedPin(type);
-          } else {
-            imageBytes = await MarkerGenerator.getNormalPin(type);
-          }
-        } else {
-          imageBytes = await MarkerGenerator.getDotPin(type);
-        }
-
-        String? textField;
-        mapbox.TextAnchor? textAnchor;
-        mapbox.TextJustify? textJustify;
-        List<double>? textOffset;
-        double? textSize;
-        int? textColor;
-        int? textHaloColor;
-        double? textHaloWidth;
-
-        if (showAsPin) {
-          final String name = place['name']?.toString() ?? '';
-          final String arName = place['arabicName']?.toString() ?? '';
-          final String mainName = arName.isNotEmpty ? arName : name;
-
-          textField = mainName;
-          textAnchor = mapbox.TextAnchor.LEFT;
-          textOffset = isSelected
-              ? [1.3, -3.0]
-              : [1.3, -2.1]; // Centered vertically with the teardrop head
-          textSize = isSelected ? 13.5 : 12.0;
-          textColor = color.toARGB32();
-          textHaloColor = 0xFFFFFFFF;
-          textHaloWidth = 1.5;
-          textJustify = mapbox.TextJustify.LEFT;
-        }
-
-        final double sortKey = isSelected
-            ? 1000.0
-            : (double.tryParse(place['rating']?.toString() ?? '0') ?? 0.0);
-
-        final option = mapbox.PointAnnotationOptions(
-          geometry: mapbox.Point(
-            coordinates: mapbox.Position(lng, lat),
-          ).toJson(),
-          image: imageBytes,
-          iconAnchor: showAsPin
-              ? mapbox.IconAnchor.BOTTOM
-              : mapbox.IconAnchor.CENTER,
-          textField: textField,
-          textAnchor: textAnchor,
-          textOffset: textOffset,
-          textSize: textSize,
-          textColor: textColor,
-          textHaloColor: textHaloColor,
-          textHaloWidth: textHaloWidth,
-          textJustify: textJustify,
-          symbolSortKey: sortKey,
-        );
-
-        optionsList.add(option);
-
-        final Map<String, dynamic> mappedPlace = {
-          ...place,
-          'isCluster': !cluster.isSingle,
-          'latitude': cluster.latitude,
-          'longitude': cluster.longitude,
-          'places': cluster.places,
-        };
-
-        tempIndexToPlace[index] = mappedPlace;
-        index++;
-      }
-
-      if (optionsList.isNotEmpty) {
-        final annotations = await _pointAnnotationManager!.createMulti(
-          optionsList,
-        );
-        for (int i = 0; i < annotations.length; i++) {
-          final annotation = annotations[i];
-          final mappedPlace = tempIndexToPlace[i];
-          if (annotation != null && mappedPlace != null) {
-            _annotationToPlaceMap[annotation.id] = mappedPlace;
-            
-            final List<dynamic> clusterPlaces = mappedPlace['places'] as List<dynamic>;
-            for (final p in clusterPlaces) {
-              final Map<String, dynamic> placeMap = p as Map<String, dynamic>;
-              _placeIdToAnnotationMap[placeMap['id'].toString()] = annotation;
-            }
-          }
+        final String hexStr = colorToHex(color);
+        if (!colorMatchExpr.contains(type)) {
+          colorMatchExpr.add(type);
+          colorMatchExpr.add(hexStr);
         }
       }
-      debugPrint(
-        "ExploreMapWidget: Successfully added ${optionsList.length} annotations",
-      );
+      if (uniqueTypes.isEmpty) {
+        colorMatchExpr.add("dummy_type");
+        colorMatchExpr.add("#000000");
+      }
+      colorMatchExpr.add("#000000");
+
+      final List<dynamic> clusterColorMatchExpr = ["match", ["get", "dominant_place_type"]];
+      for (final type in uniqueTypes) {
+        final color = MarkerGenerator.getMarkerColor(type);
+        final String hexStr = colorToHex(color);
+        if (!clusterColorMatchExpr.contains(type)) {
+          clusterColorMatchExpr.add(type);
+          clusterColorMatchExpr.add(hexStr);
+        }
+      }
+      if (uniqueTypes.isEmpty) {
+        clusterColorMatchExpr.add("dummy_type");
+        clusterColorMatchExpr.add("#000000");
+      }
+      clusterColorMatchExpr.add("#000000");
+
+      // 5. Set layer styling expressions
+      final String selectedId = widget.selectedPlace?['id']?.toString() ?? 'none';
+
+      // --- Places Layer Styles ---
+      final String iconImageExpression = jsonEncode([
+        "step",
+        ["zoom"],
+        ["concat", "dot-", ["get", "place_type"]],
+        11.5,
+        [
+          "case",
+          ["==", ["get", "id"], selectedId],
+          ["concat", "selected-", ["get", "place_type"]],
+          ["concat", "normal-", ["get", "place_type"]]
+        ]
+      ]);
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "icon-image", iconImageExpression);
+      } catch (e) {
+        debugPrint("Error setting places-layer icon-image: $e");
+      }
+
+      final String textFieldExpression = jsonEncode([
+        "step",
+        ["zoom"],
+        "",
+        11.5,
+        ["get", "title"]
+      ]);
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-field", textFieldExpression);
+      } catch (e) {
+        debugPrint("Error setting places-layer text-field: $e");
+      }
+
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-color", jsonEncode(colorMatchExpr));
+      } catch (e) {
+        debugPrint("Error setting places-layer text-color: $e");
+      }
+
+      final String textSizeExpr = jsonEncode([
+        "case",
+        ["==", ["get", "id"], selectedId],
+        13.5,
+        12.0
+      ]);
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-size", textSizeExpr);
+      } catch (e) {
+        debugPrint("Error setting places-layer text-size: $e");
+      }
+
+      final String textRadialOffsetExpr = jsonEncode([
+        "case",
+        ["==", ["get", "id"], selectedId],
+        1.6,
+        1.4
+      ]);
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-radial-offset", textRadialOffsetExpr);
+      } catch (e) {
+        debugPrint("Error setting places-layer text-radial-offset: $e");
+      }
+
+      // --- Clusters Layer Styles ---
+      final String clusterIconImageExpression = jsonEncode([
+        "case",
+        ["in", "restaurant", ["get", "dominant_rating_and_type"]],
+        "dot-restaurant",
+        ["in", "hotel", ["get", "dominant_rating_and_type"]],
+        "dot-hotel",
+        ["in", "coffee", ["get", "dominant_rating_and_type"]],
+        "dot-coffee",
+        ["in", "pharmacy", ["get", "dominant_rating_and_type"]],
+        "dot-pharmacy",
+        ["in", "park", ["get", "dominant_rating_and_type"]],
+        "dot-park",
+        ["in", "bars", ["get", "dominant_rating_and_type"]],
+        "dot-bars",
+        ["in", "bakery", ["get", "dominant_rating_and_type"]],
+        "dot-bakery",
+        ["in", "cinema", ["get", "dominant_rating_and_type"]],
+        "dot-cinema",
+        ["in", "stadium", ["get", "dominant_rating_and_type"]],
+        "dot-stadium",
+        ["in", "museum", ["get", "dominant_rating_and_type"]],
+        "dot-museum",
+        ["in", "theater", ["get", "dominant_rating_and_type"]],
+        "dot-theater",
+        ["in", "concert", ["get", "dominant_rating_and_type"]],
+        "dot-concert",
+        ["in", "sports", ["get", "dominant_rating_and_type"]],
+        "dot-sports",
+        "dot-other"
+      ]);
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-image", clusterIconImageExpression);
+      } catch (e) {
+        debugPrint("Error setting clusters-layer icon-image: $e");
+      }
+
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-field", jsonEncode(["literal", ""]));
+      } catch (e) {
+        debugPrint("Error setting clusters-layer text-field: $e");
+      }
+
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-size", 0.0);
+      } catch (e) {
+        debugPrint("Error setting clusters-layer text-size: $e");
+      }
+
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-opacity", 0.0);
+      } catch (e) {
+        debugPrint("Error setting clusters-layer text-opacity: $e");
+      }
+
+      // Repeatedly enforce hiding default road labels, shields, and intersections to override Mapbox async style loads
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("road-label", "visibility", "none");
+        await _mapboxMap!.style.setStyleLayerProperty("road-number-shield", "visibility", "none");
+        await _mapboxMap!.style.setStyleLayerProperty("road-exit-shield", "visibility", "none");
+        await _mapboxMap!.style.setStyleLayerProperty("road-intersection", "visibility", "none");
+        await _mapboxMap!.style.setStyleLayerProperty("crosswalks", "visibility", "none");
+        debugPrint("ExploreMapWidget: Enforced road/shield layer visibility overrides.");
+      } catch (e) {
+        // Ignore if some layers do not exist
+      }
+
+      debugPrint("ExploreMapWidget: Successfully updated native GeoJSON source & styling layers.");
     } catch (e, stackTrace) {
-      debugPrint("ExploreMapWidget: Error in _updateMarkers(): $e");
+      debugPrint("ExploreMapWidget: Outer error in _updateMarkers(): $e");
       debugPrint(stackTrace.toString());
-    }
-  }
-
-  List<_MapCluster> _clusterPlaces(List<Map<String, dynamic>> places, double zoom) {
-    if (places.isEmpty) return [];
-
-    final List<_ProjectedPlace> projected = [];
-    for (final place in places) {
-      final double? lat = double.tryParse(place['latitude']?.toString() ?? '');
-      final double? lng = double.tryParse(place['longitude']?.toString() ?? '');
-      if (lat == null || lng == null) continue;
-
-      final double scale = pow(2.0, zoom).toDouble();
-      final double x = (lng + 180.0) / 360.0 * 256.0 * scale;
-      final double sinLat = sin(lat * pi / 180.0);
-      final double clampedSinLat = sinLat.clamp(-0.9999, 0.9999);
-      final double y = (0.5 - log((1.0 + clampedSinLat) / (1.0 - clampedSinLat)) / (4.0 * pi)) * 256.0 * scale;
-
-      projected.add(_ProjectedPlace(
-        place: place,
-        x: x,
-        y: y,
-        latitude: lat,
-        longitude: lng,
-      ));
-    }
-
-    final List<List<_ProjectedPlace>> clusters = [];
-    final Set<int> visited = {};
-    
-    // Choose clustering radius in pixels (zoom dependent)
-    final double radius = zoom >= 15.0 ? 15.0 : 45.0;
-
-    for (int i = 0; i < projected.length; i++) {
-      if (visited.contains(i)) continue;
-
-      final List<_ProjectedPlace> currentCluster = [projected[i]];
-      visited.add(i);
-
-      for (int j = i + 1; j < projected.length; j++) {
-        if (visited.contains(j)) continue;
-
-        final double dx = projected[i].x - projected[j].x;
-        final double dy = projected[i].y - projected[j].y;
-        final double dist = sqrt(dx * dx + dy * dy);
-
-        if (dist <= radius) {
-          currentCluster.add(projected[j]);
-          visited.add(j);
-        }
+    } finally {
+      _isUpdatingMarkers = false;
+      if (_needsUpdateAgain) {
+        _updateMarkers();
       }
-      clusters.add(currentCluster);
     }
-
-    final List<_MapCluster> result = [];
-    for (final c in clusters) {
-      final List<Map<String, dynamic>> clusterPlaces = c.map((cp) => cp.place).toList();
-      final Map<String, dynamic> rep = _pickRepresentative(clusterPlaces);
-      
-      double sumLat = 0.0;
-      double sumLng = 0.0;
-      for (final p in c) {
-        sumLat += p.latitude;
-        sumLng += p.longitude;
-      }
-      final double avgLat = sumLat / c.length;
-      final double avgLng = sumLng / c.length;
-
-      result.add(_MapCluster(
-        representative: rep,
-        places: clusterPlaces,
-        latitude: avgLat,
-        longitude: avgLng,
-      ));
-    }
-
-    return result;
-  }
-
-  Map<String, dynamic> _pickRepresentative(List<Map<String, dynamic>> clusterPlaces) {
-    if (clusterPlaces.length == 1) return clusterPlaces.first;
-
-    clusterPlaces.sort((a, b) {
-      if (widget.selectedPlace != null) {
-        final String selId = widget.selectedPlace!['id'].toString();
-        if (a['id'].toString() == selId) return -1;
-        if (b['id'].toString() == selId) return 1;
-      }
-
-      final bool aSaved = a['isSaved'] == true;
-      final bool bSaved = b['isSaved'] == true;
-      if (aSaved && !bSaved) return -1;
-      if (!aSaved && bSaved) return 1;
-
-      final bool aReg = a['isRegistered'] == true || a['isCustomVenue'] == true;
-      final bool bReg = b['isRegistered'] == true || b['isCustomVenue'] == true;
-      if (aReg && !bReg) return -1;
-      if (!aReg && bReg) return 1;
-
-      final double aRating = (a['rating'] as num? ?? 0.0).toDouble();
-      final double bRating = (b['rating'] as num? ?? 0.0).toDouble();
-      final int aReviews = (a['reviewsCount'] as num? ?? 0).toInt();
-      final int bReviews = (b['reviewsCount'] as num? ?? 0).toInt();
-      
-      final double aScore = aRating * (aReviews + 1);
-      final double bScore = bRating * (bReviews + 1);
-      return bScore.compareTo(aScore);
-    });
-    return clusterPlaces.first;
   }
 
   @override
@@ -598,213 +714,287 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew",
     );
 
-    return mapbox.MapWidget(
-      key: const ValueKey('explore_mapbox_widget_key'),
-      resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
-      styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
-      onStyleLoadedListener: (styleLoaded) async {
-        debugPrint(
-          "ExploreMapWidget: Style fully loaded. Reinitializing annotations...",
-        );
-        if (_mapboxMap != null) {
-          await _hideDefaultLayers(_mapboxMap!);
-          await _initDynamicLayers(_mapboxMap!);
-          _isBaseLayersVisible = null;
-          await _applyBaseLabelVisibility(_currentZoom);
-          try {
-            await _mapboxMap!.gestures.updateSettings(
-              mapbox.GesturesSettings(
-                rotateEnabled: false,
-                simultaneousRotateAndPinchToZoomEnabled: false,
-                pitchEnabled: false,
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (pointerEvent) {
+        _activePointers++;
+      },
+      onPointerUp: (pointerEvent) {
+        _activePointers--;
+        if (_activePointers < 0) _activePointers = 0;
+        if (_activePointers == 0 && _needsGlobalDeselect) {
+          _needsGlobalDeselect = false;
+          _isDeselecting = false;
+          debugPrint("ExploreMapWidget Listener: Gesture ended, triggering global deselect.");
+          if (widget.onTap != null) {
+            widget.onTap!(const model.LatLng(0.0, 0.0));
+          }
+        }
+      },
+      onPointerCancel: (pointerEvent) {
+        _activePointers--;
+        if (_activePointers < 0) _activePointers = 0;
+        if (_activePointers == 0 && _needsGlobalDeselect) {
+          _needsGlobalDeselect = false;
+          _isDeselecting = false;
+          debugPrint("ExploreMapWidget Listener: Gesture canceled, triggering global deselect.");
+          if (widget.onTap != null) {
+            widget.onTap!(const model.LatLng(0.0, 0.0));
+          }
+        }
+      },
+      onPointerMove: (pointerEvent) {
+        if (widget.selectedPlace != null && !_isDeselecting) {
+          debugPrint("ExploreMapWidget Listener: User map gesture detected, hiding card locally.");
+          _isDeselecting = true;
+          _needsGlobalDeselect = true;
+          if (widget.onGestureStart != null) {
+            widget.onGestureStart!();
+          }
+        }
+      },
+      child: mapbox.MapWidget(
+        key: const ValueKey('explore_mapbox_widget_key'),
+        resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
+        styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+        onStyleLoadedListener: (styleLoaded) {
+          debugPrint(
+            "ExploreMapWidget: Style fully loaded. Reinitializing annotations...",
+          );
+          _registeredImageIds.clear();
+          if (_mapboxMap != null) {
+            Future.microtask(() async {
+              await _hideDefaultLayers(_mapboxMap!);
+              await _initDynamicLayers(_mapboxMap!);
+              _isBaseLayersVisible = null;
+              await _applyBaseLabelVisibility(_currentZoom);
+              try {
+                await _mapboxMap!.gestures.updateSettings(
+                  mapbox.GesturesSettings(
+                    rotateEnabled: false,
+                    simultaneousRotateAndPinchToZoomEnabled: false,
+                    pitchEnabled: false,
+                  ),
+                );
+              } catch (e) {
+                debugPrint("Error disabling map rotation on style load: $e");
+              }
+              await _initNativeClusteringSourceAndLayers(_mapboxMap!);
+              await _updateMarkers();
+            });
+          }
+        },
+        cameraOptions: mapbox.CameraOptions(
+          center: mapbox.Point(
+            coordinates: mapbox.Position(
+              widget.initialCameraPosition.target.longitude,
+              widget.initialCameraPosition.target.latitude,
+            ),
+          ).toJson(),
+          zoom: widget.initialCameraPosition.zoom,
+        ),
+        onMapCreated: (mapboxMap) {
+          _mapboxMap = mapboxMap;
+
+          Future.microtask(() async {
+            await _hideDefaultLayers(mapboxMap);
+
+            // Set projection to flat map (Mercator) instead of 3D Globe
+            try {
+              await mapboxMap.style.setProjection("mercator");
+            } catch (e) {
+              debugPrint("Error setting map projection: $e");
+            }
+
+            // Restrict camera bounds to prevent excessive zoom out while showing flat map
+            try {
+              await mapboxMap.setBounds(mapbox.CameraBoundsOptions(minZoom: 1.5));
+            } catch (e) {
+              debugPrint("Error setting map bounds: $e");
+            }
+
+            await mapboxMap.logo.updateSettings(
+              mapbox.LogoSettings(position: mapbox.OrnamentPosition.BOTTOM_LEFT),
+            );
+            await mapboxMap.attribution.updateSettings(
+              mapbox.AttributionSettings(
+                position: mapbox.OrnamentPosition.BOTTOM_LEFT,
               ),
             );
-          } catch (e) {
-            debugPrint("Error disabling map rotation on style load: $e");
-          }
-          await _initAnnotationManager();
-          await _updateMarkers();
-        }
-      },
-      cameraOptions: mapbox.CameraOptions(
-        center: mapbox.Point(
-          coordinates: mapbox.Position(
-            widget.initialCameraPosition.target.longitude,
-            widget.initialCameraPosition.target.latitude,
-          ),
-        ).toJson(),
-        zoom: widget.initialCameraPosition.zoom,
-      ),
-      onMapCreated: (mapboxMap) async {
-        _mapboxMap = mapboxMap;
+            await mapboxMap.compass.updateSettings(
+              mapbox.CompassSettings(enabled: false),
+            );
+            await mapboxMap.scaleBar.updateSettings(
+              mapbox.ScaleBarSettings(enabled: false),
+            );
 
-        await _hideDefaultLayers(mapboxMap);
-
-        // Set projection to flat map (Mercator) instead of 3D Globe
-        try {
-          await mapboxMap.style.setProjection("mercator");
-        } catch (e) {
-          debugPrint("Error setting map projection: $e");
-        }
-
-        // Restrict camera bounds to prevent excessive zoom out while showing flat map
-        try {
-          await mapboxMap.setBounds(mapbox.CameraBoundsOptions(minZoom: 1.5));
-        } catch (e) {
-          debugPrint("Error setting map bounds: $e");
-        }
-
-        await mapboxMap.logo.updateSettings(
-          mapbox.LogoSettings(position: mapbox.OrnamentPosition.BOTTOM_LEFT),
-        );
-        await mapboxMap.attribution.updateSettings(
-          mapbox.AttributionSettings(
-            position: mapbox.OrnamentPosition.BOTTOM_LEFT,
-          ),
-        );
-        await mapboxMap.compass.updateSettings(
-          mapbox.CompassSettings(enabled: false),
-        );
-        await mapboxMap.scaleBar.updateSettings(
-          mapbox.ScaleBarSettings(enabled: false),
-        );
-
-        // Disable 360-degree rotation gesture and tilt (pitch) gesture
-        try {
-          await mapboxMap.gestures.updateSettings(
-            mapbox.GesturesSettings(
-              rotateEnabled: false,
-              simultaneousRotateAndPinchToZoomEnabled: false,
-              pitchEnabled: false,
-            ),
-          );
-        } catch (e) {
-          debugPrint("Error disabling map rotation: $e");
-        }
-
-        await _initAnnotationManager();
-        await _initDynamicLayers(mapboxMap);
-        _isBaseLayersVisible = null;
-        await _applyBaseLabelVisibility(_currentZoom);
-        await _updateMarkers();
-
-        if (widget.onMapCreated != null) {
-          widget.onMapCreated!(mapboxMap);
-        }
-      },
-      onCameraChangeListener: (cameraChangedEvent) {
-        if (_mapboxMap != null) {
-          _mapboxMap!.getCameraState().then((state) {
-            final double oldZoom = _currentZoom;
-            _currentZoom = state.zoom;
-
-            _applyBaseLabelVisibility(_currentZoom);
-
-            // Rebuild markers if crossing key zoom transition thresholds (every 0.5 step)
-            final int oldStep = (oldZoom * 2).round();
-            final int newStep = (_currentZoom * 2).round();
-            if (oldStep != newStep) {
-              _updateMarkers();
+            // Disable 360-degree rotation gesture and tilt (pitch) gesture
+            try {
+              await mapboxMap.gestures.updateSettings(
+                mapbox.GesturesSettings(
+                  rotateEnabled: false,
+                  simultaneousRotateAndPinchToZoomEnabled: false,
+                  pitchEnabled: false,
+                ),
+              );
+            } catch (e) {
+              debugPrint("Error disabling map rotation: $e");
             }
 
-            if (widget.onCameraMove != null) {
-              widget.onCameraMove!(_currentZoom);
+            await _initNativeClusteringSourceAndLayers(mapboxMap);
+            await _initDynamicLayers(mapboxMap);
+            _isBaseLayersVisible = null;
+            await _applyBaseLabelVisibility(_currentZoom);
+            await _updateMarkers();
+
+            if (widget.onMapCreated != null) {
+              widget.onMapCreated!(mapboxMap);
             }
           });
-        }
-      },
-      onMapIdleListener: (mapIdleEvent) {
-        if (widget.onCameraIdle != null) {
-          widget.onCameraIdle!();
-        }
-      },
-      onTapListener: (point) {
-        if (_mapboxMap == null) return;
+        },
+        onCameraChangeListener: (cameraChangedEvent) {
+          if (_mapboxMap != null) {
+            _mapboxMap!.getCameraState().then((state) {
+              _currentZoom = state.zoom;
 
-        final int tapTime = DateTime.now().millisecondsSinceEpoch;
+              _applyBaseLabelVisibility(_currentZoom);
 
-        // Schedule check to prevent race condition when clicking annotations
-        Future.delayed(const Duration(milliseconds: 150), () {
-          final int diff = (tapTime - _lastAnnotationClickTime).abs();
-          if (diff < 200) {
-            debugPrint(
-              "ExploreMapWidget Tap: Ignored map tap because it coincided with annotation click (diff: $diff ms).",
-            );
-            return;
+              if (widget.onCameraMove != null) {
+                widget.onCameraMove!(_currentZoom);
+              }
+            });
           }
+        },
+        onMapIdleListener: (mapIdleEvent) {
+          if (widget.onCameraIdle != null) {
+            widget.onCameraIdle!();
+          }
+        },
+        onTapListener: (point) async {
+          if (_mapboxMap == null) return;
 
-          _mapboxMap!.coordinateForPixel(point).then((value) {
-            final geoPoint = mapbox.Point.fromJson(
-              Map<String, dynamic>.from(value),
-            );
-            final double tapLat = geoPoint.coordinates.lat.toDouble();
-            final double tapLng = geoPoint.coordinates.lng.toDouble();
+          // Detect if the coordinate is geographical due to the iOS plugin bug
+          final bool isIosGeoBug = point.x.abs() <= 90.0 && point.y.abs() <= 180.0;
 
-            debugPrint("ExploreMapWidget Tap: Map clicked, deselecting.");
-            if (widget.onTap != null) {
-              widget.onTap!(model.LatLng(tapLat, tapLng));
+          mapbox.ScreenCoordinate screenPt;
+          model.LatLng geoLatLng;
+
+          if (isIosGeoBug) {
+            geoLatLng = model.LatLng(point.x, point.y);
+            try {
+              screenPt = await _mapboxMap!.pixelForCoordinate(
+                mapbox.Point(
+                  coordinates: mapbox.Position(point.y, point.x),
+                ).toJson(),
+              );
+            } catch (e) {
+              debugPrint("Error converting coordinate to pixel: $e");
+              screenPt = point;
             }
-          });
-        });
-      },
-      onLongTapListener: (point) {
-        if (widget.onLongPress != null && _mapboxMap != null) {
-          _mapboxMap!.coordinateForPixel(point).then((value) {
-            final geoPoint = mapbox.Point.fromJson(
-              Map<String, dynamic>.from(value),
-            );
-            widget.onLongPress!(
-              model.LatLng(
+          } else {
+            screenPt = point;
+            try {
+              final value = await _mapboxMap!.coordinateForPixel(point);
+              final geoPoint = mapbox.Point.fromJson(
+                Map<String, dynamic>.from(value),
+              );
+              geoLatLng = model.LatLng(
                 geoPoint.coordinates.lat.toDouble(),
                 geoPoint.coordinates.lng.toDouble(),
+              );
+            } catch (e) {
+              debugPrint("Error converting pixel to coordinate: $e");
+              geoLatLng = const model.LatLng(0.0, 0.0);
+            }
+          }
+
+          // Query within a 24x24 pixel bounding box around the tap for precise selection
+          const double tolerance = 12.0;
+          final screenBox = mapbox.ScreenBox(
+            min: mapbox.ScreenCoordinate(x: screenPt.x - tolerance, y: screenPt.y - tolerance),
+            max: mapbox.ScreenCoordinate(x: screenPt.x + tolerance, y: screenPt.y + tolerance),
+          );
+
+          final renderedQueryGeometry = mapbox.RenderedQueryGeometry(
+            value: json.encode(screenBox.encode()),
+            type: mapbox.Type.SCREEN_BOX,
+          );
+
+          try {
+            final features = await _mapboxMap!.queryRenderedFeatures(
+              renderedQueryGeometry,
+              mapbox.RenderedQueryOptions(
+                layerIds: ["places-layer", "clusters-layer"],
+                filter: null,
               ),
             );
-          });
-        }
-      },
+
+            debugPrint("ExploreMapWidget Tap: Queried ${features.length} features.");
+            if (features.isNotEmpty && features.first != null) {
+              final feature = features.first!;
+              final properties = feature.feature['properties'] as Map?;
+              debugPrint("ExploreMapWidget Tap: Properties = $properties");
+              if (properties != null) {
+                final String? dominantId = properties['dominant_id']?.toString();
+                final String? placeId = properties['id']?.toString();
+                final String targetId = dominantId ?? placeId ?? '';
+
+                if (targetId.isNotEmpty) {
+                  final place = widget.places.firstWhere(
+                    (p) => p['id'].toString() == targetId,
+                    orElse: () => {},
+                  );
+                  if (place.isNotEmpty && widget.onPlaceTap != null) {
+                    if (widget.selectedPlace?['id']?.toString() == targetId) {
+                      debugPrint("ExploreMapWidget Tap: Already selected place clicked again, deselecting.");
+                      if (widget.onTap != null) {
+                        widget.onTap!(geoLatLng);
+                      }
+                    } else {
+                      debugPrint("ExploreMapWidget Tap: Place clicked natively, selecting: $targetId");
+                      widget.onPlaceTap!(place);
+                    }
+                    return;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint("Error querying rendered features: $e");
+          }
+
+          // If no feature was clicked, deselect!
+          debugPrint("ExploreMapWidget Tap: Map clicked, deselecting.");
+          if (widget.onTap != null) {
+            widget.onTap!(geoLatLng);
+          }
+        },
+        onLongTapListener: (point) async {
+          if (widget.onLongPress != null && _mapboxMap != null) {
+            final bool isIosGeoBug = point.x.abs() <= 90.0 && point.y.abs() <= 180.0;
+            if (isIosGeoBug) {
+              widget.onLongPress!(model.LatLng(point.x, point.y));
+            } else {
+              try {
+                final value = await _mapboxMap!.coordinateForPixel(point);
+                final geoPoint = mapbox.Point.fromJson(
+                  Map<String, dynamic>.from(value),
+                );
+                widget.onLongPress!(
+                  model.LatLng(
+                    geoPoint.coordinates.lat.toDouble(),
+                    geoPoint.coordinates.lng.toDouble(),
+                  ),
+                );
+              } catch (e) {
+                debugPrint("Error converting pixel to coordinate on long press: $e");
+              }
+            }
+          }
+        },
+      ),
     );
   }
 }
 
-class _MarkerClickListener implements mapbox.OnPointAnnotationClickListener {
-  final void Function(mapbox.PointAnnotation annotation) onClick;
-
-  _MarkerClickListener(this.onClick);
-
-  @override
-  void onPointAnnotationClick(mapbox.PointAnnotation annotation) {
-    onClick(annotation);
-  }
-}
-
-class _MapCluster {
-  final Map<String, dynamic> representative;
-  final List<Map<String, dynamic>> places;
-  final double latitude;
-  final double longitude;
-
-  _MapCluster({
-    required this.representative,
-    required this.places,
-    required this.latitude,
-    required this.longitude,
-  });
-
-  bool get isSingle => places.length == 1;
-}
-
-class _ProjectedPlace {
-  final Map<String, dynamic> place;
-  final double x;
-  final double y;
-  final double latitude;
-  final double longitude;
-
-  _ProjectedPlace({
-    required this.place,
-    required this.x,
-    required this.y,
-    required this.latitude,
-    required this.longitude,
-  });
-}
+// Native clustering helper classes removed

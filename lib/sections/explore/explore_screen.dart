@@ -58,6 +58,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   mapbox.MapboxMap? _mapController;
   double _currentZoom = 13.0;
   final TextEditingController _searchController = TextEditingController();
+  final ValueNotifier<bool> _showCardNotifier = ValueNotifier<bool>(true);
 
   @override
   void initState() {
@@ -70,6 +71,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _showCardNotifier.dispose();
     super.dispose();
   }
 
@@ -678,6 +680,15 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
     final filteredPlaces = ExploreScreenHelpers.getFilteredPlaces(state, state.currentZoom);
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final bool shouldShow = state.selectedPlace != null;
+        if (_showCardNotifier.value != shouldShow) {
+          _showCardNotifier.value = shouldShow;
+        }
+      }
+    });
+
     final double topPadding = MediaQuery.of(context).padding.top;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
     
@@ -710,6 +721,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 selectedMapTab: state.selectedMapTab,
                 onPlaceTap: (place) {
                   ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
+                },
+                onGestureStart: () {
+                  _showCardNotifier.value = false;
                 },
                 onMapCreated: (controller) {
                   _mapController = controller;
@@ -1050,33 +1064,41 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 left: 16,
                 right: 16,
                 bottom: overlaysBottom,
-                child: ExplorePlaceCard(
-                  place: state.selectedPlace!,
-                  onSavedChanged: (val) {
-                    ref.read(exploreViewModelProvider.notifier).toggleBookmark(state.selectedPlace!, val);
-                  },
-                  onActionTriggered: () => _handlePlaceAction(state.selectedPlace!),
-                  onViewPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PlaceDetailsScreen(
-                          place: state.selectedPlace!,
-                          onActionTriggered: () => _handlePlaceAction(state.selectedPlace!),
-                        ),
-                      ),
-                    );
-                  },
-                  onInteractionPressed: () {
-                    final authorName = state.selectedPlace!['authorName'] as String? ?? 'Anonymous';
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          "مرحباً بك في More! تم تسجيل التواجد بواسطة $authorName",
-                          style: GoogleFonts.ibmPlexSansArabic(),
-                        ),
-                      ),
-                    );
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _showCardNotifier,
+                  builder: (context, showCard, child) {
+                    if (showCard && state.selectedPlace != null) {
+                      return ExplorePlaceCard(
+                        place: state.selectedPlace!,
+                        onSavedChanged: (val) {
+                          ref.read(exploreViewModelProvider.notifier).toggleBookmark(state.selectedPlace!, val);
+                        },
+                        onActionTriggered: () => _handlePlaceAction(state.selectedPlace!),
+                        onViewPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PlaceDetailsScreen(
+                                place: state.selectedPlace!,
+                                onActionTriggered: () => _handlePlaceAction(state.selectedPlace!),
+                              ),
+                            ),
+                          );
+                        },
+                        onInteractionPressed: () {
+                          final authorName = state.selectedPlace!['authorName'] as String? ?? 'Anonymous';
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "مرحباً بك في More! تم تسجيل التواجد بواسطة $authorName",
+                                style: GoogleFonts.ibmPlexSansArabic(),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
                   },
                 ),
               ),

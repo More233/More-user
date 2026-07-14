@@ -42,16 +42,16 @@ class MarkerGenerator {
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
     
     final double finalScale = isSelected ? 1.05 : 0.85;
-    const double dx = 8.0;
-    const double dy = 6.0;
+    const double dx = 10.0;
+    const double dy = 8.0;
 
     final double gap = 4.0 * finalScale;
     final double dotRadius = 3.8 * finalScale;
 
-    final double width = (27.75 * finalScale) + 16.0;
+    final double width = (30.0 * finalScale) + 20.0;
     final double height = isSelected
-        ? (30.833 * finalScale) + gap + (dotRadius * 2) + 16.0
-        : (30.833 * finalScale) + 16.0;
+        ? (34.0 * finalScale) + gap + (dotRadius * 2) + 20.0
+        : (34.0 * finalScale) + 20.0;
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -59,40 +59,18 @@ class MarkerGenerator {
     canvas.scale(dpr);
 
     final Path path = Path();
-    path.moveTo(dx + 13.875 * finalScale, dy);
-    path.cubicTo(
-      dx + 21.538 * finalScale,
-      dy,
-      dx + 27.75 * finalScale,
-      dy + 6.13575 * finalScale,
-      dx + 27.75 * finalScale,
-      dy + 13.7041 * finalScale,
-    );
-    path.cubicTo(
-      dx + 27.7497 * finalScale,
-      dy + 21.2724 * finalScale,
-      dx + 19.078 * finalScale,
-      dy + 30.833 * finalScale,
-      dx + 13.875 * finalScale,
-      dy + 30.833 * finalScale,
-    );
-    path.cubicTo(
-      dx + 8.67197 * finalScale,
-      dy + 30.833 * finalScale,
-      dx + 0.000303757 * finalScale,
-      dy + 21.2724 * finalScale,
-      dx,
-      dy + 13.7041 * finalScale,
-    );
-    path.cubicTo(
-      dx,
-      dy + 6.13575 * finalScale,
-      dx + 6.21205 * finalScale,
-      dy,
-      dx + 13.875 * finalScale,
-      dy,
-    );
-    path.close();
+    path.moveTo(dx + 15.0 * finalScale, dy + 34.0 * finalScale); // Start at bottom tip (shortened to 34)
+    path.lineTo(dx + 5.8 * finalScale, dy + 26.8 * finalScale); // Line to left tangent point
+    path.arcTo(
+      Rect.fromCircle(
+        center: Offset(dx + 15.0 * finalScale, dy + 15.0 * finalScale),
+        radius: 15.0 * finalScale,
+      ),
+      3.14159265 - 0.9099,
+      3.14159265 + 2 * 0.9099,
+      false,
+    ); // Arc clockwise over the top to right tangent point
+    path.close(); // Line back to bottom tip automatically
 
     // 1. Draw Shadow for teardrop pin
     final Paint shadowPaint = Paint()
@@ -110,19 +88,19 @@ class MarkerGenerator {
     final Paint borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2 * finalScale;
+      ..strokeWidth = 3.0 * finalScale;
     canvas.drawPath(path, borderPaint);
 
     // 4. Draw White Icon inside teardrop pin circular head
-    final double iconCx = dx + 13.875 * finalScale;
-    final double iconCy = dy + 13.7 * finalScale;
+    final double iconCx = dx + 15.0 * finalScale;
+    final double iconCy = dy + 15.0 * finalScale;
 
     final iconData = getIconDataForType(type);
     final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
     textPainter.text = TextSpan(
       text: String.fromCharCode(iconData.codePoint),
       style: TextStyle(
-        fontSize: (isSelected ? 14.5 : 12.0) * finalScale,
+        fontSize: (isSelected ? 16.0 : 13.0) * finalScale,
         fontFamily: iconData.fontFamily,
         package: iconData.fontPackage,
         color: Colors.white,
@@ -137,7 +115,7 @@ class MarkerGenerator {
     if (isSelected) {
       // 5. Draw Bottom Dot Shadow
       final double dotCx = iconCx;
-      final double tipY = dy + 30.833 * finalScale;
+      final double tipY = dy + 34.0 * finalScale;
       final double dotCy = tipY + gap + dotRadius;
 
       final Paint dotShadowPaint = Paint()
@@ -167,7 +145,7 @@ class MarkerGenerator {
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
     
-    const double size = 16.0;
+    const double size = 18.0;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     
@@ -178,13 +156,13 @@ class MarkerGenerator {
     final bgPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(const Offset(8.0, 8.0), 5.0, bgPaint);
+    canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
     
     final borderPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawCircle(const Offset(8.0, 8.0), 5.0, borderPaint);
+      ..strokeWidth = 1.8;
+    canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
     
     final picture = recorder.endRecording();
     final img = await picture.toImage((size * dpr).toInt(), (size * dpr).toInt());
@@ -225,30 +203,26 @@ class MarkerGenerator {
     if (t.contains('movie') || t.contains('cinema')) {
       return const Color(0xFFCB3D8D); // Pink
     }
-    if (t.contains('sports') || t.contains('stadium') || t.contains('arena') || t.contains('soccer') || t.contains('gym')) {
-      return const Color(0xFF388E3C); // Sports Green
+    if (t.contains('park') || t.contains('garden') || t.contains('playground') ||
+        t.contains('sports') || t.contains('stadium') || t.contains('arena') || t.contains('soccer') || t.contains('gym')) {
+      return const Color(0xFF1B8A5A); // Swarm Green
     }
     if (t.contains('concert') || t.contains('music') || t.contains('gig')) {
       return const Color(0xFF00B0FF); // Concerts Sky Blue
     }
-    if (t.contains('restaurant') || t.contains('food') || t.contains('dining')) {
-      return const Color(0xFFE96D2B); // Orange
-    }
     if (t.contains('coffee') || t.contains('cafe') || t.contains('café') || t.contains('local_cafe')) {
-      return const Color(0xFFE96D2B); // Orange
+      return const Color(0xFFFC8A15); // Swarm Coffee Amber
     }
-    if (t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') || t.contains('pastry') || t.contains('cake')) {
-      return const Color(0xFFE96D2B); // Orange
+    if (t.contains('restaurant') || t.contains('food') || t.contains('dining') ||
+        t.contains('bakery') || t.contains('bread') || t.contains('mkhbazat') ||
+        t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') || t.contains('pastry') || t.contains('cake') ||
+        t.contains('pizza') || t.contains('pizzeria') || t.contains('bar') || t.contains('pub') || t.contains('club') || t.contains('nightlife')) {
+      return const Color(0xFFFF5A19); // Swarm Food Orange-Red
     }
-    if (t.contains('bar') || t.contains('pub') || t.contains('club') || t.contains('nightlife')) {
-      return const Color(0xFFE96D2B); // Orange
+    if (t.contains('hotel') || t.contains('motel') || t.contains('resort') || t.contains('bed') || t.contains('stay') || t.contains('room') ||
+        t.contains('airport') || t.contains('flight') || t.contains('plane')) {
+      return const Color(0xFF0066FF); // Swarm Blue
     }
-    if (t.contains('hotel') || t.contains('motel') || t.contains('resort') || t.contains('bed') || t.contains('stay') || t.contains('room')) {
-      return const Color(0xFF3498DB); // Blue for Hotels
-    }
-    if (t.contains('parking')) {
-      return const Color(0xFF3649E1); // Blue for Parking
-    }
-    return const Color(0xFF5A5D67); // Grey default
+    return const Color(0xFF5A5D67); // Swarm Charcoal/Grey default
   }
 }
