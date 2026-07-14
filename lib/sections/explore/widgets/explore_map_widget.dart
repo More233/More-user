@@ -222,7 +222,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           maxZoom: 1.5,
         );
         await mapboxMap.style.addLayer(clustersDotsLayer);
-        await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "filter", '["all", ["has", "point_count"], ["==", ["%", ["get", "cluster_id"], 10], 0]]');
+        await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "filter", '["all", ["has", "point_count"], ["==", ["%", ["get", "cluster_id"], 7], 0]]');
         await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "visibility", "visible");
       } catch (e) {
         debugPrint("clusters-dots-layer already exists or error: $e");
