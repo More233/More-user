@@ -440,6 +440,31 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     }
   }
 
+  String _resolvePlaceType(Map<String, dynamic> p) {
+    final String rawType = p['type']?.toString().toLowerCase().trim() ?? 'default';
+    final String name = p['name']?.toString().toLowerCase() ?? '';
+    final String arName = p['arabicName']?.toString() ?? '';
+    
+    if (rawType == 'other' || rawType == 'default') {
+      if (name.contains('mosque') || arName.contains('مسجد') || arName.contains('جامع')) {
+        return 'mosque';
+      }
+      if (name.contains('school') || name.contains('university') || arName.contains('مدرسة') || arName.contains('جامعة')) {
+        return 'school';
+      }
+      if (name.contains('library') || arName.contains('مكتبة')) {
+        return 'library';
+      }
+      if (name.contains('museum') || arName.contains('متحف')) {
+        return 'museum';
+      }
+      if (name.contains('exhibition') || name.contains('exhibits') || arName.contains('معارض') || arName.contains('معرض')) {
+        return 'exhibition';
+      }
+    }
+    return rawType;
+  }
+
   Future<void> _updateMarkers() async {
     if (_mapboxMap == null) return;
 
@@ -470,11 +495,19 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         'movies',
         'concerts',
         'sports',
+        'mosque',
+        'school',
+        'library',
+        'museum',
+        'exhibition'
       ];
       final uniqueTypes = widget.places
-          .map((p) => p['type']?.toString().toLowerCase().trim() ?? 'default')
+          .map((p) => _resolvePlaceType(p))
           .toSet();
       uniqueTypes.addAll(allPredefinedTypes);
+      if (widget.selectedPlace != null) {
+        uniqueTypes.add(_resolvePlaceType(widget.selectedPlace!));
+      }
 
       final double dpr = ui.PlatformDispatcher.instance.views.isNotEmpty
           ? ui.PlatformDispatcher.instance.views.first.devicePixelRatio
@@ -554,30 +587,33 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
         final String name = p['name']?.toString() ?? '';
         final String arName = p['arabicName']?.toString() ?? '';
-        final String mainName = arName.isNotEmpty ? arName : name;
+        String mainName = arName.isNotEmpty ? arName : name;
+        
+        // Clean city name in parentheses from mainName
+        mainName = mainName.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
 
-        final String placeType = p['type']?.toString().toLowerCase().trim() ?? 'default';
+        final String resolvedType = _resolvePlaceType(p);
         final double rating = double.tryParse(p['rating']?.toString() ?? '') ?? 0.0;
-        final String ratingAndType = "${rating.toStringAsFixed(2)}_$placeType";
+        final String ratingAndType = "${rating.toStringAsFixed(2)}_$resolvedType";
 
-        int placeTypeCode = 1; // other / default
-        if (placeType == 'restaurant') {
+        int placeTypeCode = 1; // other / default / mosque / school / library / museum / exhibition
+        if (resolvedType == 'restaurant') {
           placeTypeCode = 2;
-        } else if (placeType == 'supermarket') {
+        } else if (resolvedType == 'supermarket') {
           placeTypeCode = 3;
-        } else if (placeType == 'pharmacy') {
+        } else if (resolvedType == 'pharmacy') {
           placeTypeCode = 4;
-        } else if (placeType == 'bakery') {
+        } else if (resolvedType == 'bakery') {
           placeTypeCode = 5;
-        } else if (placeType == 'bars') {
+        } else if (resolvedType == 'bars') {
           placeTypeCode = 6;
-        } else if (placeType == 'coffee') {
+        } else if (resolvedType == 'coffee') {
           placeTypeCode = 7;
-        } else if (placeType == 'hotel') {
+        } else if (resolvedType == 'hotel') {
           placeTypeCode = 8;
-        } else if (placeType == 'park') {
+        } else if (resolvedType == 'park') {
           placeTypeCode = 9;
-        } else if (placeType == 'airport') {
+        } else if (resolvedType == 'airport') {
           placeTypeCode = 10;
         }
 
@@ -590,7 +626,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           },
           "properties": {
             "id": p['id'].toString(),
-            "place_type": placeType,
+            "place_type": resolvedType,
             "title": mainName,
             "rating_and_type": ratingAndType,
             "place_type_code": placeTypeCode,
@@ -630,21 +666,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         colorMatchExpr.add("#000000");
       }
       colorMatchExpr.add("#000000");
-
-      final List<dynamic> clusterColorMatchExpr = ["match", ["get", "dominant_place_type"]];
-      for (final type in uniqueTypes) {
-        final color = MarkerGenerator.getMarkerColor(type);
-        final String hexStr = colorToHex(color);
-        if (!clusterColorMatchExpr.contains(type)) {
-          clusterColorMatchExpr.add(type);
-          clusterColorMatchExpr.add(hexStr);
-        }
-      }
-      if (uniqueTypes.isEmpty) {
-        clusterColorMatchExpr.add("dummy_type");
-        clusterColorMatchExpr.add("#000000");
-      }
-      clusterColorMatchExpr.add("#000000");
 
       // 5. Set layer styling expressions
       final String selectedId = widget.selectedPlace?['id']?.toString() ?? 'none';
@@ -715,18 +736,24 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       // --- Clusters Layer Styles ---
       final String clusterDotsIconImageExpression = jsonEncode([
         "case",
-        ["==", ["%", ["get", "cluster_id"], 7], 0],
+        ["==", ["get", "dominant_type_code"], 2],
         "dot-restaurant",
-        ["==", ["%", ["get", "cluster_id"], 7], 1],
+        ["==", ["get", "dominant_type_code"], 3],
+        "dot-supermarket",
+        ["==", ["get", "dominant_type_code"], 4],
+        "dot-pharmacy",
+        ["==", ["get", "dominant_type_code"], 5],
+        "dot-bakery",
+        ["==", ["get", "dominant_type_code"], 6],
+        "dot-bars",
+        ["==", ["get", "dominant_type_code"], 7],
         "dot-coffee",
-        ["==", ["%", ["get", "cluster_id"], 7], 2],
+        ["==", ["get", "dominant_type_code"], 8],
         "dot-hotel",
-        ["==", ["%", ["get", "cluster_id"], 7], 3],
+        ["==", ["get", "dominant_type_code"], 9],
         "dot-park",
-        ["==", ["%", ["get", "cluster_id"], 7], 4],
-        "dot-movies",
-        ["==", ["%", ["get", "cluster_id"], 7], 5],
-        "dot-concerts",
+        ["==", ["get", "dominant_type_code"], 10],
+        "dot-airport",
         "dot-other"
       ]);
 
@@ -735,34 +762,46 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         ["==", ["%", ["get", "cluster_id"], 5], 0],
         [
           "case",
-          ["==", ["%", ["get", "cluster_id"], 7], 0],
+          ["==", ["get", "dominant_type_code"], 2],
           "normal-restaurant",
-          ["==", ["%", ["get", "cluster_id"], 7], 1],
+          ["==", ["get", "dominant_type_code"], 3],
+          "normal-supermarket",
+          ["==", ["get", "dominant_type_code"], 4],
+          "normal-pharmacy",
+          ["==", ["get", "dominant_type_code"], 5],
+          "normal-bakery",
+          ["==", ["get", "dominant_type_code"], 6],
+          "normal-bars",
+          ["==", ["get", "dominant_type_code"], 7],
           "normal-coffee",
-          ["==", ["%", ["get", "cluster_id"], 7], 2],
+          ["==", ["get", "dominant_type_code"], 8],
           "normal-hotel",
-          ["==", ["%", ["get", "cluster_id"], 7], 3],
+          ["==", ["get", "dominant_type_code"], 9],
           "normal-park",
-          ["==", ["%", ["get", "cluster_id"], 7], 4],
-          "normal-movies",
-          ["==", ["%", ["get", "cluster_id"], 7], 5],
-          "normal-concerts",
+          ["==", ["get", "dominant_type_code"], 10],
+          "normal-airport",
           "normal-other"
         ],
         [
           "case",
-          ["==", ["%", ["get", "cluster_id"], 7], 0],
+          ["==", ["get", "dominant_type_code"], 2],
           "dot-restaurant",
-          ["==", ["%", ["get", "cluster_id"], 7], 1],
+          ["==", ["get", "dominant_type_code"], 3],
+          "dot-supermarket",
+          ["==", ["get", "dominant_type_code"], 4],
+          "dot-pharmacy",
+          ["==", ["get", "dominant_type_code"], 5],
+          "dot-bakery",
+          ["==", ["get", "dominant_type_code"], 6],
+          "dot-bars",
+          ["==", ["get", "dominant_type_code"], 7],
           "dot-coffee",
-          ["==", ["%", ["get", "cluster_id"], 7], 2],
+          ["==", ["get", "dominant_type_code"], 8],
           "dot-hotel",
-          ["==", ["%", ["get", "cluster_id"], 7], 3],
+          ["==", ["get", "dominant_type_code"], 9],
           "dot-park",
-          ["==", ["%", ["get", "cluster_id"], 7], 4],
-          "dot-movies",
-          ["==", ["%", ["get", "cluster_id"], 7], 5],
-          "dot-concerts",
+          ["==", ["get", "dominant_type_code"], 10],
+          "dot-airport",
           "dot-other"
         ]
       ]);
@@ -779,18 +818,24 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
       final String clusterTextColorExpression = jsonEncode([
         "case",
-        ["==", ["%", ["get", "cluster_id"], 7], 0],
+        ["==", ["get", "dominant_type_code"], 2],
         "#FF5A19",
-        ["==", ["%", ["get", "cluster_id"], 7], 1],
+        ["==", ["get", "dominant_type_code"], 3],
+        "#5A5D67",
+        ["==", ["get", "dominant_type_code"], 4],
+        "#5A5D67",
+        ["==", ["get", "dominant_type_code"], 5],
         "#FF5A19",
-        ["==", ["%", ["get", "cluster_id"], 7], 2],
+        ["==", ["get", "dominant_type_code"], 6],
+        "#FF5A19",
+        ["==", ["get", "dominant_type_code"], 7],
+        "#FF5A19",
+        ["==", ["get", "dominant_type_code"], 8],
         "#0066FF",
-        ["==", ["%", ["get", "cluster_id"], 7], 3],
+        ["==", ["get", "dominant_type_code"], 9],
         "#1B8A5A",
-        ["==", ["%", ["get", "cluster_id"], 7], 4],
-        "#CB3D8D",
-        ["==", ["%", ["get", "cluster_id"], 7], 5],
-        "#00B0FF",
+        ["==", ["get", "dominant_type_code"], 10],
+        "#0066FF",
         "#5A5D67"
       ]);
 
@@ -807,18 +852,24 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
       final String cluster100PinsIconImageExpression = jsonEncode([
         "case",
-        ["==", ["%", ["get", "cluster_id"], 7], 0],
+        ["==", ["get", "dominant_type_code"], 2],
         "normal-restaurant",
-        ["==", ["%", ["get", "cluster_id"], 7], 1],
+        ["==", ["get", "dominant_type_code"], 3],
+        "normal-supermarket",
+        ["==", ["get", "dominant_type_code"], 4],
+        "normal-pharmacy",
+        ["==", ["get", "dominant_type_code"], 5],
+        "normal-bakery",
+        ["==", ["get", "dominant_type_code"], 6],
+        "normal-bars",
+        ["==", ["get", "dominant_type_code"], 7],
         "normal-coffee",
-        ["==", ["%", ["get", "cluster_id"], 7], 2],
+        ["==", ["get", "dominant_type_code"], 8],
         "normal-hotel",
-        ["==", ["%", ["get", "cluster_id"], 7], 3],
+        ["==", ["get", "dominant_type_code"], 9],
         "normal-park",
-        ["==", ["%", ["get", "cluster_id"], 7], 4],
-        "normal-movies",
-        ["==", ["%", ["get", "cluster_id"], 7], 5],
-        "normal-concerts",
+        ["==", ["get", "dominant_type_code"], 10],
+        "normal-airport",
         "normal-other"
       ]);
 

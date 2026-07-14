@@ -194,6 +194,8 @@ class MarkerGenerator {
     if (t.contains('church')) return Icons.church;
     if (t.contains('gas') || t.contains('petrol') || t.contains('fuel')) return Icons.local_gas_station;
     if (t.contains('museum') || t.contains('art') || t.contains('gallery')) return Icons.museum;
+    if (t.contains('library') || t.contains('book')) return Icons.local_library;
+    if (t.contains('exhibition') || t.contains('exhibit') || t.contains('business')) return Icons.business;
     if (t.contains('parking')) return Icons.local_parking;
     return Icons.square;
   }
