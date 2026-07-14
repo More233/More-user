@@ -57,6 +57,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   mapbox.MapboxMap? _mapController;
   double _currentZoom = 13.0;
+  double? _lastFetchedZoom;
   final TextEditingController _searchController = TextEditingController();
   final ValueNotifier<bool> _showCardNotifier = ValueNotifier<bool>(true);
 
@@ -746,8 +747,10 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                         centerPoint.coordinates.lat.toDouble(),
                         centerPoint.coordinates.lng.toDouble(),
                       );
-                      if (state.lastFetchedLocation == null) {
-                        ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
+                      
+                      bool shouldFetch = false;
+                      if (state.lastFetchedLocation == null || _lastFetchedZoom == null) {
+                        shouldFetch = true;
                       } else {
                         final distance = Geolocator.distanceBetween(
                           state.lastFetchedLocation!.latitude,
@@ -762,9 +765,15 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 : (_currentZoom < 13.0
                                     ? 10000.0 // 10 km
                                     : (_currentZoom < 15.0 ? 3000.0 : 1500.0))); // 3 km or 1.5 km
-                        if (distance > threshold) {
-                          ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
+                        
+                        if (distance > threshold || (_currentZoom - _lastFetchedZoom!).abs() > 0.8) {
+                          shouldFetch = true;
                         }
+                      }
+
+                      if (shouldFetch) {
+                        _lastFetchedZoom = _currentZoom;
+                        ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
                       }
                       ref.read(exploreViewModelProvider.notifier).updateZoom(_currentZoom);
                     });

@@ -71,19 +71,28 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
     try {
       state = state.copyWith(lastFetchedLocation: () => LatLng(lat, lng), isLoading: true);
       
-      // Calculate dynamic radius and box size based on zoom level
+      // Calculate dynamic radius and box size based on zoom level to cover the visible map area
       double? boxSize = 0.15; // ~16.5 km local area preload
       double radius = 8000;   // 8 km Foursquare/Google Places radius
 
-      if (zoom < 7.0) {
-        boxSize = null; // Global search!
-        radius = 50000; // max radius for Google API
-      } else if (zoom < 10.0) {
-        boxSize = 1.0; // ~110 km
-        radius = 50000;
+      if (zoom < 3.0) {
+        boxSize = null; // Global search
+        radius = 20000000; // ~20,000 km (covers the entire Earth)
+      } else if (zoom < 5.0) {
+        boxSize = null;
+        radius = 10000000; // ~10,000 km
+      } else if (zoom < 7.0) {
+        boxSize = null;
+        radius = 4000000; // ~4,000 km
+      } else if (zoom < 9.0) {
+        boxSize = 2.0;
+        radius = 1500000; // ~1,500 km
+      } else if (zoom < 11.0) {
+        boxSize = 1.0;
+        radius = 400000; // ~400 km
       } else if (zoom < 13.0) {
-        boxSize = 0.2; // ~22 km
-        radius = 15000;
+        boxSize = 0.4;
+        radius = 100000; // ~100 km
       }
 
       final bool cacheOnly = zoom < 13.0;

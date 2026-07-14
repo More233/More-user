@@ -176,8 +176,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           id: "places-source",
           data: '{"type": "FeatureCollection", "features": []}',
           cluster: true,
-          clusterRadius: 55.0,
-          clusterMaxZoom: 13.5,
+          clusterRadius: 50.0,
+          clusterMaxZoom: 11.5,
           clusterProperties: {
             "has_restaurant": ["any", ["==", ["get", "place_type"], "restaurant"]],
             "has_coffee": ["any", ["==", ["get", "place_type"], "coffee"]],
@@ -661,11 +661,11 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       final String clusterIconSizeExpression = jsonEncode([
         "step",
         ["get", "point_count"],
-        1.4, // Small clusters (< 10 points)
+        0.6,  // Small clusters (< 10 points)
         10,
-        1.8, // Medium clusters (10-49 points)
+        0.85, // Medium clusters (10-49 points)
         50,
-        2.2  // Large clusters (>= 50 points)
+        1.1   // Large clusters (>= 50 points)
       ]);
       try {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-image", clusterIconImageExpression);
