@@ -282,6 +282,22 @@ class ExploreDataService {
     if (types.isEmpty) return 'Other';
     final typesLower = types.map((t) => (t as String).toLowerCase()).toList();
 
+    if (typesLower.contains('mosque') || (typesLower.contains('place_of_worship') && !typesLower.contains('church') && !typesLower.contains('synagogue'))) {
+      return 'mosque';
+    }
+    if (typesLower.contains('school') || typesLower.contains('university') || typesLower.contains('primary_school') || typesLower.contains('secondary_school')) {
+      return 'school';
+    }
+    if (typesLower.contains('library')) {
+      return 'library';
+    }
+    if (typesLower.contains('museum') || typesLower.contains('art_gallery')) {
+      return 'museum';
+    }
+    if (typesLower.contains('exhibition_center') || typesLower.contains('convention_center')) {
+      return 'exhibition';
+    }
+
     if (typesLower.contains('movie_theater')) {
       return 'Movies';
     }

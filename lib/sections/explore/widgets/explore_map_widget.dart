@@ -179,7 +179,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           clusterRadius: 20.0,
           clusterMaxZoom: 16.2,
           clusterProperties: {
-            "dominant_type_code": ["max", ["get", "place_type_code"]],
+            "dominant_type_code": [
+              ["coalesce", ["accumulated"], ["get", "place_type_code"]],
+              ["get", "place_type_code"]
+            ],
             "title": [
               ["coalesce", ["accumulated"], ["get", "title"]],
               ["get", "title"]
