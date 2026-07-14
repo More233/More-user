@@ -179,9 +179,15 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           clusterRadius: 55.0,
           clusterMaxZoom: 13.5,
           clusterProperties: {
-            "dominant_rating_and_type": ["max", ["get", "rating_and_type"]],
-            "dominant_title": ["max", ["get", "title"]],
-            "dominant_id": ["max", ["get", "id"]],
+            "has_restaurant": ["any", ["==", ["get", "place_type"], "restaurant"]],
+            "has_coffee": ["any", ["==", ["get", "place_type"], "coffee"]],
+            "has_hotel": ["any", ["==", ["get", "place_type"], "hotel"]],
+            "has_park": ["any", ["==", ["get", "place_type"], "park"]],
+            "has_bars": ["any", ["==", ["get", "place_type"], "bars"]],
+            "has_bakery": ["any", ["==", ["get", "place_type"], "bakery"]],
+            "has_pharmacy": ["any", ["==", ["get", "place_type"], "pharmacy"]],
+            "has_supermarket": ["any", ["==", ["get", "place_type"], "supermarket"]],
+            "has_airport": ["any", ["==", ["get", "place_type"], "airport"]],
           },
         );
         await mapboxMap.style.addSource(source);
@@ -215,16 +221,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           sourceId: "places-source",
           iconAllowOverlap: true,
           iconIgnorePlacement: true,
-          textAllowOverlap: false,
-          textIgnorePlacement: false,
-          textVariableAnchor: ["right", "left"],
+          textAllowOverlap: true,
+          textIgnorePlacement: true,
           textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
-          textHaloColor: 0xFFFFFFFF.toSigned(32),
-          textHaloWidth: 1.5,
         );
         await mapboxMap.style.addLayer(clustersLayer);
         await mapboxMap.style.setStyleLayerProperty("clusters-layer", "filter", '["has", "point_count"]');
         await mapboxMap.style.setStyleLayerProperty("clusters-layer", "visibility", "visible");
+        await mapboxMap.style.setStyleLayerProperty("clusters-layer", "text-anchor", "center");
       } catch (e) {
         debugPrint("clusters-layer already exists or error: $e");
       }
@@ -634,33 +638,34 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       // --- Clusters Layer Styles ---
       final String clusterIconImageExpression = jsonEncode([
         "case",
-        ["in", "restaurant", ["get", "dominant_rating_and_type"]],
+        ["coalesce", ["get", "has_restaurant"], false],
         "dot-restaurant",
-        ["in", "hotel", ["get", "dominant_rating_and_type"]],
-        "dot-hotel",
-        ["in", "coffee", ["get", "dominant_rating_and_type"]],
+        ["coalesce", ["get", "has_coffee"], false],
         "dot-coffee",
-        ["in", "pharmacy", ["get", "dominant_rating_and_type"]],
-        "dot-pharmacy",
-        ["in", "park", ["get", "dominant_rating_and_type"]],
+        ["coalesce", ["get", "has_hotel"], false],
+        "dot-hotel",
+        ["coalesce", ["get", "has_park"], false],
         "dot-park",
-        ["in", "bars", ["get", "dominant_rating_and_type"]],
+        ["coalesce", ["get", "has_bars"], false],
         "dot-bars",
-        ["in", "bakery", ["get", "dominant_rating_and_type"]],
+        ["coalesce", ["get", "has_bakery"], false],
         "dot-bakery",
-        ["in", "cinema", ["get", "dominant_rating_and_type"]],
-        "dot-cinema",
-        ["in", "stadium", ["get", "dominant_rating_and_type"]],
-        "dot-stadium",
-        ["in", "museum", ["get", "dominant_rating_and_type"]],
-        "dot-museum",
-        ["in", "theater", ["get", "dominant_rating_and_type"]],
-        "dot-theater",
-        ["in", "concert", ["get", "dominant_rating_and_type"]],
-        "dot-concert",
-        ["in", "sports", ["get", "dominant_rating_and_type"]],
-        "dot-sports",
+        ["coalesce", ["get", "has_pharmacy"], false],
+        "dot-pharmacy",
+        ["coalesce", ["get", "has_supermarket"], false],
+        "dot-supermarket",
+        ["coalesce", ["get", "has_airport"], false],
+        "dot-airport",
         "dot-other"
+      ]);
+      final String clusterIconSizeExpression = jsonEncode([
+        "step",
+        ["get", "point_count"],
+        1.4, // Small clusters (< 10 points)
+        10,
+        1.8, // Medium clusters (10-49 points)
+        50,
+        2.2  // Large clusters (>= 50 points)
       ]);
       try {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-image", clusterIconImageExpression);
@@ -669,7 +674,13 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-field", jsonEncode(["literal", ""]));
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-size", clusterIconSizeExpression);
+      } catch (e) {
+        debugPrint("Error setting clusters-layer icon-size: $e");
+      }
+
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-field", "");
       } catch (e) {
         debugPrint("Error setting clusters-layer text-field: $e");
       }
@@ -684,6 +695,12 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-opacity", 0.0);
       } catch (e) {
         debugPrint("Error setting clusters-layer text-opacity: $e");
+      }
+
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "text-color", "#FFFFFF");
+      } catch (e) {
+        debugPrint("Error setting clusters-layer text-color: $e");
       }
 
       // Repeatedly enforce hiding default road labels, shields, and intersections to override Mapbox async style loads

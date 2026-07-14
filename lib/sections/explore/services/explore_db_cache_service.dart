@@ -231,15 +231,15 @@ class ExploreDbCacheService {
     }
   }
 
-  // Check if database needs to be seeded and run it if count is less than 3080
+  // Check if database needs to be seeded and run it if count is less than 10780
   static Future<void> _checkAndSeedIfNeeded(Database db) async {
     try {
       final List<Map<String, dynamic>> result = await db.rawQuery(
         "SELECT COUNT(*) as count FROM cached_places WHERE id LIKE 'seed_%'"
       );
       final int count = Sqflite.firstIntValue(result) ?? 0;
-      if (count < 3080) {
-        debugPrint("ExploreDbCacheService: Database needs seeding (count: $count < 3080). Seeding now...");
+      if (count < 10780) {
+        debugPrint("ExploreDbCacheService: Database needs seeding (count: $count < 10780). Seeding now...");
         await db.delete('cached_places', where: "id LIKE 'seed_%'");
         await seedDatabase(db);
       }

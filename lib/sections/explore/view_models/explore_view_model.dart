@@ -86,10 +86,14 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         radius = 15000;
       }
 
+      final bool cacheOnly = zoom < 13.0;
+
       final results = await Future.wait([
-        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius),
-        _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize),
-        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, keyword: 'cinema|stadium|museum|theater|concert|sports'),
+        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, cacheOnly: cacheOnly),
+        cacheOnly 
+            ? Future.value({'checkins': <Map<String, dynamic>>[], 'customVenues': <Map<String, dynamic>>[]})
+            : _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize),
+        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: cacheOnly),
       ]);
 
       final normalPlaces = results[0] as List<Map<String, dynamic>>;

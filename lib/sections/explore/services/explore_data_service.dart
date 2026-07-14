@@ -437,6 +437,7 @@ class ExploreDataService {
     double lng, {
     double radius = 3000,
     String? keyword,
+    bool cacheOnly = false,
   }) async {
     final int roundedLat = (lat * 100).round();
     final int roundedLng = (lng * 100).round();
@@ -466,6 +467,12 @@ class ExploreDataService {
       minLng: minLng,
       maxLng: maxLng,
     );
+
+    if (cacheOnly) {
+      debugPrint("ExploreDataService: Returning cached places (cacheOnly). Count: ${cachedPlaces.length}");
+      _placesCache[cacheKey] = cachedPlaces;
+      return cachedPlaces;
+    }
 
     bool isCacheFresh = false;
     if (cachedPlaces.length >= 5) {
