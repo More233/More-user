@@ -180,6 +180,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           clusterMaxZoom: 16.2,
           clusterProperties: {
             "dominant_type_code": ["max", ["get", "place_type_code"]],
+            "title": [
+              ["coalesce", ["accumulated"], ["get", "title"]],
+              ["get", "title"]
+            ]
           },
         );
         await mapboxMap.style.addSource(source);
@@ -230,8 +234,12 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           sourceId: "places-source",
           iconAllowOverlap: true,
           iconIgnorePlacement: true,
-          textAllowOverlap: true,
-          textIgnorePlacement: true,
+          textAllowOverlap: false,
+          textIgnorePlacement: false,
+          textVariableAnchor: ["right", "left"],
+          textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
+          textHaloColor: 0xFFFFFFFF.toSigned(32),
+          textHaloWidth: 1.5,
           minZoom: 1.5,
         );
         await mapboxMap.style.addLayer(clustersPinsLayer);
@@ -746,46 +754,45 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         0.7   // Large clusters (>= 100 points)
       ]);
 
-      for (final layerId in ["clusters-dots-layer", "clusters-pins-layer"]) {
-        try {
-          await _mapboxMap!.style.setStyleLayerProperty(
-            layerId,
-            "icon-image",
-            layerId == "clusters-dots-layer" ? clusterDotsIconImageExpression : clusterPinsIconImageExpression
-          );
-        } catch (e) {
-          debugPrint("Error setting $layerId icon-image: $e");
-        }
+      final String clusterTextColorExpression = jsonEncode([
+        "case",
+        ["==", ["%", ["get", "cluster_id"], 7], 0],
+        "#FF5A19",
+        ["==", ["%", ["get", "cluster_id"], 7], 1],
+        "#FF5A19",
+        ["==", ["%", ["get", "cluster_id"], 7], 2],
+        "#0066FF",
+        ["==", ["%", ["get", "cluster_id"], 7], 3],
+        "#1B8A5A",
+        ["==", ["%", ["get", "cluster_id"], 7], 4],
+        "#CB3D8D",
+        ["==", ["%", ["get", "cluster_id"], 7], 5],
+        "#00B0FF",
+        "#5A5D67"
+      ]);
 
-        try {
-          await _mapboxMap!.style.setStyleLayerProperty(layerId, "icon-size", clusterIconSizeExpression);
-        } catch (e) {
-          debugPrint("Error setting $layerId icon-size: $e");
-        }
+      // Style clusters-dots-layer (dots under zoom 1.5, no text)
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "icon-image", clusterDotsIconImageExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "icon-size", clusterIconSizeExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-field", "");
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-size", 0.0);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-opacity", 0.0);
+      } catch (e) {
+        debugPrint("Error styling clusters-dots-layer: $e");
+      }
 
-        try {
-          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-field", "");
-        } catch (e) {
-          debugPrint("Error setting $layerId text-field: $e");
-        }
-
-        try {
-          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-size", 0.0);
-        } catch (e) {
-          debugPrint("Error setting $layerId text-size: $e");
-        }
-
-        try {
-          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-opacity", 0.0);
-        } catch (e) {
-          debugPrint("Error setting $layerId text-opacity: $e");
-        }
-
-        try {
-          await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-color", "#FFFFFF");
-        } catch (e) {
-          debugPrint("Error setting $layerId text-color: $e");
-        }
+      // Style clusters-pins-layer (pins and dots mix starting from zoom 1.5, shows text next to pins)
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-image", clusterPinsIconImageExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-size", clusterIconSizeExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-field", textFieldExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-size", textSizeExpr);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-opacity", 1.0);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-color", clusterTextColorExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-radial-offset", textRadialOffsetExpr);
+      } catch (e) {
+        debugPrint("Error styling clusters-pins-layer: $e");
       }
 
       // Repeatedly enforce hiding default road labels, shields, and intersections to override Mapbox async style loads
