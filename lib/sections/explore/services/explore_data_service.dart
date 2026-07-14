@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../home/widgets/bottom_sheets/location_search_sheet.dart';
+import 'explore_db_cache_service.dart';
 
 class ExploreDataService {
   static const String googlePlacesApiKey = String.fromEnvironment(
@@ -440,11 +442,54 @@ class ExploreDataService {
     final int roundedLng = (lng * 100).round();
     final String cacheKey = '${roundedLat}_${roundedLng}_${radius.toInt()}_${keyword ?? ''}';
 
+    // 1. Check in-memory Cache
     if (_placesCache.containsKey(cacheKey)) {
-      debugPrint("ExploreDataService: Returning cached Google places for key: $cacheKey");
+      debugPrint("ExploreDataService: Returning cached Google places (in-memory) for key: $cacheKey");
       return _placesCache[cacheKey]!;
     }
 
+    // 2. Compute bounding box for SQLite cache query
+    final double latDelta = radius / 111000.0;
+    final double radLat = lat * 3.141592653589793 / 180.0;
+    final double cosLat = math.cos(radLat);
+    final double lngDelta = radius / (111000.0 * (cosLat < 0.01 ? 0.01 : cosLat));
+
+    final double minLat = lat - latDelta;
+    final double maxLat = lat + latDelta;
+    final double minLng = lng - lngDelta;
+    final double maxLng = lng + lngDelta;
+
+    // 3. Query local SQLite database
+    final List<Map<String, dynamic>> cachedPlaces = await ExploreDbCacheService.getPlacesInBoundingBox(
+      minLat: minLat,
+      maxLat: maxLat,
+      minLng: minLng,
+      maxLng: maxLng,
+    );
+
+    bool isCacheFresh = false;
+    if (cachedPlaces.length >= 5) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      int newestCachedAt = 0;
+      for (final p in cachedPlaces) {
+        final int cat = p['cachedAt'] as int? ?? 0;
+        if (cat > newestCachedAt) {
+          newestCachedAt = cat;
+        }
+      }
+      // Check if cache was updated within the last 3 days
+      if (now - newestCachedAt < 3 * 24 * 60 * 60 * 1000) {
+        isCacheFresh = true;
+      }
+    }
+
+    if (isCacheFresh) {
+      debugPrint("ExploreDataService: Returning cached places from local SQLite database. Count: ${cachedPlaces.length}");
+      _placesCache[cacheKey] = cachedPlaces;
+      return cachedPlaces;
+    }
+
+    // 4. Fetch fresh places from Google Places API if cache is empty or stale
     try {
       String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
           '?location=$lat,$lng'
@@ -499,11 +544,20 @@ class ExploreDataService {
         }
 
         _placesCache[cacheKey] = places;
+        // Save to SQLite cache asynchronously
+        ExploreDbCacheService.savePlaces(places);
         return places;
       }
     } catch (e) {
       debugPrint("Error fetching Google nearby places: $e");
     }
+
+    // Fallback to stale SQLite cache if API fails
+    if (cachedPlaces.isNotEmpty) {
+      debugPrint("ExploreDataService API failed: Falling back to stale local cache. Count: ${cachedPlaces.length}");
+      return cachedPlaces;
+    }
+
     return [];
   }
 
@@ -648,6 +702,9 @@ class ExploreDataService {
       }
     }
 
+    if (places.isNotEmpty) {
+      ExploreDbCacheService.savePlaces(places);
+    }
     return places;
   }
 
@@ -760,6 +817,9 @@ class ExploreDataService {
     } catch (e) {
       debugPrint("Error loading visitors in service for ${placeMap['id']}: $e");
     }
+
+    // Save details to cache
+    ExploreDbCacheService.savePlaces([placeMap]);
 
     return placeMap;
   }
