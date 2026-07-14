@@ -4,17 +4,24 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../config/secrets.dart';
 import '../../home/widgets/bottom_sheets/location_search_sheet.dart';
 import 'explore_db_cache_service.dart';
 
 class ExploreDataService {
   static const String googlePlacesApiKey = String.fromEnvironment(
     'GOOGLE_PLACES_API_KEY',
-    defaultValue: 'AIzaSyBjxRXgMKAxdj8WeeI2VYGEhBA8lxTR5Ug',
+    defaultValue: Secrets.googlePlacesApiKey,
   );
 
   static final Map<String, List<Map<String, dynamic>>> _placesCache = {};
   static final Map<String, Map<String, dynamic>> _supabaseCache = {};
+
+  static void _log(String message) {
+    if (kDebugMode) {
+      debugPrint(message);
+    }
+  }
 
   static const List<String> _coffeeImages = [
     'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500',
@@ -461,7 +468,7 @@ class ExploreDataService {
 
     // 1. Check in-memory Cache
     if (_placesCache.containsKey(cacheKey)) {
-      debugPrint("ExploreDataService: Returning cached Google places (in-memory) for key: $cacheKey");
+      _log("ExploreDataService: Returning cached Google places (in-memory) for key: $cacheKey");
       return _placesCache[cacheKey]!;
     }
 
@@ -485,7 +492,7 @@ class ExploreDataService {
     );
 
     if (cacheOnly) {
-      debugPrint("ExploreDataService: Returning cached places (cacheOnly). Count: ${cachedPlaces.length}");
+      _log("ExploreDataService: Returning cached places (cacheOnly). Count: ${cachedPlaces.length}");
       _placesCache[cacheKey] = cachedPlaces;
       return cachedPlaces;
     }
@@ -507,7 +514,7 @@ class ExploreDataService {
     }
 
     if (isCacheFresh) {
-      debugPrint("ExploreDataService: Returning cached places from local SQLite database. Count: ${cachedPlaces.length}");
+      _log("ExploreDataService: Returning cached places from local SQLite database. Count: ${cachedPlaces.length}");
       _placesCache[cacheKey] = cachedPlaces;
       return cachedPlaces;
     }
@@ -540,8 +547,8 @@ class ExploreDataService {
           }
         }
 
-        // Determine dynamic maxPages based on radius to speed up loading
-        final int maxPages = radius <= 8000 ? 1 : (radius <= 15000 ? 2 : 3);
+        // Limit to 1 page to make loading instant (Google requires a 2-second delay per additional page)
+        final int maxPages = 1;
 
         // Handle pagination to fetch up to 60 places (maxPages)
         String? nextPageToken = data['next_page_token'] as String?;
@@ -633,10 +640,10 @@ class ExploreDataService {
           }
         }
 
-        // Handle pagination to fetch up to 60 places (3 pages)
+        // Limit to 1 page to make loading instant (Google requires a 2-second delay per additional page)
         String? nextPageToken = data['next_page_token'] as String?;
         int pageCount = 1;
-        while (nextPageToken != null && nextPageToken.isNotEmpty && pageCount < 3) {
+        while (nextPageToken != null && nextPageToken.isNotEmpty && pageCount < 1) {
           // Google Places API token has a small delay before it becomes valid
           await Future<void>.delayed(const Duration(milliseconds: 2000));
           
@@ -749,8 +756,9 @@ class ExploreDataService {
     double defaultLat,
     double defaultLng,
     double userLat,
-    double userLng,
-  ) async {
+    double userLng, {
+    String defaultType = 'Other',
+  }) async {
     Map<String, dynamic>? placeMap;
     List<dynamic> visitorsRes = [];
 
@@ -805,12 +813,12 @@ class ExploreDataService {
         'reviewsCount': 0,
         'price': r'$$',
         'peopleCount': 0,
-        'type': 'Other',
-        'imageUrl': getPlaceholderUrl('Other', placeId),
+        'type': defaultType,
+        'imageUrl': getPlaceholderUrl(defaultType, placeId),
         'isSaved': false,
         'isVisited': false,
         'iconUrl': null,
-        'actionType': getActionTypeForPlaceType('Other'),
+        'actionType': getActionTypeForPlaceType(defaultType),
         'isRegistered': false,
         'visitors': <Map<String, dynamic>>[],
         'website': null,
@@ -865,7 +873,7 @@ class ExploreDataService {
     final String cacheKey = '${roundedLat}_${roundedLng}_${boxSize ?? 'global'}';
 
     if (_supabaseCache.containsKey(cacheKey)) {
-      debugPrint("ExploreDataService: Returning cached Supabase checkins/venues for key: $cacheKey");
+      _log("ExploreDataService: Returning cached Supabase checkins/venues for key: $cacheKey");
       return _supabaseCache[cacheKey]!;
     }
 

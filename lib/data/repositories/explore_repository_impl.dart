@@ -41,8 +41,9 @@ class ExploreRepositoryImpl implements ExploreRepository {
     double lat,
     double lng,
     double userLat,
-    double userLng,
-  ) {
+    double userLng, {
+    String? defaultType,
+  }) {
     return ExploreDataService.fetchPlaceDetails(
       placeId,
       name,
@@ -50,6 +51,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
       lng,
       userLat,
       userLng,
+      defaultType: defaultType ?? 'Other',
     );
   }
 

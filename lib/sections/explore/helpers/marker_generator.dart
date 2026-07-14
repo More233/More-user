@@ -250,6 +250,7 @@ class MarkerGenerator {
     if (r.contains('library')) return 'library';
     if (r.contains('museum')) return 'museum';
     if (r.contains('exhibition') || r.contains('exhibit')) return 'exhibition';
+    if (r.contains('sports') || r.contains('stadium') || r.contains('gym') || r.contains('soccer') || r.contains('arena')) return 'sports';
 
     // Second, check the name of the place:
     if (n.contains('restaurant') || n.contains('dining') || n.contains('pizza') || n.contains('burger') || n.contains('sushi') || ar.contains('مطعم') || ar.contains('بيتزا') || ar.contains('برجر') || ar.contains('سوشي')) return 'restaurant';
@@ -268,6 +269,7 @@ class MarkerGenerator {
     if (n.contains('library') || ar.contains('مكتبة')) return 'library';
     if (n.contains('museum') || ar.contains('متحف')) return 'museum';
     if (n.contains('exhibition') || n.contains('exhibit') || ar.contains('معرض') || ar.contains('معارض')) return 'exhibition';
+    if (n.contains('stadium') || n.contains('arena') || n.contains('gym') || n.contains('sports') || n.contains('soccer') || ar.contains('ملعب') || ar.contains('صالة') || ar.contains('رياضة') || ar.contains('نادي رياض')) return 'sports';
 
     return 'other';
   }

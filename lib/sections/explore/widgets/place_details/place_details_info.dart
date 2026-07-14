@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../../config/secrets.dart';
 
 class PlaceDetailsInfo extends StatelessWidget {
   final Map<String, dynamic> place;
@@ -258,7 +259,7 @@ class PlaceDetailsInfo extends StatelessWidget {
                   child: Stack(
                     children: [
                       mapbox.MapWidget(
-                        resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew")),
+                        resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
                         styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
                         cameraOptions: mapbox.CameraOptions(
                           center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),

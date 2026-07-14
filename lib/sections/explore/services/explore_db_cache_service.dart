@@ -163,60 +163,11 @@ class ExploreDbCacheService {
         whereArgs: [minLat, maxLat, minLng, maxLng],
       );
 
-      final List<Map<String, dynamic>> results = [];
-      for (final map in maps) {
-        List<dynamic> photos = [];
-        try {
-          if (map['photos'] != null) {
-            photos = json.decode(map['photos'] as String) as List<dynamic>;
-          }
-        } catch (_) {}
-
-        List<dynamic> googleReviews = [];
-        try {
-          if (map['googleReviews'] != null) {
-            googleReviews = json.decode(map['googleReviews'] as String) as List<dynamic>;
-          }
-        } catch (_) {}
-
-        List<dynamic> weekdayText = [];
-        try {
-          if (map['weekdayText'] != null) {
-            weekdayText = json.decode(map['weekdayText'] as String) as List<dynamic>;
-          }
-        } catch (_) {}
-
-        final int? openNowInt = map['openNow'] as int?;
-        final bool? openNow = openNowInt == null ? null : (openNowInt == 1);
-
-        results.add({
-          'id': map['id'],
-          'name': map['name'],
-          'arabicName': map['arabicName'],
-          'address': map['address'],
-          'latitude': map['latitude'],
-          'longitude': map['longitude'],
-          'rating': map['rating'],
-          'reviewsCount': map['reviewsCount'],
-          'price': map['price'],
-          'peopleCount': map['peopleCount'],
-          'type': map['type'],
-          'imageUrl': map['imageUrl'],
-          'photos': List<String>.from(photos),
-          'isSaved': map['isSaved'] == 1,
-          'isVisited': map['isVisited'] == 1,
-          'actionType': map['actionType'],
-          'isRegistered': map['isRegistered'] == 1,
-          'googleReviews': List<Map<String, dynamic>>.from(
-            googleReviews.map((r) => Map<String, dynamic>.from(r as Map)),
-          ),
-          'openNow': openNow,
-          'weekdayText': weekdayText.isNotEmpty ? List<String>.from(weekdayText) : null,
-          'cachedAt': map['cachedAt'],
-        });
+      if (maps.length > 100) {
+        return await compute(_parseDbRows, maps);
+      } else {
+        return _parseDbRows(maps);
       }
-
-      return results;
     } catch (e) {
       debugPrint("ExploreDbCacheService Error querying places in bounding box: $e");
       return [];
@@ -281,4 +232,61 @@ class ExploreDbCacheService {
       debugPrint("ExploreDbCacheService Error checking seed count: $e");
     }
   }
+}
+
+// Top-level function for background isolate parsing of DB rows
+List<Map<String, dynamic>> _parseDbRows(List<Map<String, dynamic>> maps) {
+  final List<Map<String, dynamic>> results = [];
+  for (final map in maps) {
+    List<dynamic> photos = [];
+    try {
+      if (map['photos'] != null) {
+        photos = json.decode(map['photos'] as String) as List<dynamic>;
+      }
+    } catch (_) {}
+
+    List<dynamic> googleReviews = [];
+    try {
+      if (map['googleReviews'] != null) {
+        googleReviews = json.decode(map['googleReviews'] as String) as List<dynamic>;
+      }
+    } catch (_) {}
+
+    List<dynamic> weekdayText = [];
+    try {
+      if (map['weekdayText'] != null) {
+        weekdayText = json.decode(map['weekdayText'] as String) as List<dynamic>;
+      }
+    } catch (_) {}
+
+    final int? openNowInt = map['openNow'] as int?;
+    final bool? openNow = openNowInt == null ? null : (openNowInt == 1);
+
+    results.add({
+      'id': map['id'],
+      'name': map['name'],
+      'arabicName': map['arabicName'],
+      'address': map['address'],
+      'latitude': map['latitude'],
+      'longitude': map['longitude'],
+      'rating': map['rating'],
+      'reviewsCount': map['reviewsCount'],
+      'price': map['price'],
+      'peopleCount': map['peopleCount'],
+      'type': map['type'],
+      'imageUrl': map['imageUrl'],
+      'photos': List<String>.from(photos),
+      'isSaved': map['isSaved'] == 1,
+      'isVisited': map['isVisited'] == 1,
+      'actionType': map['actionType'],
+      'isRegistered': map['isRegistered'] == 1,
+      'googleReviews': List<Map<String, dynamic>>.from(
+        googleReviews.map((r) => Map<String, dynamic>.from(r as Map)),
+      ),
+      'openNow': openNow,
+      'weekdayText': weekdayText.isNotEmpty ? List<String>.from(weekdayText) : null,
+      'cachedAt': map['cachedAt'],
+    });
+  }
+  return results;
 }

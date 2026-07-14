@@ -56,8 +56,8 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           desiredAccuracy: LocationAccuracy.medium,
           timeLimit: const Duration(seconds: 5),
         );
-        state = state.copyWith(userLocation: () => LatLng(position.latitude, position.longitude));
-        await fetchNearbyPlaces(position.latitude, position.longitude);
+        final loc = LatLng(position.latitude, position.longitude);
+        await fetchNearbyPlaces(position.latitude, position.longitude, newUserLocation: loc);
       } else {
         await fetchNearbyPlaces(24.7136, 46.6753);
       }
@@ -67,9 +67,19 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
     }
   }
 
-  Future<void> fetchNearbyPlaces(double lat, double lng, {String? category, double zoom = 13.0}) async {
+  Future<void> fetchNearbyPlaces(
+    double lat, 
+    double lng, {
+    String? category, 
+    double zoom = 13.0,
+    LatLng? newUserLocation,
+  }) async {
     try {
-      state = state.copyWith(lastFetchedLocation: () => LatLng(lat, lng), isLoading: true);
+      state = state.copyWith(
+        lastFetchedLocation: () => LatLng(lat, lng), 
+        isLoading: true,
+        userLocation: newUserLocation != null ? () => newUserLocation : null,
+      );
       
       // Calculate dynamic radius and box size based on zoom level to cover the visible map area
       double? boxSize = 0.15; // ~16.5 km local area preload
@@ -105,9 +115,33 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: cacheOnly),
       ]);
 
-      final normalPlaces = results[0] as List<Map<String, dynamic>>;
+      var normalPlaces = List<Map<String, dynamic>>.from(results[0] as List);
       final supabaseResults = results[1] as Map<String, dynamic>;
-      final eventPlaces = results[2] as List<Map<String, dynamic>>;
+      var eventPlaces = List<Map<String, dynamic>>.from(results[2] as List);
+
+      final checkins = List<Map<String, dynamic>>.from(supabaseResults['checkins'] as List? ?? []);
+      final customVenues = List<Map<String, dynamic>>.from(supabaseResults['customVenues'] as List? ?? []);
+      final postsRaw = List<dynamic>.from(supabaseResults['postsRaw'] as List? ?? []);
+
+      // If we are in cacheOnly mode but the zoom is >= 5.0,
+      // and we returned 0 places from the local SQLite cache, it means this area has never been visited/cached.
+      // Let's trigger a fresh API fetch with a clamped radius (15km) to populate the local cache for this new city/area.
+      if (cacheOnly && zoom >= 5.0 && normalPlaces.isEmpty) {
+        debugPrint("ExploreViewModel: Cache is empty for zoom $zoom at ($lat, $lng). Triggering fresh API fetch to populate cache.");
+        final freshRadius = 15000.0; // 15 km to cover the city area
+        final freshResults = await Future.wait([
+          _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: freshRadius, cacheOnly: false),
+          _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: freshRadius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: false),
+          _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: 0.2),
+        ]);
+        normalPlaces = List<Map<String, dynamic>>.from(freshResults[0] as List);
+        eventPlaces = List<Map<String, dynamic>>.from(freshResults[1] as List);
+        final freshSupabase = freshResults[2] as Map<String, dynamic>;
+        
+        checkins.addAll(List<Map<String, dynamic>>.from(freshSupabase['checkins'] as List? ?? []));
+        customVenues.addAll(List<Map<String, dynamic>>.from(freshSupabase['customVenues'] as List? ?? []));
+        postsRaw.addAll(freshSupabase['postsRaw'] as List? ?? []);
+      }
 
       // Merge places and remove duplicates by ID
       final Map<String, Map<String, dynamic>> combinedFoursquareMap = {};
@@ -118,10 +152,6 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         combinedFoursquareMap[p['id'].toString()] = p;
       }
       final foursquarePlaces = combinedFoursquareMap.values.toList();
-
-      final checkins = supabaseResults['checkins'] as List<Map<String, dynamic>>;
-      final customVenues = supabaseResults['customVenues'] as List<Map<String, dynamic>>;
-      final postsRaw = List<dynamic>.from(supabaseResults['postsRaw'] as List? ?? []);
 
       final placeVisitorCounts = <String, int>{};
       final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
@@ -277,6 +307,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         plng,
         userLat,
         userLng,
+        defaultType: place['type']?.toString(),
       ).then((fullPlace) {
         if (fullPlace != null && state.selectedPlace?['id'] == placeId) {
           final list = List<Map<String, dynamic>>.from(state.allPlaces);

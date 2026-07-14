@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../config/secrets.dart';
 
 class LocationPickerScreen extends StatefulWidget {
   final double initialLat;
@@ -92,7 +93,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           // Fullscreen Google Map
           Positioned.fill(
             child: mapbox.MapWidget(
-              resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew")),
+              resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
               styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
               cameraOptions: mapbox.CameraOptions(
                 center: mapbox.Point(coordinates: mapbox.Position(_currentCenter.longitude, _currentCenter.latitude)).toJson(),

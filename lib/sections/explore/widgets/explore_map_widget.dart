@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:moor/shared/models/lat_lng.dart' as model;
+import '../../../../config/secrets.dart';
 import '../helpers/marker_generator.dart';
 
 class ExploreMapWidget extends StatefulWidget {
@@ -91,6 +93,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   void initState() {
     super.initState();
     _currentZoom = widget.initialCameraPosition.zoom;
+  }
+
+  @override
+  void dispose() {
+    _registeredImageIds.clear();
+    _dynamicLayerIds.clear();
+    _mapboxMap = null;
+    super.dispose();
   }
 
   @override
@@ -213,6 +223,13 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         debugPrint("places-layer already exists or error: $e");
       }
 
+      final double maxZoomDots = 6.0;
+      final double minZoomMedium = 6.0;
+      final double maxZoomMedium = 9.0;
+      final double minZoomPins = 9.0;
+
+      final String initialDotsFilter = '["has", "point_count"]';
+
       try {
         final clustersDotsLayer = mapbox.SymbolLayer(
           id: "clusters-dots-layer",
@@ -221,10 +238,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           iconIgnorePlacement: true,
           textAllowOverlap: true,
           textIgnorePlacement: true,
-          maxZoom: 1.5,
+          maxZoom: maxZoomDots,
         );
         await mapboxMap.style.addLayer(clustersDotsLayer);
-        await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "filter", '["all", ["has", "point_count"], ["==", ["%", ["get", "cluster_id"], 6], 0]]');
+        await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "filter", initialDotsFilter);
         await mapboxMap.style.setStyleLayerProperty("clusters-dots-layer", "visibility", "visible");
       } catch (e) {
         debugPrint("clusters-dots-layer already exists or error: $e");
@@ -242,8 +259,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
           textHaloColor: 0xFFFFFFFF.toSigned(32),
           textHaloWidth: 1.5,
-          minZoom: 1.5,
-          maxZoom: 4.2,
+          minZoom: minZoomMedium,
+          maxZoom: maxZoomMedium,
         );
         await mapboxMap.style.addLayer(clustersMediumLayer);
         await mapboxMap.style.setStyleLayerProperty("clusters-medium-layer", "filter", '["has", "point_count"]');
@@ -264,7 +281,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
           textHaloColor: 0xFFFFFFFF.toSigned(32),
           textHaloWidth: 1.5,
-          minZoom: 4.2,
+          minZoom: minZoomPins,
         );
         await mapboxMap.style.addLayer(clustersPinsLayer);
         await mapboxMap.style.setStyleLayerProperty("clusters-pins-layer", "filter", '["has", "point_count"]');
@@ -443,6 +460,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
     }
   }
+
 
   String _resolvePlaceType(Map<String, dynamic> p) {
     return MarkerGenerator.resolveType(
@@ -632,7 +650,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
       debugPrint("ExploreMapWidget: Generated ${features.length} GeoJSON features.");
 
-      final String geojsonStr = jsonEncode(geojson);
+      final String geojsonStr = await compute(_serializeGeoJson, geojson);
       await _mapboxMap!.style.setStyleSourceProperty("places-source", "data", geojsonStr);
 
       // 4. Build color match expressions for labels
@@ -798,13 +816,29 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       ]);
 
       final String clusterIconSizeExpression = jsonEncode([
-        "step",
-        ["get", "point_count"],
-        0.4, // Small clusters (< 10 points)
-        10,
-        0.55,  // Medium clusters (10-99 points)
-        100,
-        0.7   // Large clusters (>= 100 points)
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        1.5,
+        [
+          "step",
+          ["get", "point_count"],
+          0.38,
+          10,
+          0.48,
+          100,
+          0.58
+        ],
+        5.0,
+        [
+          "step",
+          ["get", "point_count"],
+          0.65,
+          10,
+          0.8,
+          100,
+          0.95
+        ]
       ]);
 
       final String clusterTextColorExpression = jsonEncode([
@@ -830,13 +864,16 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "#5A5D67"
       ]);
 
-      // Style clusters-dots-layer (dots under zoom 1.5, no text)
+      // Style clusters-dots-layer (dots under zoom 13.0, no text)
       try {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "icon-image", clusterDotsIconImageExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "icon-size", clusterIconSizeExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-field", "");
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-size", 0.0);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-opacity", 0.0);
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "maxzoom", 6.0);
+        } catch (_) {}
       } catch (e) {
         debugPrint("Error styling clusters-dots-layer: $e");
       }
@@ -864,7 +901,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "normal-other"
       ]);
 
-      // Style clusters-medium-layer (pins and dots mix starting from zoom 1.5 to 4.2)
+      // Style clusters-medium-layer (pins and dots mix starting from zoom 13.0 to 15.0)
       try {
         final String clusterMediumTextFieldExpression = jsonEncode([
           "case",
@@ -880,11 +917,15 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-opacity", 1.0);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-color", clusterTextColorExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-radial-offset", textRadialOffsetExpr);
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "minzoom", 6.0);
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "maxzoom", 9.0);
+        } catch (_) {}
       } catch (e) {
         debugPrint("Error styling clusters-medium-layer: $e");
       }
 
-      // Style clusters-pins-layer (100% pins starting from zoom 4.2)
+      // Style clusters-pins-layer (100% pins starting from zoom 15.0)
       try {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-image", cluster100PinsIconImageExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-size", clusterIconSizeExpression);
@@ -893,6 +934,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-opacity", 1.0);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-color", clusterTextColorExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-radial-offset", textRadialOffsetExpr);
+        try {
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "minzoom", 9.0);
+        } catch (_) {}
       } catch (e) {
         debugPrint("Error styling clusters-pins-layer: $e");
       }
@@ -925,8 +969,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   Widget build(BuildContext context) {
     const String mapboxAccessToken = String.fromEnvironment(
       "MAPBOX_ACCESS_TOKEN",
-      defaultValue:
-          "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew",
+      defaultValue: Secrets.mapboxAccessToken,
     );
 
     return Listener(
@@ -1139,7 +1182,12 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             final features = await _mapboxMap!.queryRenderedFeatures(
               renderedQueryGeometry,
               mapbox.RenderedQueryOptions(
-                layerIds: ["places-layer", "clusters-layer"],
+                layerIds: [
+                  "places-layer",
+                  "clusters-dots-layer",
+                  "clusters-medium-layer",
+                  "clusters-pins-layer"
+                ],
                 filter: null,
               ),
             );
@@ -1150,6 +1198,26 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               final properties = feature.feature['properties'] as Map?;
               debugPrint("ExploreMapWidget Tap: Properties = $properties");
               if (properties != null) {
+                final bool isCluster = properties.containsKey('point_count') || properties.containsKey('cluster_id');
+                if (isCluster) {
+                  final geometry = feature.feature['geometry'] as Map?;
+                  final coordinates = geometry?['coordinates'] as List?;
+                  if (coordinates != null && coordinates.length >= 2) {
+                    final double lng = (coordinates[0] as num).toDouble();
+                    final double lat = (coordinates[1] as num).toDouble();
+                    final double targetZoom = _currentZoom + 1.5;
+                    debugPrint("ExploreMapWidget Tap: Cluster clicked, zooming into: ($lat, $lng) at zoom $targetZoom");
+                    _mapboxMap?.easeTo(
+                      mapbox.CameraOptions(
+                        center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+                        zoom: targetZoom,
+                      ),
+                      mapbox.MapAnimationOptions(duration: 500),
+                    );
+                    return;
+                  }
+                }
+
                 final String? dominantId = properties['dominant_id']?.toString();
                 final String? placeId = properties['id']?.toString();
                 final String targetId = dominantId ?? placeId ?? '';
@@ -1213,3 +1281,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 }
 
 // Native clustering helper classes removed
+
+String _serializeGeoJson(Map<String, dynamic> geojson) {
+  return jsonEncode(geojson);
+}

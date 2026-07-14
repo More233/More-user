@@ -14,7 +14,8 @@ abstract class ExploreRepository {
     double lat,
     double lng,
     double userLat,
-    double userLng,
-  );
+    double userLng, {
+    String? defaultType,
+  });
   Future<Map<String, dynamic>?> fetchVisitorsForNonFoursquare(Map<String, dynamic> place);
 }

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import '../../../../../config/secrets.dart';
 import '../../models/timeline_post.dart';
 import '../../gallery_picker_screen.dart';
 import '../bottom_sheets/add_friends_bottom_sheet.dart';
@@ -604,7 +605,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                 width: double.infinity,
                 height: 220 + topPadding,
                 child: mapbox.MapWidget(
-                  resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: "pk.eyJ1IjoiYmFzaWlpIiwiYSI6ImNtcmhjZ2tocDFia2YzMHF6b3NvZzE0dzEifQ.u_cHUq4ZPa-busa7KzLyew")),
+                  resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
                   styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
                   cameraOptions: mapbox.CameraOptions(
                     center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),

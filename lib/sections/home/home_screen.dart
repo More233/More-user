@@ -342,8 +342,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(timelineViewModelProvider);
-    final exploreState = ref.watch(exploreViewModelProvider);
-    final bool isPlaceSelectedOnMap = exploreState.selectedPlace != null && state.selectedNavIndex == 1;
+    final isPlaceSelected = ref.watch(exploreViewModelProvider.select((s) => s.selectedPlace != null));
+    final isListView = ref.watch(exploreViewModelProvider.select((s) => s.isListView));
+    final bool isPlaceSelectedOnMap = isPlaceSelected && state.selectedNavIndex == 1;
     debugPrint("HomeScreen: build() called, isLoading=${state.isLoading}, selectedNavIndex=${state.selectedNavIndex}, isPlaceSelectedOnMap=$isPlaceSelectedOnMap");
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final navBarHeight = 50.0 + bottomPadding;
@@ -504,17 +505,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                         },
                                       ),
                                     ),
-                                    // The Map Button next to Plus Button
+                                     // The Map Button next to Plus Button
                                      AnimatedPositioned(
                                        duration: const Duration(milliseconds: 250),
                                        curve: Curves.easeInOut,
-                                       right: (state.selectedNavIndex == 1 && exploreState.isListView) ? 88 : 16,
+                                       right: (state.selectedNavIndex == 1 && isListView) ? 88 : 16,
                                        bottom: _isNavBarVisible ? 75 + bottomPadding : 25 + bottomPadding,
                                        child: IgnorePointer(
-                                         ignoring: !(state.selectedNavIndex == 1 && exploreState.isListView),
+                                         ignoring: !(state.selectedNavIndex == 1 && isListView),
                                          child: AnimatedOpacity(
                                            duration: const Duration(milliseconds: 200),
-                                           opacity: (state.selectedNavIndex == 1 && exploreState.isListView) ? 1.0 : 0.0,
+                                           opacity: (state.selectedNavIndex == 1 && isListView) ? 1.0 : 0.0,
                                            child: GestureDetector(
                                              onTap: () {
                                                HapticFeedback.lightImpact();
