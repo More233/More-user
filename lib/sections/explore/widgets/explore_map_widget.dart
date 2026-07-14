@@ -179,15 +179,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           clusterRadius: 50.0,
           clusterMaxZoom: 11.5,
           clusterProperties: {
-            "has_restaurant": ["any", ["==", ["get", "place_type"], "restaurant"]],
-            "has_coffee": ["any", ["==", ["get", "place_type"], "coffee"]],
-            "has_hotel": ["any", ["==", ["get", "place_type"], "hotel"]],
-            "has_park": ["any", ["==", ["get", "place_type"], "park"]],
-            "has_bars": ["any", ["==", ["get", "place_type"], "bars"]],
-            "has_bakery": ["any", ["==", ["get", "place_type"], "bakery"]],
-            "has_pharmacy": ["any", ["==", ["get", "place_type"], "pharmacy"]],
-            "has_supermarket": ["any", ["==", ["get", "place_type"], "supermarket"]],
-            "has_airport": ["any", ["==", ["get", "place_type"], "airport"]],
+            "dominant_rating_and_type": ["max", ["get", "rating_and_type"]],
           },
         );
         await mapboxMap.style.addSource(source);
@@ -417,10 +409,23 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         "ExploreMapWidget: _updateMarkers() called with ${widget.places.length} places (native)",
       );
 
-      // 1. Gather all unique types in places
+      // 1. Gather all unique types in places, including all 10 predefined types
+      final List<String> allPredefinedTypes = [
+        'restaurant',
+        'coffee',
+        'bakery',
+        'bars',
+        'supermarket',
+        'pharmacy',
+        'hotel',
+        'park',
+        'airport',
+        'other',
+      ];
       final uniqueTypes = widget.places
           .map((p) => p['type']?.toString().toLowerCase().trim() ?? 'default')
           .toSet();
+      uniqueTypes.addAll(allPredefinedTypes);
 
       final double dpr = ui.PlatformDispatcher.instance.views.isNotEmpty
           ? ui.PlatformDispatcher.instance.views.first.devicePixelRatio
@@ -638,34 +643,34 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       // --- Clusters Layer Styles ---
       final String clusterIconImageExpression = jsonEncode([
         "case",
-        ["coalesce", ["get", "has_restaurant"], false],
+        ["in", "restaurant", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-restaurant",
-        ["coalesce", ["get", "has_coffee"], false],
+        ["in", "coffee", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-coffee",
-        ["coalesce", ["get", "has_hotel"], false],
+        ["in", "hotel", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-hotel",
-        ["coalesce", ["get", "has_park"], false],
+        ["in", "park", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-park",
-        ["coalesce", ["get", "has_bars"], false],
+        ["in", "bars", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-bars",
-        ["coalesce", ["get", "has_bakery"], false],
+        ["in", "bakery", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-bakery",
-        ["coalesce", ["get", "has_pharmacy"], false],
+        ["in", "pharmacy", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-pharmacy",
-        ["coalesce", ["get", "has_supermarket"], false],
+        ["in", "supermarket", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-supermarket",
-        ["coalesce", ["get", "has_airport"], false],
+        ["in", "airport", ["coalesce", ["get", "dominant_rating_and_type"], ""]],
         "dot-airport",
         "dot-other"
       ]);
       final String clusterIconSizeExpression = jsonEncode([
         "step",
         ["get", "point_count"],
-        0.6,  // Small clusters (< 10 points)
+        0.3,  // Small clusters (< 10 points)
         10,
-        0.85, // Medium clusters (10-49 points)
-        50,
-        1.1   // Large clusters (>= 50 points)
+        0.45, // Medium clusters (10-99 points)
+        100,
+        0.65  // Large clusters (>= 100 points)
       ]);
       try {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-image", clusterIconImageExpression);

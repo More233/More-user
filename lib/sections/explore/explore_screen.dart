@@ -58,12 +58,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   mapbox.MapboxMap? _mapController;
   double _currentZoom = 13.0;
   double? _lastFetchedZoom;
+  late final ValueNotifier<double> _zoomNotifier;
   final TextEditingController _searchController = TextEditingController();
   final ValueNotifier<bool> _showCardNotifier = ValueNotifier<bool>(true);
 
   @override
   void initState() {
     super.initState();
+    _zoomNotifier = ValueNotifier<double>(widget.initialLatitude != null ? 15.0 : 13.0);
     Future.microtask(() {
       ref.read(exploreViewModelProvider.notifier).init();
     });
@@ -73,6 +75,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   void dispose() {
     _searchController.dispose();
     _showCardNotifier.dispose();
+    _zoomNotifier.dispose();
     super.dispose();
   }
 
@@ -738,6 +741,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 },
                 onCameraMove: (zoom) {
                   _currentZoom = zoom;
+                  _zoomNotifier.value = zoom;
                 },
                 onCameraIdle: () {
                   if (_mapController != null) {
@@ -1205,6 +1209,40 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     ),
                   ),
                 ),
+              ),
+              ValueListenableBuilder<double>(
+                valueListenable: _zoomNotifier,
+                builder: (context, zoomVal, child) {
+                  return Positioned(
+                    left: 22,
+                    bottom: controlsBottom + (showCategoryResultsMode ? 124 : 64),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(100),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.54),
+                            borderRadius: BorderRadius.circular(100),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            "Zoom: ${zoomVal.toStringAsFixed(1)}",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ],
