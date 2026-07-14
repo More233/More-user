@@ -259,13 +259,17 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             continue;
           }
 
-          // Simplify default label layers' text-fields to only use the 'name' field, removing inline reference shield icons (e.g. ••••)
+          // Simplify default label layers' text-fields to prioritize English name_en over name field, removing inline reference shields
           if (idLower.contains('label')) {
             try {
               await mapboxMap.style.setStyleLayerProperty(
                 layerInfo.id,
                 'text-field',
-                jsonEncode(['get', 'name']),
+                jsonEncode([
+                  'coalesce',
+                  ['get', 'name_en'],
+                  ['get', 'name']
+                ]),
               );
               debugPrint("ExploreMapWidget: Simplified label layer ${layerInfo.id} text-field successfully.");
             } catch (e) {
