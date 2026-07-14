@@ -322,14 +322,16 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           }
 
           // Try to clear default icon images (like road shields) to prevent broken placeholder dots (e.g. ••••)
-          try {
-            await mapboxMap.style.setStyleLayerProperty(
-              layerInfo.id,
-              'icon-image',
-              jsonEncode(''),
-            );
-          } catch (e) {
-            // Ignore if layer doesn't support icon-image
+          if (idLower.contains('shield') || idLower.contains('road') || idLower.contains('highway')) {
+            try {
+              await mapboxMap.style.setStyleLayerProperty(
+                layerInfo.id,
+                'icon-image',
+                jsonEncode(''),
+              );
+            } catch (e) {
+              // Ignore if layer doesn't support icon-image
+            }
           }
 
           bool shouldHide = false;
