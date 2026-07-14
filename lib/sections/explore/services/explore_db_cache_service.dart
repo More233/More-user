@@ -20,7 +20,7 @@ class ExploreDbCacheService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE cached_places (
@@ -51,6 +51,40 @@ class ExploreDbCacheService {
           CREATE INDEX idx_cached_places_coords 
           ON cached_places (latitude, longitude)
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute("DROP TABLE IF EXISTS cached_places");
+          await db.execute('''
+            CREATE TABLE cached_places (
+              id TEXT PRIMARY KEY,
+              name TEXT,
+              arabicName TEXT,
+              address TEXT,
+              latitude REAL,
+              longitude REAL,
+              rating REAL,
+              reviewsCount INTEGER,
+              price TEXT,
+              peopleCount INTEGER,
+              type TEXT,
+              imageUrl TEXT,
+              photos TEXT,
+              isSaved INTEGER,
+              isVisited INTEGER,
+              actionType TEXT,
+              isRegistered INTEGER,
+              googleReviews TEXT,
+              openNow INTEGER,
+              weekdayText TEXT,
+              cachedAt INTEGER
+            )
+          ''');
+          await db.execute('''
+            CREATE INDEX idx_cached_places_coords 
+            ON cached_places (latitude, longitude)
+          ''');
+        }
       },
     );
   }
