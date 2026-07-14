@@ -1210,18 +1210,21 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   ),
                 ),
               ),
-              ValueListenableBuilder<double>(
-                valueListenable: _zoomNotifier,
-                builder: (context, zoomVal, child) {
-                  return Positioned(
-                    left: 22,
-                    bottom: controlsBottom + (showCategoryResultsMode ? 124 : 64),
-                    child: ClipRRect(
+            ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: controlsBottom + 68,
+              child: Center(
+                child: ValueListenableBuilder<double>(
+                  valueListenable: _zoomNotifier,
+                  builder: (context, zoomVal, child) {
+                    return ClipRRect(
                       borderRadius: BorderRadius.circular(100),
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.54),
                             borderRadius: BorderRadius.circular(100),
@@ -1233,18 +1236,18 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           child: Text(
                             "Zoom: ${zoomVal.toStringAsFixed(1)}",
                             style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ],
+            ),
           ],
         ],
       ),

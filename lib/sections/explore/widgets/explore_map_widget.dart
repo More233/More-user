@@ -666,11 +666,11 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       final String clusterIconSizeExpression = jsonEncode([
         "step",
         ["get", "point_count"],
-        0.3,  // Small clusters (< 10 points)
+        0.45, // Small clusters (< 10 points)
         10,
-        0.45, // Medium clusters (10-99 points)
+        0.6,  // Medium clusters (10-99 points)
         100,
-        0.65  // Large clusters (>= 100 points)
+        0.8   // Large clusters (>= 100 points)
       ]);
       try {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-layer", "icon-image", clusterIconImageExpression);
