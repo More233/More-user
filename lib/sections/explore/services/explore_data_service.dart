@@ -534,7 +534,10 @@ class ExploreDataService {
         final List<Map<String, dynamic>> places = [];
         for (final item in results) {
           final place = item as Map<String, dynamic>;
-          places.add(parseGooglePlace(place, lat, lng));
+          final parsed = parseGooglePlace(place, lat, lng);
+          if (parsed['type'] != 'Airport') {
+            places.add(parsed);
+          }
         }
 
         // Determine dynamic maxPages based on radius to speed up loading
@@ -557,7 +560,10 @@ class ExploreDataService {
             final nextPageResults = nextPageData['results'] as List<dynamic>? ?? [];
             for (final item in nextPageResults) {
               final place = item as Map<String, dynamic>;
-              places.add(parseGooglePlace(place, lat, lng));
+              final parsed = parseGooglePlace(place, lat, lng);
+              if (parsed['type'] != 'Airport') {
+                places.add(parsed);
+              }
             }
             nextPageToken = nextPageData['next_page_token'] as String?;
             pageCount++;
@@ -621,7 +627,10 @@ class ExploreDataService {
         final resultsList = data['results'] as List<dynamic>? ?? [];
         for (final item in resultsList) {
           final place = item as Map<String, dynamic>;
-          places.add(parseGooglePlace(place, lat, lng));
+          final parsed = parseGooglePlace(place, lat, lng);
+          if (parsed['type'] != 'Airport') {
+            places.add(parsed);
+          }
         }
 
         // Handle pagination to fetch up to 60 places (3 pages)
@@ -641,7 +650,10 @@ class ExploreDataService {
             final nextPageResults = nextPageData['results'] as List<dynamic>? ?? [];
             for (final item in nextPageResults) {
               final place = item as Map<String, dynamic>;
-              places.add(parseGooglePlace(place, lat, lng));
+              final parsed = parseGooglePlace(place, lat, lng);
+              if (parsed['type'] != 'Airport') {
+                places.add(parsed);
+              }
             }
             nextPageToken = nextPageData['next_page_token'] as String?;
             pageCount++;

@@ -20,7 +20,7 @@ class ExploreDbCacheService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE cached_places (
@@ -53,7 +53,7 @@ class ExploreDbCacheService {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
+        if (oldVersion < 3) {
           await db.execute("DROP TABLE IF EXISTS cached_places");
           await db.execute('''
             CREATE TABLE cached_places (
@@ -265,15 +265,15 @@ class ExploreDbCacheService {
     }
   }
 
-  // Check if database needs to be seeded and run it if count is less than 10780
+  // Check if database needs to be seeded and run it if count is less than 9702
   static Future<void> _checkAndSeedIfNeeded(Database db) async {
     try {
       final List<Map<String, dynamic>> result = await db.rawQuery(
         "SELECT COUNT(*) as count FROM cached_places WHERE id LIKE 'seed_%'"
       );
       final int count = Sqflite.firstIntValue(result) ?? 0;
-      if (count < 10780) {
-        debugPrint("ExploreDbCacheService: Database needs seeding (count: $count < 10780). Seeding now...");
+      if (count < 9702) {
+        debugPrint("ExploreDbCacheService: Database needs seeding (count: $count < 9702). Seeding now...");
         await db.delete('cached_places', where: "id LIKE 'seed_%'");
         await seedDatabase(db);
       }

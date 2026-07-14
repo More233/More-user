@@ -58,7 +58,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   static const List<String> _permanentHideKeywords = [
     'poi',
     'transit',
-    'airport',
     'rail',
     'bus',
     'station',
@@ -579,6 +578,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         mainName = mainName.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
 
         final String resolvedType = _resolvePlaceType(p);
+        if (resolvedType == 'airport') {
+          continue;
+        }
+
         final double rating = double.tryParse(p['rating']?.toString() ?? '') ?? 0.0;
         final String ratingAndType = "${rating.toStringAsFixed(2)}_$resolvedType";
 
