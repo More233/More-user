@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -9,6 +10,7 @@ class ExploreDbCacheService {
   static Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDb();
+    await _checkAndSeedIfNeeded(_database!);
     return _database!;
   }
 
@@ -194,14 +196,54 @@ class ExploreDbCacheService {
       final expirationTime = DateTime.now().subtract(age).millisecondsSinceEpoch;
       final count = await db.delete(
         'cached_places',
-        where: 'cachedAt < ?',
-        whereArgs: [expirationTime],
+        where: 'cachedAt < ? AND id NOT LIKE ?',
+        whereArgs: [expirationTime, 'seed_%'],
       );
       if (count > 0) {
         debugPrint("ExploreDbCacheService: Cleared $count expired places from local SQLite database.");
       }
     } catch (e) {
       debugPrint("ExploreDbCacheService Error clearing expired places: $e");
+    }
+  }
+
+  // Seed database with pre-populated JSON places
+  static Future<void> seedDatabase(Database db) async {
+    try {
+      final String jsonStr = await rootBundle.loadString('assets/explore/seeded_places.json');
+      final List<dynamic> list = json.decode(jsonStr) as List<dynamic>;
+      final batch = db.batch();
+      
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      for (final item in list) {
+        final place = Map<String, dynamic>.from(item as Map);
+        batch.insert('cached_places', {
+          ...place,
+          'cachedAt': now,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+
+      await batch.commit(noResult: true);
+      debugPrint("ExploreDbCacheService: Successfully seeded database with ${list.length} global places.");
+    } catch (e) {
+      debugPrint("ExploreDbCacheService Error seeding database: $e");
+    }
+  }
+
+  // Check if database needs to be seeded and run it if count is 0
+  static Future<void> _checkAndSeedIfNeeded(Database db) async {
+    try {
+      final List<Map<String, dynamic>> result = await db.rawQuery(
+        "SELECT COUNT(*) as count FROM cached_places WHERE id LIKE 'seed_%'"
+      );
+      final int count = Sqflite.firstIntValue(result) ?? 0;
+      if (count == 0) {
+        debugPrint("ExploreDbCacheService: Database needs seeding. Seeding now...");
+        await seedDatabase(db);
+      }
+    } catch (e) {
+      debugPrint("ExploreDbCacheService Error checking seed count: $e");
     }
   }
 }
