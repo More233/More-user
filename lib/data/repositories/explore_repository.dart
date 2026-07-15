@@ -5,6 +5,7 @@ abstract class ExploreRepository {
     double radius = 3000, 
     String? keyword,
     bool cacheOnly = false,
+    bool markSynced = true,
   });
   Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5});
   Future<List<Map<String, dynamic>>> searchPlaces(String query, double lat, double lng);

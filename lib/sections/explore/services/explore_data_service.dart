@@ -495,6 +495,7 @@ class ExploreDataService {
           loc['lng']!,
           radius: 10000,
           cacheOnly: false,
+          markSynced: false,
         ).catchError((e) {
           debugPrint("Startup seed failed for ${loc['lat']}, ${loc['lng']}: $e");
           return <Map<String, dynamic>>[];
@@ -514,6 +515,7 @@ class ExploreDataService {
     double radius = 3000,
     String? keyword,
     bool cacheOnly = false,
+    bool markSynced = true,
   }) async {
     final int roundedLat = (lat * 100).round();
     final int roundedLng = (lng * 100).round();
@@ -589,42 +591,17 @@ class ExploreDataService {
           }
         }
 
-        // Limit to 2 pages to increase density while keeping load fast in the background
-        final int maxPages = 2;
-
-        // Handle pagination to fetch up to 60 places (maxPages)
-        String? nextPageToken = data['next_page_token'] as String?;
-        int pageCount = 1;
-        while (nextPageToken != null && nextPageToken.isNotEmpty && pageCount < maxPages) {
-          // Google Places API token has a small delay before it becomes valid
-          await Future<void>.delayed(const Duration(milliseconds: 2000));
-          
-          final String nextPageUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-              '?pagetoken=$nextPageToken'
-              '&key=$googlePlacesApiKey';
-              
-          final nextPageResponse = await _client.get(Uri.parse(nextPageUrl));
-          if (nextPageResponse.statusCode == 200) {
-            final nextPageData = json.decode(nextPageResponse.body);
-            final nextPageResults = nextPageData['results'] as List<dynamic>? ?? [];
-            for (final item in nextPageResults) {
-              final place = item as Map<String, dynamic>;
-              final parsed = parseGooglePlace(place, lat, lng);
-              if (parsed['type'] != 'Airport') {
-                places.add(parsed);
-              }
-            }
-            nextPageToken = nextPageData['next_page_token'] as String?;
-            pageCount++;
-          } else {
-            break;
-          }
+        // Save first page results to SQLite cache and mark region synced asynchronously (background)
+        ExploreDbCacheService.savePlaces(places);
+        if (markSynced) {
+          ExploreDbCacheService.markRegionSynced(lat, lng, radius);
         }
 
-        // Save to SQLite cache and mark region synced asynchronously (background)
-        // This decouples disk write latency entirely from the UI response!
-        ExploreDbCacheService.savePlaces(places);
-        ExploreDbCacheService.markRegionSynced(lat, lng, radius);
+        // Handle pagination asynchronously in the background so it doesn't block the UI!
+        final String? nextPageToken = data['next_page_token'] as String?;
+        if (nextPageToken != null && nextPageToken.isNotEmpty) {
+          _fetchNextPagesInBackground(nextPageToken, lat, lng);
+        }
 
         _placesCache[cacheKey] = places;
         return places;
@@ -640,6 +617,47 @@ class ExploreDataService {
     }
 
     return [];
+  }
+
+  static Future<void> _fetchNextPagesInBackground(String nextToken, double lat, double lng) async {
+    try {
+      String? currentToken = nextToken;
+      int pageCount = 1;
+      final int maxPages = 2;
+
+      while (currentToken != null && currentToken.isNotEmpty && pageCount < maxPages) {
+        // Google requires a delay of ~2 seconds before next_page_token becomes valid
+        await Future<void>.delayed(const Duration(milliseconds: 2000));
+
+        final String nextPageUrl = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+            '?pagetoken=$currentToken'
+            '&key=$googlePlacesApiKey';
+
+        final response = await _client.get(Uri.parse(nextPageUrl));
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final results = data['results'] as List<dynamic>? ?? [];
+          final List<Map<String, dynamic>> places = [];
+          for (final item in results) {
+            final place = item as Map<String, dynamic>;
+            final parsed = parseGooglePlace(place, lat, lng);
+            if (parsed['type'] != 'Airport') {
+              places.add(parsed);
+            }
+          }
+
+          if (places.isNotEmpty) {
+            await ExploreDbCacheService.savePlaces(places);
+          }
+          currentToken = data['next_page_token'] as String?;
+          pageCount++;
+        } else {
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint("ExploreDataService: Error in background pagination: $e");
+    }
   }
 
   static Future<List<Map<String, dynamic>>> searchFoursquarePlaces(String query, double lat, double lng) async {

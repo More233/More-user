@@ -84,7 +84,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       );
       
       double? boxSize = 0.15; // ~16.5 km local area preload
-      double radius = 8000;   // 8 km Foursquare/Google Places radius
+      double radius = 3000;   // Concentrated 3 km Google Places radius for high density
 
       if (zoom < 3.0) {
         boxSize = null; // Global search
@@ -162,8 +162,8 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           return;
         }
 
-        // Fetch larger area (6km) to cache locally, making camera pans extremely fast cache hits!
-        final double apiRadius = 6000;
+        // Fetch concentrated area (2.5km) to cache locally, making camera pans fast cache hits with high density!
+        final double apiRadius = 2500;
 
         String? apiKeyword;
         if (hasCategory) {
@@ -193,25 +193,76 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
           }
         }
 
-        _exploreRepository.fetchNearbyFoursquarePlaces(
-          lat, 
-          lng, 
-          radius: apiRadius, 
-          keyword: apiKeyword,
-          cacheOnly: false,
-        ).then((places) {
-          _mergeAndUpdatePlaces(places);
-          debugPrint("ExploreViewModel: Background sync places completed for category: $category. Fetched: ${places.length}");
-        }).catchError((err) {
-          debugPrint("ExploreViewModel Error places sync: $err");
-        });
-
         if (!hasCategory) {
-          _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: apiRadius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: false).then((places) {
+          // Solution B: Parallel Multi-Category Querying to bypass Google's 60-result limit
+          // 1. General prominent mix
+          _exploreRepository.fetchNearbyFoursquarePlaces(
+            lat, 
+            lng, 
+            radius: apiRadius, 
+            keyword: null,
+            cacheOnly: false,
+          ).then((places) {
             _mergeAndUpdatePlaces(places);
-            debugPrint("ExploreViewModel: Background sync event places completed. Fetched: ${places.length}");
+            debugPrint("ExploreViewModel: Background sync general places completed. Fetched: ${places.length}");
           }).catchError((err) {
-            debugPrint("ExploreViewModel Error event places sync: $err");
+            debugPrint("ExploreViewModel Error general places sync: $err");
+          });
+
+          // 2. Food & Dining
+          _exploreRepository.fetchNearbyFoursquarePlaces(
+            lat, 
+            lng, 
+            radius: apiRadius, 
+            keyword: 'restaurant|cafe|coffee|bakery',
+            cacheOnly: false,
+          ).then((places) {
+            _mergeAndUpdatePlaces(places);
+            debugPrint("ExploreViewModel: Background sync dining places completed. Fetched: ${places.length}");
+          }).catchError((err) {
+            debugPrint("ExploreViewModel Error dining places sync: $err");
+          });
+
+          // 3. Shopping & Malls
+          _exploreRepository.fetchNearbyFoursquarePlaces(
+            lat, 
+            lng, 
+            radius: apiRadius, 
+            keyword: 'mall|store|supermarket|market|shop',
+            cacheOnly: false,
+          ).then((places) {
+            _mergeAndUpdatePlaces(places);
+            debugPrint("ExploreViewModel: Background sync shopping places completed. Fetched: ${places.length}");
+          }).catchError((err) {
+            debugPrint("ExploreViewModel Error shopping places sync: $err");
+          });
+
+          // 4. Landmarks, Entertainment & Events
+          _exploreRepository.fetchNearbyFoursquarePlaces(
+            lat, 
+            lng, 
+            radius: apiRadius, 
+            keyword: 'cinema|stadium|museum|theater|concert|sports|park|mosque',
+            cacheOnly: false,
+          ).then((places) {
+            _mergeAndUpdatePlaces(places);
+            debugPrint("ExploreViewModel: Background sync event/landmark places completed. Fetched: ${places.length}");
+          }).catchError((err) {
+            debugPrint("ExploreViewModel Error event/landmark places sync: $err");
+          });
+        } else {
+          // If specific category selected, run single query for that category
+          _exploreRepository.fetchNearbyFoursquarePlaces(
+            lat, 
+            lng, 
+            radius: apiRadius, 
+            keyword: apiKeyword,
+            cacheOnly: false,
+          ).then((places) {
+            _mergeAndUpdatePlaces(places);
+            debugPrint("ExploreViewModel: Background sync places completed for category: $category. Fetched: ${places.length}");
+          }).catchError((err) {
+            debugPrint("ExploreViewModel Error places sync: $err");
           });
         }
       }

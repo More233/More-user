@@ -14,6 +14,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     double radius = 3000, 
     String? keyword,
     bool cacheOnly = false,
+    bool markSynced = true,
   }) {
     return ExploreDataService.fetchNearbyFoursquarePlaces(
       lat, 
@@ -21,6 +22,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
       radius: radius, 
       keyword: keyword,
       cacheOnly: cacheOnly,
+      markSynced: markSynced,
     );
   }
 
