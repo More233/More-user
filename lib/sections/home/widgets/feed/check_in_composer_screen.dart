@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,12 +21,20 @@ class CheckInComposerScreen extends StatefulWidget {
   final bool isFirstCheckIn;
   final TimelinePost? editPost;
   final Map<String, dynamic>? prefilledPlace;
+  final double? initialLatitude;
+  final double? initialLongitude;
+  final String? initialLocationName;
+  final String? initialLocationAddress;
 
   const CheckInComposerScreen({
     super.key,
     this.isFirstCheckIn = false,
     this.editPost,
     this.prefilledPlace,
+    this.initialLatitude,
+    this.initialLongitude,
+    this.initialLocationName,
+    this.initialLocationAddress,
   });
 
   @override
@@ -31,6 +42,7 @@ class CheckInComposerScreen extends StatefulWidget {
 }
 
 class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
+  static String? _cachedUserAvatarUrl;
 
 
   final TextEditingController _captionController = TextEditingController();
@@ -54,6 +66,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
   @override
   void initState() {
     super.initState();
+    _currentUserAvatarUrl = _cachedUserAvatarUrl;
     _fetchUserProfile();
     if (widget.editPost != null) {
       final post = widget.editPost!;
@@ -82,10 +95,53 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       _longitude = (place['longitude'] as num?)?.toDouble() ?? 30.697478;
       _placeId = place['id'] as String?;
       _categoryName = place['type'] as String? ?? 'Hotel';
-    } else if (widget.isFirstCheckIn) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showIntroBottomSheet();
-      });
+    } else if (widget.initialLatitude != null && widget.initialLongitude != null) {
+      _latitude = widget.initialLatitude!;
+      _longitude = widget.initialLongitude!;
+      _locationName = widget.initialLocationName ?? "Loading location...";
+      _locationAddress = widget.initialLocationAddress ?? "";
+      _loadLocationFromCoordinates(widget.initialLatitude!, widget.initialLongitude!);
+    } else {
+      _loadCurrentGPSLocationAndNearestPlace();
+      if (widget.isFirstCheckIn) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showIntroBottomSheet();
+        });
+      }
+    }
+  }
+
+  Future<void> _loadCurrentGPSLocationAndNearestPlace() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+      
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 4),
+        );
+        
+        final double lat = position.latitude;
+        final double lng = position.longitude;
+        
+        if (mounted) {
+          setState(() {
+            _latitude = lat;
+            _longitude = lng;
+            _locationName = "Loading location...";
+            _locationAddress = "";
+          });
+        }
+
+        await _fetchPlaceOrGeocode(lat, lng);
+      }
+    } catch (e) {
+      debugPrint("Error loading current GPS and nearest place: $e");
     }
   }
 
@@ -102,11 +158,151 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
         if (data != null && data['avatar_url'] != null && mounted) {
           setState(() {
             _currentUserAvatarUrl = data['avatar_url'] as String?;
+            _cachedUserAvatarUrl = _currentUserAvatarUrl;
           });
         }
       }
     } catch (e) {
       debugPrint("Error fetching user profile: $e");
+    }
+  }
+
+  Future<void> _loadLocationFromCoordinates(double lat, double lng) async {
+    await _fetchPlaceOrGeocode(lat, lng);
+  }
+
+  Future<void> _fetchPlaceOrGeocode(double lat, double lng) async {
+    try {
+      final String apiKey = const String.fromEnvironment(
+        'GOOGLE_PLACES_API_KEY',
+        defaultValue: Secrets.googlePlacesApiKey,
+      );
+
+      // 1. Try Nearby Search with rankby=distance to get the absolute closest establishments
+      final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+          '?location=$lat,$lng'
+          '&rankby=distance'
+          '&language=en'
+          '&key=$apiKey';
+
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final results = data['results'] as List<dynamic>? ?? [];
+        
+        Map<String, dynamic>? bestPlace;
+        if (results.isNotEmpty) {
+          // Find first specific establishment/point of interest that is not just a broad city/region
+          for (final res in results) {
+            final types = List<dynamic>.from(res['types'] as List? ?? []);
+            final isBroadArea = types.contains('locality') || 
+                                types.contains('sublocality') ||
+                                types.contains('political') || 
+                                types.contains('administrative_area_level_1') || 
+                                types.contains('administrative_area_level_2') || 
+                                types.contains('country');
+            
+            if (!isBroadArea) {
+              bestPlace = res as Map<String, dynamic>;
+              break;
+            }
+          }
+        }
+
+        // If we found a specific establishment, use it!
+        if (bestPlace != null) {
+          final name = bestPlace['name'] as String? ?? 'My Location';
+          final address = bestPlace['vicinity'] as String? ?? bestPlace['formatted_address'] as String? ?? '';
+          final geometry = bestPlace['geometry'] as Map<String, dynamic>?;
+          final locationObj = geometry?['location'] as Map<String, dynamic>?;
+          final plat = (locationObj?['lat'] as num?)?.toDouble() ?? lat;
+          final plng = (locationObj?['lng'] as num?)?.toDouble() ?? lng;
+          final types = bestPlace['types'] as List<dynamic>? ?? [];
+          final String category = types.isNotEmpty ? types.first.toString() : 'Hotel';
+
+          if (mounted) {
+            setState(() {
+              _locationName = name;
+              _locationAddress = address;
+              _latitude = plat;
+              _longitude = plng;
+              _placeId = bestPlace!['place_id'] as String?;
+              _categoryName = category;
+            });
+            
+            _mapController?.easeTo(
+              mapbox.CameraOptions(
+                center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+                zoom: 15.0,
+              ),
+              mapbox.MapAnimationOptions(duration: 500),
+            );
+          }
+          return;
+        }
+      }
+
+      // 2. If Nearby Search only returned generic areas (or failed), use Geocoding API to get a specific street address
+      final geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json'
+          '?latlng=$lat,$lng'
+          '&language=en'
+          '&key=$apiKey';
+      
+      final geocodeResponse = await http.get(Uri.parse(geocodeUrl)).timeout(const Duration(seconds: 4));
+      if (geocodeResponse.statusCode == 200) {
+        final geocodeData = json.decode(geocodeResponse.body);
+        final geocodeResults = geocodeData['results'] as List<dynamic>? ?? [];
+        if (geocodeResults.isNotEmpty) {
+          // Find the first result that is a street address (e.g. route, street_address, premise)
+          Map<String, dynamic>? bestGeocode;
+          for (final gRes in geocodeResults) {
+            final gTypes = List<dynamic>.from(gRes['types'] as List? ?? []);
+            if (gTypes.contains('route') || gTypes.contains('street_address') || gTypes.contains('premise')) {
+              bestGeocode = gRes as Map<String, dynamic>;
+              break;
+            }
+          }
+          final selectedGeocode = bestGeocode ?? (geocodeResults.first as Map<String, dynamic>);
+          final formattedAddress = selectedGeocode['formatted_address'] as String? ?? '';
+          
+          // Split formatted address to get the street/route as the name, and the rest as the address
+          final addressParts = formattedAddress.split(',');
+          final namePart = addressParts.first.trim();
+          final remainingAddress = addressParts.skip(1).join(',').trim();
+
+          if (mounted) {
+            setState(() {
+              _locationName = namePart;
+              _locationAddress = remainingAddress;
+              _latitude = lat;
+              _longitude = lng;
+              _placeId = selectedGeocode['place_id'] as String?;
+              _categoryName = 'Route';
+            });
+
+            _mapController?.easeTo(
+              mapbox.CameraOptions(
+                center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+                zoom: 15.0,
+              ),
+              mapbox.MapAnimationOptions(duration: 500),
+            );
+          }
+          return;
+        }
+      }
+
+      // 3. Absolute Fallback to coordinates
+      if (mounted) {
+        setState(() {
+          _locationName = "My Location";
+          _locationAddress = "${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}";
+          _latitude = lat;
+          _longitude = lng;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching place or geocode: $e");
     }
   }
 

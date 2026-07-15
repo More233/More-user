@@ -603,7 +603,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 (place['latitude'] as num? ?? 0.0).toDouble(),
               ),
             ).toJson(),
-            zoom: 15.0,
+            zoom: 18.0,
           ),
           mapbox.MapAnimationOptions(duration: 1000),
         );
@@ -631,7 +631,26 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         final query = result['query'] as String;
         _searchController.text = query;
         ref.read(exploreViewModelProvider.notifier).updateSearchQuery(query);
-        ref.read(exploreViewModelProvider.notifier).searchPlaces(query);
+        await ref.read(exploreViewModelProvider.notifier).searchPlaces(query);
+        
+        if (mounted) {
+          final newSelectedPlace = ref.read(exploreViewModelProvider).selectedPlace;
+          if (newSelectedPlace != null) {
+            final double plat = (newSelectedPlace['latitude'] as num?)?.toDouble() ?? 0.0;
+            final double plng = (newSelectedPlace['longitude'] as num?)?.toDouble() ?? 0.0;
+            if (plat != 0.0 && plng != 0.0) {
+              _mapController?.easeTo(
+                mapbox.CameraOptions(
+                  center: mapbox.Point(
+                    coordinates: mapbox.Position(plng, plat),
+                  ).toJson(),
+                  zoom: 18.0,
+                ),
+                mapbox.MapAnimationOptions(duration: 1000),
+              );
+            }
+          }
+        }
       } else if (result['type'] == 'add_new_place') {
         final added = await Navigator.push<bool>(
           context,
@@ -680,6 +699,39 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       },
     );
 
+    ref.listen<bool>(
+      exploreViewModelProvider.select((s) => s.isListView),
+      (previous, next) {
+        if (previous == true && next == false) {
+          final searchQuery = ref.read(exploreViewModelProvider).searchQuery;
+          if (searchQuery.isNotEmpty) {
+            final allPlaces = ref.read(exploreViewModelProvider).allPlaces;
+            final query = searchQuery.toLowerCase();
+            final matches = allPlaces.where((place) {
+              final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
+              final arMatches = (place['arabicName'] as String? ?? '').toLowerCase().contains(query);
+              return nameMatches || arMatches;
+            }).toList();
+            
+            if (matches.isNotEmpty) {
+              final firstMatch = matches.first;
+              final double plat = (firstMatch['latitude'] as num?)?.toDouble() ?? 0.0;
+              final double plng = (firstMatch['longitude'] as num?)?.toDouble() ?? 0.0;
+              if (plat != 0.0 && plng != 0.0) {
+                _mapController?.easeTo(
+                  mapbox.CameraOptions(
+                    center: mapbox.Point(coordinates: mapbox.Position(plng, plat)).toJson(),
+                    zoom: 18.0,
+                  ),
+                  mapbox.MapAnimationOptions(duration: 1000),
+                );
+              }
+            }
+          }
+        }
+      },
+    );
+
 
 
     final filteredPlaces = ExploreScreenHelpers.getFilteredPlaces(state, state.currentZoom);
@@ -723,6 +775,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 places: filteredPlaces,
                 selectedPlace: state.selectedPlace,
                 selectedMapTab: state.selectedMapTab,
+                selectedCategory: state.selectedCategory,
                 onPlaceTap: (place) {
                   ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
                 },
@@ -875,16 +928,24 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   onCategoryTapped: (category) {
                     final bool isSelected = state.selectedCategory == category;
                     ref.read(exploreViewModelProvider.notifier).updateCategory(isSelected ? "" : category);
-                    final lat = state.userLocation?.latitude ?? 24.7136;
-                    final lng = state.userLocation?.longitude ?? 46.6753;
+                    final lat = state.lastFetchedLocation?.latitude ?? state.userLocation?.latitude ?? 24.7136;
+                    final lng = state.lastFetchedLocation?.longitude ?? state.userLocation?.longitude ?? 46.6753;
                     ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng, category: isSelected ? "" : category);
                   },
                   onFilterVisitedTapped: () {
-                    final updatedState = state.filterState.copyWith(visited: !state.filterState.visited);
+                    final bool nextVisited = !state.filterState.visited;
+                    final updatedState = state.filterState.copyWith(
+                      visited: nextVisited,
+                      saved: nextVisited ? false : state.filterState.saved,
+                    );
                     ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
                   },
                   onFilterSavedTapped: () {
-                    final updatedState = state.filterState.copyWith(saved: !state.filterState.saved);
+                    final bool nextSaved = !state.filterState.saved;
+                    final updatedState = state.filterState.copyWith(
+                      saved: nextSaved,
+                      visited: nextSaved ? false : state.filterState.visited,
+                    );
                     ref.read(exploreViewModelProvider.notifier).updateFilterState(updatedState);
                   },
                   topPadding: topPadding,
@@ -1204,43 +1265,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 ),
               ),
             ],
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: controlsBottom + 68,
-              child: Center(
-                child: ValueListenableBuilder<double>(
-                  valueListenable: _zoomNotifier,
-                  builder: (context, zoomVal, child) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(100),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.54),
-                            borderRadius: BorderRadius.circular(100),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            "Zoom: ${zoomVal.toStringAsFixed(1)}",
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+
           ],
         ],
       ),

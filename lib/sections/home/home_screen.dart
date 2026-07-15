@@ -227,10 +227,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   void _openCheckInComposer({bool isFirstCheckIn = false}) async {
+    double? initialLat;
+    double? initialLng;
+
+    final selectedNavIndex = ref.read(timelineViewModelProvider).selectedNavIndex;
+    if (selectedNavIndex == 1) {
+      final exploreState = ref.read(exploreViewModelProvider);
+      final center = exploreState.lastFetchedLocation ?? exploreState.userLocation;
+      if (center != null) {
+        initialLat = center.latitude;
+        initialLng = center.longitude;
+      }
+    }
+
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => CheckInComposerScreen(isFirstCheckIn: isFirstCheckIn),
+        builder: (context) => CheckInComposerScreen(
+          isFirstCheckIn: isFirstCheckIn,
+          initialLatitude: initialLat,
+          initialLongitude: initialLng,
+        ),
       ),
     );
 
@@ -509,54 +526,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                      AnimatedPositioned(
                                        duration: const Duration(milliseconds: 250),
                                        curve: Curves.easeInOut,
-                                       right: (state.selectedNavIndex == 1 && isListView) ? 88 : 16,
+                                       left: 0,
+                                       right: 0,
                                        bottom: _isNavBarVisible ? 75 + bottomPadding : 25 + bottomPadding,
                                        child: IgnorePointer(
                                          ignoring: !(state.selectedNavIndex == 1 && isListView),
                                          child: AnimatedOpacity(
                                            duration: const Duration(milliseconds: 200),
                                            opacity: (state.selectedNavIndex == 1 && isListView) ? 1.0 : 0.0,
-                                           child: GestureDetector(
-                                             onTap: () {
-                                               HapticFeedback.lightImpact();
-                                               ref.read(exploreViewModelProvider.notifier).updateListView(false);
-                                             },
-                                             child: Container(
-                                               height: 50,
-                                               padding: const EdgeInsets.symmetric(horizontal: 20),
-                                               decoration: BoxDecoration(
-                                                 color: Colors.white,
-                                                 borderRadius: BorderRadius.circular(100),
-                                                 border: Border.all(
-                                                   color: const Color(0xFF7C57FC).withValues(alpha: 0.15),
-                                                   width: 1,
-                                                 ),
-                                                 boxShadow: [
-                                                   BoxShadow(
-                                                     color: Colors.black.withValues(alpha: 0.1),
-                                                     blurRadius: 8,
-                                                     offset: const Offset(0, 2),
+                                           child: Center(
+                                             child: GestureDetector(
+                                               onTap: () {
+                                                 HapticFeedback.lightImpact();
+                                                 ref.read(exploreViewModelProvider.notifier).updateListView(false);
+                                               },
+                                               child: Container(
+                                                 height: 50,
+                                                 padding: const EdgeInsets.symmetric(horizontal: 20),
+                                                 decoration: BoxDecoration(
+                                                   color: Colors.white,
+                                                   borderRadius: BorderRadius.circular(100),
+                                                   border: Border.all(
+                                                     color: const Color(0xFF7C57FC).withValues(alpha: 0.15),
+                                                     width: 1,
                                                    ),
-                                                 ],
-                                               ),
-                                               child: Row(
-                                                 mainAxisSize: MainAxisSize.min,
-                                                 children: [
-                                                   const Icon(
-                                                     Icons.map_outlined,
-                                                     color: Color(0xFF7C57FC),
-                                                     size: 20,
-                                                   ),
-                                                   const SizedBox(width: 8),
-                                                   Text(
-                                                     "Map",
-                                                     style: GoogleFonts.ibmPlexSansArabic(
-                                                       color: const Color(0xFF7C57FC),
-                                                       fontWeight: FontWeight.bold,
-                                                       fontSize: 14,
+                                                   boxShadow: [
+                                                     BoxShadow(
+                                                       color: Colors.black.withValues(alpha: 0.1),
+                                                       blurRadius: 8,
+                                                       offset: const Offset(0, 2),
                                                      ),
-                                                   ),
-                                                 ],
+                                                   ],
+                                                 ),
+                                                 child: Row(
+                                                   mainAxisSize: MainAxisSize.min,
+                                                   children: [
+                                                     const Icon(
+                                                       Icons.map_outlined,
+                                                       color: Color(0xFF7C57FC),
+                                                       size: 20,
+                                                     ),
+                                                     const SizedBox(width: 8),
+                                                     Text(
+                                                       "Map",
+                                                       style: GoogleFonts.ibmPlexSansArabic(
+                                                         color: const Color(0xFF7C57FC),
+                                                         fontWeight: FontWeight.bold,
+                                                         fontSize: 14,
+                                                       ),
+                                                     ),
+                                                   ],
+                                                 ),
                                                ),
                                              ),
                                            ),

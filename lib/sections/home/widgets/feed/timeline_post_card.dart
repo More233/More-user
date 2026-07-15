@@ -146,8 +146,11 @@ class TimelinePostCard extends StatelessWidget {
   }
 
   Widget _buildPostHeader() {
-    return Row(
-      children: [
+    return Container(
+      height: 32,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
         Expanded(
           child: Text(
             post.shortTitle,
@@ -162,17 +165,20 @@ class TimelinePostCard extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         PopupMenuButton<String>(
-          icon: SvgPicture.asset(
-            'assets/home/icons/post_options.svg',
-            width: 20,
-            height: 20,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF3B3C4F),
-              BlendMode.srcIn,
-            ),
-          ),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 141),
+          child: Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: SvgPicture.asset(
+              'assets/home/icons/post_options.svg',
+              width: 20,
+              height: 20,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF3B3C4F),
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
           color: const Color(0x99131116), // Dark semi-transparent (rgba(19, 17, 22, 0.6))
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -240,6 +246,7 @@ class TimelinePostCard extends StatelessWidget {
           ],
         ),
       ],
+    ),
     );
   }
 

@@ -737,117 +737,124 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfileScreen(
-                                userPosts: const [],
-                                userId: post.authorId,
+                  Container(
+                    height: 32,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProfileScreen(
+                                  userPosts: const [],
+                                  userId: post.authorId,
+                                ),
                               ),
+                            );
+                          },
+                          child: Text(
+                            post.authorName ?? 'unknown',
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black,
+                              height: 1.0,
                             ),
-                          );
-                        },
-                        child: Text(
-                          post.authorName ?? 'unknown',
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '•  ${post.postTime}',
                           style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black,
+                            fontSize: 12,
+                            color: const Color(0xFF82858C),
                             height: 1.0,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '•  ${post.postTime}',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 12,
-                          color: const Color(0xFF82858C),
-                          height: 1.0,
-                        ),
-                      ),
-                      const Spacer(),
-                      if (post.authorId == currentUserId)
-                        PopupMenuButton<String>(
-                          icon: const Icon(
-                            Icons.more_vert,
-                            color: Color(0xFF82858C),
-                            size: 20,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 141),
-                          color: const Color(0x99131116),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _editPost(post);
-                            } else if (value == 'delete') {
-                              _confirmDeletePost(post);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem<String>(
-                              value: 'edit',
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              child: Row(
-                                children: [
-                                  SvgPicture.asset(
-                                    'assets/home/icons/edit_02.svg',
-                                    width: 20,
-                                    height: 20,
-                                    colorFilter: const ColorFilter.mode(
-                                      Colors.white,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Edit',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ],
+                        const Spacer(),
+                        if (post.authorId == currentUserId)
+                          PopupMenuButton<String>(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 141),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6.0),
+                              child: Icon(
+                                Icons.more_vert,
+                                color: Color(0xFF82858C),
+                                size: 20,
                               ),
                             ),
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              child: Row(
-                                children: [
-                                  SvgPicture.asset(
-                                    'assets/home/icons/delete_03_1.svg',
-                                    width: 20,
-                                    height: 20,
-                                    colorFilter: const ColorFilter.mode(
-                                      Color(0xFFDF0000),
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Delete',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      color: Color(0xFFDF0000),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            color: const Color(0x99131116),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ],
-                        ),
-                    ],
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _editPost(post);
+                              } else if (value == 'delete') {
+                                _confirmDeletePost(post);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem<String>(
+                                value: 'edit',
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                child: Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      'assets/home/icons/edit_02.svg',
+                                      width: 20,
+                                      height: 20,
+                                      colorFilter: const ColorFilter.mode(
+                                        Colors.white,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Edit',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem<String>(
+                                value: 'delete',
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                child: Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      'assets/home/icons/delete_03_1.svg',
+                                      width: 20,
+                                      height: 20,
+                                      colorFilter: const ColorFilter.mode(
+                                        Color(0xFFDF0000),
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Delete',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        color: Color(0xFFDF0000),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 4),
                   if (post.locationAddress.isNotEmpty) ...[

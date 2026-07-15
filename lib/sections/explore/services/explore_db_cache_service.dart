@@ -20,7 +20,7 @@ class ExploreDbCacheService {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE cached_places (
@@ -59,7 +59,7 @@ class ExploreDbCacheService {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 5) {
+        if (oldVersion < 7) {
           await db.execute("DROP TABLE IF EXISTS cached_places");
           await db.execute("DROP TABLE IF EXISTS sync_grid_cells");
           await db.execute('''
@@ -304,20 +304,14 @@ class ExploreDbCacheService {
     }
   }
 
-  // Check if database needs to be seeded and run it if count is less than 10140
+  // Check if database needs to be seeded - disabled to ensure live, accurate data
   static Future<void> _checkAndSeedIfNeeded(Database db) async {
+    // Seeding disabled to keep map live and prevent fake points from showing up in coordinates (like in the sea)
     try {
-      final List<Map<String, dynamic>> result = await db.rawQuery(
-        "SELECT COUNT(*) as count FROM cached_places WHERE id LIKE 'seed_%'"
-      );
-      final int count = Sqflite.firstIntValue(result) ?? 0;
-      if (count < 11700) {
-        debugPrint("ExploreDbCacheService: Database needs seeding (count: $count < 11700). Seeding now...");
-        await db.delete('cached_places', where: "id LIKE 'seed_%'");
-        await seedDatabase(db);
-      }
+      // Clear any remaining seeded places from the database just in case
+      await db.delete('cached_places', where: "id LIKE 'seed_%'");
     } catch (e) {
-      debugPrint("ExploreDbCacheService Error checking seed count: $e");
+      debugPrint("ExploreDbCacheService Error clearing seeded places: $e");
     }
   }
 }

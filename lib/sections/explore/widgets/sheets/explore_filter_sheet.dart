@@ -92,8 +92,12 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
         margin: const EdgeInsets.only(right: 8, bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF7C57FC) : const Color(0xFFF1F3F5),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+            color: isActive ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
+            width: 1,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -101,7 +105,7 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
             Icon(
               icon,
               size: 16,
-              color: isActive ? Colors.white : const Color(0xFF1A1A2E),
+              color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF1A1A2E),
             ),
             const SizedBox(width: 6),
             Text(
@@ -109,7 +113,7 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                color: isActive ? Colors.white : const Color(0xFF1A1A2E),
+                color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF1A1A2E),
               ),
             ),
           ],

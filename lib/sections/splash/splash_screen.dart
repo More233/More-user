@@ -3,6 +3,7 @@ import 'package:path_drawing/path_drawing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../permissions/permissions_page.dart';
 import '../home/home_screen.dart';
+import '../explore/services/explore_data_service.dart';
 import 'widgets/svg_path_painter.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -31,6 +32,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     for (final pathString in _pathStrings) {
       _logoPaths.add(parseSvgPathData(pathString));
     }
+
+    // Run one-time startup background API places fetcher to seed SQLite cache
+    ExploreDataService.seedRealGlobalPlacesFromApi();
 
     // Creative drawing path animation
     _controller = AnimationController(

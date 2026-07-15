@@ -7,6 +7,7 @@ import '../../../data/repositories/explore_repository.dart';
 import '../../../data/repositories/explore_repository_impl.dart';
 import '../helpers/bookmark_tracker.dart';
 import '../helpers/explore_screen_helpers.dart';
+import '../helpers/marker_generator.dart';
 import '../services/explore_db_cache_service.dart';
 import '../models/explore_state.dart';
 import '../models/filter_state.dart';
@@ -143,34 +144,76 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
 
         final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
-        if (isCellSynced) {
-          debugPrint("ExploreViewModel: Cell $cellId is already synced. Skipping background API calls.");
+        final bool hasCategory = category != null && category.isNotEmpty;
+
+        // 1. Fetch Supabase check-ins and custom venues always in the background (if no category selected)
+        if (!hasCategory) {
+          _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize).then((data) {
+            _mergeAndUpdatePlaces([], supabaseData: data);
+            debugPrint("ExploreViewModel: Background sync Supabase checkins completed.");
+          }).catchError((err) {
+            debugPrint("ExploreViewModel Error Supabase sync: $err");
+          });
+        }
+        
+        // 2. Only query external Foursquare API if the cell has not been synced yet
+        if (isCellSynced && !hasCategory) {
+          debugPrint("ExploreViewModel: Cell $cellId is already synced. Skipping background external API calls.");
           return;
         }
 
-        // Fetch larger area (25km) to cache locally, making camera pans extremely fast cache hits!
-        final double apiRadius = 25000;
+        // Fetch larger area (6km) to cache locally, making camera pans extremely fast cache hits!
+        final double apiRadius = 6000;
 
-        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: apiRadius, cacheOnly: false).then((places) {
+        String? apiKeyword;
+        if (hasCategory) {
+          final String catLower = category.toLowerCase().trim();
+          if (catLower == 'restaurant') {
+            apiKeyword = 'restaurant|food';
+          } else if (catLower == 'coffee') {
+            apiKeyword = 'coffee|cafe';
+          } else if (catLower == 'bakery') {
+            apiKeyword = 'bakery|bread';
+          } else if (catLower == 'juices') {
+            apiKeyword = 'juice|smoothie|drinks|lounge';
+          } else if (catLower == 'desserts') {
+            apiKeyword = 'dessert|sweets|ice_cream';
+          } else if (catLower == 'parks') {
+            apiKeyword = 'park|garden|playground';
+          } else if (catLower == 'hotels') {
+            apiKeyword = 'hotel|resort|lodging';
+          } else if (catLower == 'movies') {
+            apiKeyword = 'cinema|movie';
+          } else if (catLower == 'concerts') {
+            apiKeyword = 'concert|theater|music';
+          } else if (catLower == 'sports') {
+            apiKeyword = 'stadium|sports|gym';
+          } else {
+            apiKeyword = category;
+          }
+        }
+
+        _exploreRepository.fetchNearbyFoursquarePlaces(
+          lat, 
+          lng, 
+          radius: apiRadius, 
+          keyword: apiKeyword,
+          cacheOnly: false,
+        ).then((places) {
           _mergeAndUpdatePlaces(places);
-          debugPrint("ExploreViewModel: Background sync normal places completed. Fetched: ${places.length}");
+          debugPrint("ExploreViewModel: Background sync places completed for category: $category. Fetched: ${places.length}");
         }).catchError((err) {
-          debugPrint("ExploreViewModel Error normal places sync: $err");
+          debugPrint("ExploreViewModel Error places sync: $err");
         });
 
-        _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize).then((data) {
-          _mergeAndUpdatePlaces([], supabaseData: data);
-          debugPrint("ExploreViewModel: Background sync Supabase checkins completed.");
-        }).catchError((err) {
-          debugPrint("ExploreViewModel Error Supabase sync: $err");
-        });
-
-        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: apiRadius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: false).then((places) {
-          _mergeAndUpdatePlaces(places);
-          debugPrint("ExploreViewModel: Background sync event places completed. Fetched: ${places.length}");
-        }).catchError((err) {
-          debugPrint("ExploreViewModel Error event places sync: $err");
-        });
+        if (!hasCategory) {
+          _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: apiRadius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: false).then((places) {
+            _mergeAndUpdatePlaces(places);
+            debugPrint("ExploreViewModel: Background sync event places completed. Fetched: ${places.length}");
+          }).catchError((err) {
+            debugPrint("ExploreViewModel Error event places sync: $err");
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error fetching nearby places: $e");
@@ -257,6 +300,19 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final cidStr = c['id'].toString();
       if (!existingIds.contains(cidStr)) {
         list.add(c);
+      }
+      
+      final String? avatarUrl = c['authorAvatar'] as String?;
+      if (avatarUrl != null && avatarUrl.isNotEmpty) {
+        // Pre-cache/Pre-download avatar image in background for instant map rendering
+        MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: false).catchError((e) {
+          debugPrint("Failed to pre-download check-in pin for false: $e");
+          return Uint8List(0);
+        });
+        MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: true).catchError((e) {
+          debugPrint("Failed to pre-download check-in pin for true: $e");
+          return Uint8List(0);
+        });
       }
     }
 

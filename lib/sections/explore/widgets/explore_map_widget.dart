@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:moor/shared/models/lat_lng.dart' as model;
 import '../../../../config/secrets.dart';
 import '../helpers/marker_generator.dart';
@@ -23,6 +23,8 @@ class ExploreMapWidget extends StatefulWidget {
   final void Function(Map<String, dynamic> place)? onPlaceTap;
   final VoidCallback? onGestureStart;
 
+  final String selectedCategory;
+
   const ExploreMapWidget({
     super.key,
     required this.initialCameraPosition,
@@ -37,6 +39,7 @@ class ExploreMapWidget extends StatefulWidget {
     required this.selectedMapTab,
     this.onPlaceTap,
     this.onGestureStart,
+    this.selectedCategory = '',
   });
 
   @override
@@ -118,51 +121,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         widget.selectedPlace?['id']?.toString() !=
         oldWidget.selectedPlace?['id']?.toString();
 
-    if (placesChanged) {
+    if (placesChanged || selectedChanged) {
       _updateMarkers();
-    } else if (selectedChanged) {
-      _updateSelectionStyle();
-    }
-  }
-
-  Future<void> _updateSelectionStyle() async {
-    if (_mapboxMap == null) return;
-    try {
-      final String selectedId = widget.selectedPlace?['id']?.toString() ?? 'none';
-
-      final String iconImageExpression = jsonEncode([
-        "step",
-        ["zoom"],
-        ["concat", "dot-", ["get", "place_type"]],
-        1.5,
-        [
-          "case",
-          ["==", ["get", "id"], selectedId],
-          ["concat", "selected-", ["get", "place_type"]],
-          ["concat", "normal-", ["get", "place_type"]]
-        ]
-      ]);
-      await _mapboxMap!.style.setStyleLayerProperty("places-layer", "icon-image", iconImageExpression);
-
-      final String textSizeExpr = jsonEncode([
-        "case",
-        ["==", ["get", "id"], selectedId],
-        13.5,
-        12.0
-      ]);
-      await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-size", textSizeExpr);
-
-      final String textRadialOffsetExpr = jsonEncode([
-        "case",
-        ["==", ["get", "id"], selectedId],
-        1.6,
-        1.4
-      ]);
-      await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-radial-offset", textRadialOffsetExpr);
-      
-      debugPrint("ExploreMapWidget: Fast selection style update succeeded. selectedId: $selectedId");
-    } catch (e) {
-      debugPrint("Error in _updateSelectionStyle(): $e");
     }
   }
 
@@ -184,27 +144,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final source = mapbox.GeoJsonSource(
           id: "places-source",
           data: '{"type": "FeatureCollection", "features": []}',
-          cluster: true,
-          clusterRadius: 20.0,
-          clusterMaxZoom: 16.2,
-          clusterProperties: {
-            "dominant_type_code": [
-              ["coalesce", ["accumulated"], ["get", "place_type_code"]],
-              ["get", "place_type_code"]
-            ],
-            "title": [
-              ["coalesce", ["accumulated"], ["get", "title"]],
-              ["get", "title"]
-            ],
-            "english_title": [
-              ["coalesce", ["accumulated"], ["get", "english_title"]],
-              ["get", "english_title"]
-            ],
-            "arabic_title": [
-              ["coalesce", ["accumulated"], ["get", "arabic_title"]],
-              ["get", "arabic_title"]
-            ]
-          },
+          cluster: false,
         );
         await mapboxMap.style.addSource(source);
       } catch (e) {
@@ -212,11 +152,77 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       try {
+        final heatmapLayer = mapbox.HeatmapLayer(
+          id: "places-heatmap-layer",
+          sourceId: "places-source",
+        );
+        await mapboxMap.style.addLayer(heatmapLayer);
+        
+        await mapboxMap.style.setStyleLayerProperty("places-heatmap-layer", "heatmap-color", jsonEncode([
+          "interpolate",
+          ["linear"],
+          ["heatmap-density"],
+          0.0, "rgba(124, 87, 252, 0.0)",
+          0.1, "rgba(124, 87, 252, 0.25)",
+          0.25, "rgba(0, 130, 255, 0.45)",
+          0.5, "rgba(0, 240, 255, 0.75)",
+          0.75, "rgba(46, 204, 113, 0.8)",
+          0.9, "rgba(180, 240, 90, 0.65)",
+          1.0, "rgba(255, 255, 255, 0.8)"
+        ]));
+        
+        await mapboxMap.style.setStyleLayerProperty("places-heatmap-layer", "heatmap-weight", jsonEncode([
+          "interpolate",
+          ["linear"],
+          ["get", "people_count"],
+          0, 0.1,
+          10, 0.3,
+          100, 1.0,
+          500, 2.2
+        ]));
+
+        await mapboxMap.style.setStyleLayerProperty("places-heatmap-layer", "heatmap-intensity", jsonEncode([
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0, 1.1,
+          4, 1.4,
+          9, 1.6,
+          13, 1.8
+        ]));
+
+        await mapboxMap.style.setStyleLayerProperty("places-heatmap-layer", "heatmap-radius", jsonEncode([
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          0, 26.0,
+          4, 36.0,
+          9, 45.0,
+          13, 35.0,
+          16, 25.0
+        ]));
+
+        await mapboxMap.style.setStyleLayerProperty("places-heatmap-layer", "heatmap-opacity", jsonEncode([
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          12, 0.95,
+          15, 0.3,
+          17, 0.0
+        ]));
+
+        final String initialHeatmapVisibility = widget.selectedMapTab == 2 ? "visible" : "none";
+        await mapboxMap.style.setStyleLayerProperty("places-heatmap-layer", "visibility", initialHeatmapVisibility);
+      } catch (e) {
+        debugPrint("places-heatmap-layer already exists or error: $e");
+      }
+
+      try {
         final placesLayer = mapbox.SymbolLayer(
           id: "places-layer",
           sourceId: "places-source",
-          iconAllowOverlap: true,
-          iconIgnorePlacement: true,
+          iconAllowOverlap: false,
+          iconIgnorePlacement: false,
           textAllowOverlap: false,
           textIgnorePlacement: false,
           textVariableAnchor: ["right", "left"],
@@ -522,19 +528,118 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         uniqueTypes.add(_resolvePlaceType(widget.selectedPlace!));
       }
 
+      final String selectedId = widget.selectedPlace?['id']?.toString() ?? 'none';
+
       final double dpr = ui.PlatformDispatcher.instance.views.isNotEmpty
           ? ui.PlatformDispatcher.instance.views.first.devicePixelRatio
           : 3.0;
 
-      // 2. Register style images on demand
+      final bool isFilterActive = widget.selectedCategory.isNotEmpty;
+
+      // 2. Gather unique image combinations to register
+      final Set<String> imagesToRegister = {};
       for (final type in uniqueTypes) {
-        bool registeredAny = false;
-        if (!_registeredImageIds.contains("normal-$type")) {
+        imagesToRegister.add("dot-$type");
+        imagesToRegister.add("live-$type");
+        imagesToRegister.add("selected_live-$type");
+        // Fallbacks
+        imagesToRegister.add("normal-$type-none");
+        imagesToRegister.add("selected-$type-none");
+      }
+
+      for (final p in widget.places) {
+        final String resolvedType = _resolvePlaceType(p);
+        final double ratingVal = double.tryParse(p['rating']?.toString() ?? '') ?? 0.0;
+        final String ratingStr = (widget.selectedMapTab != 2 && isFilterActive && ratingVal > 0.0) ? ratingVal.toStringAsFixed(1) : 'none';
+        
+        final String pid = p['id']?.toString() ?? '';
+        final bool isSel = pid == selectedId;
+        final bool isCheckIn = p['isCheckIn'] == true;
+        
+        if (isCheckIn) {
+          if (isSel) {
+            imagesToRegister.add("selected_checkin-$pid");
+          } else {
+            imagesToRegister.add("checkin-$pid");
+          }
+        } else {
+          if (widget.selectedMapTab == 2) {
+            if (isSel) {
+              imagesToRegister.add("selected_live-$resolvedType");
+            } else {
+              imagesToRegister.add("live-$resolvedType");
+            }
+          } else {
+            if (isSel) {
+              imagesToRegister.add("selected-$resolvedType-$ratingStr");
+            } else {
+              imagesToRegister.add("normal-$resolvedType-$ratingStr");
+            }
+          }
+        }
+      }
+
+      if (widget.selectedPlace != null) {
+        final String resolvedType = _resolvePlaceType(widget.selectedPlace!);
+        final String pid = widget.selectedPlace!['id']?.toString() ?? '';
+        final bool isCheckIn = widget.selectedPlace!['isCheckIn'] == true;
+        
+        if (isCheckIn) {
+          imagesToRegister.add("selected_checkin-$pid");
+        } else {
+          if (widget.selectedMapTab == 2) {
+            imagesToRegister.add("selected_live-$resolvedType");
+          } else {
+            final double ratingVal = double.tryParse(widget.selectedPlace!['rating']?.toString() ?? '') ?? 0.0;
+            final String ratingStr = (widget.selectedMapTab != 2 && isFilterActive && ratingVal > 0.0) ? ratingVal.toStringAsFixed(1) : 'none';
+            imagesToRegister.add("selected-$resolvedType-$ratingStr");
+          }
+        }
+      }
+
+      // 3. Register style images on demand
+      for (final imageId in imagesToRegister) {
+        if (!_registeredImageIds.contains(imageId)) {
           try {
-            final pngBytes = await MarkerGenerator.getNormalPin(type);
+            final parts = imageId.split('-');
+            final String state = parts[0]; // normal / selected / dot / live / selected_live
+            final String type = parts[1]; // restaurant / hotel / ...
+            
+            Uint8List pngBytes;
+            if (state == 'checkin' || state == 'selected_checkin') {
+              final String checkinId = parts[1];
+              final place = widget.places.firstWhere(
+                (pl) => pl['id']?.toString() == checkinId,
+                orElse: () => widget.selectedPlace != null && widget.selectedPlace!['id']?.toString() == checkinId
+                    ? widget.selectedPlace!
+                    : {},
+              );
+              final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
+              final bool isSelected = state == 'selected_checkin';
+              pngBytes = await MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: isSelected);
+            } else if (state == 'dot') {
+              pngBytes = await MarkerGenerator.getDotPin(type);
+            } else if (state == 'live' || state == 'selected_live') {
+              final bool isSelected = state == 'selected_live';
+              pngBytes = await MarkerGenerator.getLivePin(type, isSelected: isSelected);
+            } else {
+              final String ratingStr = parts.length > 2 ? parts[2] : 'none';
+              final bool isSelected = state == 'selected';
+              
+              if (ratingStr == 'none') {
+                if (isSelected) {
+                  pngBytes = await MarkerGenerator.getSelectedPin(type);
+                } else {
+                  pngBytes = await MarkerGenerator.getNormalPin(type);
+                }
+              } else {
+                pngBytes = await MarkerGenerator.getCapsulePin(type, ratingStr, isSelected: isSelected);
+              }
+            }
+
             final mbxImage = await _convertPngToMbxImage(pngBytes);
             await _mapboxMap!.style.addStyleImage(
-              "normal-$type",
+              imageId,
               dpr,
               mbxImage,
               false,
@@ -542,52 +647,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               <mapbox.ImageStretches?>[],
               mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
             );
-            _registeredImageIds.add("normal-$type");
-            registeredAny = true;
+            _registeredImageIds.add(imageId);
           } catch (e) {
-            debugPrint("Error registering normal-$type: $e");
+            debugPrint("Error registering dynamic image $imageId: $e");
           }
-        }
-        if (!_registeredImageIds.contains("selected-$type")) {
-          try {
-            final pngBytes = await MarkerGenerator.getSelectedPin(type);
-            final mbxImage = await _convertPngToMbxImage(pngBytes);
-            await _mapboxMap!.style.addStyleImage(
-              "selected-$type",
-              dpr,
-              mbxImage,
-              false,
-              <mapbox.ImageStretches?>[],
-              <mapbox.ImageStretches?>[],
-              mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
-            );
-            _registeredImageIds.add("selected-$type");
-            registeredAny = true;
-          } catch (e) {
-            debugPrint("Error registering selected-$type: $e");
-          }
-        }
-        if (!_registeredImageIds.contains("dot-$type")) {
-          try {
-            final pngBytes = await MarkerGenerator.getDotPin(type);
-            final mbxImage = await _convertPngToMbxImage(pngBytes);
-            await _mapboxMap!.style.addStyleImage(
-              "dot-$type",
-              dpr,
-              mbxImage,
-              false,
-              <mapbox.ImageStretches?>[],
-              <mapbox.ImageStretches?>[],
-              mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
-            );
-            _registeredImageIds.add("dot-$type");
-            registeredAny = true;
-          } catch (e) {
-            debugPrint("Error registering dot-$type: $e");
-          }
-        }
-        if (registeredAny) {
-          debugPrint("ExploreMapWidget: Registered style images for type: $type");
         }
       }
 
@@ -601,74 +664,88 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final String name = p['name']?.toString() ?? '';
         final String arName = p['arabicName']?.toString() ?? '';
 
+        final bool isCheckIn = p['isCheckIn'] == true;
         String englishTitle = '';
         String arabicTitle = '';
 
-        bool containsArabicChar(String text) {
-          return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
-        }
+        if (isCheckIn) {
+          final String authorName = p['authorName'] as String? ?? '';
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          final postUserId = p['user_id'] as String? ?? p['userId'] as String? ?? '';
+          if (postUserId == currentUserId || authorName.toLowerCase() == 'you') {
+            englishTitle = 'You';
+            arabicTitle = 'أنت';
+          } else {
+            englishTitle = authorName;
+            arabicTitle = authorName;
+          }
+        } else {
+          bool containsArabicChar(String text) {
+            return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
+          }
 
-        // 1. Check if name contains both separated by / or - or |
-        final separators = ['/', '-', '|'];
-        bool separated = false;
-        for (final sep in separators) {
-          if (name.contains(sep)) {
-            final parts = name.split(sep);
-            if (parts.length == 2) {
-              final part1 = parts[0].trim();
-              final part2 = parts[1].trim();
-              final hasAr1 = containsArabicChar(part1);
-              final hasAr2 = containsArabicChar(part2);
-              if (hasAr1 && !hasAr2) {
-                englishTitle = part2;
-                arabicTitle = part1;
-                separated = true;
-                break;
-              } else if (!hasAr1 && hasAr2) {
-                englishTitle = part1;
-                arabicTitle = part2;
-                separated = true;
-                break;
+          // 1. Check if name contains both separated by / or - or |
+          final separators = ['/', '-', '|'];
+          bool separated = false;
+          for (final sep in separators) {
+            if (name.contains(sep)) {
+              final parts = name.split(sep);
+              if (parts.length == 2) {
+                final part1 = parts[0].trim();
+                final part2 = parts[1].trim();
+                final hasAr1 = containsArabicChar(part1);
+                final hasAr2 = containsArabicChar(part2);
+                if (hasAr1 && !hasAr2) {
+                  englishTitle = part2;
+                  arabicTitle = part1;
+                  separated = true;
+                  break;
+                } else if (!hasAr1 && hasAr2) {
+                  englishTitle = part1;
+                  arabicTitle = part2;
+                  separated = true;
+                  break;
+                }
               }
             }
           }
-        }
 
-        if (!separated) {
-          final nameHasAr = containsArabicChar(name);
-          final arNameHasAr = containsArabicChar(arName);
+          if (!separated) {
+            final nameHasAr = containsArabicChar(name);
+            final arNameHasAr = containsArabicChar(arName);
 
-          if (nameHasAr && arNameHasAr) {
-            // Both are Arabic
-            englishTitle = '';
-            arabicTitle = name;
-          } else if (!nameHasAr && arNameHasAr) {
-            // name is English, arName is Arabic
-            englishTitle = name;
-            arabicTitle = arName;
-          } else if (!nameHasAr && !arNameHasAr) {
-            // Both are English
-            englishTitle = name;
+            if (nameHasAr && arNameHasAr) {
+              // Both are Arabic
+              englishTitle = '';
+              arabicTitle = name;
+            } else if (!nameHasAr && arNameHasAr) {
+              // name is English, arName is Arabic
+              englishTitle = name;
+              arabicTitle = arName;
+            } else if (!nameHasAr && !arNameHasAr) {
+              // Both are English
+              englishTitle = name;
+              arabicTitle = '';
+            } else {
+              // name is Arabic, arName is English
+              englishTitle = arName;
+              arabicTitle = name;
+            }
+          }
+
+          // Clean city name in parentheses from titles
+          englishTitle = englishTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+          arabicTitle = arabicTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+
+          // Fallback: If English title ends up empty but we have Arabic title, use Arabic as primary
+          if (englishTitle.isEmpty && arabicTitle.isNotEmpty) {
+            englishTitle = arabicTitle;
             arabicTitle = '';
-          } else {
-            // name is Arabic, arName is English
-            englishTitle = arName;
-            arabicTitle = name;
           }
         }
 
-        // Clean city name in parentheses from titles
-        englishTitle = englishTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
-        arabicTitle = arabicTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
-
-        // Fallback: If English title ends up empty but we have Arabic title, use Arabic as primary
-        if (englishTitle.isEmpty && arabicTitle.isNotEmpty) {
-          englishTitle = arabicTitle;
-          arabicTitle = '';
-        }
-
         final String resolvedType = _resolvePlaceType(p);
-        if (resolvedType == 'airport') {
+        if (resolvedType == 'airport' && widget.selectedMapTab != 2) {
           continue;
         }
 
@@ -684,16 +761,47 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           placeTypeCode = 4;
         } else if (resolvedType == 'bakery') {
           placeTypeCode = 5;
-        } else if (resolvedType == 'bars') {
+        } else if (resolvedType == 'juices' || resolvedType == 'bars') {
           placeTypeCode = 6;
         } else if (resolvedType == 'coffee') {
           placeTypeCode = 7;
-        } else if (resolvedType == 'hotel') {
+        } else if (resolvedType == 'hotels' || resolvedType == 'hotel') {
           placeTypeCode = 8;
-        } else if (resolvedType == 'park') {
+        } else if (resolvedType == 'parks' || resolvedType == 'park') {
           placeTypeCode = 9;
         } else if (resolvedType == 'airport') {
           placeTypeCode = 10;
+        }
+
+        int priority = 3;
+        final double ratingVal = double.tryParse(p['rating']?.toString() ?? '') ?? 0.0;
+        final String ratingStr = (widget.selectedMapTab != 2 && isFilterActive && ratingVal > 0.0) ? ratingVal.toStringAsFixed(1) : 'none';
+
+        if (p['priority'] != null) {
+          priority = (p['priority'] as num).toInt();
+        } else {
+          final String typeLower = resolvedType.toLowerCase();
+          final bool isSaved = p['isSaved'] == true;
+          final bool isCheckIn = p['isCheckIn'] == true;
+          final bool isCustomVenue = p['isCustomVenue'] == true;
+          final bool isRegistered = p['isRegistered'] == true;
+          final String pid = p['id']?.toString() ?? '';
+
+          if (pid == selectedId ||
+              isCheckIn ||
+              isCustomVenue ||
+              isRegistered ||
+              isSaved ||
+              pid.startsWith('tapped_') ||
+              pid.startsWith('swarm_') ||
+              typeLower.contains('airport')) {
+            priority = 1;
+          } else {
+            final int reviewsCount = int.tryParse(p['reviewsCount']?.toString() ?? '') ?? 0;
+            if (ratingVal >= 4.2 && reviewsCount >= 10) {
+              priority = 2;
+            }
+          }
         }
 
         features.add({
@@ -711,6 +819,12 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             "arabic_title": arabicTitle,
             "rating_and_type": ratingAndType,
             "place_type_code": placeTypeCode,
+            "is_prominent": priority <= 2,
+            "priority": priority,
+            "rating_str": ratingStr,
+            "people_count": (p['peopleCount'] as num? ?? 0).toInt(),
+            "rating_val": ratingVal,
+            "is_check_in": isCheckIn,
           }
         });
       }
@@ -722,7 +836,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
       debugPrint("ExploreMapWidget: Generated ${features.length} GeoJSON features.");
 
-      final String geojsonStr = await compute(_serializeGeoJson, geojson);
+      final String geojsonStr = jsonEncode(geojson);
       await _mapboxMap!.style.setStyleSourceProperty("places-source", "data", geojsonStr);
 
       // 4. Build color match expressions for labels
@@ -747,52 +861,333 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         colorMatchExpr.add("#000000");
       }
       colorMatchExpr.add("#000000");
-
       // 5. Set layer styling expressions
-      final String selectedId = widget.selectedPlace?['id']?.toString() ?? 'none';
 
       // --- Places Layer Styles ---
-      final String iconImageExpression = jsonEncode([
-        "step",
-        ["zoom"],
-        ["concat", "dot-", ["get", "place_type"]],
-        1.5,
-        [
-          "case",
-          ["==", ["get", "id"], selectedId],
-          ["concat", "selected-", ["get", "place_type"]],
-          ["concat", "normal-", ["get", "place_type"]]
-        ]
-      ]);
+      final String iconImageExpression;
+      if (widget.selectedMapTab == 2) {
+        iconImageExpression = jsonEncode([
+          "step",
+          ["zoom"],
+          // Zoom < 4.0
+          [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected_live-", ["get", "place_type"]],
+            ["==", ["get", "priority"], 1],
+            ["concat", "live-", ["get", "place_type"]],
+            ""
+          ],
+          4.0,
+          // 4.0 <= Zoom < 6.0
+          [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected_live-", ["get", "place_type"]],
+            ["<=", ["get", "priority"], 2],
+            ["concat", "live-", ["get", "place_type"]],
+            ""
+          ],
+          6.0,
+          // Zoom >= 6.0
+          [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected_live-", ["get", "place_type"]],
+            ["concat", "live-", ["get", "place_type"]]
+          ]
+        ]);
+      } else {
+        iconImageExpression = jsonEncode([
+          "step",
+          ["zoom"],
+          // Zoom < 7.0: All are dots
+          [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
+            ["concat", "dot-", ["get", "place_type"]]
+          ],
+          7.0,
+          // 7.0 <= Zoom < 9.5: Priority 1 are pins, 2 & 3 are dots
+          [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
+            ["==", ["get", "priority"], 1],
+            ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]],
+            ["concat", "dot-", ["get", "place_type"]]
+          ],
+          9.5,
+          // 9.5 <= Zoom < 11.5: Priority 1 & 2 are pins, 3 are dots
+          [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
+            ["<=", ["get", "priority"], 2],
+            ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]],
+            ["concat", "dot-", ["get", "place_type"]]
+          ],
+          11.5,
+          // Zoom >= 11.5: All are pins
+          [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
+            ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]]
+          ]
+        ]);
+      }
       try {
         await _mapboxMap!.style.setStyleLayerProperty("places-layer", "icon-image", iconImageExpression);
       } catch (e) {
         debugPrint("Error setting places-layer icon-image: $e");
       }
 
-      final String textFieldExpression = jsonEncode([
-        "step",
-        ["zoom"],
-        "",
-        1.5,
-        [
-          "case",
-          ["==", ["get", "arabic_title"], ""],
-          ["get", "english_title"],
+      final String textFieldExpression;
+      if (widget.selectedMapTab == 2) {
+        textFieldExpression = jsonEncode([
+          "step",
+          ["zoom"],
+          // Zoom < 4.0: Only show label if selected or priority == 1
+          [
+            "case",
+            ["any", ["==", ["get", "id"], selectedId], ["==", ["get", "priority"], 1]],
+            [
+              "format",
+              ["get", "english_title"],
+              {"font-scale": 1.0},
+              "\n",
+              {},
+              [
+                "case",
+                ["==", ["get", "people_count"], 1],
+                "1 person here",
+                ["concat", ["to-string", ["get", "people_count"]], " people here"]
+              ],
+              {"font-scale": 0.8}
+            ],
+            ""
+          ],
+          4.0,
+          // 4.0 <= Zoom < 6.0: Show if selected or priority <= 2
+          [
+            "case",
+            ["any", ["==", ["get", "id"], selectedId], ["<=", ["get", "priority"], 2]],
+            [
+              "format",
+              ["get", "english_title"],
+              {"font-scale": 1.0},
+              "\n",
+              {},
+              [
+                "case",
+                ["==", ["get", "people_count"], 1],
+                "1 person here",
+                ["concat", ["to-string", ["get", "people_count"]], " people here"]
+              ],
+              {"font-scale": 0.8}
+            ],
+            ""
+          ],
+          6.0,
+          // Zoom >= 6.0: Show all
           [
             "format",
             ["get", "english_title"],
             {"font-scale": 1.0},
             "\n",
             {},
-            ["get", "arabic_title"],
-            {
-              "font-scale": 0.75,
-              "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
-            }
+            [
+              "case",
+              ["==", ["get", "people_count"], 1],
+              "1 person here",
+              ["concat", ["to-string", ["get", "people_count"]], " people here"]
+            ],
+            {"font-scale": 0.8}
           ]
-        ]
-      ]);
+        ]);
+      } else {
+        textFieldExpression = jsonEncode([
+          "step",
+          ["zoom"],
+          // Zoom < 7.0: No labels
+          [
+            "case",
+            ["==", ["get", "id"], selectedId],
+            [
+              "case",
+              ["==", ["get", "arabic_title"], ""],
+              ["get", "english_title"],
+              [
+                "format",
+                ["get", "english_title"],
+                {"font-scale": 1.0},
+                "\n",
+                {},
+                ["get", "arabic_title"],
+                {
+                  "font-scale": 0.75,
+                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+                }
+              ]
+            ],
+            ""
+          ],
+          7.0,
+          // 7.0 <= Zoom < 9.5: Priority 1 show labels, others don't
+          [
+            "case",
+            ["==", ["get", "id"], selectedId],
+            [
+              "case",
+              ["==", ["get", "arabic_title"], ""],
+              ["get", "english_title"],
+              [
+                "format",
+                ["get", "english_title"],
+                {"font-scale": 1.0},
+                "\n",
+                {},
+                ["get", "arabic_title"],
+                {
+                  "font-scale": 0.75,
+                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+                }
+              ]
+            ],
+            ["==", ["get", "priority"], 1],
+            [
+              "case",
+              ["==", ["get", "arabic_title"], ""],
+              ["get", "english_title"],
+              [
+                "format",
+                ["get", "english_title"],
+                {"font-scale": 1.0},
+                "\n",
+                {},
+                ["get", "arabic_title"],
+                {
+                  "font-scale": 0.75,
+                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+                }
+              ]
+            ],
+            ""
+          ],
+          9.5,
+          // 9.5 <= Zoom < 11.5: Priority 1 & 2 show labels, others don't
+          [
+            "case",
+            ["==", ["get", "id"], selectedId],
+            [
+              "case",
+              ["==", ["get", "arabic_title"], ""],
+              ["get", "english_title"],
+              [
+                "format",
+                ["get", "english_title"],
+                {"font-scale": 1.0},
+                "\n",
+                {},
+                ["get", "arabic_title"],
+                {
+                  "font-scale": 0.75,
+                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+                }
+              ]
+            ],
+            ["<=", ["get", "priority"], 2],
+            [
+              "case",
+              ["==", ["get", "arabic_title"], ""],
+              ["get", "english_title"],
+              [
+                "format",
+                ["get", "english_title"],
+                {"font-scale": 1.0},
+                "\n",
+                {},
+                ["get", "arabic_title"],
+                {
+                  "font-scale": 0.75,
+                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+                }
+              ]
+            ],
+            ""
+          ],
+          11.5,
+          // Zoom >= 11.5: All show labels
+          [
+            "case",
+            ["==", ["get", "arabic_title"], ""],
+            ["get", "english_title"],
+            [
+              "format",
+              ["get", "english_title"],
+              {"font-scale": 1.0},
+              "\n",
+              {},
+              ["get", "arabic_title"],
+              {
+                "font-scale": 0.75,
+                "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+              }
+            ]
+          ]
+        ]);
+      }
 
       try {
         await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-field", textFieldExpression);
@@ -807,9 +1202,17 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       try {
-        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-color", jsonEncode(colorMatchExpr));
+        final String textColorExpression = widget.selectedMapTab == 2 ? jsonEncode(["rgb", 124, 87, 252]) : jsonEncode(colorMatchExpr);
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-color", textColorExpression);
       } catch (e) {
         debugPrint("Error setting places-layer text-color: $e");
+      }
+
+      try {
+        final String heatmapVisibility = widget.selectedMapTab == 2 ? "visible" : "none";
+        await _mapboxMap!.style.setStyleLayerProperty("places-heatmap-layer", "visibility", heatmapVisibility);
+      } catch (e) {
+        debugPrint("Error setting places-heatmap-layer visibility: $e");
       }
 
       final String textSizeExpr = jsonEncode([
@@ -826,14 +1229,36 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
       final String textRadialOffsetExpr = jsonEncode([
         "case",
-        ["==", ["get", "id"], selectedId],
-        1.6,
-        1.4
+        ["!=", ["get", "rating_str"], "none"],
+        [
+          "case",
+          ["==", ["get", "id"], selectedId],
+          4.1,
+          3.4
+        ],
+        [
+          "case",
+          ["==", ["get", "id"], selectedId],
+          1.8,
+          1.4
+        ]
       ]);
       try {
         await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-radial-offset", textRadialOffsetExpr);
       } catch (e) {
         debugPrint("Error setting places-layer text-radial-offset: $e");
+      }
+
+      try {
+        final String sortKeyExpr = jsonEncode([
+          "case",
+          ["==", ["get", "id"], selectedId],
+          0,
+          ["get", "priority"]
+        ]);
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "symbol-sort-key", sortKeyExpr);
+      } catch (e) {
+        debugPrint("Error setting places-layer symbol-sort-key: $e");
       }
 
       // --- Clusters Layer Styles ---
@@ -1373,10 +1798,4 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       ),
     );
   }
-}
-
-// Native clustering helper classes removed
-
-String _serializeGeoJson(Map<String, dynamic> geojson) {
-  return jsonEncode(geojson);
 }

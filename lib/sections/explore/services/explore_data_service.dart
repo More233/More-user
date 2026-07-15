@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../config/secrets.dart';
 import '../../home/widgets/bottom_sheets/location_search_sheet.dart';
 import 'explore_db_cache_service.dart';
@@ -17,6 +18,10 @@ class ExploreDataService {
   static final http.Client _client = http.Client();
   static final Map<String, List<Map<String, dynamic>>> _placesCache = {};
   static final Map<String, Map<String, dynamic>> _supabaseCache = {};
+
+  static void clearSupabaseCache() {
+    _supabaseCache.clear();
+  }
 
   static void _log(String message) {
     if (kDebugMode) {
@@ -153,19 +158,27 @@ class ExploreDataService {
     }
     if (name.contains('bakery') ||
         name.contains('donut') ||
-        name.contains('pastry') ||
-        name.contains('dessert') ||
-        name.contains('cake') ||
-        name.contains('sweet')) {
+        name.contains('pastry')) {
       return 'Bakery';
+    }
+    if (name.contains('dessert') ||
+        name.contains('cake') ||
+        name.contains('sweet') ||
+        name.contains('ice cream') ||
+        name.contains('yogurt') ||
+        name.contains('candy') ||
+        name.contains('creperie')) {
+      return 'Desserts';
     }
     if (name.contains('bar') ||
         name.contains('pub') ||
         name.contains('nightclub') ||
         name.contains('lounge') ||
         name.contains('brewery') ||
-        name.contains('distillery')) {
-      return 'Bars';
+        name.contains('distillery') ||
+        name.contains('juice') ||
+        name.contains('smoothie')) {
+      return 'Juices';
     }
     if (name.contains('supermarket') ||
         name.contains('grocery') ||
@@ -186,13 +199,13 @@ class ExploreDataService {
         name.contains('resort') ||
         name.contains('lodging') ||
         name.contains('inn')) {
-      return 'Hotel';
+      return 'Hotels';
     }
     if (name.contains('park') ||
         name.contains('garden') ||
         name.contains('playground') ||
         name.contains('nature reserve')) {
-      return 'Park';
+      return 'Parks';
     }
     if (name.contains('airport') || name.contains('terminal')) {
       return 'Airport';
@@ -203,7 +216,7 @@ class ExploreDataService {
       if (id == 13065) return 'Restaurant';
       if (id == 13009 || id == 13035) return 'Coffee';
       if (id == 13002) return 'Bakery';
-      if (id == 13003) return 'Bars';
+      if (id == 13003) return 'Juices';
       if (id == 17089) return 'Supermarket';
       if (id == 11134) return 'Pharmacy';
     }
@@ -326,11 +339,14 @@ class ExploreDataService {
     if (typesLower.contains('cafe') || typesLower.contains('coffee') || typesLower.contains('tea_room')) {
       return 'Coffee';
     }
-    if (typesLower.contains('bakery') || typesLower.contains('patisserie') || typesLower.contains('dessert_shop') || typesLower.contains('cake_shop')) {
+    if (typesLower.contains('bakery') || typesLower.contains('patisserie')) {
       return 'Bakery';
     }
-    if (typesLower.contains('bar') || typesLower.contains('night_club') || typesLower.contains('pub') || typesLower.contains('brewery')) {
-      return 'Bars';
+    if (typesLower.contains('dessert_shop') || typesLower.contains('cake_shop') || typesLower.contains('ice_cream_shop') || typesLower.contains('confectionery')) {
+      return 'Desserts';
+    }
+    if (typesLower.contains('bar') || typesLower.contains('night_club') || typesLower.contains('pub') || typesLower.contains('brewery') || typesLower.contains('juice_bar') || typesLower.contains('smoothie_shop')) {
+      return 'Juices';
     }
     if (typesLower.contains('restaurant') || typesLower.contains('meal_takeaway') || typesLower.contains('meal_delivery') || typesLower.contains('food')) {
       return 'Restaurant';
@@ -342,10 +358,10 @@ class ExploreDataService {
       return 'Pharmacy';
     }
     if (typesLower.contains('lodging') || typesLower.contains('hotel') || typesLower.contains('resort')) {
-      return 'Hotel';
+      return 'Hotels';
     }
     if (typesLower.contains('park') || typesLower.contains('tourist_attraction') || typesLower.contains('museum') || typesLower.contains('zoo') || typesLower.contains('amusement_park')) {
-      return 'Park';
+      return 'Parks';
     }
     if (typesLower.contains('airport') || typesLower.contains('transit_station') || typesLower.contains('subway_station') || typesLower.contains('train_station') || typesLower.contains('bus_station')) {
       return 'Airport';
@@ -456,6 +472,42 @@ class ExploreDataService {
     };
   }
 
+  static Future<void> seedRealGlobalPlacesFromApi() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasSeeded = prefs.getBool('global_places_seeded_api') ?? false;
+      if (hasSeeded) return;
+
+      debugPrint("ExploreDataService: Running one-time global startup Places API fetch...");
+
+      final List<Map<String, double>> startupLocations = [
+        {'lat': 24.7136, 'lng': 46.6753}, // Riyadh
+        {'lat': 25.2048, 'lng': 55.2708}, // Dubai
+        {'lat': 30.0444, 'lng': 31.2357}, // Cairo
+        {'lat': 51.5074, 'lng': -0.1278}, // London
+        {'lat': 40.7128, 'lng': -74.0060}, // New York
+      ];
+
+      for (final loc in startupLocations) {
+        // Run a background fetch (radius 10km) for each city to pull 20 real active places
+        fetchNearbyFoursquarePlaces(
+          loc['lat']!,
+          loc['lng']!,
+          radius: 10000,
+          cacheOnly: false,
+        ).catchError((e) {
+          debugPrint("Startup seed failed for ${loc['lat']}, ${loc['lng']}: $e");
+          return <Map<String, dynamic>>[];
+        });
+      }
+
+      await prefs.setBool('global_places_seeded_api', true);
+      debugPrint("ExploreDataService: Scheduled background Google Places API fetch for 5 global cities.");
+    } catch (e) {
+      debugPrint("ExploreDataService: Error in startup seeding: $e");
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(
     double lat,
     double lng, {
@@ -502,7 +554,7 @@ class ExploreDataService {
     }
 
     final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
-    if (isCellSynced) {
+    if (isCellSynced && (keyword == null || keyword.isEmpty)) {
       _log("ExploreDataService: Cell $cellId already synced. Returning cache. Count: ${cachedPlaces.length}");
       _placesCache[cacheKey] = cachedPlaces;
       return cachedPlaces;
@@ -537,8 +589,8 @@ class ExploreDataService {
           }
         }
 
-        // Limit to 1 page to make loading instant (Google requires a 2-second delay per additional page)
-        final int maxPages = 1;
+        // Limit to 2 pages to increase density while keeping load fast in the background
+        final int maxPages = 2;
 
         // Handle pagination to fetch up to 60 places (maxPages)
         String? nextPageToken = data['next_page_token'] as String?;
@@ -879,10 +931,16 @@ class ExploreDataService {
     try {
       final client = Supabase.instance.client;
       
+      final currentUserId = client.auth.currentUser?.id;
       var postsQuery = client
           .from('posts')
-          .select('*, author:profiles!posts_user_id_fkey(*)')
-          .eq('is_private', false);
+          .select('*, author:profiles!posts_user_id_fkey(*)');
+          
+      if (currentUserId != null) {
+        postsQuery = postsQuery.or('is_private.eq.false,user_id.eq.$currentUserId');
+      } else {
+        postsQuery = postsQuery.eq('is_private', false);
+      }
           
       var venuesQuery = client
           .from('custom_venues')

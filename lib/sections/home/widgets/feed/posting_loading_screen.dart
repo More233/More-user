@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../models/timeline_post.dart';
 import 'reward_dialog.dart';
+import '../../../explore/services/explore_data_service.dart';
 
 class PostingLoadingScreen extends StatefulWidget {
   final TimelinePost newPost;
@@ -126,6 +127,9 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
       }).select().single();
 
       final String insertedId = response['id'] as String;
+
+      // Invalidate the explore/map places cache to force reload fresh check-ins
+      ExploreDataService.clearSupabaseCache();
 
 
 

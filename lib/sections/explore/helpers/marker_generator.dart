@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
 
 class MarkerGenerator {
   static final Map<String, Uint8List> _normalPinCache = {};
@@ -37,6 +39,145 @@ class MarkerGenerator {
     return bytes;
   }
 
+  static final Map<String, Uint8List> _liveCache = {};
+
+  static Future<Uint8List> getLivePin(String type, {required bool isSelected}) async {
+    final key = "${type.toLowerCase().trim()}_$isSelected";
+    if (_liveCache.containsKey(key)) {
+      return _liveCache[key]!;
+    }
+    final bytes = await _generateLivePin(type, isSelected: isSelected);
+    _liveCache[key] = bytes;
+    return bytes;
+  }
+
+  static final Map<String, Uint8List> _capsuleCache = {};
+
+  static Future<Uint8List> getCapsulePin(String type, String rating, {required bool isSelected}) async {
+    final key = "${type.toLowerCase().trim()}_${rating.trim()}_$isSelected";
+    if (_capsuleCache.containsKey(key)) {
+      return _capsuleCache[key]!;
+    }
+    final bytes = await _generateCapsulePin(type, rating, isSelected: isSelected);
+    _capsuleCache[key] = bytes;
+    return bytes;
+  }
+
+  static Future<Uint8List> _generateCapsulePin(
+    String type,
+    String rating, {
+    required bool isSelected,
+  }) async {
+    final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+    final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+    final double scale = isSelected ? 1.15 : 0.92;
+    final color = getMarkerColor(type);
+
+    final double rectWidth = 66.0 * scale;
+    final double rectHeight = 26.0 * scale;
+    final double triangleHeight = 6.0 * scale;
+    final double triangleWidth = 8.0 * scale;
+
+    const double dx = 12.0;
+    final double dy = triangleHeight + 10.0;
+
+    final double width = rectWidth + 2 * dx;
+    final double height = rectHeight + 2 * dy;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(dpr);
+
+    final double cx = dx + rectWidth / 2;
+    final double cy = dy + rectHeight / 2;
+
+    // 1. Draw Shadow
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.24)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+
+    final Path capsulePath = Path();
+    final RRect rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(dx, dy, rectWidth, rectHeight),
+      Radius.circular(100.0 * scale),
+    );
+    capsulePath.addRRect(rrect);
+
+    final Path trianglePath = Path()
+      ..moveTo(cx - triangleWidth / 2, dy + rectHeight)
+      ..lineTo(cx, dy + rectHeight + triangleHeight)
+      ..lineTo(cx + triangleWidth / 2, dy + rectHeight)
+      ..close();
+    capsulePath.addPath(trianglePath, Offset.zero);
+
+    canvas.drawPath(capsulePath, shadowPaint);
+
+    // 2. Draw Fill
+    final Paint fillPaint = Paint()..color = color;
+    canvas.drawPath(capsulePath, fillPaint);
+
+    // 3. Draw White Border
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0 * scale;
+    canvas.drawPath(capsulePath, borderPaint);
+
+    // 4. Draw White Icon (perfectly centered in the left section)
+    final iconData = getIconDataForType(type);
+    final TextPainter iconPainter = TextPainter(textDirection: TextDirection.ltr);
+    iconPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: 12.5 * scale,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: Colors.white,
+      ),
+    );
+    iconPainter.layout();
+    
+    final double leftCenter = 12.0 * scale;
+    iconPainter.paint(
+      canvas,
+      Offset(dx + leftCenter - iconPainter.width / 2, cy - iconPainter.height / 2),
+    );
+
+    // 5. Draw White Divider
+    final Paint dividerPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.5)
+      ..strokeWidth = 1.0 * scale;
+    canvas.drawLine(
+      Offset(dx + 24.0 * scale, dy + 5.0 * scale),
+      Offset(dx + 24.0 * scale, dy + rectHeight - 5.0 * scale),
+      dividerPaint,
+    );
+
+    // 6. Draw Rating text (perfectly centered vertically with typographical compensation)
+    final TextPainter ratingPainter = TextPainter(textDirection: TextDirection.ltr);
+    ratingPainter.text = TextSpan(
+      text: rating.isNotEmpty ? rating : "4.0",
+      style: TextStyle(
+        fontSize: 10.5 * scale,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+    );
+    ratingPainter.layout();
+
+    final double rightCenter = 45.0 * scale;
+    ratingPainter.paint(
+      canvas,
+      Offset(dx + rightCenter - ratingPainter.width / 2, cy - ratingPainter.height / 2 - 1.0 * scale),
+    );
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage((width * dpr).toInt(), (height * dpr).toInt());
+    final pngBytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    return pngBytes!.buffer.asUint8List();
+  }
+
   static Future<Uint8List> _generateTeardropPin(String type, {required bool isSelected}) async {
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
@@ -45,13 +186,18 @@ class MarkerGenerator {
     const double dx = 10.0;
     const double dy = 8.0;
 
-    final double gap = 4.0 * finalScale;
-    final double dotRadius = 3.8 * finalScale;
+    final color = getMarkerColor(type);
+
+
+
+    // If selected, keep the teardrop pin shape to point exactly at the location
+    final double gap = isSelected ? (4.0 * finalScale) : 0.0;
+    final double dotRadius = isSelected ? (3.8 * finalScale) : 0.0;
 
     final double width = (30.0 * finalScale) + 20.0;
     final double height = isSelected
-        ? (34.0 * finalScale) + gap + (dotRadius * 2) + 20.0
-        : (34.0 * finalScale) + 20.0;
+        ? ((34.0 * finalScale) + gap + (dotRadius * 2) + 20.0)
+        : ((34.0 * finalScale) + 20.0);
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -59,7 +205,7 @@ class MarkerGenerator {
     canvas.scale(dpr);
 
     final Path path = Path();
-    path.moveTo(dx + 15.0 * finalScale, dy + 34.0 * finalScale); // Start at bottom tip (shortened to 34)
+    path.moveTo(dx + 15.0 * finalScale, dy + 34.0 * finalScale); // Start at bottom tip
     path.lineTo(dx + 5.8 * finalScale, dy + 26.8 * finalScale); // Line to left tangent point
     path.arcTo(
       Rect.fromCircle(
@@ -77,8 +223,6 @@ class MarkerGenerator {
       ..color = Colors.black.withValues(alpha: 0.15)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
     canvas.drawPath(path, shadowPaint);
-
-    final color = getMarkerColor(type);
 
     // 2. Draw Teardrop pin (Fill)
     final Paint fillPaint = Paint()..color = color;
@@ -100,7 +244,7 @@ class MarkerGenerator {
     textPainter.text = TextSpan(
       text: String.fromCharCode(iconData.codePoint),
       style: TextStyle(
-        fontSize: (isSelected ? 16.0 : 13.0) * finalScale,
+        fontSize: 16.0 * finalScale,
         fontFamily: iconData.fontFamily,
         package: iconData.fontPackage,
         color: Colors.white,
@@ -178,13 +322,13 @@ class MarkerGenerator {
     if (t.contains('restaurant') || t.contains('food') || t.contains('dining')) return Icons.restaurant;
     if (t.contains('coffee') || t.contains('cafe') || t.contains('café')) return Icons.local_cafe;
     if (t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') || t.contains('pastry') || t.contains('cake')) return Icons.cake;
-    if (t.contains('bar') || t.contains('pub') || t.contains('club')) return Icons.local_bar;
+    if (t.contains('bar') || t.contains('pub') || t.contains('club') || t.contains('juice') || t.contains('smoothie') || t.contains('drink') || t.contains('lounge') || t.contains('juices')) return Icons.local_drink;
     if (t.contains('airport') || t.contains('flight') || t.contains('plane')) return Icons.local_airport;
-    if (t.contains('hotel') || t.contains('motel') || t.contains('resort') || t.contains('bed') || t.contains('room') || t.contains('stay')) return Icons.king_bed;
+    if (t.contains('hotel') || t.contains('motel') || t.contains('resort') || t.contains('bed') || t.contains('room') || t.contains('stay') || t.contains('hotels')) return Icons.king_bed;
     if (t.contains('supermarket') || t.contains('shopping') || t.contains('mall') || t.contains('store') || t.contains('shop')) return Icons.storefront;
     if (t.contains('bakery') || t.contains('bread') || t.contains('mkhbazat')) return Icons.bakery_dining;
     if (t.contains('ticket') || t.contains('event') || t.contains('activity') || t.contains('show')) return Icons.local_activity;
-    if (t.contains('park') || t.contains('garden') || t.contains('playground')) return Icons.park;
+    if (t.contains('park') || t.contains('garden') || t.contains('playground') || t.contains('parks')) return Icons.park;
     if (t.contains('pharmacy') || t.contains('drugstore')) return Icons.local_pharmacy;
     if (t.contains('hospital') || t.contains('clinic') || t.contains('doctor') || t.contains('medical')) return Icons.local_hospital;
     if (t.contains('bank')) return Icons.account_balance;
@@ -202,30 +346,46 @@ class MarkerGenerator {
 
   static Color getMarkerColor(String type) {
     final String t = type.toLowerCase().trim();
-    if (t.contains('movie') || t.contains('cinema')) {
-      return const Color(0xFFCB3D8D); // Pink
+    
+    // 1. Movies / Cinema / Tickets / Events -> Purple
+    if (t.contains('movie') || t.contains('cinema') || t.contains('ticket') || t.contains('show') || t.contains('exhibition')) {
+      return const Color(0xFF9C27B0); // Purple/Violet
     }
-    if (t.contains('park') || t.contains('garden') || t.contains('playground') ||
-        t.contains('sports') || t.contains('stadium') || t.contains('arena') || t.contains('soccer') || t.contains('gym')) {
-      return const Color(0xFF1B8A5A); // Swarm Green
-    }
+
+    // 2. Concerts / Music -> Fuchsia/Pink
     if (t.contains('concert') || t.contains('music') || t.contains('gig')) {
-      return const Color(0xFF00B0FF); // Concerts Sky Blue
+      return const Color(0xFFE91E63); // Fuchsia/Pink
     }
-    if (t.contains('coffee') || t.contains('cafe') || t.contains('café') || t.contains('local_cafe')) {
-      return const Color(0xFFFF5A19); // Swarm Food Orange-Red (Same as restaurant)
-    }
+
+    // 3. Food and Coffee (restaurants, cafes, bakeries, bars, etc.) -> Orange
     if (t.contains('restaurant') || t.contains('food') || t.contains('dining') ||
+        t.contains('coffee') || t.contains('cafe') || t.contains('café') ||
         t.contains('bakery') || t.contains('bread') || t.contains('mkhbazat') ||
-        t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') || t.contains('pastry') || t.contains('cake') ||
-        t.contains('pizza') || t.contains('pizzeria') || t.contains('bar') || t.contains('pub') || t.contains('club') || t.contains('nightlife')) {
-      return const Color(0xFFFF5A19); // Swarm Food Orange-Red
+        t.contains('dessert') || t.contains('sweets') || t.contains('chocolate') ||
+        t.contains('pastry') || t.contains('cake') || t.contains('pizza') ||
+        t.contains('pizzeria') || t.contains('bar') || t.contains('pub') ||
+        t.contains('club') || t.contains('nightlife') || t.contains('local_cafe') ||
+        t.contains('juice') || t.contains('smoothie') || t.contains('drink') ||
+        t.contains('juices') || t.contains('desserts')) {
+      return const Color(0xFFFF5A19); // Food & Coffee Orange
     }
-    if (t.contains('hotel') || t.contains('motel') || t.contains('resort') || t.contains('bed') || t.contains('stay') || t.contains('room') ||
+    
+    // 4. Parks and Sports (parks, gardens, stadium, gym, soccer) -> Green
+    if (t.contains('park') || t.contains('garden') || t.contains('playground') ||
+        t.contains('sports') || t.contains('stadium') || t.contains('arena') ||
+        t.contains('soccer') || t.contains('gym')) {
+      return const Color(0xFF1B8A5A); // Parks & Sports Green
+    }
+    
+    // 5. Hotels and Airports (hotels, motels, resorts, airports, planes) -> Blue
+    if (t.contains('hotel') || t.contains('motel') || t.contains('resort') ||
+        t.contains('bed') || t.contains('stay') || t.contains('room') ||
         t.contains('airport') || t.contains('flight') || t.contains('plane')) {
-      return const Color(0xFF0066FF); // Swarm Blue
+      return const Color(0xFF0066FF); // Hotels & Airports Blue
     }
-    return const Color(0xFF5A5D67); // Swarm Charcoal/Grey default
+    
+    // 6. Other/Rest -> Grey
+    return const Color(0xFF9E9E9E); // Rest Grey
   }
 
   static String resolveType(String rawType, String name, [String arabicName = '']) {
@@ -272,5 +432,206 @@ class MarkerGenerator {
     if (n.contains('stadium') || n.contains('arena') || n.contains('gym') || n.contains('sports') || n.contains('soccer') || ar.contains('ملعب') || ar.contains('صالة') || ar.contains('رياضة') || ar.contains('نادي رياض')) return 'sports';
 
     return 'other';
+  }
+
+  static Future<Uint8List> _generateLivePin(String type, {required bool isSelected}) async {
+    final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+    final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+    final double scale = isSelected ? 1.25 : 1.0;
+    // Signature Swarm Purple Color
+    const color = Color(0xFF7C57FC);
+
+    final double radius = 12.0 * scale;
+    const double dx = 10.0;
+    const double dy = 10.0;
+
+    final double width = radius * 2 + 20.0;
+    final double height = radius * 2 + 20.0;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(dpr);
+
+    final double cx = dx + radius;
+    final double cy = dy + radius;
+
+    // 1. Draw Shadow
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.22)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+    canvas.drawCircle(Offset(cx, cy), radius, shadowPaint);
+
+    // 2. Draw Circle Fill
+    final Paint fillPaint = Paint()..color = color;
+    canvas.drawCircle(Offset(cx, cy), radius, fillPaint);
+
+    // 3. Draw White Border
+    final Paint borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0 * scale;
+    canvas.drawCircle(Offset(cx, cy), radius, borderPaint);
+
+    // 4. Draw White Icon (perfectly centered)
+    final iconData = getIconDataForType(type);
+    final TextPainter iconPainter = TextPainter(textDirection: TextDirection.ltr);
+    iconPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: 12.0 * scale,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        color: Colors.white,
+      ),
+    );
+    iconPainter.layout();
+    
+    iconPainter.paint(
+      canvas,
+      Offset(cx - iconPainter.width / 2, cy - iconPainter.height / 2),
+    );
+
+    final picture = recorder.endRecording();
+    final img = await picture.toImage((width * dpr).toInt(), (height * dpr).toInt());
+    final pngBytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    return pngBytes!.buffer.asUint8List();
+  }
+
+  static final Map<String, Uint8List> _checkInAvatarCache = {};
+
+  static Future<Uint8List> getCheckInAvatarPin(String? avatarUrl, {required bool isSelected}) async {
+    final String key = "${avatarUrl ?? 'placeholder'}_$isSelected";
+    if (_checkInAvatarCache.containsKey(key)) {
+      return _checkInAvatarCache[key]!;
+    }
+
+    try {
+      final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+      final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+      final double scale = isSelected ? 1.25 : 1.0;
+      final double radius = 18.0 * scale; // 36px diameter
+      const double dx = 10.0;
+      const double dy = 10.0;
+      final double width = radius * 2 + 20.0;
+      final double height = radius * 2 + 20.0;
+
+      final double cx = dx + radius;
+      final double cy = dy + radius;
+
+      // Try to load avatar image
+      ui.Image? avatarImage;
+      try {
+        final pathOrUrl = avatarUrl != null && avatarUrl.isNotEmpty
+            ? avatarUrl
+            : 'assets/home/images/avatar_placeholder.png';
+        
+        Uint8List bytes;
+        if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+          final response = await http.get(Uri.parse(pathOrUrl)).timeout(const Duration(seconds: 3));
+          if (response.statusCode == 200) {
+            bytes = response.bodyBytes;
+          } else {
+            throw Exception("Failed to load network image");
+          }
+        } else {
+          final data = await rootBundle.load(pathOrUrl);
+          bytes = data.buffer.asUint8List();
+        }
+        
+        final codec = await ui.instantiateImageCodec(
+          bytes,
+          targetWidth: (radius * 2 * dpr).toInt(),
+          targetHeight: (radius * 2 * dpr).toInt(),
+        );
+        final frameInfo = await codec.getNextFrame();
+        avatarImage = frameInfo.image;
+      } catch (e) {
+        debugPrint("Error loading avatar image for pin, using fallback: $e");
+      }
+
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.scale(dpr);
+
+      // 1. Draw Shadow
+      final Paint shadowPaint = Paint()
+        ..color = Colors.black.withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+      canvas.drawCircle(Offset(cx, cy), radius, shadowPaint);
+
+      // 2. Draw Black/Dark Fill
+      final Paint bgPaint = Paint()..color = const Color(0xFF1E1E1E);
+      canvas.drawCircle(Offset(cx, cy), radius, bgPaint);
+
+      // 3. Draw Avatar (clipped)
+      if (avatarImage != null) {
+        canvas.save();
+        final Path clipPath = Path()..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: radius - 1.5));
+        canvas.clipPath(clipPath);
+        
+        final src = Rect.fromLTWH(0, 0, avatarImage.width.toDouble(), avatarImage.height.toDouble());
+        final dest = Rect.fromCircle(center: Offset(cx, cy), radius: radius - 1.5);
+        
+        canvas.drawImageRect(avatarImage, src, dest, Paint()..isAntiAlias = true);
+        canvas.restore();
+      }
+
+      // 4. Draw White Border
+      final Paint borderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0 * scale;
+      canvas.drawCircle(Offset(cx, cy), radius - 0.5, borderPaint);
+
+      // 5. Draw Purple Checkmark Circle Overlay at bottom right
+      final double offset = radius * 0.707; // cos(45) and sin(45)
+      final double checkCx = cx + offset;
+      final double checkCy = cy + offset;
+      final double checkRadius = 6.5 * scale;
+
+      // Draw Checkmark Circle shadow
+      canvas.drawCircle(Offset(checkCx, checkCy + 0.5), checkRadius, shadowPaint);
+
+      // Draw Checkmark Circle fill (Purple: Color(0xFF7C57FC))
+      final Paint checkBgPaint = Paint()..color = const Color(0xFF7C57FC);
+      canvas.drawCircle(Offset(checkCx, checkCy), checkRadius, checkBgPaint);
+
+      // Draw Checkmark Circle border (White)
+      final Paint checkBorderPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0 * scale;
+      canvas.drawCircle(Offset(checkCx, checkCy), checkRadius, checkBorderPaint);
+
+      // Draw White Checkmark icon
+      final TextPainter checkPainter = TextPainter(textDirection: TextDirection.ltr);
+      checkPainter.text = TextSpan(
+        text: '✓',
+        style: TextStyle(
+          fontSize: 8.5 * scale,
+          fontWeight: FontWeight.w900,
+          color: Colors.white,
+        ),
+      );
+      checkPainter.layout();
+      checkPainter.paint(
+        canvas,
+        Offset(checkCx - checkPainter.width / 2, checkCy - checkPainter.height / 2 - 0.5 * scale),
+      );
+
+      final picture = recorder.endRecording();
+      final img = await picture.toImage((width * dpr).toInt(), (height * dpr).toInt());
+      final pngBytes = await img.toByteData(format: ui.ImageByteFormat.png);
+      
+      final resultBytes = pngBytes!.buffer.asUint8List();
+      _checkInAvatarCache[key] = resultBytes;
+      return resultBytes;
+    } catch (e) {
+      debugPrint("Outer error in getCheckInAvatarPin: $e");
+      // Fallback: return standard live pin
+      return getLivePin("other", isSelected: isSelected);
+    }
   }
 }

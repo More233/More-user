@@ -83,10 +83,13 @@ class TimelinePost {
   String get shortLocationAddress {
     if (locationAddress.isEmpty) return '';
     
+    // Clean leading postal/plot numbers (e.g. "7213,3728 Al Thoumamah" -> "Al Thoumamah" or "44692 Gameyet" -> "Gameyet")
+    String cleaned = locationAddress.replaceFirst(RegExp(r'^\d{3,}(?:[\s,،\-]+\d+)?[\s,،\-]+'), '');
+    
     // Split by whitespace to get words
-    List<String> words = locationAddress.split(RegExp(r'\s+'));
+    List<String> words = cleaned.split(RegExp(r'\s+'));
     if (words.length <= 4) {
-      return locationAddress;
+      return cleaned;
     }
     
     String truncated = words.take(4).join(' ');

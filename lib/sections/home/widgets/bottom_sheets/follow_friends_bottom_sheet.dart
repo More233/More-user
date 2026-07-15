@@ -325,8 +325,10 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
   Widget build(BuildContext context) {
     final filteredSuggestions = _filterList(_allSuggestions);
     final filteredContacts = _filterList(_contacts);
+    final double screenHeight = MediaQuery.of(context).size.height;
 
     return Container(
+      height: screenHeight * 0.85,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),

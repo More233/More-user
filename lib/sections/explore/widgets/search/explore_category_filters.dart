@@ -34,10 +34,10 @@ class ExploreCategoryFilters extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF7C57FC) : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(100),
           border: Border.all(
-            color: isActive ? Colors.transparent : const Color(0xFFE8E8E8),
+            color: isActive ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
             width: 1,
           ),
           boxShadow: [
@@ -54,7 +54,7 @@ class ExploreCategoryFilters extends StatelessWidget {
             Icon(
               icon,
               size: 16,
-              color: isActive ? Colors.white : const Color(0xFF333333),
+              color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF333333),
             ),
             const SizedBox(width: 6),
             Text(
@@ -62,7 +62,7 @@ class ExploreCategoryFilters extends StatelessWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: isActive ? Colors.white : const Color(0xFF333333),
+                color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF333333),
               ),
             ),
           ],
@@ -163,9 +163,13 @@ class ExploreCategoryFilters extends StatelessWidget {
                     const SizedBox(width: 8),
                     _buildCategoryPill("Bakery", Icons.breakfast_dining),
                     const SizedBox(width: 8),
-                    _buildCategoryPill("Bars", Icons.local_bar),
+                    _buildCategoryPill("Desserts", Icons.icecream_outlined),
                     const SizedBox(width: 8),
-                    _buildCategoryPill("Desserts", Icons.icecream),
+                    _buildCategoryPill("Juices", Icons.local_drink_outlined),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Parks", Icons.park_outlined),
+                    const SizedBox(width: 8),
+                    _buildCategoryPill("Hotels", Icons.hotel_outlined),
                   ],
                 )),
     );
