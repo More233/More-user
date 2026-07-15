@@ -195,6 +195,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             "title": [
               ["coalesce", ["accumulated"], ["get", "title"]],
               ["get", "title"]
+            ],
+            "english_title": [
+              ["coalesce", ["accumulated"], ["get", "english_title"]],
+              ["get", "english_title"]
+            ],
+            "arabic_title": [
+              ["coalesce", ["accumulated"], ["get", "arabic_title"]],
+              ["get", "arabic_title"]
             ]
           },
         );
@@ -592,10 +600,72 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
         final String name = p['name']?.toString() ?? '';
         final String arName = p['arabicName']?.toString() ?? '';
-        String mainName = arName.isNotEmpty ? arName : name;
-        
-        // Clean city name in parentheses from mainName
-        mainName = mainName.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+
+        String englishTitle = '';
+        String arabicTitle = '';
+
+        bool containsArabicChar(String text) {
+          return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
+        }
+
+        // 1. Check if name contains both separated by / or - or |
+        final separators = ['/', '-', '|'];
+        bool separated = false;
+        for (final sep in separators) {
+          if (name.contains(sep)) {
+            final parts = name.split(sep);
+            if (parts.length == 2) {
+              final part1 = parts[0].trim();
+              final part2 = parts[1].trim();
+              final hasAr1 = containsArabicChar(part1);
+              final hasAr2 = containsArabicChar(part2);
+              if (hasAr1 && !hasAr2) {
+                englishTitle = part2;
+                arabicTitle = part1;
+                separated = true;
+                break;
+              } else if (!hasAr1 && hasAr2) {
+                englishTitle = part1;
+                arabicTitle = part2;
+                separated = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (!separated) {
+          final nameHasAr = containsArabicChar(name);
+          final arNameHasAr = containsArabicChar(arName);
+
+          if (nameHasAr && arNameHasAr) {
+            // Both are Arabic
+            englishTitle = '';
+            arabicTitle = name;
+          } else if (!nameHasAr && arNameHasAr) {
+            // name is English, arName is Arabic
+            englishTitle = name;
+            arabicTitle = arName;
+          } else if (!nameHasAr && !arNameHasAr) {
+            // Both are English
+            englishTitle = name;
+            arabicTitle = '';
+          } else {
+            // name is Arabic, arName is English
+            englishTitle = arName;
+            arabicTitle = name;
+          }
+        }
+
+        // Clean city name in parentheses from titles
+        englishTitle = englishTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+        arabicTitle = arabicTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+
+        // Fallback: If English title ends up empty but we have Arabic title, use Arabic as primary
+        if (englishTitle.isEmpty && arabicTitle.isNotEmpty) {
+          englishTitle = arabicTitle;
+          arabicTitle = '';
+        }
 
         final String resolvedType = _resolvePlaceType(p);
         if (resolvedType == 'airport') {
@@ -636,7 +706,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           "properties": {
             "id": p['id'].toString(),
             "place_type": resolvedType,
-            "title": mainName,
+            "title": englishTitle,
+            "english_title": englishTitle,
+            "arabic_title": arabicTitle,
             "rating_and_type": ratingAndType,
             "place_type_code": placeTypeCode,
           }
@@ -703,13 +775,35 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         ["zoom"],
         "",
         1.5,
-        ["get", "title"]
+        [
+          "case",
+          ["==", ["get", "arabic_title"], ""],
+          ["get", "english_title"],
+          [
+            "format",
+            ["get", "english_title"],
+            {"font-scale": 1.0},
+            "\n",
+            {},
+            ["get", "arabic_title"],
+            {
+              "font-scale": 0.75,
+              "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+            }
+          ]
+        ]
       ]);
 
       try {
         await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-field", textFieldExpression);
       } catch (e) {
         debugPrint("Error setting places-layer text-field: $e");
+      }
+
+      try {
+        await _mapboxMap!.style.setStyleLayerProperty("places-layer", "text-justify", "left");
+      } catch (e) {
+        debugPrint("Error setting places-layer text-justify: $e");
       }
 
       try {
@@ -933,6 +1027,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-size", textSizeExpr);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-opacity", 1.0);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-color", clusterTextColorExpression);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-justify", "left");
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-radial-offset", textRadialOffsetExpr);
         try {
           await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "minzoom", 9.0);

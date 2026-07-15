@@ -762,15 +762,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           center.latitude,
                           center.longitude,
                         );
-                        final double threshold = _currentZoom < 7.0
-                            ? 200000.0 // 200 km
-                            : (_currentZoom < 10.0
-                                ? 30000.0 // 30 km
-                                : (_currentZoom < 13.0
-                                    ? 10000.0 // 10 km
-                                    : (_currentZoom < 15.0 ? 3000.0 : 1500.0))); // 3 km or 1.5 km
-                        
-                        if (distance > threshold || (_currentZoom - _lastFetchedZoom!).abs() > 0.8) {
+                        // Highly responsive thresholds: Trigger updates if moved more than 150m or zoom changed by 0.15
+                        if (distance > 150.0 || (_currentZoom - _lastFetchedZoom!).abs() > 0.15) {
                           shouldFetch = true;
                         }
                       }

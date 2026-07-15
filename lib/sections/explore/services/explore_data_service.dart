@@ -14,6 +14,7 @@ class ExploreDataService {
     defaultValue: Secrets.googlePlacesApiKey,
   );
 
+  static final http.Client _client = http.Client();
   static final Map<String, List<Map<String, dynamic>>> _placesCache = {};
   static final Map<String, Map<String, dynamic>> _supabaseCache = {};
 
@@ -467,7 +468,7 @@ class ExploreDataService {
     final String cacheKey = '${roundedLat}_${roundedLng}_${radius.toInt()}_${keyword ?? ''}';
 
     // 1. Check in-memory Cache
-    if (_placesCache.containsKey(cacheKey)) {
+    if (!cacheOnly && _placesCache.containsKey(cacheKey)) {
       _log("ExploreDataService: Returning cached Google places (in-memory) for key: $cacheKey");
       return _placesCache[cacheKey]!;
     }
@@ -491,30 +492,18 @@ class ExploreDataService {
       maxLng: maxLng,
     );
 
+    final double gridLat = (lat * 100).round() / 100.0;
+    final double gridLng = (lng * 100).round() / 100.0;
+    final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
+
     if (cacheOnly) {
       _log("ExploreDataService: Returning cached places (cacheOnly). Count: ${cachedPlaces.length}");
-      _placesCache[cacheKey] = cachedPlaces;
       return cachedPlaces;
     }
 
-    bool isCacheFresh = false;
-    if (cachedPlaces.length >= 5) {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      int newestCachedAt = 0;
-      for (final p in cachedPlaces) {
-        final int cat = p['cachedAt'] as int? ?? 0;
-        if (cat > newestCachedAt) {
-          newestCachedAt = cat;
-        }
-      }
-      // Check if cache was updated within the last 3 days
-      if (now - newestCachedAt < 3 * 24 * 60 * 60 * 1000) {
-        isCacheFresh = true;
-      }
-    }
-
-    if (isCacheFresh) {
-      _log("ExploreDataService: Returning cached places from local SQLite database. Count: ${cachedPlaces.length}");
+    final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
+    if (isCellSynced) {
+      _log("ExploreDataService: Cell $cellId already synced. Returning cache. Count: ${cachedPlaces.length}");
       _placesCache[cacheKey] = cachedPlaces;
       return cachedPlaces;
     }
@@ -524,13 +513,14 @@ class ExploreDataService {
       String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
           '?location=$lat,$lng'
           '&radius=${radius.toInt()}'
+          '&language=en'
           '&key=$googlePlacesApiKey';
 
       if (keyword != null && keyword.isNotEmpty) {
         url += '&keyword=${Uri.encodeComponent(keyword)}';
       }
 
-      final response = await http.get(Uri.parse(url));
+      final response = await _client.get(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -561,7 +551,7 @@ class ExploreDataService {
               '?pagetoken=$nextPageToken'
               '&key=$googlePlacesApiKey';
               
-          final nextPageResponse = await http.get(Uri.parse(nextPageUrl));
+          final nextPageResponse = await _client.get(Uri.parse(nextPageUrl));
           if (nextPageResponse.statusCode == 200) {
             final nextPageData = json.decode(nextPageResponse.body);
             final nextPageResults = nextPageData['results'] as List<dynamic>? ?? [];
@@ -579,18 +569,21 @@ class ExploreDataService {
           }
         }
 
-        _placesCache[cacheKey] = places;
-        // Save to SQLite cache asynchronously
+        // Save to SQLite cache and mark region synced asynchronously (background)
+        // This decouples disk write latency entirely from the UI response!
         ExploreDbCacheService.savePlaces(places);
+        ExploreDbCacheService.markRegionSynced(lat, lng, radius);
+
+        _placesCache[cacheKey] = places;
         return places;
       }
     } catch (e) {
       debugPrint("Error fetching Google nearby places: $e");
     }
 
-    // Fallback to stale SQLite cache if API fails
+    // Fallback to SQLite cache if API fails
     if (cachedPlaces.isNotEmpty) {
-      debugPrint("ExploreDataService API failed: Falling back to stale local cache. Count: ${cachedPlaces.length}");
+      debugPrint("ExploreDataService API failed: Falling back to local cache. Count: ${cachedPlaces.length}");
       return cachedPlaces;
     }
 
@@ -604,6 +597,7 @@ class ExploreDataService {
         '?query=${Uri.encodeComponent(query)}'
         '&location=$lat,$lng'
         '&radius=50000'
+        '&language=en'
         '&key=$googlePlacesApiKey';
 
     final double latMin = lat - 1.5;
@@ -614,7 +608,7 @@ class ExploreDataService {
 
     try {
       final results = await Future.wait<dynamic>([
-        http.get(Uri.parse(url)),
+        _client.get(Uri.parse(url)),
         client
             .from('custom_venues')
             .select('*')
@@ -651,7 +645,7 @@ class ExploreDataService {
               '?pagetoken=$nextPageToken'
               '&key=$googlePlacesApiKey';
               
-          final nextPageResponse = await http.get(Uri.parse(nextPageUrl));
+          final nextPageResponse = await _client.get(Uri.parse(nextPageUrl));
           if (nextPageResponse.statusCode == 200) {
             final nextPageData = json.decode(nextPageResponse.body);
             final nextPageResults = nextPageData['results'] as List<dynamic>? ?? [];
@@ -764,13 +758,14 @@ class ExploreDataService {
 
     final String url = 'https://maps.googleapis.com/maps/api/place/details/json'
         '?place_id=$placeId'
+        '&language=en'
         '&key=$googlePlacesApiKey';
 
     final client = Supabase.instance.client;
 
     try {
       final results = await Future.wait<dynamic>([
-        http.get(Uri.parse(url)),
+        _client.get(Uri.parse(url)),
         client
             .from('posts')
             .select('*, author:profiles!posts_user_id_fkey(*)')

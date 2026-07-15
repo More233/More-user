@@ -20,7 +20,7 @@ class ExploreDbCacheService {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE cached_places (
@@ -51,10 +51,17 @@ class ExploreDbCacheService {
           CREATE INDEX idx_cached_places_coords 
           ON cached_places (latitude, longitude)
         ''');
+        await db.execute('''
+          CREATE TABLE sync_grid_cells (
+            cell_id TEXT PRIMARY KEY,
+            synced_at INTEGER
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 3) {
+        if (oldVersion < 5) {
           await db.execute("DROP TABLE IF EXISTS cached_places");
+          await db.execute("DROP TABLE IF EXISTS sync_grid_cells");
           await db.execute('''
             CREATE TABLE cached_places (
               id TEXT PRIMARY KEY,
@@ -84,9 +91,90 @@ class ExploreDbCacheService {
             CREATE INDEX idx_cached_places_coords 
             ON cached_places (latitude, longitude)
           ''');
+          await db.execute('''
+            CREATE TABLE sync_grid_cells (
+              cell_id TEXT PRIMARY KEY,
+              synced_at INTEGER
+            )
+          ''');
         }
       },
     );
+  }
+
+  // Check if a grid cell has been synced with API in last 3 days
+  static Future<bool> isCellSynced(String cellId) async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'sync_grid_cells',
+        where: 'cell_id = ?',
+        whereArgs: [cellId],
+      );
+      if (maps.isEmpty) return false;
+      
+      final int syncedAt = maps.first['synced_at'] as int? ?? 0;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      // 3 days = 3 * 24 * 60 * 60 * 1000 ms
+      return (now - syncedAt < 3 * 24 * 60 * 60 * 1000);
+    } catch (e) {
+      debugPrint("ExploreDbCacheService Error checking cell sync: $e");
+      return false;
+    }
+  }
+
+  // Mark a grid cell as synced with the current timestamp
+  static Future<void> markCellSynced(String cellId) async {
+    try {
+      final db = await database;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      await db.insert(
+        'sync_grid_cells',
+        {
+          'cell_id': cellId,
+          'synced_at': now,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      debugPrint("ExploreDbCacheService: Marked cell $cellId as synced.");
+    } catch (e) {
+      debugPrint("ExploreDbCacheService Error marking cell synced: $e");
+    }
+  }
+
+  // Mark a range of grid cells as synced
+  static Future<void> markRegionSynced(double centerLat, double centerLng, double radiusInMeters) async {
+    try {
+      final db = await database;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      
+      final batch = db.batch();
+      // Round to 2 decimal places (grid cell coordinates)
+      final int centerGridLat = (centerLat * 100).round();
+      final int centerGridLng = (centerLng * 100).round();
+      
+      // Limit to 5x5 grid around the center (approx 5.5km area) to keep database writes fast and lightweight
+      for (int i = -2; i <= 2; i++) {
+        for (int j = -2; j <= 2; j++) {
+          final double gridLat = (centerGridLat + i) / 100.0;
+          final double gridLng = (centerGridLng + j) / 100.0;
+          final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
+          
+          batch.insert(
+            'sync_grid_cells',
+            {
+              'cell_id': cellId,
+              'synced_at': now,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+      await batch.commit(noResult: true);
+      debugPrint("ExploreDbCacheService: Marked 5x5 grid cells around ($centerLat, $centerLng) as synced.");
+    } catch (e) {
+      debugPrint("ExploreDbCacheService Error marking region synced: $e");
+    }
   }
 
   // Save a list of parsed places to database
@@ -216,15 +304,15 @@ class ExploreDbCacheService {
     }
   }
 
-  // Check if database needs to be seeded and run it if count is less than 9702
+  // Check if database needs to be seeded and run it if count is less than 10140
   static Future<void> _checkAndSeedIfNeeded(Database db) async {
     try {
       final List<Map<String, dynamic>> result = await db.rawQuery(
         "SELECT COUNT(*) as count FROM cached_places WHERE id LIKE 'seed_%'"
       );
       final int count = Sqflite.firstIntValue(result) ?? 0;
-      if (count < 9702) {
-        debugPrint("ExploreDbCacheService: Database needs seeding (count: $count < 9702). Seeding now...");
+      if (count < 11700) {
+        debugPrint("ExploreDbCacheService: Database needs seeding (count: $count < 11700). Seeding now...");
         await db.delete('cached_places', where: "id LIKE 'seed_%'");
         await seedDatabase(db);
       }

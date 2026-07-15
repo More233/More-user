@@ -7,6 +7,7 @@ import '../../../data/repositories/explore_repository.dart';
 import '../../../data/repositories/explore_repository_impl.dart';
 import '../helpers/bookmark_tracker.dart';
 import '../helpers/explore_screen_helpers.dart';
+import '../services/explore_db_cache_service.dart';
 import '../models/explore_state.dart';
 import '../models/filter_state.dart';
 
@@ -81,7 +82,6 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         userLocation: newUserLocation != null ? () => newUserLocation : null,
       );
       
-      // Calculate dynamic radius and box size based on zoom level to cover the visible map area
       double? boxSize = 0.15; // ~16.5 km local area preload
       double radius = 8000;   // 8 km Foursquare/Google Places radius
 
@@ -102,152 +102,186 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         radius = 400000; // ~400 km
       } else if (zoom < 13.0) {
         boxSize = 0.4;
-        radius = 100000; // ~100 km
+        radius = 40000; // ~40 km (Cap for Places API and search efficiency)
       }
 
-      final bool cacheOnly = zoom < 13.0;
+      bool cacheOnly = zoom < 11.0;
 
-      final results = await Future.wait([
-        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, cacheOnly: cacheOnly),
-        cacheOnly 
-            ? Future.value({'checkins': <Map<String, dynamic>>[], 'customVenues': <Map<String, dynamic>>[]})
-            : _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize),
-        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: radius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: cacheOnly),
-      ]);
-
-      var normalPlaces = List<Map<String, dynamic>>.from(results[0] as List);
-      final supabaseResults = results[1] as Map<String, dynamic>;
-      var eventPlaces = List<Map<String, dynamic>>.from(results[2] as List);
-
-      final checkins = List<Map<String, dynamic>>.from(supabaseResults['checkins'] as List? ?? []);
-      final customVenues = List<Map<String, dynamic>>.from(supabaseResults['customVenues'] as List? ?? []);
-      final postsRaw = List<dynamic>.from(supabaseResults['postsRaw'] as List? ?? []);
-
-      // If we are in cacheOnly mode but the zoom is >= 5.0,
-      // and we returned 0 places from the local SQLite cache, it means this area has never been visited/cached.
-      // Let's trigger a fresh API fetch with a clamped radius (15km) to populate the local cache for this new city/area.
-      if (cacheOnly && zoom >= 5.0 && normalPlaces.isEmpty) {
-        debugPrint("ExploreViewModel: Cache is empty for zoom $zoom at ($lat, $lng). Triggering fresh API fetch to populate cache.");
-        final freshRadius = 15000.0; // 15 km to cover the city area
-        final freshResults = await Future.wait([
-          _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: freshRadius, cacheOnly: false),
-          _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: freshRadius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: false),
-          _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: 0.2),
-        ]);
-        normalPlaces = List<Map<String, dynamic>>.from(freshResults[0] as List);
-        eventPlaces = List<Map<String, dynamic>>.from(freshResults[1] as List);
-        final freshSupabase = freshResults[2] as Map<String, dynamic>;
-        
-        checkins.addAll(List<Map<String, dynamic>>.from(freshSupabase['checkins'] as List? ?? []));
-        customVenues.addAll(List<Map<String, dynamic>>.from(freshSupabase['customVenues'] as List? ?? []));
-        postsRaw.addAll(freshSupabase['postsRaw'] as List? ?? []);
+      // 1. PHASE 1: LOAD INSTANTLY FROM LOCAL SQLITE CACHE (cacheOnly = true)
+      // This loads preloaded/seeded places immediately in < 10ms!
+      // We only run a single query since getPlacesInBoundingBox returns all cached places.
+      final initialPlaces = await _exploreRepository.fetchNearbyFoursquarePlaces(
+        lat, 
+        lng, 
+        radius: radius, 
+        cacheOnly: true,
+      );
+      
+      // DYNAMIC GLOBAL SEEDING: If local cache is empty in this region and zoom >= 5.0,
+      // force a background sync fetch from the API (clamped to 30km radius) to seed the SQLite cache.
+      if (cacheOnly && zoom >= 5.0 && initialPlaces.isEmpty) {
+        cacheOnly = false;
+        radius = 30000;
       }
-
-      // Merge places and remove duplicates by ID
-      final Map<String, Map<String, dynamic>> combinedFoursquareMap = {};
-      for (final p in normalPlaces) {
-        combinedFoursquareMap[p['id'].toString()] = p;
-      }
-      for (final p in eventPlaces) {
-        combinedFoursquareMap[p['id'].toString()] = p;
-      }
-      final foursquarePlaces = combinedFoursquareMap.values.toList();
-
-      final placeVisitorCounts = <String, int>{};
-      final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
-      final placeSeenUser = <String, Set<String>>{};
-
-      for (final postObj in postsRaw) {
-        final post = postObj as Map<String, dynamic>;
-        final placeId = post['place_id']?.toString();
-        if (placeId != null && placeId.isNotEmpty) {
-          final author = post['author'] as Map<String, dynamic>?;
-          final authorName = author != null ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim() : 'Anonymous';
-          final authorAvatar = author?['avatar_url'] as String?;
-          final createdAt = post['created_at'] as String? ?? '';
-          final double weight = ExploreScreenHelpers.calculateTimeDecayWeight(createdAt);
-          
-          placeSeenUser.putIfAbsent(placeId, () => <String>{});
-          if (!placeSeenUser[placeId]!.contains(authorName)) {
-            placeSeenUser[placeId]!.add(authorName);
-            placeVisitorsMap.putIfAbsent(placeId, () => <Map<String, dynamic>>[]).add({
-              'userId': author?['id'] as String?,
-              'name': authorName,
-              'avatarUrl': authorAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-              'createdAt': createdAt,
-              'weight': weight,
-            });
-          }
-        }
-      }
-
-      placeVisitorsMap.forEach((placeId, visitors) {
-        final activeCount = visitors.where((v) => (v['weight'] as double? ?? 0.0) > 0.0).length;
-        placeVisitorCounts[placeId] = activeCount;
-      });
 
       final list = List<Map<String, dynamic>>.from(state.allPlaces);
       final existingIds = list.map((p) => p['id'].toString()).toSet();
-
-      Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
-        final pid = p['id'].toString();
-        final updated = Map<String, dynamic>.from(p);
-        updated['isSaved'] = BookmarkTracker().isBookmarked(pid);
-        final int baseCount = p['basePeopleCount'] as int? ?? 0;
-        if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
-          updated['peopleCount'] = (placeVisitorCounts[pid] ?? 0) + baseCount;
-          updated['visitors'] = placeVisitorsMap[pid];
-        } else {
-          updated['peopleCount'] = baseCount;
-          updated['visitors'] = <Map<String, dynamic>>[];
-        }
-        return updated;
-      }
-
-      for (final p in foursquarePlaces) {
-        final updated = updatePlaceData(p);
+      
+      for (final p in initialPlaces) {
         final pidStr = p['id'].toString();
         if (!existingIds.contains(pidStr)) {
-          list.add(updated);
-        } else {
-          final index = list.indexWhere((x) => x['id'].toString() == pidStr);
-          if (index != -1) {
-            list[index] = updatePlaceData(list[index]);
-          }
+          list.add(p);
         }
       }
-      for (final c in checkins) {
-        final cidStr = c['id'].toString();
-        if (!existingIds.contains(cidStr)) {
-          list.add(c);
-        }
-      }
-      for (final v in customVenues) {
-        final updated = updatePlaceData(v);
-        final vidStr = v['id'].toString();
-        if (!existingIds.contains(vidStr)) {
-          list.add(updated);
-        } else {
-          final index = list.indexWhere((x) => x['id'].toString() == vidStr);
-          if (index != -1) {
-            list[index] = updatePlaceData(list[index]);
-          }
-        }
-      }
-
-      final savedPlaces = BookmarkTracker().getBookmarkedPlaces();
-      for (final sp in savedPlaces) {
-        final spIdStr = sp['id'].toString();
-        if (!existingIds.contains(spIdStr)) {
-          list.add(sp);
-        }
-      }
-
       state = state.copyWith(allPlaces: list, isLoading: false);
+
+      // 2. PHASE 2: BACKGROUND DELTA SYNC
+      // Query Google Places and Supabase in the background and merge results incrementally
+      if (!cacheOnly) {
+        final double gridLat = (lat * 100).round() / 100.0;
+        final double gridLng = (lng * 100).round() / 100.0;
+        final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
+
+        final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
+        if (isCellSynced) {
+          debugPrint("ExploreViewModel: Cell $cellId is already synced. Skipping background API calls.");
+          return;
+        }
+
+        // Fetch larger area (25km) to cache locally, making camera pans extremely fast cache hits!
+        final double apiRadius = 25000;
+
+        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: apiRadius, cacheOnly: false).then((places) {
+          _mergeAndUpdatePlaces(places);
+          debugPrint("ExploreViewModel: Background sync normal places completed. Fetched: ${places.length}");
+        }).catchError((err) {
+          debugPrint("ExploreViewModel Error normal places sync: $err");
+        });
+
+        _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize).then((data) {
+          _mergeAndUpdatePlaces([], supabaseData: data);
+          debugPrint("ExploreViewModel: Background sync Supabase checkins completed.");
+        }).catchError((err) {
+          debugPrint("ExploreViewModel Error Supabase sync: $err");
+        });
+
+        _exploreRepository.fetchNearbyFoursquarePlaces(lat, lng, radius: apiRadius, keyword: 'cinema|stadium|museum|theater|concert|sports', cacheOnly: false).then((places) {
+          _mergeAndUpdatePlaces(places);
+          debugPrint("ExploreViewModel: Background sync event places completed. Fetched: ${places.length}");
+        }).catchError((err) {
+          debugPrint("ExploreViewModel Error event places sync: $err");
+        });
+      }
     } catch (e) {
       debugPrint("Error fetching nearby places: $e");
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  void _mergeAndUpdatePlaces(List<Map<String, dynamic>> newPlaces, {Map<String, dynamic>? supabaseData}) {
+    final list = List<Map<String, dynamic>>.from(state.allPlaces);
+    final existingIds = list.map((p) => p['id'].toString()).toSet();
+
+    final List<Map<String, dynamic>> checkins = [];
+    final List<Map<String, dynamic>> customVenues = [];
+    final List<dynamic> postsRaw = [];
+
+    if (supabaseData != null) {
+      checkins.addAll(List<Map<String, dynamic>>.from(supabaseData['checkins'] as List? ?? []));
+      customVenues.addAll(List<Map<String, dynamic>>.from(supabaseData['customVenues'] as List? ?? []));
+      postsRaw.addAll(supabaseData['postsRaw'] as List? ?? []);
+    }
+
+    final placeVisitorCounts = <String, int>{};
+    final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
+    final placeSeenUser = <String, Set<String>>{};
+
+    for (final postObj in postsRaw) {
+      final post = postObj as Map<String, dynamic>;
+      final placeId = post['place_id']?.toString();
+      if (placeId != null && placeId.isNotEmpty) {
+        final author = post['author'] as Map<String, dynamic>?;
+        final authorName = author != null ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim() : 'Anonymous';
+        final authorAvatar = author?['avatar_url'] as String?;
+        final createdAt = post['created_at'] as String? ?? '';
+        final double weight = ExploreScreenHelpers.calculateTimeDecayWeight(createdAt);
+        
+        placeSeenUser.putIfAbsent(placeId, () => <String>{});
+        if (!placeSeenUser[placeId]!.contains(authorName)) {
+          placeSeenUser[placeId]!.add(authorName);
+          placeVisitorsMap.putIfAbsent(placeId, () => <Map<String, dynamic>>[]).add({
+            'userId': author?['id'] as String?,
+            'name': authorName,
+            'avatarUrl': authorAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+            'createdAt': createdAt,
+            'weight': weight,
+          });
+        }
+      }
+    }
+
+    placeVisitorsMap.forEach((placeId, visitors) {
+      final activeCount = visitors.where((v) => (v['weight'] as double? ?? 0.0) > 0.0).length;
+      placeVisitorCounts[placeId] = activeCount;
+    });
+
+    Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
+      final pid = p['id'].toString();
+      final updated = Map<String, dynamic>.from(p);
+      updated['isSaved'] = BookmarkTracker().isBookmarked(pid);
+      final int baseCount = p['basePeopleCount'] as int? ?? 0;
+      if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
+        updated['peopleCount'] = (placeVisitorCounts[pid] ?? 0) + baseCount;
+        updated['visitors'] = placeVisitorsMap[pid];
+      } else {
+        updated['peopleCount'] = baseCount;
+        updated['visitors'] = <Map<String, dynamic>>[];
+      }
+      return updated;
+    }
+
+    for (final p in newPlaces) {
+      final updated = updatePlaceData(p);
+      final pidStr = p['id'].toString();
+      if (!existingIds.contains(pidStr)) {
+        list.add(updated);
+      } else {
+        final index = list.indexWhere((x) => x['id'].toString() == pidStr);
+        if (index != -1) {
+          list[index] = updatePlaceData(list[index]);
+        }
+      }
+    }
+
+    for (final c in checkins) {
+      final cidStr = c['id'].toString();
+      if (!existingIds.contains(cidStr)) {
+        list.add(c);
+      }
+    }
+
+    for (final v in customVenues) {
+      final updated = updatePlaceData(v);
+      final vidStr = v['id'].toString();
+      if (!existingIds.contains(vidStr)) {
+        list.add(updated);
+      } else {
+        final index = list.indexWhere((x) => x['id'].toString() == vidStr);
+        if (index != -1) {
+          list[index] = updatePlaceData(list[index]);
+        }
+      }
+    }
+
+    final savedPlaces = BookmarkTracker().getBookmarkedPlaces();
+    for (final sp in savedPlaces) {
+      final spIdStr = sp['id'].toString();
+      if (!existingIds.contains(spIdStr)) {
+        list.add(sp);
+      }
+    }
+
+    state = state.copyWith(allPlaces: list, isLoading: false);
   }
 
   Future<void> searchPlaces(String query) async {

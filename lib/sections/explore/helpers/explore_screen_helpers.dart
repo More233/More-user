@@ -321,6 +321,31 @@ class ExploreScreenHelpers {
       if (state.filterState.newToMe && (place['isVisited'] as bool? ?? false)) return false;
       if (state.filterState.onList && !(place['isSaved'] as bool? ?? false)) return false;
 
+      // DYNAMIC VIEWPORT FILTER: Filter out places that are far off-screen
+      // to reduce Mapbox serialization / annotation overhead from 12,000+ points to <300.
+      final center = state.lastFetchedLocation;
+      if (center != null) {
+        final double plat = (place['latitude'] as num?)?.toDouble() ?? 0.0;
+        final double plng = (place['longitude'] as num?)?.toDouble() ?? 0.0;
+        if (plat != 0.0 && plng != 0.0) {
+          final double maxDist = currentZoom < 7.0
+              ? 5000000.0 // 5000 km (essentially global)
+              : (currentZoom < 10.0
+                  ? 300000.0 // 300 km
+                  : (currentZoom < 12.0
+                      ? 100000.0 // 100 km
+                      : 40000.0)); // 40 km for zoom >= 12.0
+
+          final distance = Geolocator.distanceBetween(
+            center.latitude,
+            center.longitude,
+            plat,
+            plng,
+          );
+          if (distance > maxDist) return false;
+        }
+      }
+
       return true;
     }).toList();
 
