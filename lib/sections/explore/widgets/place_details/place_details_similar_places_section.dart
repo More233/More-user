@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../place_details_screen.dart';
 
 class PlaceSimilarPlacesSection extends StatelessWidget {
@@ -93,12 +94,27 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: imageUrl.isNotEmpty
-                ? Image.network(
-                    imageUrl,
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
                     height: 100,
                     width: 180,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildSimilarCardPlaceholder(),
+                    placeholder: (context, url) => Container(
+                      height: 100,
+                      width: 180,
+                      color: const Color(0xFFF3F4F6),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => _buildSimilarCardPlaceholder(),
                   )
                 : _buildSimilarCardPlaceholder(),
           ),

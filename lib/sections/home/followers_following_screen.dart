@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'widgets/chat/conversation_screen.dart';
 
 class FollowersFollowingScreen extends StatefulWidget {
   final String userId;
@@ -212,59 +213,63 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
     }
   }
 
-  Future<void> _removeFollower(Map<String, dynamic> userProfile) async {
-    final targetId = userProfile['id'] as String;
+  Future<void> _openConversation(Map<String, dynamic> otherProfile) async {
+    final otherUserId = otherProfile['id'] as String;
     
-    // Confirm removal
-    final confirm = await showDialog<bool>(
+    // Show a loading dialog
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(
-          "Remove follower?",
-          style: GoogleFonts.ibmPlexSansArabic(color: Colors.black, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        content: Text(
-          "We won't tell @${userProfile['username']} they were removed from your followers.",
-          style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF687684), fontSize: 14),
-          textAlign: TextAlign.center,
-        ),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text("Cancel", style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF687684))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              "Remove",
-              style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFFFF3B30), fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
       ),
     );
 
-    if (confirm != true) return;
-
     try {
-      setState(() {
-        _followers.removeWhere((u) => u['id'] == targetId);
-        _filteredFollowers.removeWhere((u) => u['id'] == targetId);
-      });
+      final response = await client
+          .from('chat_threads')
+          .select('id, user1_id, user2_id')
+          .or('user1_id.eq.$_currentUserId,user2_id.eq.$_currentUserId');
+          
+      final list = List<Map<String, dynamic>>.from(response as List);
+      final existing = list.firstWhere(
+        (t) => (t['user1_id'] == _currentUserId && t['user2_id'] == otherUserId) ||
+               (t['user1_id'] == otherUserId && t['user2_id'] == _currentUserId),
+        orElse: () => {},
+      );
 
-      await client
-          .from('follows')
-          .delete()
-          .eq('follower_id', targetId)
-          .eq('following_id', _currentUserId);
-      
-      _loadData();
+      String? threadId;
+      if (existing.isNotEmpty) {
+        threadId = existing['id'] as String;
+      } else {
+        final insertResponse = await client.from('chat_threads').insert({
+          'user1_id': _currentUserId,
+          'user2_id': otherUserId,
+        }).select().single();
+        threadId = insertResponse['id'] as String;
+      }
+
+      if (!mounted) return;
+      // Pop the loading dialog
+      Navigator.pop(context);
+
+      // Navigate to ConversationScreen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConversationScreen(
+            threadId: threadId!,
+            otherProfile: otherProfile,
+            currentUserId: _currentUserId,
+          ),
+        ),
+      );
     } catch (e) {
-      debugPrint("Error removing follower: $e");
-      _loadData();
+      if (mounted) Navigator.pop(context); // Pop loading
+      debugPrint("Error opening conversation: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error opening chat: $e")),
+      );
     }
   }
 
@@ -397,7 +402,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
 
     if (isFollowing) {
       return GestureDetector(
-        onTap: () => _toggleFollow(user),
+        onTap: () => _openConversation(user),
         child: Container(
           width: 100,
           height: 32,
@@ -446,6 +451,8 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
     final username = user['username'] ?? 'unknown';
     final fullName = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
     final isOwnProfile = widget.userId == _currentUserId;
+    final targetId = user['id'] as String;
+    final isFollowing = _currentUserFollowingIds.contains(targetId);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -482,10 +489,10 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
           ),
           const SizedBox(width: 8),
           _buildActionButton(user),
-          if (isFollowersTab && isOwnProfile && user['id'] != _currentUserId) ...[
+          if (isOwnProfile && isFollowing && targetId != _currentUserId) ...[
             const SizedBox(width: 12),
             GestureDetector(
-              onTap: () => _removeFollower(user),
+              onTap: () => _toggleFollow(user),
               child: const Icon(
                 Icons.close,
                 color: Color(0xFF8E8E93),

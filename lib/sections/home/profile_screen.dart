@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'widgets/common/bottom_nav_bar.dart';
@@ -47,6 +48,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   String? _coverUrl;
   int _followersCount = 0;
   int _followingCount = 0;
+  String _joinedDate = '';
 
   @override
   void initState() {
@@ -97,6 +99,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _username = profile['username'] ?? '';
         _avatarUrl = profile['avatar_url'] as String?;
         _coverUrl = profile['cover_url'] as String?;
+
+        final createdAtStr = profile['created_at'] as String?;
+        if (createdAtStr != null) {
+          final dt = DateTime.tryParse(createdAtStr);
+          if (dt != null) {
+            const months = [
+              'January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            if (dt.month >= 1 && dt.month <= 12) {
+              _joinedDate = 'Joined ${months[dt.month - 1]} ${dt.year}';
+            }
+          }
+        }
       }
 
       _followersCount = followersData.length;
@@ -125,53 +141,83 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _pickProfileImage() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 500,
-        maxHeight: 500,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        if (!mounted) return;
 
-        final client = Supabase.instance.client;
-        final user = client.auth.currentUser;
-        if (user == null) return;
-
-        final file = File(image.path);
-        final fileName = 'avatars/${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        
-        await client.storage.from('post-images').upload(
-          fileName,
-          file,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+  void _viewProfilePicture() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close',
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, anim1, anim2) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Stack(
+            children: [
+              // Glassmorphic Backdrop Blur
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+              // Close on tap outside
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    color: Colors.transparent,
+                  ),
+                ),
+              ),
+              // Pinch-to-zoom interactive viewer for the FULL IMAGE
+              Center(
+                child: Hero(
+                  tag: 'user-avatar-fullscreen',
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 5.0,
+                    child: Container(
+                      width: MediaQuery.of(context).size.width,
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: Image(
+                        image: _getAvatarProvider(_username, _avatarUrl),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Close button at top right (positioned very high)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                right: 16,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.5),
+                      border: Border.all(color: Colors.white24, width: 1),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
-
-        final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
-
-        await client.from('profiles').update({
-          'avatar_url': publicUrl,
-        }).eq('id', user.id);
-
-        if (mounted) {
-          setState(() {
-            _avatarUrl = publicUrl;
-          });
-          widget.onPostUpdated?.call();
-        }
-      }
-    } catch (e) {
-      debugPrint("Error picking/uploading profile image: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to update profile photo: $e")),
-        );
-      }
-    }
+      },
+    );
   }
 
   Future<void> _pickCoverImage() async {
@@ -556,11 +602,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   );
                   if (updated == true) {
                     _fetchProfileData();
+                    widget.onPostUpdated?.call();
                   }
                 } : () {},
                 onShare: _pickCoverImage, // Note: preserved original functionality
                 onCoverTap: isCurrentUser ? _pickCoverImage : () {},
-                onAvatarTap: isCurrentUser ? _pickProfileImage : () {},
+                onAvatarTap: _viewProfilePicture,
                 isCurrentUser: isCurrentUser,
               ),
             ),
@@ -596,7 +643,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF687684)),
                           const SizedBox(width: 6),
                           Text(
-                            'Joined March 2021',
+                            _joinedDate.isNotEmpty ? _joinedDate : 'Joined March 2021',
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 14,
                               color: const Color(0xFF687684),

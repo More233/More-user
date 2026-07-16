@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../explore/explore_screen.dart';
 import '../explore/view_models/explore_view_model.dart';
+import '../explore/services/explore_data_service.dart';
+import '../auth/account_manager.dart';
 import 'models/timeline_post.dart';
 import 'models/timeline_state.dart';
 import 'view_models/timeline_view_model.dart';
@@ -26,6 +28,7 @@ import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
 import 'widgets/bottom_sheets/share_bottom_sheet.dart';
 import 'widgets/feed/social_feed_view.dart';
 import 'widgets/common/user_drawer.dart';
+import 'widgets/story/story_composer_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -60,10 +63,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       curve: Curves.easeInOut,
     );
     
-    Future.microtask(() {
+    Future.microtask(() async {
       ref.read(timelineViewModelProvider.notifier).init();
       ref.read(collectionsViewModelProvider.notifier).init();
       ref.read(notificationsViewModelProvider.notifier).init();
+      await AccountManager.saveCurrentAccount();
     });
   }
 
@@ -390,6 +394,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   child: UserDrawer(
                     onProfileUpdated: () {
                       ref.read(timelineViewModelProvider.notifier).refreshAll();
+                      ExploreDataService.clearSupabaseCache();
+                      final exploreState = ref.read(exploreViewModelProvider);
+                      final lat = exploreState.userLocation?.latitude ?? exploreState.lastFetchedLocation?.latitude ?? 24.7136;
+                      final lng = exploreState.userLocation?.longitude ?? exploreState.lastFetchedLocation?.longitude ?? 46.6753;
+                      ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
                     },
                     onCloseMenu: () {
                       _menuAnimationController.reverse();
@@ -680,6 +689,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             colorFilter: const ColorFilter.mode(
               Color(0xFF7C57FC),
               BlendMode.srcIn,
+            ),
+          ),
+          // Right aligned add story (+) button
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const StoryComposerScreen()),
+                );
+              },
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFF7C57FC), width: 1.8),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.add,
+                    color: Color(0xFF7C57FC),
+                    size: 18,
+                  ),
+                ),
+              ),
             ),
           ),
         ],

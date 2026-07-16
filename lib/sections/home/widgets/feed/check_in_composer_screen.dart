@@ -1,15 +1,14 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import '../../../../../config/secrets.dart';
 import '../../models/timeline_post.dart';
+import '../../../explore/services/explore_data_service.dart';
 import '../../gallery_picker_screen.dart';
 import '../bottom_sheets/add_friends_bottom_sheet.dart';
 import '../bottom_sheets/intro_bottom_sheet.dart';
@@ -173,126 +172,49 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
 
   Future<void> _fetchPlaceOrGeocode(double lat, double lng) async {
     try {
-      final String apiKey = const String.fromEnvironment(
-        'GOOGLE_PLACES_API_KEY',
-        defaultValue: Secrets.googlePlacesApiKey,
-      );
-
-      // 1. Try Nearby Search with rankby=distance to get the absolute closest establishments
-      final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-          '?location=$lat,$lng'
-          '&rankby=distance'
-          '&language=en'
-          '&key=$apiKey';
-
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 4));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'] as List<dynamic>? ?? [];
-        
-        Map<String, dynamic>? bestPlace;
-        if (results.isNotEmpty) {
-          // Find first specific establishment/point of interest that is not just a broad city/region
-          for (final res in results) {
-            final types = List<dynamic>.from(res['types'] as List? ?? []);
-            final isBroadArea = types.contains('locality') || 
-                                types.contains('sublocality') ||
-                                types.contains('political') || 
-                                types.contains('administrative_area_level_1') || 
-                                types.contains('administrative_area_level_2') || 
-                                types.contains('country');
-            
-            if (!isBroadArea) {
-              bestPlace = res as Map<String, dynamic>;
-              break;
-            }
-          }
-        }
-
-        // If we found a specific establishment, use it!
-        if (bestPlace != null) {
-          final name = bestPlace['name'] as String? ?? 'My Location';
-          final address = bestPlace['vicinity'] as String? ?? bestPlace['formatted_address'] as String? ?? '';
-          final geometry = bestPlace['geometry'] as Map<String, dynamic>?;
-          final locationObj = geometry?['location'] as Map<String, dynamic>?;
-          final plat = (locationObj?['lat'] as num?)?.toDouble() ?? lat;
-          final plng = (locationObj?['lng'] as num?)?.toDouble() ?? lng;
-          final types = bestPlace['types'] as List<dynamic>? ?? [];
-          final String category = types.isNotEmpty ? types.first.toString() : 'Hotel';
-
-          if (mounted) {
-            setState(() {
-              _locationName = name;
-              _locationAddress = address;
-              _latitude = plat;
-              _longitude = plng;
-              _placeId = bestPlace!['place_id'] as String?;
-              _categoryName = category;
-            });
-            
-            _mapController?.easeTo(
-              mapbox.CameraOptions(
-                center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
-                zoom: 15.0,
-              ),
-              mapbox.MapAnimationOptions(duration: 500),
-            );
-          }
-          return;
-        }
-      }
-
-      // 2. If Nearby Search only returned generic areas (or failed), use Geocoding API to get a specific street address
-      final geocodeUrl = 'https://maps.googleapis.com/maps/api/geocode/json'
-          '?latlng=$lat,$lng'
-          '&language=en'
-          '&key=$apiKey';
+      final results = await ExploreDataService.fetchNearbyFoursquarePlaces(lat, lng, radius: 1000);
       
-      final geocodeResponse = await http.get(Uri.parse(geocodeUrl)).timeout(const Duration(seconds: 4));
-      if (geocodeResponse.statusCode == 200) {
-        final geocodeData = json.decode(geocodeResponse.body);
-        final geocodeResults = geocodeData['results'] as List<dynamic>? ?? [];
-        if (geocodeResults.isNotEmpty) {
-          // Find the first result that is a street address (e.g. route, street_address, premise)
-          Map<String, dynamic>? bestGeocode;
-          for (final gRes in geocodeResults) {
-            final gTypes = List<dynamic>.from(gRes['types'] as List? ?? []);
-            if (gTypes.contains('route') || gTypes.contains('street_address') || gTypes.contains('premise')) {
-              bestGeocode = gRes as Map<String, dynamic>;
-              break;
-            }
+      Map<String, dynamic>? bestPlace;
+      if (results.isNotEmpty) {
+        for (final res in results) {
+          final type = res['type'] as String? ?? '';
+          if (type != 'Other') {
+            bestPlace = res;
+            break;
           }
-          final selectedGeocode = bestGeocode ?? (geocodeResults.first as Map<String, dynamic>);
-          final formattedAddress = selectedGeocode['formatted_address'] as String? ?? '';
-          
-          // Split formatted address to get the street/route as the name, and the rest as the address
-          final addressParts = formattedAddress.split(',');
-          final namePart = addressParts.first.trim();
-          final remainingAddress = addressParts.skip(1).join(',').trim();
-
-          if (mounted) {
-            setState(() {
-              _locationName = namePart;
-              _locationAddress = remainingAddress;
-              _latitude = lat;
-              _longitude = lng;
-              _placeId = selectedGeocode['place_id'] as String?;
-              _categoryName = 'Route';
-            });
-
-            _mapController?.easeTo(
-              mapbox.CameraOptions(
-                center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
-                zoom: 15.0,
-              ),
-              mapbox.MapAnimationOptions(duration: 500),
-            );
-          }
-          return;
         }
+        bestPlace ??= results.first;
       }
 
-      // 3. Absolute Fallback to coordinates
+      if (bestPlace != null) {
+        final name = bestPlace['name'] as String? ?? 'My Location';
+        final address = bestPlace['address'] as String? ?? '';
+        final plat = bestPlace['latitude'] as double;
+        final plng = bestPlace['longitude'] as double;
+        final category = bestPlace['type'] as String? ?? 'Hotel';
+
+        if (mounted) {
+          setState(() {
+            _locationName = name;
+            _locationAddress = address;
+            _latitude = plat;
+            _longitude = plng;
+            _placeId = bestPlace!['id'] as String?;
+            _categoryName = category;
+          });
+          
+          _mapController?.easeTo(
+            mapbox.CameraOptions(
+              center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+              zoom: 15.0,
+            ),
+            mapbox.MapAnimationOptions(duration: 500),
+          );
+        }
+        return;
+      }
+
+      // Fallback to coordinates
       if (mounted) {
         setState(() {
           _locationName = "My Location";
@@ -302,7 +224,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
         });
       }
     } catch (e) {
-      debugPrint("Error fetching place or geocode: $e");
+      debugPrint("Error fetching place details: $e");
     }
   }
 

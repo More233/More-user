@@ -19,8 +19,10 @@ final exploreViewModelProvider = StateNotifierProvider.autoDispose<ExploreViewMo
 
 class ExploreViewModel extends StateNotifier<ExploreState> {
   final ExploreRepository _exploreRepository;
+  Timer? _apiDebounceTimer;
 
   ExploreViewModel({required this._exploreRepository}) : super(ExploreState.initial());
+
 
   Future<void> init() async {
     await BookmarkTracker().init();
@@ -77,6 +79,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
     LatLng? newUserLocation,
   }) async {
     try {
+      debugPrint("ExploreViewModel: fetchNearbyPlaces called at ($lat, $lng) with zoom $zoom");
       state = state.copyWith(
         lastFetchedLocation: () => LatLng(lat, lng), 
         isLoading: true,
@@ -106,7 +109,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         radius = 40000; // ~40 km (Cap for Places API and search efficiency)
       }
 
-      bool cacheOnly = zoom < 11.0;
+      bool cacheOnly = zoom < 8.0;
 
       // 1. PHASE 1: LOAD INSTANTLY FROM LOCAL SQLITE CACHE (cacheOnly = true)
       // This loads preloaded/seeded places immediately in < 10ms!
@@ -136,135 +139,98 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       }
       state = state.copyWith(allPlaces: list, isLoading: false);
 
-      // 2. PHASE 2: BACKGROUND DELTA SYNC
-      // Query Google Places and Supabase in the background and merge results incrementally
+      // 2. PHASE 2: BACKGROUND DELTA SYNC WITH DEBOUNCE
       if (!cacheOnly) {
-        final double gridLat = (lat * 100).round() / 100.0;
-        final double gridLng = (lng * 100).round() / 100.0;
-        final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
+        _apiDebounceTimer?.cancel();
+        _apiDebounceTimer = Timer(const Duration(milliseconds: 400), () async {
+          try {
+            final double gridLat = (lat * 100).round() / 100.0;
+            final double gridLng = (lng * 100).round() / 100.0;
+            final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
 
-        final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
-        final bool hasCategory = category != null && category.isNotEmpty;
+            final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
+            final bool hasCategory = category != null && category.isNotEmpty;
 
-        // 1. Fetch Supabase check-ins and custom venues always in the background (if no category selected)
-        if (!hasCategory) {
-          _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize).then((data) {
-            _mergeAndUpdatePlaces([], supabaseData: data);
-            debugPrint("ExploreViewModel: Background sync Supabase checkins completed.");
-          }).catchError((err) {
-            debugPrint("ExploreViewModel Error Supabase sync: $err");
-          });
-        }
-        
-        // 2. Only query external Foursquare API if the cell has not been synced yet
-        if (isCellSynced && !hasCategory) {
-          debugPrint("ExploreViewModel: Cell $cellId is already synced. Skipping background external API calls.");
-          return;
-        }
+            // 1. Fetch Supabase check-ins and custom venues
+            if (!hasCategory) {
+              _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize).then((data) {
+                _mergeAndUpdatePlaces([], supabaseData: data);
+                debugPrint("ExploreViewModel: Background sync Supabase checkins completed.");
+              }).catchError((err) {
+                debugPrint("ExploreViewModel Error Supabase sync: $err");
+              });
+            }
 
-        // Fetch concentrated area (2.5km) to cache locally, making camera pans fast cache hits with high density!
-        final double apiRadius = 2500;
+            // 2. Only query external Foursquare API if the cell has not been synced yet
+            // Self-healing: if the cell is synced but has few places cached locally, sync anyway!
+            final localPlacesCount = initialPlaces.length;
+            if (isCellSynced && !hasCategory && localPlacesCount > 5) {
+              debugPrint("ExploreViewModel: Cell $cellId is already synced with $localPlacesCount places. Skipping background external API calls.");
+              return;
+            }
 
-        String? apiKeyword;
-        if (hasCategory) {
-          final String catLower = category.toLowerCase().trim();
-          if (catLower == 'restaurant') {
-            apiKeyword = 'restaurant|food';
-          } else if (catLower == 'coffee') {
-            apiKeyword = 'coffee|cafe';
-          } else if (catLower == 'bakery') {
-            apiKeyword = 'bakery|bread';
-          } else if (catLower == 'juices') {
-            apiKeyword = 'juice|smoothie|drinks|lounge';
-          } else if (catLower == 'desserts') {
-            apiKeyword = 'dessert|sweets|ice_cream';
-          } else if (catLower == 'parks') {
-            apiKeyword = 'park|garden|playground';
-          } else if (catLower == 'hotels') {
-            apiKeyword = 'hotel|resort|lodging';
-          } else if (catLower == 'movies') {
-            apiKeyword = 'cinema|movie';
-          } else if (catLower == 'concerts') {
-            apiKeyword = 'concert|theater|music';
-          } else if (catLower == 'sports') {
-            apiKeyword = 'stadium|sports|gym';
-          } else {
-            apiKeyword = category;
+            final double apiRadius = 2500;
+
+            String? apiKeyword;
+            if (hasCategory) {
+              final String catLower = category.toLowerCase().trim();
+              if (catLower == 'restaurant') {
+                apiKeyword = 'restaurant|food';
+              } else if (catLower == 'coffee') {
+                apiKeyword = 'coffee|cafe';
+              } else if (catLower == 'bakery') {
+                apiKeyword = 'bakery|bread';
+              } else if (catLower == 'juices') {
+                apiKeyword = 'juice|smoothie|drinks|lounge';
+              } else if (catLower == 'desserts') {
+                apiKeyword = 'dessert|sweets|ice_cream';
+              } else if (catLower == 'parks') {
+                apiKeyword = 'park|garden|playground';
+              } else if (catLower == 'hotels') {
+                apiKeyword = 'hotel|resort|lodging';
+              } else if (catLower == 'movies') {
+                apiKeyword = 'cinema|movie';
+              } else if (catLower == 'concerts') {
+                apiKeyword = 'concert|theater|music';
+              } else if (catLower == 'sports') {
+                apiKeyword = 'stadium|sports|gym';
+              } else {
+                apiKeyword = category;
+              }
+            }
+
+            if (!hasCategory) {
+              // Optimized single Foursquare query covering all prominent categories
+              _exploreRepository.fetchNearbyFoursquarePlaces(
+                lat,
+                lng,
+                radius: apiRadius,
+                keyword: 'restaurant|cafe|coffee|bakery|mall|store|supermarket|museum|mosque|park|hotel|cinema|stadium',
+                cacheOnly: false,
+              ).then((places) {
+                _mergeAndUpdatePlaces(places);
+                debugPrint("ExploreViewModel: Background sync places completed. Fetched: ${places.length}");
+              }).catchError((err) {
+                debugPrint("ExploreViewModel Error places sync: $err");
+              });
+            } else {
+              _exploreRepository.fetchNearbyFoursquarePlaces(
+                lat,
+                lng,
+                radius: apiRadius,
+                keyword: apiKeyword,
+                cacheOnly: false,
+              ).then((places) {
+                _mergeAndUpdatePlaces(places);
+                debugPrint("ExploreViewModel: Background sync places completed for category: $category. Fetched: ${places.length}");
+              }).catchError((err) {
+                debugPrint("ExploreViewModel Error places sync: $err");
+              });
+            }
+          } catch (e) {
+            debugPrint("Error in background Foursquare sync: $e");
           }
-        }
-
-        if (!hasCategory) {
-          // Solution B: Parallel Multi-Category Querying to bypass Google's 60-result limit
-          // 1. General prominent mix
-          _exploreRepository.fetchNearbyFoursquarePlaces(
-            lat, 
-            lng, 
-            radius: apiRadius, 
-            keyword: null,
-            cacheOnly: false,
-          ).then((places) {
-            _mergeAndUpdatePlaces(places);
-            debugPrint("ExploreViewModel: Background sync general places completed. Fetched: ${places.length}");
-          }).catchError((err) {
-            debugPrint("ExploreViewModel Error general places sync: $err");
-          });
-
-          // 2. Food & Dining
-          _exploreRepository.fetchNearbyFoursquarePlaces(
-            lat, 
-            lng, 
-            radius: apiRadius, 
-            keyword: 'restaurant|cafe|coffee|bakery',
-            cacheOnly: false,
-          ).then((places) {
-            _mergeAndUpdatePlaces(places);
-            debugPrint("ExploreViewModel: Background sync dining places completed. Fetched: ${places.length}");
-          }).catchError((err) {
-            debugPrint("ExploreViewModel Error dining places sync: $err");
-          });
-
-          // 3. Shopping & Malls
-          _exploreRepository.fetchNearbyFoursquarePlaces(
-            lat, 
-            lng, 
-            radius: apiRadius, 
-            keyword: 'mall|store|supermarket|market|shop',
-            cacheOnly: false,
-          ).then((places) {
-            _mergeAndUpdatePlaces(places);
-            debugPrint("ExploreViewModel: Background sync shopping places completed. Fetched: ${places.length}");
-          }).catchError((err) {
-            debugPrint("ExploreViewModel Error shopping places sync: $err");
-          });
-
-          // 4. Landmarks, Entertainment & Events
-          _exploreRepository.fetchNearbyFoursquarePlaces(
-            lat, 
-            lng, 
-            radius: apiRadius, 
-            keyword: 'cinema|stadium|museum|theater|concert|sports|park|mosque',
-            cacheOnly: false,
-          ).then((places) {
-            _mergeAndUpdatePlaces(places);
-            debugPrint("ExploreViewModel: Background sync event/landmark places completed. Fetched: ${places.length}");
-          }).catchError((err) {
-            debugPrint("ExploreViewModel Error event/landmark places sync: $err");
-          });
-        } else {
-          // If specific category selected, run single query for that category
-          _exploreRepository.fetchNearbyFoursquarePlaces(
-            lat, 
-            lng, 
-            radius: apiRadius, 
-            keyword: apiKeyword,
-            cacheOnly: false,
-          ).then((places) {
-            _mergeAndUpdatePlaces(places);
-            debugPrint("ExploreViewModel: Background sync places completed for category: $category. Fetched: ${places.length}");
-          }).catchError((err) {
-            debugPrint("ExploreViewModel Error places sync: $err");
-          });
-        }
+        });
       }
     } catch (e) {
       debugPrint("Error fetching nearby places: $e");
@@ -564,6 +530,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
   @override
   void dispose() {
     _statusBadgeTimer?.cancel();
+    _apiDebounceTimer?.cancel();
     super.dispose();
   }
 }

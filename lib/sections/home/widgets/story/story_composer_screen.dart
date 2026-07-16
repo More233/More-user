@@ -31,6 +31,7 @@ class _StoryComposerScreenState extends ConsumerState<StoryComposerScreen> with 
   double _baseZoomLevel = 1.0;
   double _minZoomLevel = 1.0;
   double _maxZoomLevel = 1.0;
+  bool _justFinishedRecording = false;
 
   @override
   void initState() {
@@ -156,6 +157,7 @@ class _StoryComposerScreenState extends ConsumerState<StoryComposerScreen> with 
   }
 
   void _onShutterTap() async {
+    if (_justFinishedRecording) return;
     final state = ref.read(storyComposerViewModelProvider);
     if (state.isRecording) {
       _stopRecordingVideo();
@@ -194,6 +196,7 @@ class _StoryComposerScreenState extends ConsumerState<StoryComposerScreen> with 
   }
 
   void _startRecordingVideo() async {
+    _justFinishedRecording = false;
     final state = ref.read(storyComposerViewModelProvider);
     final notifier = ref.read(storyComposerViewModelProvider.notifier);
 
@@ -220,6 +223,11 @@ class _StoryComposerScreenState extends ConsumerState<StoryComposerScreen> with 
     final notifier = ref.read(storyComposerViewModelProvider.notifier);
 
     if (!state.isRecording) return;
+    
+    _justFinishedRecording = true;
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _justFinishedRecording = false;
+    });
     
     notifier.stopRecordingTimer();
     

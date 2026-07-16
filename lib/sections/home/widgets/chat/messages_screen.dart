@@ -378,6 +378,9 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
         lastMsgText = '📷 Sent a photo';
       } else if (lastMsg['message_type'] == 'audio') {
         lastMsgText = '🎵 Sent a voice message';
+      } else if (lastMsg['message_type'] == 'story_share') {
+        final isSentByMe = lastMsg['sender_id'] == _currentUserId;
+        lastMsgText = isSentByMe ? 'Mentioned them in your story' : 'Mentioned you in their story';
       }
     }
 

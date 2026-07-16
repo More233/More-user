@@ -779,14 +779,6 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                           PopupMenuButton<String>(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(minWidth: 141),
-                            child: const Padding(
-                              padding: EdgeInsets.all(6.0),
-                              child: Icon(
-                                Icons.more_vert,
-                                color: Color(0xFF82858C),
-                                size: 20,
-                              ),
-                            ),
                             color: const Color(0x99131116),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -852,6 +844,14 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                 ),
                               ),
                             ],
+                            child: const Padding(
+                              padding: EdgeInsets.all(6.0),
+                              child: Icon(
+                                Icons.more_vert,
+                                color: Color(0xFF82858C),
+                                size: 20,
+                              ),
+                            ),
                           ),
                       ],
                     ),

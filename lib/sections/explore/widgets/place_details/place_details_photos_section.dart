@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'full_screen_image_viewer.dart';
 
 class PlacePhotosSection extends StatefulWidget {
@@ -87,12 +88,25 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
                     margin: const EdgeInsets.only(right: 8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        currentPhotos[index],
+                      child: CachedNetworkImage(
+                        imageUrl: currentPhotos[index],
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+                        placeholder: (context, url) => Container(
                           color: const Color(0xFFF5F6F8),
-                          child: const Icon(Icons.image_not_supported, color: Color(0xFF82858C)),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: const Color(0xFFF5F6F8),
+                          child: const Icon(Icons.broken_image, color: Color(0xFF82858C)),
                         ),
                       ),
                     ),

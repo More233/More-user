@@ -167,18 +167,6 @@ class TimelinePostCard extends StatelessWidget {
         PopupMenuButton<String>(
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 141),
-          child: Padding(
-            padding: const EdgeInsets.all(6.0),
-            child: SvgPicture.asset(
-              'assets/home/icons/post_options.svg',
-              width: 20,
-              height: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF3B3C4F),
-                BlendMode.srcIn,
-              ),
-            ),
-          ),
           color: const Color(0x99131116), // Dark semi-transparent (rgba(19, 17, 22, 0.6))
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -244,6 +232,18 @@ class TimelinePostCard extends StatelessWidget {
               ),
             ),
           ],
+          child: Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: SvgPicture.asset(
+              'assets/home/icons/post_options.svg',
+              width: 20,
+              height: 20,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF3B3C4F),
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
         ),
       ],
     ),
@@ -272,32 +272,6 @@ class TimelinePostCard extends StatelessWidget {
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        if (post.visitorCount > 0) ...[
-          const SizedBox(width: 8),
-          _buildVisitorCount(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildVisitorCount() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Image.asset(
-          'assets/home/images/coin.png',
-          width: 16,
-          height: 16,
-        ),
-        const SizedBox(width: 2),
-        Text(
-          '+${post.visitorCount}',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: const Color(0xFF3B3C4F).withValues(alpha: 0.75),
           ),
         ),
       ],

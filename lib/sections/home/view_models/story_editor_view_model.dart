@@ -257,6 +257,7 @@ class StoryEditorViewModel extends StateNotifier<StoryEditorState> {
     required String localFilePath,
     required double canvasWidth,
     required double canvasHeight,
+    required List<String> hiddenMentionUserIds,
     required VoidCallback onSuccess,
     required ValueChanged<String> onError,
   }) async {
@@ -303,34 +304,95 @@ class StoryEditorViewModel extends StateNotifier<StoryEditorState> {
 
       final storyId = storyResponse['id'] as String;
 
-      // Process mentions and generate notifications
-      final mentionOverlays = state.overlays.where((item) => item.type == 'mention').toList();
-      for (final item in mentionOverlays) {
-        final targetUser = (item.data as String).replaceAll('@', '').trim();
-        if (targetUser.isNotEmpty) {
-          try {
-            final profile = await client
-                .from('profiles')
-                .select('id')
-                .eq('username', targetUser)
-                .maybeSingle();
-            if (profile != null) {
-              final receiverId = profile['id'] as String;
-              if (receiverId != currentUser.id) {
-                await client.from('notifications').insert({
-                  'sender_id': currentUser.id,
-                  'receiver_id': receiverId,
-                  'type': 'mention',
-                  'metadata': {
-                    'story_id': storyId,
-                    'media_url': publicUrl,
-                  },
-                });
+      // Extract and deduplicate all mentioned receiver IDs
+      final Set<String> mentionReceiverIds = {};
+
+      // 1. Add hidden mentions selected via bottom sheet
+      mentionReceiverIds.addAll(hiddenMentionUserIds);
+
+      // 2. Parse from visible overlays (both 'mention' type and 'text' type containing @username)
+      final RegExp mentionRegex = RegExp(r'@([a-zA-Z0-9_\.]+)');
+      for (final item in state.overlays) {
+        String? textToParse;
+        if (item.type == 'mention') {
+          textToParse = item.data as String?;
+        } else if (item.type == 'text') {
+          final dataMap = item.data as Map<String, dynamic>?;
+          textToParse = dataMap?['text'] as String?;
+        }
+
+        if (textToParse != null && textToParse.isNotEmpty) {
+          final matches = mentionRegex.allMatches(textToParse);
+          for (final match in matches) {
+            final targetUsername = match.group(1);
+            if (targetUsername != null && targetUsername.isNotEmpty) {
+              try {
+                final profile = await client
+                    .from('profiles')
+                    .select('id')
+                    .eq('username', targetUsername)
+                    .maybeSingle();
+                if (profile != null) {
+                  final receiverId = profile['id'] as String;
+                  mentionReceiverIds.add(receiverId);
+                }
+              } catch (e) {
+                debugPrint("Error looking up profile for username $targetUsername: $e");
               }
             }
-          } catch (e) {
-            debugPrint("Error creating mention notification for $targetUser: $e");
           }
+        }
+      }
+
+      // Process notifications & chat messages for all unique mentions
+      for (final receiverId in mentionReceiverIds) {
+        if (receiverId == currentUser.id) continue;
+        try {
+          // Send push notification
+          await client.from('notifications').insert({
+            'sender_id': currentUser.id,
+            'receiver_id': receiverId,
+            'type': 'mention',
+            'metadata': {
+              'story_id': storyId,
+              'media_url': publicUrl,
+            },
+          });
+
+          // Send chat mention messages (thread setup + image + text)
+          final threadsResponse = await client
+              .from('chat_threads')
+              .select()
+              .or('user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}');
+
+          final threads = List<Map<String, dynamic>>.from(threadsResponse);
+          final existingThreadIndex = threads.indexWhere(
+            (t) => (t['user1_id'] == currentUser.id && t['user2_id'] == receiverId) ||
+                   (t['user1_id'] == receiverId && t['user2_id'] == currentUser.id),
+          );
+
+          String? threadId;
+          if (existingThreadIndex != -1) {
+            threadId = threads[existingThreadIndex]['id'];
+          } else {
+            final insertResponse = await client.from('chat_threads').insert({
+              'user1_id': currentUser.id,
+              'user2_id': receiverId,
+            }).select().single();
+            threadId = insertResponse['id'];
+          }
+
+          if (threadId != null) {
+            // Send single story_share message containing the story media URL
+            await client.from('chat_messages').insert({
+              'thread_id': threadId,
+              'sender_id': currentUser.id,
+              'message_type': 'story_share',
+              'content': publicUrl,
+            });
+          }
+        } catch (e) {
+          debugPrint("Error processing mention actions for $receiverId: $e");
         }
       }
 

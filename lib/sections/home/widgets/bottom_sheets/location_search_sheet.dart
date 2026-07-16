@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import '../../../../../config/secrets.dart';
+import '../../../explore/services/explore_data_service.dart';
 
 class LocationSearchSheet extends StatefulWidget {
   static const List<Map<String, dynamic>> locations = [
@@ -140,10 +139,6 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
 
 
 
-  static const String googlePlacesApiKey = String.fromEnvironment(
-    'GOOGLE_PLACES_API_KEY',
-    defaultValue: Secrets.googlePlacesApiKey,
-  );
 
   @override
   void initState() {
@@ -227,39 +222,6 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
   }
 
 
-  IconData _mapGooglePlaceTypesToIconData(List<dynamic> types) {
-    if (types.isEmpty) return Icons.location_on_outlined;
-    final typesLower = types.map((t) => (t as String).toLowerCase()).toList();
-
-    if (typesLower.contains('cafe') || typesLower.contains('coffee') || typesLower.contains('tea_room')) {
-      return Icons.local_cafe;
-    }
-    if (typesLower.contains('bakery') || typesLower.contains('patisserie') || typesLower.contains('dessert_shop') || typesLower.contains('cake_shop')) {
-      return Icons.bakery_dining;
-    }
-    if (typesLower.contains('bar') || typesLower.contains('night_club') || typesLower.contains('pub') || typesLower.contains('brewery')) {
-      return Icons.local_bar;
-    }
-    if (typesLower.contains('restaurant') || typesLower.contains('meal_takeaway') || typesLower.contains('meal_delivery') || typesLower.contains('food')) {
-      return Icons.restaurant;
-    }
-    if (typesLower.contains('supermarket') || typesLower.contains('grocery_or_supermarket') || typesLower.contains('convenience_store') || typesLower.contains('department_store')) {
-      return Icons.storefront;
-    }
-    if (typesLower.contains('pharmacy') || typesLower.contains('drugstore') || typesLower.contains('hospital') || typesLower.contains('doctor') || typesLower.contains('dentist')) {
-      return Icons.local_pharmacy;
-    }
-    if (typesLower.contains('lodging') || typesLower.contains('hotel') || typesLower.contains('resort')) {
-      return Icons.hotel;
-    }
-    if (typesLower.contains('park') || typesLower.contains('tourist_attraction') || typesLower.contains('museum') || typesLower.contains('zoo') || typesLower.contains('amusement_park')) {
-      return Icons.park;
-    }
-    if (typesLower.contains('airport') || typesLower.contains('transit_station') || typesLower.contains('subway_station') || typesLower.contains('train_station') || typesLower.contains('bus_station')) {
-      return Icons.local_airport;
-    }
-    return Icons.location_on_outlined;
-  }
 
   Future<void> _fetchNearby(double lat, double lng) async {
     setState(() {
@@ -270,49 +232,20 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     final List<Map<String, dynamic>> places = [];
 
     try {
-      final String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-          '?location=$lat,$lng'
-          '&radius=3000'
-          '&language=en'
-          '&key=$googlePlacesApiKey';
-
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'] as List<dynamic>? ?? [];
-        for (final item in results) {
-          final place = item as Map<String, dynamic>;
-          final id = place['place_id'] as String? ?? '';
-          final name = place['name'] as String? ?? '';
-          final geometry = place['geometry'] as Map<String, dynamic>?;
-          final locationObj = geometry?['location'] as Map<String, dynamic>?;
-          final plat = (locationObj?['lat'] as num?)?.toDouble() ?? 0.0;
-          final plng = (locationObj?['lng'] as num?)?.toDouble() ?? 0.0;
-          final address = place['vicinity'] as String? ?? place['formatted_address'] as String? ?? '';
-          final types = place['types'] as List<dynamic>? ?? [];
-
-          final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
-          final double km = meters / 1000;
-          final String distanceStr = km < 1
-              ? '${meters.toStringAsFixed(0)} m'
-              : '${km.toStringAsFixed(1)} km';
-
-          places.add({
-            'placeId': id,
-            'name': name,
-            'address': address,
-            'latitude': plat,
-            'longitude': plng,
-            'distance': distanceStr,
-            'icon': _mapGooglePlaceTypesToIconData(types),
-          });
-        }
-      } else {
-        _apiErrorMessage = "Google Places API failed with status ${response.statusCode}";
+      final initialPlaces = await ExploreDataService.fetchNearbyFoursquarePlaces(lat, lng, radius: 3000);
+      for (final p in initialPlaces) {
+        places.add({
+          'placeId': p['id'],
+          'name': p['name'],
+          'address': p['address'],
+          'latitude': p['latitude'],
+          'longitude': p['longitude'],
+          'distance': p['distance'],
+          'icon': _getIconForTypes([p['type'].toLowerCase()]),
+        });
       }
     } catch (e) {
-      debugPrint("Error fetching nearby Google places: $e");
+      debugPrint("Error fetching nearby places from ExploreDataService: $e");
       _apiErrorMessage = "Error: $e";
     }
 
@@ -418,50 +351,20 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
     final List<Map<String, dynamic>> places = [];
 
     try {
-      final String url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
-          '?query=${Uri.encodeComponent(query)}'
-          '&location=$_latitude,$_longitude'
-          '&radius=50000'
-          '&language=en'
-          '&key=$googlePlacesApiKey';
-
-      final response = await http.get(Uri.parse(url));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'] as List<dynamic>? ?? [];
-        for (final item in results) {
-          final place = item as Map<String, dynamic>;
-          final id = place['place_id'] as String? ?? '';
-          final name = place['name'] as String? ?? '';
-          final geometry = place['geometry'] as Map<String, dynamic>?;
-          final locationObj = geometry?['location'] as Map<String, dynamic>?;
-          final plat = (locationObj?['lat'] as num?)?.toDouble() ?? 0.0;
-          final plng = (locationObj?['lng'] as num?)?.toDouble() ?? 0.0;
-          final address = place['formatted_address'] as String? ?? place['vicinity'] as String? ?? '';
-          final types = place['types'] as List<dynamic>? ?? [];
-
-          final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
-          final double km = meters / 1000;
-          final String distanceStr = km < 1
-              ? '${meters.toStringAsFixed(0)} m'
-              : '${km.toStringAsFixed(1)} km';
-
-          places.add({
-            'placeId': id,
-            'name': name,
-            'address': address,
-            'latitude': plat,
-            'longitude': plng,
-            'distance': distanceStr,
-            'icon': _mapGooglePlaceTypesToIconData(types),
-          });
-        }
-      } else {
-        _apiErrorMessage = "Google Places API failed with status ${response.statusCode}";
+      final results = await ExploreDataService.searchFoursquarePlaces(query, _latitude, _longitude);
+      for (final p in results) {
+        places.add({
+          'placeId': p['id'],
+          'name': p['name'],
+          'address': p['address'],
+          'latitude': p['latitude'],
+          'longitude': p['longitude'],
+          'distance': p['distance'],
+          'icon': _getIconForTypes([p['type'].toLowerCase()]),
+        });
       }
     } catch (e) {
-      debugPrint("Error performing Google search: $e");
+      debugPrint("Error performing search from ExploreDataService: $e");
       _apiErrorMessage = "Error: $e";
     }
 

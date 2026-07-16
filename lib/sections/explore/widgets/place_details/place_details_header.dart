@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PlaceDetailsHeader extends StatelessWidget {
   final double topPadding;
@@ -60,11 +61,24 @@ class PlaceDetailsHeader extends StatelessWidget {
             itemCount: images.length,
             onPageChanged: onPageChanged,
             itemBuilder: (context, index) {
-              return Image.network(
-                images[index],
+              return CachedNetworkImage(
+                imageUrl: images[index],
                 width: double.infinity,
                 height: 280,
                 fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: const Color(0xFFF3F4F6),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: const Color(0xFFF3F4F6),
+                  child: const Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                ),
               );
             },
           ),

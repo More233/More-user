@@ -5,6 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../profile_screen.dart';
 import '../../followers_following_screen.dart';
+import '../../home_screen.dart';
+import '../../../auth/account_manager.dart';
+import '../../../auth/auth_flow_page.dart';
 import '../saved/saved_screen.dart';
 import '../../notifications_screen.dart';
 import '../../../settings/widgets/language_sheet.dart';
@@ -36,6 +39,7 @@ class _UserDrawerState extends State<UserDrawer> {
   String? _avatarUrl;
   int _followersCount = 0;
   int _followingCount = 0;
+  bool _isEditingAccounts = false;
 
   @override
   void initState() {
@@ -48,6 +52,9 @@ class _UserDrawerState extends State<UserDrawer> {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
       if (user == null) return;
+
+      // Save current session to SharedPreferences
+      await AccountManager.saveCurrentAccount();
 
       final results = await Future.wait<dynamic>([
         client.from('profiles').select().eq('id', user.id).maybeSingle(),
@@ -133,18 +140,20 @@ class _UserDrawerState extends State<UserDrawer> {
                                     : const AssetImage('assets/home/images/avatar_placeholder.png'),
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(
-                                CupertinoIcons.person_crop_circle_badge_plus,
-                                color: Colors.black87,
-                                size: 24,
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () {
-                                HapticFeedback.lightImpact();
-                              },
-                            ),
+                             IconButton(
+                               icon: const Icon(
+                                 CupertinoIcons.person_crop_circle_badge_plus,
+                                 color: Colors.black87,
+                                 size: 24,
+                               ),
+                               padding: EdgeInsets.zero,
+                               constraints: const BoxConstraints(),
+                               onPressed: () {
+                                 debugPrint("==== Switcher Button Tapped ====");
+                                 HapticFeedback.lightImpact();
+                                 _showAccountsBottomSheet();
+                               },
+                             ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -368,15 +377,17 @@ class _UserDrawerState extends State<UserDrawer> {
                         _buildDrawerItem(
                           icon: CupertinoIcons.settings,
                           title: 'Settings and privacy',
-                          onTap: () {
+                          onTap: () async {
                             HapticFeedback.lightImpact();
                             widget.onCloseMenu?.call();
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => const SettingsScreen(),
                               ),
                             );
+                            _fetchDrawerData();
+                            widget.onProfileUpdated?.call();
                           },
                         ),
                         _buildDrawerItem(
@@ -409,6 +420,226 @@ class _UserDrawerState extends State<UserDrawer> {
               ),
             ),
     );
+  }
+
+  void _showAccountsBottomSheet() async {
+    debugPrint("==== _showAccountsBottomSheet() Called ====");
+    
+    // Save current session first to ensure it's in SharedPreferences
+    await AccountManager.saveCurrentAccount();
+    final initialAccounts = await AccountManager.getSavedAccounts();
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        debugPrint("==== showModalBottomSheet Builder Called ====");
+        
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: SafeArea(
+                child: FutureBuilder<List<SavedAccount>>(
+                  future: AccountManager.getSavedAccounts(),
+                  initialData: initialAccounts,
+                  builder: (context, snapshot) {
+                    final accounts = snapshot.data ?? initialAccounts;
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 10),
+                        Container(
+                          width: 36,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5E5EA),
+                            borderRadius: BorderRadius.circular(2.5),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  setModalState(() {
+                                    _isEditingAccounts = !_isEditingAccounts;
+                                  });
+                                },
+                                child: Text(
+                                  _isEditingAccounts ? "Done" : "Edit",
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: const Color(0xFF7C57FC),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                "Accounts",
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 60),
+                            ],
+                          ),
+                        ),
+                        const Divider(color: Color(0xFFF1F1F1), height: 1),
+                        Flexible(
+                          child: accounts.isEmpty
+                              ? const SizedBox(
+                                  height: 100,
+                                  child: Center(
+                                    child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  itemCount: accounts.length,
+                                  itemBuilder: (context, index) {
+                                    final acc = accounts[index];
+                                    final isActive = acc.userId == currentUserId;
+
+                                    return ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                                      leading: CircleAvatar(
+                                        radius: 22,
+                                        backgroundColor: Colors.grey[200],
+                                        backgroundImage: acc.avatarUrl != null && acc.avatarUrl!.isNotEmpty
+                                            ? NetworkImage(acc.avatarUrl!)
+                                            : const AssetImage('assets/home/images/avatar_placeholder.png') as ImageProvider,
+                                      ),
+                                      title: Text(
+                                        acc.fullName,
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        "@${acc.username}",
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          color: const Color(0xFF687684),
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      trailing: isActive
+                                          ? const Icon(
+                                              CupertinoIcons.checkmark_circle_fill,
+                                              color: Color(0xFF7C57FC),
+                                              size: 24,
+                                            )
+                                          : (_isEditingAccounts
+                                              ? IconButton(
+                                                  icon: const Icon(CupertinoIcons.trash, color: Colors.red),
+                                                  onPressed: () async {
+                                                    await AccountManager.removeAccount(acc.userId);
+                                                    setModalState(() {});
+                                                  },
+                                                )
+                                              : null),
+                                      onTap: () async {
+                                        if (isActive) return;
+                                        if (_isEditingAccounts) return;
+
+                                        Navigator.pop(context);
+                                        widget.onCloseMenu?.call();
+                                        
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (context) => const Center(
+                                            child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                                          ),
+                                        );
+
+                                        final success = await AccountManager.switchToAccount(acc.userId);
+                                        if (context.mounted) {
+                                          Navigator.pop(context);
+                                          if (success) {
+                                            Navigator.of(context).pushAndRemoveUntil(
+                                              MaterialPageRoute(builder: (context) => HomeScreen()),
+                                              (route) => false,
+                                            );
+                                          } else {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text("Failed to switch account")),
+                                            );
+                                          }
+                                        }
+                                      },
+                                    );
+                                  },
+                                ),
+                        ),
+                        const Divider(color: Color(0xFFF1F1F1), height: 1),
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          leading: const CircleAvatar(
+                            radius: 22,
+                            backgroundColor: Color(0xFFF7F9FA),
+                            child: Icon(
+                              CupertinoIcons.plus,
+                              color: Color(0xFF7C57FC),
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            "Add an account",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              color: const Color(0xFF7C57FC),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          onTap: () async {
+                            await AccountManager.saveCurrentAccount();
+                            await Supabase.instance.client.auth.signOut();
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              widget.onCloseMenu?.call();
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (context) => const AuthFlowPage()),
+                                (route) => false,
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      setState(() {
+        _isEditingAccounts = false;
+      });
+    });
   }
 
   Widget _buildDrawerItem({

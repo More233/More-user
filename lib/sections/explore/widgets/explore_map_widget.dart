@@ -144,7 +144,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final source = mapbox.GeoJsonSource(
           id: "places-source",
           data: '{"type": "FeatureCollection", "features": []}',
-          cluster: false,
+          cluster: true,
+          clusterMaxZoom: 13,
+          clusterRadius: 50,
         );
         await mapboxMap.style.addSource(source);
       } catch (e) {
@@ -152,9 +154,20 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       try {
+        final heatmapSource = mapbox.GeoJsonSource(
+          id: "places-heatmap-source",
+          data: '{"type": "FeatureCollection", "features": []}',
+          cluster: false,
+        );
+        await mapboxMap.style.addSource(heatmapSource);
+      } catch (e) {
+        debugPrint("places-heatmap-source already exists or error: $e");
+      }
+
+      try {
         final heatmapLayer = mapbox.HeatmapLayer(
           id: "places-heatmap-layer",
-          sourceId: "places-source",
+          sourceId: "places-heatmap-source",
         );
         await mapboxMap.style.addLayer(heatmapLayer);
         
@@ -163,12 +176,13 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           ["linear"],
           ["heatmap-density"],
           0.0, "rgba(124, 87, 252, 0.0)",
-          0.1, "rgba(124, 87, 252, 0.25)",
-          0.25, "rgba(0, 130, 255, 0.45)",
-          0.5, "rgba(0, 240, 255, 0.75)",
-          0.75, "rgba(46, 204, 113, 0.8)",
-          0.9, "rgba(180, 240, 90, 0.65)",
-          1.0, "rgba(255, 255, 255, 0.8)"
+          0.15, "rgba(124, 87, 252, 0.35)",
+          0.35, "rgba(124, 87, 252, 0.7)",
+          0.55, "rgba(0, 130, 255, 0.8)",
+          0.75, "rgba(0, 210, 255, 0.85)",
+          0.9, "rgba(0, 240, 255, 0.9)",
+          0.97, "rgba(46, 204, 113, 0.9)",
+          1.0, "rgba(46, 204, 113, 0.95)"
         ]));
         
         await mapboxMap.style.setStyleLayerProperty("places-heatmap-layer", "heatmap-weight", jsonEncode([
@@ -607,7 +621,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             
             Uint8List pngBytes;
             if (state == 'checkin' || state == 'selected_checkin') {
-              final String checkinId = parts[1];
+              final String checkinId = state == 'checkin'
+                  ? imageId.substring('checkin-'.length)
+                  : imageId.substring('selected_checkin-'.length);
               final place = widget.places.firstWhere(
                 (pl) => pl['id']?.toString() == checkinId,
                 orElse: () => widget.selectedPlace != null && widget.selectedPlace!['id']?.toString() == checkinId
@@ -615,6 +631,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
                     : {},
               );
               final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
+              debugPrint("ExploreMapWidget: checkinId=$checkinId, resolved place keys=${place.keys}, resolved avatarUrl=$avatarUrl");
               final bool isSelected = state == 'selected_checkin';
               pngBytes = await MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: isSelected);
             } else if (state == 'dot') {
@@ -838,6 +855,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
       final String geojsonStr = jsonEncode(geojson);
       await _mapboxMap!.style.setStyleSourceProperty("places-source", "data", geojsonStr);
+      await _mapboxMap!.style.setStyleSourceProperty("places-heatmap-source", "data", geojsonStr);
 
       // 4. Build color match expressions for labels
       String colorToHex(Color color) {
@@ -922,7 +940,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         iconImageExpression = jsonEncode([
           "step",
           ["zoom"],
-          // Zoom < 7.0: All are dots
+          // Zoom < 4.0: All are dots
           [
             "case",
             ["coalesce", ["get", "is_check_in"], false],
@@ -936,25 +954,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
             ["concat", "dot-", ["get", "place_type"]]
           ],
-          7.0,
-          // 7.0 <= Zoom < 9.5: Priority 1 are pins, 2 & 3 are dots
-          [
-            "case",
-            ["coalesce", ["get", "is_check_in"], false],
-            [
-              "case",
-              ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
-              ["concat", "checkin-", ["get", "id"]]
-            ],
-            ["==", ["get", "id"], selectedId],
-            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
-            ["==", ["get", "priority"], 1],
-            ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]],
-            ["concat", "dot-", ["get", "place_type"]]
-          ],
-          9.5,
-          // 9.5 <= Zoom < 11.5: Priority 1 & 2 are pins, 3 are dots
+          2.0,
+          // 2.0 <= Zoom < 11.5: Priority 1 & 2 are pins, others are dots
           [
             "case",
             ["coalesce", ["get", "is_check_in"], false],
@@ -1060,7 +1061,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         textFieldExpression = jsonEncode([
           "step",
           ["zoom"],
-          // Zoom < 7.0: No labels
+          // Zoom < 4.0: No labels (except selected)
           [
             "case",
             ["==", ["get", "id"], selectedId],
@@ -1083,50 +1084,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             ],
             ""
           ],
-          7.0,
-          // 7.0 <= Zoom < 9.5: Priority 1 show labels, others don't
-          [
-            "case",
-            ["==", ["get", "id"], selectedId],
-            [
-              "case",
-              ["==", ["get", "arabic_title"], ""],
-              ["get", "english_title"],
-              [
-                "format",
-                ["get", "english_title"],
-                {"font-scale": 1.0},
-                "\n",
-                {},
-                ["get", "arabic_title"],
-                {
-                  "font-scale": 0.75,
-                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
-                }
-              ]
-            ],
-            ["==", ["get", "priority"], 1],
-            [
-              "case",
-              ["==", ["get", "arabic_title"], ""],
-              ["get", "english_title"],
-              [
-                "format",
-                ["get", "english_title"],
-                {"font-scale": 1.0},
-                "\n",
-                {},
-                ["get", "arabic_title"],
-                {
-                  "font-scale": 0.75,
-                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
-                }
-              ]
-            ],
-            ""
-          ],
-          9.5,
-          // 9.5 <= Zoom < 11.5: Priority 1 & 2 show labels, others don't
+          2.0,
+          // 2.0 <= Zoom < 11.5: Priority 1 & 2 show labels, others don't
           [
             "case",
             ["==", ["get", "id"], selectedId],

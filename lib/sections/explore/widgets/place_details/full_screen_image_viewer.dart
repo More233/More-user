@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> images;
@@ -50,10 +51,16 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         },
         itemBuilder: (context, index) {
           return Center(
-            child: Image.network(
-              widget.images[index],
+            child: CachedNetworkImage(
+              imageUrl: widget.images[index],
               fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(
+              placeholder: (context, url) => const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+              errorWidget: (context, url, error) => const Icon(
                 Icons.image_not_supported,
                 color: Colors.white,
                 size: 64,

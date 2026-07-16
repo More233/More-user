@@ -36,6 +36,11 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
   final TextEditingController _mentionController = TextEditingController();
   final FocusNode _mentionFocus = FocusNode();
 
+  // Custom bottom sheet state for mentions
+  final TextEditingController _bottomSheetSearchController = TextEditingController();
+  final Set<String> _hiddenMentionUserIds = {};
+  final Set<String> _tempSelectedMentionIds = {};
+
   final List<String> _stickerEmojis = ['❤️', '😍', '🫣', '🔥', '👍', '🍻', '👏', '😂', '🎉', '🌟', '🍿', '💯'];
 
   double _canvasWidth = 360.0;
@@ -88,6 +93,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     _textOverlayFocus.dispose();
     _mentionController.dispose();
     _mentionFocus.dispose();
+    _bottomSheetSearchController.dispose();
     super.dispose();
   }
 
@@ -281,6 +287,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
       localFilePath: widget.imagePath,
       canvasWidth: _canvasWidth,
       canvasHeight: _canvasHeight,
+      hiddenMentionUserIds: _hiddenMentionUserIds.toList(),
       onSuccess: () {
         if (mounted) {
           Navigator.pop(context); // Close Editor
@@ -295,6 +302,216 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
         }
       },
     );
+  }
+
+  void _showMentionBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final followedUsers = ref.read(storyEditorViewModelProvider).followedUsers;
+        
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final query = _bottomSheetSearchController.text.trim().toLowerCase();
+            final filteredUsers = followedUsers.where((u) {
+              final username = (u['username'] as String? ?? '').toLowerCase();
+              final fullName = '${u['first_name'] ?? ''} ${u['last_name'] ?? ''}'.toLowerCase();
+              return username.contains(query) || fullName.contains(query);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 36,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E5EA),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search, color: Color(0xFF8E8E93), size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _bottomSheetSearchController,
+                              style: GoogleFonts.ibmPlexSansArabic(color: Colors.black, fontSize: 16),
+                              decoration: InputDecoration(
+                                hintText: "Search",
+                                hintStyle: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF8E8E93)),
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              onChanged: (_) {
+                                setModalState(() {});
+                              },
+                            ),
+                          ),
+                          if (_bottomSheetSearchController.text.isNotEmpty)
+                            GestureDetector(
+                              onTap: () {
+                                _bottomSheetSearchController.clear();
+                                setModalState(() {});
+                              },
+                              child: const Icon(Icons.close_rounded, color: Color(0xFF8E8E93), size: 20),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      "People added here will be mentioned in your story but their username won't be visible.",
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        color: const Color(0xFF8E8E93),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filteredUsers.isEmpty
+                        ? Center(
+                            child: Text(
+                              "No users found",
+                              style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF8E8E93)),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: filteredUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = filteredUsers[index];
+                              final uId = user['id'] as String;
+                              final username = user['username'] ?? '';
+                              final fullName = '${user['first_name'] ?? ''} ${user['last_name'] ?? ''}'.trim();
+                              final isSelected = _tempSelectedMentionIds.contains(uId);
+                              final avatarUrl = user['avatar_url'] as String?;
+
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  radius: 20,
+                                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                      ? NetworkImage(avatarUrl)
+                                      : null,
+                                  child: avatarUrl == null || avatarUrl.isEmpty
+                                      ? const Icon(Icons.person, color: Colors.grey)
+                                      : null,
+                                ),
+                                title: Text(
+                                  fullName.isNotEmpty ? fullName : username,
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "@$username",
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: const Color(0xFF8E8E93),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                trailing: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
+                                    border: Border.all(
+                                      color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFC7C7CC),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: isSelected
+                                      ? const Icon(Icons.check, color: Colors.white, size: 14)
+                                      : null,
+                                ),
+                                onTap: () {
+                                  setModalState(() {
+                                    if (isSelected) {
+                                      _tempSelectedMentionIds.remove(uId);
+                                    } else {
+                                      _tempSelectedMentionIds.add(uId);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 12,
+                      bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF7C57FC),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _hiddenMentionUserIds.clear();
+                            _hiddenMentionUserIds.addAll(_tempSelectedMentionIds);
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          "Done",
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      _bottomSheetSearchController.clear();
+    });
   }
 
   TextStyle _getFontFamilyStyle(String name) {
@@ -698,9 +915,9 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                               },
                               onStickerTap: _showStickersDrawer,
                               onMentionTap: () {
-                                notifier.setEditingMention(true);
-                                _mentionController.clear();
-                                _mentionFocus.requestFocus();
+                                _tempSelectedMentionIds.clear();
+                                _tempSelectedMentionIds.addAll(_hiddenMentionUserIds);
+                                _showMentionBottomSheet();
                               },
                               onMoreTap: _showMoreOptionsSheet,
                             ),

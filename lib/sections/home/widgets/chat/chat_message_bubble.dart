@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../helpers/chat_svgs.dart';
 import '../../view_models/conversation_view_model.dart';
@@ -305,19 +306,21 @@ class ChatMessageBubble extends ConsumerWidget {
               child: Container(
                 padding: type == 'text'
                     ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
-                    : type == 'image'
+                    : (type == 'image' || type == 'story_share')
                         ? const EdgeInsets.all(2)
                         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSent
-                      ? const Color(0xFF7C57FC)
-                      : const Color(0xFFF1F1F1),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: isSent ? const Radius.circular(16) : const Radius.circular(4),
-                    bottomRight: isSent ? const Radius.circular(4) : const Radius.circular(16),
-                  ),
+                  color: type == 'story_share'
+                      ? Colors.transparent
+                      : (isSent ? const Color(0xFF7C57FC) : const Color(0xFFF1F1F1)),
+                  borderRadius: type == 'story_share'
+                      ? null
+                      : BorderRadius.only(
+                          topLeft: const Radius.circular(16),
+                          topRight: const Radius.circular(16),
+                          bottomLeft: isSent ? const Radius.circular(16) : const Radius.circular(4),
+                          bottomRight: isSent ? const Radius.circular(4) : const Radius.circular(16),
+                        ),
                 ),
                 child: type == 'text'
                     ? Row(
@@ -345,57 +348,192 @@ class ChatMessageBubble extends ConsumerWidget {
                           ],
                         ],
                       )
-                    : type == 'image'
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Stack(
-                              alignment: Alignment.bottomRight,
-                              children: [
-                                Container(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 300,
-                                    maxWidth: 250,
-                                  ),
-                                  child: Image.network(
-                                    content,
-                                    width: 250,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 250,
-                                        height: 200,
-                                        color: Colors.grey[300],
-                                        child: const Icon(Icons.broken_image, color: Colors.grey),
-                                      );
-                                    },
+                    : type == 'story_share'
+                        ? Column(
+                            crossAxisAlignment: isSent ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
+                                child: Text(
+                                  isSent
+                                      ? "You mentioned @${otherProfile['username'] ?? 'user'} in your story"
+                                      : "Mentioned you in their story",
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    color: const Color(0xFF8E8E93),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                if (isSent)
-                                  Positioned(
-                                    bottom: 6,
-                                    right: 6,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.4),
-                                        borderRadius: BorderRadius.circular(4),
+                              ),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Stack(
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    StorySharePreview(url: content),
+                                    if (isSent)
+                                      Positioned(
+                                        bottom: 8,
+                                        right: 8,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.4),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Icon(
+                                            msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
-                                      child: Icon(
-                                        msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
-                                        size: 14,
-                                        color: Colors.white,
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : type == 'image'
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Stack(
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    Container(
+                                      constraints: const BoxConstraints(
+                                        maxHeight: 300,
+                                        maxWidth: 250,
+                                      ),
+                                      child: Image.network(
+                                        content,
+                                        width: 250,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Container(
+                                            width: 250,
+                                            height: 200,
+                                            color: Colors.grey[300],
+                                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                                          );
+                                        },
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          )
-                        : _buildAudioWaveform(context, ref, isSent),
+                                    if (isSent)
+                                      Positioned(
+                                        bottom: 6,
+                                        right: 6,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.4),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Icon(
+                                            msg['is_read'] == true ? Icons.done_all_rounded : Icons.done_rounded,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              )
+                            : _buildAudioWaveform(context, ref, isSent),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class StorySharePreview extends StatefulWidget {
+  final String url;
+  const StorySharePreview({super.key, required this.url});
+
+  @override
+  State<StorySharePreview> createState() => _StorySharePreviewState();
+}
+
+class _StorySharePreviewState extends State<StorySharePreview> {
+  VideoPlayerController? _controller;
+  bool _isInitialized = false;
+
+  bool _isVideoUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.mp4') || lower.contains('.mov') || lower.contains('.avi') || lower.contains('.m4v');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isVideoUrl(widget.url)) {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {
+              _isInitialized = true;
+            });
+            _controller?.setVolume(0.0);
+            _controller?.setLooping(true);
+            _controller?.play();
+          }
+        });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_controller != null) {
+      return Container(
+        width: 150,
+        height: 260,
+        color: Colors.black87,
+        child: _isInitialized
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    child: SizedBox(
+                      width: _controller!.value.size.width,
+                      height: _controller!.value.size.height,
+                      child: VideoPlayer(_controller!),
+                    ),
+                  ),
+                ),
+              )
+            : const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(color: Color(0xFF7C57FC), strokeWidth: 2),
+                ),
+              ),
+      );
+    }
+
+    return Image.network(
+      widget.url,
+      width: 150,
+      height: 260,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          width: 150,
+          height: 260,
+          color: Colors.grey[300],
+          child: const Icon(Icons.broken_image, color: Colors.grey),
+        );
+      },
     );
   }
 }

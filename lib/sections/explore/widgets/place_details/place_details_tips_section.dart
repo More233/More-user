@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PlaceTipsSection extends StatelessWidget {
   final List<Map<String, dynamic>> placePosts;
@@ -75,10 +76,18 @@ class PlaceTipsSection extends StatelessWidget {
                                     height: 40,
                                     color: const Color(0xFFF5F6F8),
                                     child: avatarUrl != null && avatarUrl.trim().isNotEmpty
-                                        ? Image.network(
-                                            avatarUrl,
+                                        ? CachedNetworkImage(
+                                            imageUrl: avatarUrl,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
+                                            placeholder: (context, url) => const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                                              ),
+                                            ),
+                                            errorWidget: (context, url, error) {
                                               return const Icon(Icons.person, color: Color(0xFF82858C), size: 20);
                                             },
                                           )
@@ -199,10 +208,18 @@ class PlaceTipsSection extends StatelessWidget {
                           height: 40,
                           color: const Color(0xFFF5F6F8),
                           child: avatarUrl != null && avatarUrl.trim().isNotEmpty
-                              ? Image.network(
-                                  avatarUrl,
+                              ? CachedNetworkImage(
+                                  imageUrl: avatarUrl,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
+                                  placeholder: (context, url) => const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                                    ),
+                                  ),
+                                  errorWidget: (context, url, error) {
                                     return const Icon(Icons.person, color: Color(0xFF82858C), size: 20);
                                   },
                                 )
