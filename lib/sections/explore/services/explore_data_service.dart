@@ -514,7 +514,8 @@ class ExploreDataService {
     defaultValue: Secrets.foursquareApiKey,
   );
 
-  static bool _isFoursquareKeyValid = foursquareApiKey.startsWith('fsq3_');
+  static bool _isFoursquareKeyValid = foursquareApiKey.isNotEmpty && 
+      foursquareApiKey != 'YOUR_FOURSQUARE_API_KEY';
 
   static String? mapKeywordsToFoursquareCategories(String keyword) {
     final List<String> categories = [];
