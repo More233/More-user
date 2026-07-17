@@ -514,7 +514,7 @@ class ExploreDataService {
     defaultValue: Secrets.foursquareApiKey,
   );
 
-  static bool _isFoursquareKeyValid = foursquareApiKey.isNotEmpty && 
+  static final bool _isFoursquareKeyValid = foursquareApiKey.isNotEmpty && 
       foursquareApiKey != 'YOUR_FOURSQUARE_API_KEY';
 
   static String? mapKeywordsToFoursquareCategories(String keyword) {
@@ -714,7 +714,6 @@ class ExploreDataService {
     }
 
     // 4. Fetch fresh places from Foursquare (no Google Places fallback)
-    bool foursquareSuccess = false;
     List<Map<String, dynamic>> places = [];
 
     if (_isFoursquareKeyValid) {
@@ -754,7 +753,6 @@ class ExploreDataService {
               places.add(parsed);
             }
           }
-          foursquareSuccess = true;
         } else {
           debugPrint("Foursquare API Error: ${response.statusCode} - ${response.body}");
         }
@@ -944,7 +942,6 @@ class ExploreDataService {
       }
 
       // 2. Fetch fresh places from Foursquare (if key is valid, no Google Places fallback)
-      bool foursquareSuccess = false;
       if (_isFoursquareKeyValid) {
         try {
           final httpResponse = await _client.get(
@@ -966,7 +963,6 @@ class ExploreDataService {
                 places.add(parsed);
               }
             }
-            foursquareSuccess = true;
           } else {
             debugPrint("Foursquare Search API Error: ${httpResponse.statusCode} - ${httpResponse.body}");
           }
