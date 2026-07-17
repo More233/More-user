@@ -118,8 +118,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
     }
   }
 
-  void _showMoreInfoBottomSheet() {
-    final place = widget.place;
+  void _showMoreInfoBottomSheet(Map<String, dynamic> place) {
     final double lat = (place['latitude'] as num?)?.toDouble() ?? 29.378033;
     final double lng = (place['longitude'] as num?)?.toDouble() ?? 30.697478;
 
@@ -144,7 +143,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
 
     final double topPadding = MediaQuery.of(context).padding.top;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
-    final place = widget.place;
+    final place = state.place;
     
     final ratingVal = place['rating'] as num? ?? 7.9;
     final reviewsCount = place['reviewsCount'] as int? ?? 36;
@@ -195,7 +194,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                       );
                     },
                     onSuggestEditTap: () {},
-                    onSeeMoreInfoTap: _showMoreInfoBottomSheet,
+                    onSeeMoreInfoTap: () => _showMoreInfoBottomSheet(place),
                   ),
                   const Divider(height: 32, color: Color(0xFFE8E8E8)),
                   

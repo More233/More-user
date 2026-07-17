@@ -522,8 +522,14 @@ class ExploreDataService {
     final parts = keyword.toLowerCase().split('|');
     for (final part in parts) {
       final p = part.trim();
-      if (p == 'restaurant' || p == 'food' || p == 'dining') {
+      if (p == 'restaurant' || p == 'dining') {
         categories.add('13065');
+      } else if (p == 'food') {
+        categories.add('13000');
+      } else if (p == 'shops') {
+        categories.add('17000');
+      } else if (p == 'sights') {
+        categories.add('10000,16000,19000');
       } else if (p == 'cafe' || p == 'coffee' || p == 'coffe' || p == 'espresso') {
         categories.add('13035');
       } else if (p == 'bakery' || p == 'bread' || p == 'pastry') {
@@ -564,7 +570,7 @@ class ExploreDataService {
     double userLat,
     double userLng,
   ) {
-    final id = venue['fsq_id'] as String? ?? venue['id'] as String? ?? '';
+    final id = venue['fsq_place_id'] as String? ?? venue['fsq_id'] as String? ?? venue['id'] as String? ?? '';
     final name = venue['name'] as String? ?? '';
     final location = venue['location'] as Map<String, dynamic>?;
     final address = location?['formatted_address'] as String? ?? 
@@ -572,9 +578,11 @@ class ExploreDataService {
     
     final geocodes = venue['geocodes'] as Map<String, dynamic>?;
     final mainGeocode = geocodes?['main'] as Map<String, dynamic>?;
-    final plat = (mainGeocode?['latitude'] as num?)?.toDouble() ?? 
+    final plat = (venue['latitude'] as num?)?.toDouble() ??
+                 (mainGeocode?['latitude'] as num?)?.toDouble() ?? 
                  (location?['lat'] as num?)?.toDouble() ?? userLat;
-    final plng = (mainGeocode?['longitude'] as num?)?.toDouble() ?? 
+    final plng = (venue['longitude'] as num?)?.toDouble() ??
+                 (mainGeocode?['longitude'] as num?)?.toDouble() ?? 
                  (location?['lng'] as num?)?.toDouble() ?? userLng;
 
     final categories = venue['categories'] as List<dynamic>? ?? [];
@@ -596,16 +604,19 @@ class ExploreDataService {
       }
     }
 
-    String imageUrl = getPlaceholderUrl(type, id);
+    final List<String> parsedPhotos = [];
     final photosList = venue['photos'] as List<dynamic>? ?? [];
-    if (photosList.isNotEmpty) {
-      final photo = photosList.first as Map<String, dynamic>;
-      final prefix = photo['prefix'] as String? ?? '';
-      final suffix = photo['suffix'] as String? ?? '';
-      if (prefix.isNotEmpty && suffix.isNotEmpty) {
-        imageUrl = '${prefix}original$suffix';
+    for (final p in photosList) {
+      if (p is Map) {
+        final prefix = p['prefix'] as String? ?? '';
+        final suffix = p['suffix'] as String? ?? '';
+        if (prefix.isNotEmpty && suffix.isNotEmpty) {
+          parsedPhotos.add('${prefix}original$suffix');
+        }
       }
     }
+
+    String imageUrl = parsedPhotos.isNotEmpty ? parsedPhotos.first : getPlaceholderUrl(type, id);
 
     final ratingVal = (venue['rating'] as num?)?.toDouble();
     final double rating = ratingVal != null ? double.parse((ratingVal / 2.0).toStringAsFixed(1)) : 4.0;
@@ -615,6 +626,11 @@ class ExploreDataService {
 
     final popularity = (venue['popularity'] as num?)?.toDouble() ?? 0.8;
     final int reviewsCount = (popularity * 100).toInt().clamp(5, 1000);
+
+    final hoursObj = venue['hours'] as Map<String, dynamic>?;
+    final bool? openNow = hoursObj?['open_now'] as bool?;
+    final String? displayHours = hoursObj?['display'] as String?;
+    final List<String> weekdayText = displayHours != null && displayHours.isNotEmpty ? [displayHours] : [];
 
     return {
       'id': id,
@@ -630,12 +646,17 @@ class ExploreDataService {
       'peopleCount': 0,
       'type': type,
       'imageUrl': imageUrl,
+      'photos': parsedPhotos,
       'isSaved': false,
       'isVisited': false,
       'iconUrl': iconUrl,
       'actionType': getActionTypeForPlaceType(type),
       'isRegistered': false,
       'visitors': <Map<String, dynamic>>[],
+      'website': venue['website'] as String?,
+      'phone': venue['tel'] as String?,
+      'openNow': openNow,
+      'weekdayText': weekdayText.isNotEmpty ? weekdayText : null,
     };
   }
 
@@ -692,18 +713,18 @@ class ExploreDataService {
       return cachedPlaces;
     }
 
-    // 4. Fetch fresh places from Foursquare (with Google Places fallback on failure or empty list)
+    // 4. Fetch fresh places from Foursquare (no Google Places fallback)
     bool foursquareSuccess = false;
     List<Map<String, dynamic>> places = [];
 
     if (_isFoursquareKeyValid) {
       try {
         final int fsqRadius = radius.clamp(100.0, 100000.0).toInt();
-        String url = 'https://api.foursquare.com/v3/places/search'
+        String url = 'https://places-api.foursquare.com/places/search'
             '?ll=$lat,$lng'
             '&radius=$fsqRadius'
             '&limit=50'
-            '&fields=fsq_id,name,location,categories,geocodes,link,rating,stats,popularity,price,photos';
+            '&fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,photos';
 
         if (keyword != null && keyword.isNotEmpty) {
           final fsqCategories = mapKeywordsToFoursquareCategories(keyword);
@@ -717,7 +738,8 @@ class ExploreDataService {
         final response = await _client.get(
           Uri.parse(url),
           headers: {
-            'Authorization': foursquareApiKey,
+            'Authorization': 'Bearer $foursquareApiKey',
+            'X-Places-Api-Version': '2025-06-17',
             'Accept': 'application/json',
           },
         );
@@ -735,22 +757,9 @@ class ExploreDataService {
           foursquareSuccess = true;
         } else {
           debugPrint("Foursquare API Error: ${response.statusCode} - ${response.body}");
-          if (response.statusCode == 401 || response.statusCode == 403) {
-            _isFoursquareKeyValid = false;
-            debugPrint("ExploreDataService: Foursquare API key is invalid/unauthorized (status ${response.statusCode}). Disabling Foursquare queries for this session.");
-          }
         }
       } catch (e) {
         debugPrint("Error fetching Foursquare nearby places: $e");
-      }
-    }
-
-    // Google Places API fallback on Foursquare API failure OR if Foursquare returns 0 results
-    if (!foursquareSuccess || places.isEmpty) {
-      debugPrint("ExploreDataService: Foursquare failed or returned 0 places. Falling back to Google Places API...");
-      final googlePlaces = await fetchNearbyGooglePlaces(lat, lng, radius: radius, keyword: keyword);
-      if (googlePlaces.isNotEmpty) {
-        places = googlePlaces;
       }
     }
 
@@ -758,7 +767,10 @@ class ExploreDataService {
       // Save results to SQLite cache and mark region synced asynchronously (background)
       ExploreDbCacheService.savePlaces(places);
       if (markSynced) {
-        ExploreDbCacheService.markRegionSynced(lat, lng, radius);
+        final double gridLat = (lat * 100).round() / 100.0;
+        final double gridLng = (lng * 100).round() / 100.0;
+        final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
+        ExploreDbCacheService.markCellSynced(cellId);
       }
 
       _placesCache[cacheKey] = places;
@@ -872,12 +884,12 @@ class ExploreDataService {
   static Future<List<Map<String, dynamic>>> searchFoursquarePlaces(String query, double lat, double lng) async {
     final List<Map<String, dynamic>> places = [];
     
-    final String url = 'https://api.foursquare.com/v3/places/search'
+    final String url = 'https://places-api.foursquare.com/places/search'
         '?query=${Uri.encodeComponent(query)}'
         '&ll=$lat,$lng'
         '&radius=50000'
         '&limit=50'
-        '&fields=fsq_id,name,location,categories,geocodes,link,rating,stats,popularity,price,photos';
+        '&fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,photos';
 
     final double latMin = lat - 1.5;
     final double latMax = lat + 1.5;
@@ -931,14 +943,15 @@ class ExploreDataService {
         });
       }
 
-      // 2. Fetch fresh places from Foursquare (if key is valid)
+      // 2. Fetch fresh places from Foursquare (if key is valid, no Google Places fallback)
       bool foursquareSuccess = false;
       if (_isFoursquareKeyValid) {
         try {
           final httpResponse = await _client.get(
             Uri.parse(url),
             headers: {
-              'Authorization': foursquareApiKey,
+              'Authorization': 'Bearer $foursquareApiKey',
+              'X-Places-Api-Version': '2025-06-17',
               'Accept': 'application/json',
             },
           );
@@ -956,21 +969,9 @@ class ExploreDataService {
             foursquareSuccess = true;
           } else {
             debugPrint("Foursquare Search API Error: ${httpResponse.statusCode} - ${httpResponse.body}");
-            if (httpResponse.statusCode == 401 || httpResponse.statusCode == 403) {
-              _isFoursquareKeyValid = false;
-            }
           }
         } catch (e) {
           debugPrint("Error performing Foursquare search API call: $e");
-        }
-      }
-
-      // 3. Fallback to Google Places search on Foursquare failure or empty
-      if (!foursquareSuccess || places.isEmpty) {
-        debugPrint("ExploreDataService: Foursquare search failed or returned 0 results. Falling back to Google Places textsearch...");
-        final googleResults = await searchGooglePlaces(query, lat, lng);
-        if (googleResults.isNotEmpty) {
-          places.addAll(googleResults);
         }
       }
     } catch (e) {
@@ -1057,11 +1058,17 @@ class ExploreDataService {
     Map<String, dynamic>? placeMap;
     List<dynamic> visitorsRes = [];
 
-    final bool isGoogleId = placeId.length > 20 && !placeId.startsWith('fsq_') && !placeId.startsWith('tapped_') && !placeId.startsWith('custom_');
+    final bool isFoursquareId = RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(placeId) || placeId.startsWith('fsq_');
+    final bool isGoogleId = !isFoursquareId && placeId.length > 20 && !placeId.startsWith('tapped_') && !placeId.startsWith('custom_');
 
     if (!isGoogleId && _isFoursquareKeyValid) {
-      final String url = 'https://api.foursquare.com/v3/places/$placeId'
-          '?fields=fsq_id,name,location,categories,geocodes,link,rating,stats,popularity,price,photos,website,tel,hours,hours_popular';
+      String cleanPlaceId = placeId;
+      if (cleanPlaceId.startsWith('fsq_')) {
+        cleanPlaceId = cleanPlaceId.substring(4);
+      }
+      final String url = 'https://places-api.foursquare.com/places/$cleanPlaceId'
+          '?fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,website,tel,hours,hours_popular';
+      final String photosUrl = 'https://places-api.foursquare.com/places/$cleanPlaceId/photos?limit=30';
 
       final client = Supabase.instance.client;
 
@@ -1070,7 +1077,16 @@ class ExploreDataService {
           _client.get(
             Uri.parse(url),
             headers: {
-              'Authorization': foursquareApiKey,
+              'Authorization': 'Bearer $foursquareApiKey',
+              'X-Places-Api-Version': '2025-06-17',
+              'Accept': 'application/json',
+            },
+          ),
+          _client.get(
+            Uri.parse(photosUrl),
+            headers: {
+              'Authorization': 'Bearer $foursquareApiKey',
+              'X-Places-Api-Version': '2025-06-17',
               'Accept': 'application/json',
             },
           ),
@@ -1084,16 +1100,34 @@ class ExploreDataService {
         ]);
 
         final httpResponse = results[0] as http.Response;
-        visitorsRes = results[1] as List<dynamic>;
+        final photosResponse = results[1] as http.Response;
+        visitorsRes = results[2] as List<dynamic>;
 
         if (httpResponse.statusCode == 200) {
           final result = json.decode(httpResponse.body) as Map<String, dynamic>;
+          
+          final List<String> parsedPhotos = [];
+          if (photosResponse.statusCode == 200) {
+            final List<dynamic> photosList = json.decode(photosResponse.body) as List<dynamic>;
+            for (final p in photosList) {
+              if (p is Map) {
+                final prefix = p['prefix'] as String? ?? '';
+                final suffix = p['suffix'] as String? ?? '';
+                if (prefix.isNotEmpty && suffix.isNotEmpty) {
+                  parsedPhotos.add('${prefix}original$suffix');
+                }
+              }
+            }
+          }
+
           placeMap = parseFoursquareV3Venue(result, userLat, userLng);
+          
+          if (parsedPhotos.isNotEmpty) {
+            placeMap['photos'] = parsedPhotos;
+            placeMap['imageUrl'] = parsedPhotos.first;
+          }
         } else {
           debugPrint("Foursquare Details API Error: ${httpResponse.statusCode} - ${httpResponse.body}");
-          if (httpResponse.statusCode == 401 || httpResponse.statusCode == 403) {
-            _isFoursquareKeyValid = false;
-          }
         }
       } catch (e) {
         debugPrint("Error performing parallel Foursquare place details fetch: $e");
@@ -1103,18 +1137,6 @@ class ExploreDataService {
     if (placeMap == null) {
       if (isGoogleId) {
         placeMap = await fetchGooglePlaceDetails(placeId, userLat, userLng);
-      } else {
-        // Since it's a Foursquare/custom/tapped ID and we don't have it or Foursquare failed,
-        // let's try to search Google Places using the defaultName near defaultLat, defaultLng!
-        debugPrint("ExploreDataService: Resolving non-Google ID '$placeId' ('$defaultName') via Google Places Search...");
-        final searchResults = await searchGooglePlaces(defaultName, defaultLat, defaultLng);
-        if (searchResults.isNotEmpty) {
-          final bestMatch = searchResults.first;
-          final googleId = bestMatch['id'] as String?;
-          if (googleId != null) {
-            placeMap = await fetchGooglePlaceDetails(googleId, userLat, userLng);
-          }
-        }
       }
     }
 

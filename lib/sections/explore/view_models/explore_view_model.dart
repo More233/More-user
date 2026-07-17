@@ -142,7 +142,10 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       // 2. PHASE 2: BACKGROUND DELTA SYNC WITH DEBOUNCE
       if (!cacheOnly) {
         _apiDebounceTimer?.cancel();
-        _apiDebounceTimer = Timer(const Duration(milliseconds: 400), () async {
+        final Duration debounceDuration = initialPlaces.isEmpty 
+            ? const Duration(milliseconds: 50)
+            : const Duration(milliseconds: 250);
+        _apiDebounceTimer = Timer(debounceDuration, () async {
           try {
             final double gridLat = (lat * 100).round() / 100.0;
             final double gridLng = (lng * 100).round() / 100.0;
@@ -200,19 +203,24 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
             }
 
             if (!hasCategory) {
-              // Optimized single Foursquare query covering all prominent categories
-              _exploreRepository.fetchNearbyFoursquarePlaces(
-                lat,
-                lng,
-                radius: apiRadius,
-                keyword: 'restaurant|cafe|coffee|bakery|mall|store|supermarket|museum|mosque|park|hotel|cinema|stadium',
-                cacheOnly: false,
-              ).then((places) {
-                _mergeAndUpdatePlaces(places);
-                debugPrint("ExploreViewModel: Background sync places completed. Fetched: ${places.length}");
-              }).catchError((err) {
-                debugPrint("ExploreViewModel Error places sync: $err");
-              });
+              // Query 3 main category groups in parallel and update UI incrementally for maximum speed
+              final List<String> categoriesToSync = ['food', 'shops', 'sights'];
+              for (final cat in categoriesToSync) {
+                _exploreRepository.fetchNearbyFoursquarePlaces(
+                  lat,
+                  lng,
+                  radius: apiRadius,
+                  keyword: cat,
+                  cacheOnly: false,
+                ).then((places) {
+                  if (places.isNotEmpty) {
+                    _mergeAndUpdatePlaces(places);
+                    debugPrint("ExploreViewModel: Incremental background sync for $cat completed. Fetched: ${places.length}");
+                  }
+                }).catchError((err) {
+                  debugPrint("ExploreViewModel Error parallel sync for $cat: $err");
+                });
+              }
             } else {
               _exploreRepository.fetchNearbyFoursquarePlaces(
                 lat,
@@ -525,6 +533,19 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
     _statusBadgeTimer = Timer(const Duration(seconds: 2), () {
       state = state.copyWith(showStatusBadge: false);
     });
+  }
+
+  Future<void> clearDatabaseCache() async {
+    state = state.copyWith(isLoading: true);
+    await ExploreDbCacheService.clearCache();
+    state = state.copyWith(allPlaces: [], isLoading: false);
+    if (state.lastFetchedLocation != null) {
+      await fetchNearbyPlaces(
+        state.lastFetchedLocation!.latitude,
+        state.lastFetchedLocation!.longitude,
+        zoom: state.currentZoom,
+      );
+    }
   }
 
   @override

@@ -1,4 +1,5 @@
 class PlaceDetailsState {
+  final Map<String, dynamic> place;
   final bool isSaved;
   final List<String> images;
   final int currentPage;
@@ -12,6 +13,7 @@ class PlaceDetailsState {
   final bool isLoadingSimilar;
 
   PlaceDetailsState({
+    required this.place,
     required this.isSaved,
     required this.images,
     required this.currentPage,
@@ -32,6 +34,7 @@ class PlaceDetailsState {
         : <Map<String, dynamic>>[];
 
     return PlaceDetailsState(
+      place: place,
       isSaved: place['isSaved'] as bool? ?? false,
       images: initialImages,
       currentPage: 0,
@@ -47,6 +50,7 @@ class PlaceDetailsState {
   }
 
   PlaceDetailsState copyWith({
+    Map<String, dynamic>? place,
     bool? isSaved,
     List<String>? images,
     int? currentPage,
@@ -60,6 +64,7 @@ class PlaceDetailsState {
     bool? isLoadingSimilar,
   }) {
     return PlaceDetailsState(
+      place: place ?? this.place,
       isSaved: isSaved ?? this.isSaved,
       images: images ?? this.images,
       currentPage: currentPage ?? this.currentPage,

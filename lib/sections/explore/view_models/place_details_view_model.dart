@@ -18,8 +18,44 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
           place: place,
           initialImages: _getInitialImages(place),
         )) {
+    loadPlaceDetails();
     loadPlacePosts();
     loadSimilarPlaces();
+  }
+
+  Future<void> loadPlaceDetails() async {
+    try {
+      final double lat = (place['latitude'] as num?)?.toDouble() ?? 29.378033;
+      final double lng = (place['longitude'] as num?)?.toDouble() ?? 30.697478;
+
+      final details = await ExploreDataService.fetchPlaceDetails(
+        place['id'].toString(),
+        place['name']?.toString() ?? '',
+        lat,
+        lng,
+        lat,
+        lng,
+      );
+
+      if (details != null) {
+        final updatedPlace = Map<String, dynamic>.from(place)..addAll(details);
+
+        List<String> detailsImages = [];
+        final List<dynamic>? placePhotos = details['photos'] as List<dynamic>?;
+        if (placePhotos != null && placePhotos.isNotEmpty) {
+          detailsImages = List<String>.from(placePhotos.where((img) => img != null && !img.toString().contains('unsplash.com/photo-')));
+        }
+
+        final finalImages = detailsImages.isNotEmpty ? detailsImages : state.images;
+
+        state = state.copyWith(
+          place: updatedPlace,
+          images: finalImages,
+        );
+      }
+    } catch (e) {
+      debugPrint("Error loading place details from Foursquare: $e");
+    }
   }
 
   static List<String> _getInitialImages(Map<String, dynamic> place) {
@@ -30,10 +66,8 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
 
     final String? defaultImg = place['imageUrl']?.toString();
     if (defaultImg != null && defaultImg.isNotEmpty) {
-      if (defaultImg.contains('googleapis.com') ||
-          (defaultImg.contains('unsplash.com') &&
-              !defaultImg.contains('unsplash.com/photo-') &&
-              !defaultImg.contains('placeholder_for_'))) {
+      final bool isPlaceholder = defaultImg.contains('unsplash.com/photo-') || defaultImg.contains('placeholder_for_');
+      if (!isPlaceholder) {
         return [defaultImg];
       }
     }

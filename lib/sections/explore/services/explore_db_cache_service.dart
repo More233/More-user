@@ -20,7 +20,7 @@ class ExploreDbCacheService {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE cached_places (
@@ -59,7 +59,7 @@ class ExploreDbCacheService {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 7) {
+        if (oldVersion < 8) {
           await db.execute("DROP TABLE IF EXISTS cached_places");
           await db.execute("DROP TABLE IF EXISTS sync_grid_cells");
           await db.execute('''
@@ -312,6 +312,17 @@ class ExploreDbCacheService {
       await db.delete('cached_places', where: "id LIKE 'seed_%'");
     } catch (e) {
       debugPrint("ExploreDbCacheService Error clearing seeded places: $e");
+    }
+  }
+
+  static Future<void> clearCache() async {
+    try {
+      final db = await database;
+      await db.delete('cached_places');
+      await db.delete('sync_grid_cells');
+      debugPrint("ExploreDbCacheService: All local place caches and sync grid cells cleared successfully.");
+    } catch (e) {
+      debugPrint("ExploreDbCacheService Error clearing cache: $e");
     }
   }
 }
