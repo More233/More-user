@@ -122,6 +122,50 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
     );
   }
 
+  Widget _buildFilterChipList({
+    required List<String> options,
+    required List<String> selectedOptions,
+    required ValueChanged<List<String>> onChanged,
+  }) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((option) {
+        final isSelected = selectedOptions.contains(option);
+        return GestureDetector(
+          onTap: () {
+            final newList = List<String>.from(selectedOptions);
+            if (isSelected) {
+              newList.remove(option);
+            } else {
+              newList.add(option);
+            }
+            onChanged(newList);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFF7C57FC) : Colors.white,
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              option,
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? Colors.white : const Color(0xFF1A1A2E),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildSortBySelector() {
     final options = ['Relevance', 'Distance', 'Rating'];
     return Container(
@@ -347,9 +391,14 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
                   if (_isGoodForExpanded) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text(
-                        "Mock values: Brunch, Date, Quiet, Large groups",
-                        style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF82858C)),
+                      child: _buildFilterChipList(
+                        options: ['Brunch', 'Date', 'Quiet', 'Large groups'],
+                        selectedOptions: _state.goodFor,
+                        onChanged: (newList) {
+                          setState(() {
+                            _state = _state.copyWith(goodFor: newList);
+                          });
+                        },
                       ),
                     ),
                   ],
@@ -383,9 +432,14 @@ class _ExploreFilterSheetState extends State<ExploreFilterSheet> {
                   if (_isFeaturesExpanded) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text(
-                        "Mock values: Wi-Fi, Outdoor seating, Delivery",
-                        style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF82858C)),
+                      child: _buildFilterChipList(
+                        options: ['Wi-Fi', 'Outdoor seating', 'Delivery'],
+                        selectedOptions: _state.features,
+                        onChanged: (newList) {
+                          setState(() {
+                            _state = _state.copyWith(features: newList);
+                          });
+                        },
                       ),
                     ),
                   ],

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/story_editor_state.dart';
 import '../models/story_overlay_item.dart';
+import '../models/user_story_group.dart';
 import 'social_feed_view_model.dart';
 
 final storyEditorViewModelProvider = StateNotifierProvider.autoDispose<StoryEditorViewModel, StoryEditorState>((ref) {
@@ -265,7 +266,49 @@ class StoryEditorViewModel extends StateNotifier<StoryEditorState> {
     try {
       final client = Supabase.instance.client;
       final currentUser = client.auth.currentUser;
-      if (currentUser == null) throw Exception("User not authenticated");
+      
+      if (currentUser == null) {
+        final mockUserId = 'guest_user_id';
+        final mockUsername = 'guest_user';
+        final mockAvatar = 'assets/home/images/avatar_placeholder.png';
+
+        final overlaysJson = state.overlays.map((item) {
+          return {
+            'type': item.type,
+            'data': item.data,
+            'normalizedX': item.position.dx / canvasWidth,
+            'normalizedY': item.position.dy / canvasHeight,
+            'scale': item.scale,
+            'rotation': item.rotation,
+            'width': item.size.width,
+            'height': item.size.height,
+          };
+        }).toList();
+
+        final localStoryGroup = UserStoryGroup(
+          userId: mockUserId,
+          username: mockUsername,
+          avatarUrl: mockAvatar,
+          mediaUrls: [localFilePath],
+          createdTimes: [DateTime.now()],
+          storyIds: ['local_story_${DateTime.now().millisecondsSinceEpoch}'],
+          overlays: [overlaysJson],
+        );
+
+        final feedViewModel = _ref.read(socialFeedViewModelProvider.notifier);
+        final currentGroups = List<UserStoryGroup>.from(feedViewModel.state.storyGroups);
+        currentGroups.removeWhere((g) => g.userId == mockUserId);
+        currentGroups.insert(0, localStoryGroup);
+
+        feedViewModel.state = feedViewModel.state.copyWith(
+          storyGroups: currentGroups,
+          currentUserId: mockUserId,
+        );
+
+        state = state.copyWith(isPublishing: false);
+        onSuccess();
+        return;
+      }
 
       final file = File(localFilePath);
       if (!await file.exists()) throw Exception("Media file does not exist");

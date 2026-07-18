@@ -3,6 +3,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../view_models/messages_view_model.dart';
+import '../../view_models/social_feed_view_model.dart';
+import '../../../explore/view_models/explore_view_model.dart';
 import '../../profile_screen.dart';
 import '../../followers_following_screen.dart';
 import '../../home_screen.dart';
@@ -18,7 +22,7 @@ import '../../../settings/screens/settings_screen.dart';
 import '../../../settings/screens/help_support_screen.dart';
 
 
-class UserDrawer extends StatefulWidget {
+class UserDrawer extends ConsumerStatefulWidget {
   final VoidCallback? onProfileUpdated;
   final VoidCallback? onCloseMenu;
 
@@ -29,10 +33,10 @@ class UserDrawer extends StatefulWidget {
   });
 
   @override
-  State<UserDrawer> createState() => _UserDrawerState();
+  ConsumerState<UserDrawer> createState() => _UserDrawerState();
 }
 
-class _UserDrawerState extends State<UserDrawer> {
+class _UserDrawerState extends ConsumerState<UserDrawer> {
   bool _loading = true;
   String _fullName = '';
   String _username = '';
@@ -407,10 +411,9 @@ class _UserDrawerState extends State<UserDrawer> {
                         _buildDrawerItem(
                           icon: CupertinoIcons.square_arrow_left,
                           title: 'Logout',
-                          onTap: () async {
+                          onTap: () {
                             HapticFeedback.lightImpact();
-                            widget.onCloseMenu?.call();
-                            await Supabase.instance.client.auth.signOut();
+                            _showLogoutConfirmationDialog(context);
                           },
                         ),
                       ],
@@ -419,6 +422,130 @@ class _UserDrawerState extends State<UserDrawer> {
                 ],
               ),
             ),
+    );
+  }
+
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 12,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFEE2E2), // Light red background
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      CupertinoIcons.square_arrow_left,
+                      color: Color(0xFFEF4444), // Primary warning red
+                      size: 28,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Log out of More?',
+                  style: GoogleFonts.outfit(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF111827),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Are you sure you want to log out? You will need to re-authenticate the next time you sign in.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: const Color(0xFF6B7280),
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF4B5563),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          HapticFeedback.mediumImpact();
+                          Navigator.pop(context);
+                          widget.onCloseMenu?.call();
+                          ref.invalidate(messagesViewModelProvider);
+                          ref.invalidate(exploreViewModelProvider);
+                          ref.invalidate(socialFeedViewModelProvider);
+                          await Supabase.instance.client.auth.signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (context) => const AuthFlowPage()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        child: Container(
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444), // Red action button
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Log Out',
+                            style: GoogleFonts.outfit(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -614,6 +741,9 @@ class _UserDrawerState extends State<UserDrawer> {
                           ),
                           onTap: () async {
                             await AccountManager.saveCurrentAccount();
+                            ref.invalidate(messagesViewModelProvider);
+                            ref.invalidate(exploreViewModelProvider);
+                            ref.invalidate(socialFeedViewModelProvider);
                             await Supabase.instance.client.auth.signOut();
                             if (context.mounted) {
                               Navigator.pop(context);

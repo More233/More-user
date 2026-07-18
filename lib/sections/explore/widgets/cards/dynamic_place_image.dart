@@ -27,10 +27,8 @@ class DynamicPlaceImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Check if the imageUrl is a valid real photo (not null, not empty, and not an Unsplash placeholder)
     final bool hasRealImage = imageUrl != null &&
-                              imageUrl!.isNotEmpty &&
-                              !imageUrl!.contains('unsplash.com/photo-');
+                              imageUrl!.isNotEmpty;
 
     Widget displayWidget;
 

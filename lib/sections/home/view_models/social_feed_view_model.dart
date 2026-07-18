@@ -12,7 +12,7 @@ import '../models/social_feed_state.dart';
 import '../models/timeline_post.dart';
 import '../models/user_story_group.dart';
 
-final socialFeedViewModelProvider = StateNotifierProvider.autoDispose<SocialFeedViewModel, SocialFeedState>((ref) {
+final socialFeedViewModelProvider = StateNotifierProvider<SocialFeedViewModel, SocialFeedState>((ref) {
   final postRepo = ref.watch(postRepositoryProvider);
   final storyRepo = ref.watch(storyRepositoryProvider);
   return SocialFeedViewModel(postRepository: postRepo, storyRepository: storyRepo);
@@ -31,7 +31,11 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
   Future<void> init() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
+      if (_currentUserId == user.id && state.socialPosts.isNotEmpty) {
+        return;
+      }
       _currentUserId = user.id;
+      state = state.copyWith(currentUserId: _currentUserId);
       await StoryTracker().init();
       await refreshFeed();
     } else {
@@ -41,7 +45,7 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
 
   Future<void> refreshFeed() async {
     if (_currentUserId == null) return;
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, currentUserId: _currentUserId);
     try {
       final follows = await _postRepository.fetchFollows(_currentUserId!);
       await Future.wait([

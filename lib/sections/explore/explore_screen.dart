@@ -37,6 +37,7 @@ class ExploreScreen extends ConsumerStatefulWidget {
   final double? initialLatitude;
   final double? initialLongitude;
   final String? initialAddress;
+  final String? initialPlaceId;
 
   const ExploreScreen({
     super.key,
@@ -46,6 +47,7 @@ class ExploreScreen extends ConsumerStatefulWidget {
     this.initialLatitude,
     this.initialLongitude,
     this.initialAddress,
+    this.initialPlaceId,
   });
 
   @override
@@ -83,27 +85,68 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   void didUpdateWidget(ExploreScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialLatitude != oldWidget.initialLatitude ||
-        widget.initialLongitude != oldWidget.initialLongitude) {
+        widget.initialLongitude != oldWidget.initialLongitude ||
+        widget.initialPlaceId != oldWidget.initialPlaceId) {
       if (widget.initialLatitude != null && widget.initialLongitude != null) {
         _moveToInitialLocation(
           widget.initialLatitude!,
           widget.initialLongitude!,
           widget.initialAddress,
+          widget.initialPlaceId,
         );
       }
     }
   }
 
-  void _moveToInitialLocation(double lat, double lng, String? address) {
-    final latLng = LatLng(lat, lng);
-    _mapController?.easeTo(
-      mapbox.CameraOptions(
-        center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
-        zoom: 15.0,
-      ),
-      mapbox.MapAnimationOptions(duration: 1000),
-    );
-    _onMapTapped(latLng, ref.read(exploreViewModelProvider));
+  void _moveToInitialLocation(double lat, double lng, String? address, [String? placeId]) {
+    // Defer all state mutations until after the current frame is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      // Animate the map camera to the target location
+      _mapController?.easeTo(
+        mapbox.CameraOptions(
+          center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+          zoom: 17.0,
+        ),
+        mapbox.MapAnimationOptions(duration: 800),
+      );
+
+      final exploreState = ref.read(exploreViewModelProvider);
+
+      // 1. Try to find the exact place by place_id — most precise
+      if (placeId != null && placeId.isNotEmpty) {
+        final exactPlace = exploreState.allPlaces.firstWhere(
+          (p) => p['id']?.toString() == placeId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (exactPlace.isNotEmpty) {
+          ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(exactPlace);
+          return;
+        }
+      }
+
+      // 2. Fall back: find nearest place within 200m
+      Map<String, dynamic>? nearestPlace;
+      double nearestDistance = double.infinity;
+      for (final place in exploreState.allPlaces) {
+        final plat = (place['latitude'] as num?)?.toDouble();
+        final plng = (place['longitude'] as num?)?.toDouble();
+        if (plat == null || plng == null) continue;
+        final dist = Geolocator.distanceBetween(lat, lng, plat, plng);
+        if (dist < nearestDistance) {
+          nearestDistance = dist;
+          nearestPlace = place;
+        }
+      }
+      if (nearestPlace != null && nearestDistance <= 200) {
+        ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(nearestPlace);
+        return;
+      }
+
+      // 3. Last resort: generic reverse-geocode map tap (dropped pin)
+      _onMapTapped(LatLng(lat, lng), exploreState);
+    });
   }
 
   Future<void> _onMapTapped(LatLng latLng, ExploreState state) async {
@@ -1382,16 +1425,27 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     );
 
     if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Successfully checked in!"),
-          backgroundColor: Color(0xFF7C57FC),
-        ),
-      );
+      // Clear the Supabase in-memory cache so the new check-in post is fetched fresh
+      ExploreDataService.clearSupabaseCache();
+
       final exploreState = ref.read(exploreViewModelProvider);
       final lat = exploreState.userLocation?.latitude ?? 24.7136;
       final lng = exploreState.userLocation?.longitude ?? 46.6753;
+      // Re-fetch nearby places — the cleared cache forces a live Supabase query
       ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
+
+      // Also refresh the home timeline feed
+      ref.read(timelineViewModelProvider.notifier).loadPosts();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Successfully checked in!"),
+            backgroundColor: Color(0xFF7C57FC),
+          ),
+        );
+      }
+
       widget.onBackToTimeline();
     }
   }

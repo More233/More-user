@@ -1270,12 +1270,7 @@ class ExploreDataService {
       var venuesQuery = client
           .from('custom_venues')
           .select('*, creator:profiles(*)');
-
-      if (currentUserId != null) {
-        venuesQuery = venuesQuery.or('is_private.eq.false,user_id.eq.$currentUserId');
-      } else {
-        venuesQuery = venuesQuery.eq('is_private', false);
-      }
+      // Note: custom_venues does not have an is_private column — fetch all venues in the area
 
       if (boxSize != null) {
         final double latMin = lat - boxSize;

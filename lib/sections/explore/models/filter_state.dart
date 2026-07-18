@@ -11,6 +11,9 @@ class FilterState {
   final bool openAt;
   final bool liked;
 
+  final List<String> goodFor;
+  final List<String> features;
+
   FilterState({
     this.maxDistance,
     this.openNow = false,
@@ -23,6 +26,8 @@ class FilterState {
     this.sortBy = 'Relevance',
     this.openAt = false,
     this.liked = false,
+    this.goodFor = const [],
+    this.features = const [],
   });
 
   FilterState copyWith({
@@ -37,6 +42,8 @@ class FilterState {
     String? sortBy,
     bool? openAt,
     bool? liked,
+    List<String>? goodFor,
+    List<String>? features,
   }) {
     return FilterState(
       maxDistance: maxDistance != null ? maxDistance() : this.maxDistance,
@@ -50,6 +57,8 @@ class FilterState {
       sortBy: sortBy ?? this.sortBy,
       openAt: openAt ?? this.openAt,
       liked: liked ?? this.liked,
+      goodFor: goodFor ?? this.goodFor,
+      features: features ?? this.features,
     );
   }
 
@@ -64,6 +73,8 @@ class FilterState {
         onList ||
         sortBy != 'Relevance' ||
         openAt ||
-        liked;
+        liked ||
+        goodFor.isNotEmpty ||
+        features.isNotEmpty;
   }
 }

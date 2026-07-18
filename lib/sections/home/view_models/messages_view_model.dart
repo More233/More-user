@@ -25,7 +25,7 @@ class MessagesState {
   }
 }
 
-final messagesViewModelProvider = StateNotifierProvider.autoDispose<MessagesViewModel, MessagesState>((ref) {
+final messagesViewModelProvider = StateNotifierProvider<MessagesViewModel, MessagesState>((ref) {
   final chatRepo = ref.watch(chatRepositoryProvider);
   return MessagesViewModel(chatRepository: chatRepo);
 });
@@ -39,7 +39,15 @@ class MessagesViewModel extends StateNotifier<MessagesState> {
       : super(MessagesState(threads: [], isLoading: true));
 
   Future<void> init(String currentUserId) async {
+    if (_currentUserId == currentUserId && state.threads.isNotEmpty) {
+      return;
+    }
     _currentUserId = currentUserId;
+    if (_messagesSubscription != null) {
+      Supabase.instance.client.removeChannel(_messagesSubscription!);
+      _messagesSubscription = null;
+    }
+    state = state.copyWith(isLoading: true);
     await loadData();
     _subscribeToMessages();
   }

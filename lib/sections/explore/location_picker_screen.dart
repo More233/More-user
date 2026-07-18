@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 import '../../config/secrets.dart';
 
 class LocationPickerScreen extends StatefulWidget {
@@ -103,6 +105,27 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     }
   }
 
+  Future<String> _reverseGeocode(double lat, double lng) async {
+    final token = const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken);
+    final url = Uri.parse("https://api.mapbox.com/geocoding/v5/mapbox.places/$lng,$lat.json?access_token=$token&limit=1");
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final features = data['features'] as List<dynamic>?;
+        if (features != null && features.isNotEmpty) {
+          final placeName = features[0]['place_name'] as String?;
+          if (placeName != null && placeName.isNotEmpty) {
+            return placeName;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error reverse geocoding: $e");
+    }
+    return "Lat: ${lat.toStringAsFixed(4)}, Lng: ${lng.toStringAsFixed(4)}";
+  }
+
   @override
   Widget build(BuildContext context) {
     final double topPadding = MediaQuery.of(context).padding.top;
@@ -199,7 +222,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                                 ? Image.network(_avatarUrl!, fit: BoxFit.cover)
                                 : Image.asset(_avatarUrl!, fit: BoxFit.cover))
                             : Image.asset(
-                                'assets/home/images/avatar.png',
+                                'assets/home/images/avatar_placeholder.png',
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Color(0xFF82858C)),
                               ),
@@ -279,19 +302,26 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
             child: SizedBox(
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
-                  // Get simulated address name based on coordinates
-                  String mockAddress = "Cairo, Cairo 11568, Egypt";
+                onPressed: () async {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC))),
+                  );
+                  String address;
                   if (_searchController.text.isNotEmpty) {
-                    mockAddress = _searchController.text;
+                    address = _searchController.text;
                   } else {
-                    mockAddress = "Lat: ${_currentCenter.latitude.toStringAsFixed(4)}, Lng: ${_currentCenter.longitude.toStringAsFixed(4)}";
+                    address = await _reverseGeocode(_currentCenter.latitude, _currentCenter.longitude);
                   }
-                  Navigator.pop(context, {
-                    'latitude': _currentCenter.latitude,
-                    'longitude': _currentCenter.longitude,
-                    'address': mockAddress,
-                  });
+                  if (context.mounted) {
+                    Navigator.pop(context); // Pop loading dialog
+                    Navigator.pop(context, {
+                      'latitude': _currentCenter.latitude,
+                      'longitude': _currentCenter.longitude,
+                      'address': address,
+                    });
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7C57FC),

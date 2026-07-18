@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/place_details_state.dart';
@@ -38,24 +39,55 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
     super.dispose();
   }
 
-  void _submitReview(int ratingIndex) {
-    String status = "";
-    if (ratingIndex == 0) status = "Sad/Bad";
-    if (ratingIndex == 1) status = "Okay";
-    if (ratingIndex == 2) status = "Happy/Great";
+  void _submitReview(int ratingIndex) async {
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
+    if (user == null) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          "تم إرسال تقييمك ($status) بنجاح!",
-          style: GoogleFonts.ibmPlexSansArabic(),
+    String status = "";
+    int ratingVal = 1;
+    if (ratingIndex == 0) {
+      status = "Sad/Bad";
+      ratingVal = 1;
+    }
+    if (ratingIndex == 1) {
+      status = "Okay";
+      ratingVal = 2;
+    }
+    if (ratingIndex == 2) {
+      status = "Happy/Great";
+      ratingVal = 3;
+    }
+
+    try {
+      await client.from('feedbacks').insert({
+        'user_id': user.id,
+        'category': 'place_review',
+        'content': 'Place feedback: $status',
+        'rating': ratingVal,
+        'place_id': widget.place['id']?.toString(),
+      });
+    } catch (e) {
+      debugPrint("Error submitting review: $e");
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "تم إرسال تقييمك ($status) بنجاح!",
+            style: GoogleFonts.ibmPlexSansArabic(),
+          ),
+          backgroundColor: const Color(0xFF7C57FC),
         ),
-        backgroundColor: const Color(0xFF7C57FC),
-      ),
-    );
+      );
+    }
   }
 
   void _sharePlace() {
+    final String shareUrl = "https://more.app/places/${widget.place['id']}";
+    Clipboard.setData(ClipboardData(text: shareUrl));
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(

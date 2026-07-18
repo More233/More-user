@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/repositories/explore_repository.dart';
 import '../../../data/repositories/explore_repository_impl.dart';
 import '../helpers/bookmark_tracker.dart';
@@ -12,7 +13,7 @@ import '../services/explore_db_cache_service.dart';
 import '../models/explore_state.dart';
 import '../models/filter_state.dart';
 
-final exploreViewModelProvider = StateNotifierProvider.autoDispose<ExploreViewModel, ExploreState>((ref) {
+final exploreViewModelProvider = StateNotifierProvider<ExploreViewModel, ExploreState>((ref) {
   final exploreRepo = ref.watch(exploreRepositoryProvider);
   return ExploreViewModel(exploreRepository: exploreRepo);
 });
@@ -25,6 +26,9 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
 
 
   Future<void> init() async {
+    if (state.allPlaces.isNotEmpty && state.userLocation != null) {
+      return;
+    }
     await BookmarkTracker().init();
     final savedPlaces = BookmarkTracker().getBookmarkedPlaces();
     
@@ -257,6 +261,11 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       postsRaw.addAll(supabaseData['postsRaw'] as List? ?? []);
     }
 
+    // Track which place IDs the *current* user has visited so we can mark
+    // those Foursquare places as isVisited = true (powers the Visited filter).
+    final String? currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final Set<String> currentUserVisitedPlaceIds = {};
+
     final placeVisitorCounts = <String, int>{};
     final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
     final placeSeenUser = <String, Set<String>>{};
@@ -266,16 +275,22 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final placeId = post['place_id']?.toString();
       if (placeId != null && placeId.isNotEmpty) {
         final author = post['author'] as Map<String, dynamic>?;
+        final authorId = author?['id'] as String?;
         final authorName = author != null ? '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim() : 'Anonymous';
         final authorAvatar = author?['avatar_url'] as String?;
         final createdAt = post['created_at'] as String? ?? '';
         final double weight = ExploreScreenHelpers.calculateTimeDecayWeight(createdAt);
+
+        // Mark this place as visited by the current user
+        if (currentUserId != null && authorId == currentUserId) {
+          currentUserVisitedPlaceIds.add(placeId);
+        }
         
         placeSeenUser.putIfAbsent(placeId, () => <String>{});
         if (!placeSeenUser[placeId]!.contains(authorName)) {
           placeSeenUser[placeId]!.add(authorName);
           placeVisitorsMap.putIfAbsent(placeId, () => <Map<String, dynamic>>[]).add({
-            'userId': author?['id'] as String?,
+            'userId': authorId,
             'name': authorName,
             'avatarUrl': authorAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
             'createdAt': createdAt,
@@ -294,6 +309,10 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final pid = p['id'].toString();
       final updated = Map<String, dynamic>.from(p);
       updated['isSaved'] = BookmarkTracker().isBookmarked(pid);
+      // If the current user has a check-in post for this place, mark it as visited
+      if (currentUserVisitedPlaceIds.contains(pid)) {
+        updated['isVisited'] = true;
+      }
       final int baseCount = p['basePeopleCount'] as int? ?? p['peopleCount'] as int? ?? 0;
       if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
         updated['peopleCount'] = (placeVisitorCounts[pid] ?? 0) + baseCount;

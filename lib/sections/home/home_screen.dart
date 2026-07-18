@@ -43,6 +43,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   double? _selectedExploreLat;
   double? _selectedExploreLng;
   String? _selectedExploreAddress;
+  String? _selectedExplorePlaceId;
   bool _isHeaderVisible = true;
   bool _isNavBarVisible = true;
 
@@ -220,7 +221,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return const ShareBottomSheet();
+        return ShareBottomSheet(post: post);
       },
     );
   }
@@ -259,6 +260,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
       ref.read(timelineViewModelProvider.notifier).loadPosts();
       ref.read(timelineViewModelProvider.notifier).completeFirstCheckIn();
       ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
+      // Clear the Supabase cache so the new check-in post is fetched fresh on the map
+      ExploreDataService.clearSupabaseCache();
       final exploreState = ref.read(exploreViewModelProvider);
       final lat = exploreState.userLocation?.latitude ?? 24.7136;
       final lng = exploreState.userLocation?.longitude ?? 46.6753;
@@ -280,6 +283,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           initialLatitude: _selectedExploreLat,
           initialLongitude: _selectedExploreLng,
           initialAddress: _selectedExploreAddress,
+          initialPlaceId: _selectedExplorePlaceId,
           onBackToTimeline: () {
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
           },
@@ -338,11 +342,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 onBookmark: _handleBookmarkTap,
                 onComment: _openComments,
                 onShare: _openShare,
-                onLocationTapped: (lat, lng, address) {
+                onLocationTapped: (lat, lng, address, placeId) {
                   setState(() {
                     _selectedExploreLat = lat;
                     _selectedExploreLng = lng;
                     _selectedExploreAddress = address;
+                    _selectedExplorePlaceId = placeId;
                   });
                   ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
                 },

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/timeline_post.dart';
+import '../../profile_screen.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final TimelinePost post;
@@ -21,6 +22,7 @@ class CommentsBottomSheet extends StatefulWidget {
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final TextEditingController _commentController = TextEditingController();
   String? _currentUserAvatar;
+  bool _showEmojiPicker = false;
 
   List<Map<String, String>> _allProfiles = [
     {
@@ -116,6 +118,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           authorAvatar: authorAvatar,
           commentText: text,
           timeAgo: timeAgo,
+          authorId: row['user_id'] as String?,
         ));
       }
 
@@ -232,6 +235,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
       authorAvatar: avatar,
       commentText: text,
       timeAgo: 'Just now',
+      authorId: currentUser.id,
     );
 
     widget.onCommentAdded(comment);
@@ -261,6 +265,37 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             'post_id': widget.post.id,
             'metadata': {'comment': text},
           });
+        }
+      }
+
+      // Parse mentions
+      final RegExp mentionRegex = RegExp(r'@([a-zA-Z0-9_\.]+)');
+      final matches = mentionRegex.allMatches(text);
+      final Set<String> mentionedUsernames = {};
+      for (final match in matches) {
+        final u = match.group(1);
+        if (u != null) {
+          mentionedUsernames.add(u);
+        }
+      }
+
+      if (mentionedUsernames.isNotEmpty) {
+        final profilesResponse = await client
+            .from('profiles')
+            .select('id, username')
+            .inFilter('username', mentionedUsernames.toList());
+
+        for (final profile in profilesResponse) {
+          final receiverId = profile['id'] as String;
+          if (receiverId != currentUser.id) {
+            await client.from('notifications').insert({
+              'sender_id': currentUser.id,
+              'receiver_id': receiverId,
+              'type': 'comment_mention',
+              'post_id': widget.post.id,
+              'metadata': {'comment': text},
+            });
+          }
         }
       }
     } catch (e) {
@@ -444,14 +479,26 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Avatar
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.grey[200],
-            backgroundImage: comment.authorAvatar.startsWith('http')
-                ? NetworkImage(comment.authorAvatar) as ImageProvider
-                : (comment.authorAvatar.isNotEmpty
-                    ? AssetImage(comment.authorAvatar)
-                    : const AssetImage('assets/home/images/element.png')) as ImageProvider,
+          GestureDetector(
+            onTap: () {
+              if (comment.authorId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfileScreen(userId: comment.authorId),
+                  ),
+                );
+              }
+            },
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.grey[200],
+              backgroundImage: comment.authorAvatar.startsWith('http')
+                  ? NetworkImage(comment.authorAvatar) as ImageProvider
+                  : (comment.authorAvatar.isNotEmpty
+                      ? AssetImage(comment.authorAvatar)
+                      : const AssetImage('assets/home/images/element.png')) as ImageProvider,
+            ),
           ),
           const SizedBox(width: 12),
           // Details
@@ -461,12 +508,24 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      comment.authorName,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
+                    GestureDetector(
+                      onTap: () {
+                        if (comment.authorId != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProfileScreen(userId: comment.authorId),
+                            ),
+                          );
+                        }
+                      },
+                      child: Text(
+                        comment.authorName,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -569,80 +628,139 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   }
 
   Widget _buildInputBar() {
+    final emojis = ['😊', '😂', '❤️', '👍', '🔥', '😍', '🙌', '✨', '👏'];
+
     return SafeArea(
       top: false,
-      child: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            // Profile avatar
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: _currentUserAvatar != null && _currentUserAvatar!.isNotEmpty
-                  ? NetworkImage(_currentUserAvatar!) as ImageProvider
-                  : const AssetImage('assets/home/images/element.png'),
-            ),
-            const SizedBox(width: 12),
-            // TextField
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF6F6F6),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _commentController,
-                        style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Add a comment...',
-                          hintStyle: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 14,
-                            color: const Color(0xFF82858C),
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_showEmojiPicker)
+            Container(
+              height: 48,
+              color: const Color(0xFFF9F9F9),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: emojis.length,
+                itemBuilder: (context, index) {
+                  final emoji = emojis[index];
+                  return GestureDetector(
+                    onTap: () {
+                      final currentText = _commentController.text;
+                      final selection = _commentController.selection;
+                      
+                      // Append emoji to text and keep cursor position intact
+                      String newText;
+                      int newCursorPosition;
+                      
+                      if (selection.start >= 0) {
+                        newText = currentText.replaceRange(selection.start, selection.end, emoji);
+                        newCursorPosition = selection.start + emoji.length;
+                      } else {
+                        newText = currentText + emoji;
+                        newCursorPosition = newText.length;
+                      }
+                      
+                      _commentController.text = newText;
+                      _commentController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: newCursorPosition),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Center(
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 22),
                         ),
-                        onSubmitted: (_) => _submitComment(),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    // Emoji button icon (placeholder)
-                    Icon(
-                      Icons.sentiment_satisfied_alt_outlined,
-                      color: Colors.grey.withValues(alpha: 0.7),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
-            const SizedBox(width: 12),
-            // Send button
-            GestureDetector(
-              onTap: _submitComment,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF7C57FC),
-                  shape: BoxShape.circle,
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                // Profile avatar
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: _currentUserAvatar != null && _currentUserAvatar!.isNotEmpty
+                      ? NetworkImage(_currentUserAvatar!) as ImageProvider
+                      : const AssetImage('assets/home/images/element.png'),
                 ),
-                child: const Center(
-                  child: Icon(
-                    Icons.send,
-                    size: 16,
-                    color: Colors.white,
+                const SizedBox(width: 12),
+                // TextField
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F6F6),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Add a comment...',
+                              hintStyle: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 14,
+                                color: const Color(0xFF82858C),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            onSubmitted: (_) => _submitComment(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Emoji button icon (interactive)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _showEmojiPicker = !_showEmojiPicker;
+                            });
+                          },
+                          child: Icon(
+                            Icons.sentiment_satisfied_alt_outlined,
+                            color: _showEmojiPicker ? const Color(0xFF7C57FC) : Colors.grey.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                // Send button
+                GestureDetector(
+                  onTap: _submitComment,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF7C57FC),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.send,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

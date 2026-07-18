@@ -67,7 +67,9 @@ extension _StoryViewerLogic on _StoryViewerState {
       }
 
       _initializingUrls.add(url);
-      final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+       final controller = url.startsWith('http')
+          ? VideoPlayerController.networkUrl(Uri.parse(url))
+          : VideoPlayerController.file(File(url));
       controller.initialize().then((_) {
         if (mounted) {
           _videoControllers[url] = controller;
@@ -142,46 +144,6 @@ extension _StoryViewerLogic on _StoryViewerState {
     ref.read(storyViewModelProvider(widget.initialGroupIndex).notifier).previousStory(widget.storyGroups);
   }
 
-  List<Map<String, dynamic>> _getMockViewers() {
-    return [
-      {
-        'user': {
-          'username': 'karennne',
-          'first_name': 'Karen',
-          'last_name': '',
-          'avatar_url': 'assets/home/images/avatar_female.png',
-        },
-        'badge': 'heart',
-      },
-      {
-        'user': {
-          'username': 'Sam_TD',
-          'first_name': 'Sam',
-          'last_name': '',
-          'avatar_url': 'assets/home/images/avatar_male.png',
-        },
-        'badge': null,
-      },
-      {
-        'user': {
-          'username': 'kieron_d',
-          'first_name': 'Kieron',
-          'last_name': '',
-          'avatar_url': 'assets/home/images/avatar.png',
-        },
-        'badge': 'fire',
-      },
-      {
-        'user': {
-          'username': 'craig_love',
-          'first_name': 'Craig',
-          'last_name': 'Love',
-          'avatar_url': 'assets/home/images/profile_image2.png',
-        },
-        'badge': null,
-      },
-    ];
-  }
 
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();

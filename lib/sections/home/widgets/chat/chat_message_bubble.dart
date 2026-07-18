@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../helpers/chat_svgs.dart';
 import '../../view_models/conversation_view_model.dart';
@@ -24,7 +26,7 @@ class ChatMessageBubble extends ConsumerWidget {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }
@@ -283,6 +285,7 @@ class ChatMessageBubble extends ConsumerWidget {
     final isSent = msg['sender_id'] == currentUserId;
     final type = msg['message_type'] ?? 'text';
     final content = msg['content'] ?? '';
+    final isStoryMedia = type == 'story_share' || content.contains('_story.');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -306,14 +309,14 @@ class ChatMessageBubble extends ConsumerWidget {
               child: Container(
                 padding: type == 'text'
                     ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
-                    : (type == 'image' || type == 'story_share')
+                    : (type == 'image' || type == 'story_share' || isStoryMedia)
                         ? const EdgeInsets.all(2)
                         : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: type == 'story_share'
+                  color: (type == 'story_share' || isStoryMedia)
                       ? Colors.transparent
                       : (isSent ? const Color(0xFF7C57FC) : const Color(0xFFF1F1F1)),
-                  borderRadius: type == 'story_share'
+                  borderRadius: (type == 'story_share' || isStoryMedia)
                       ? null
                       : BorderRadius.only(
                           topLeft: const Radius.circular(16),
@@ -348,7 +351,7 @@ class ChatMessageBubble extends ConsumerWidget {
                           ],
                         ],
                       )
-                    : type == 'story_share'
+                    : (type == 'story_share' || isStoryMedia)
                         ? Column(
                             crossAxisAlignment: isSent ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
@@ -405,19 +408,44 @@ class ChatMessageBubble extends ConsumerWidget {
                                         maxHeight: 300,
                                         maxWidth: 250,
                                       ),
-                                      child: Image.network(
-                                        content,
-                                        width: 250,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Container(
-                                            width: 250,
-                                            height: 200,
-                                            color: Colors.grey[300],
-                                            child: const Icon(Icons.broken_image, color: Colors.grey),
-                                          );
-                                        },
-                                      ),
+                                      child: content.startsWith('http')
+                                          ? CachedNetworkImage(
+                                              imageUrl: content,
+                                              width: 250,
+                                              fit: BoxFit.cover,
+                                              placeholder: (context, url) => Container(
+                                                width: 250,
+                                                height: 200,
+                                                color: Colors.grey[200],
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              errorWidget: (context, url, error) => Container(
+                                                width: 250,
+                                                height: 200,
+                                                color: Colors.grey[300],
+                                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                                              ),
+                                            )
+                                          : Image.file(
+                                              File(content),
+                                              width: 250,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                width: 250,
+                                                height: 200,
+                                                color: Colors.grey[300],
+                                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                                              ),
+                                            ),
                                     ),
                                     if (isSent)
                                       Positioned(
@@ -494,8 +522,8 @@ class _StorySharePreviewState extends State<StorySharePreview> {
   Widget build(BuildContext context) {
     if (_controller != null) {
       return Container(
-        width: 150,
-        height: 260,
+        width: 160,
+        height: 284,
         color: Colors.black87,
         child: _isInitialized
             ? ClipRRect(
@@ -521,19 +549,50 @@ class _StorySharePreviewState extends State<StorySharePreview> {
       );
     }
 
-    return Image.network(
-      widget.url,
-      width: 150,
-      height: 260,
+    final isNetwork = widget.url.startsWith('http');
+    if (!isNetwork) {
+      return Image.file(
+        File(widget.url),
+        width: 160,
+        height: 284,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 160,
+            height: 284,
+            color: Colors.grey[300],
+            child: const Icon(Icons.broken_image, color: Colors.grey),
+          );
+        },
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: widget.url,
+      width: 160,
+      height: 284,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          width: 150,
-          height: 260,
-          color: Colors.grey[300],
-          child: const Icon(Icons.broken_image, color: Colors.grey),
-        );
-      },
+      placeholder: (context, url) => Container(
+        width: 160,
+        height: 284,
+        color: Colors.grey[200],
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+            ),
+          ),
+        ),
+      ),
+      errorWidget: (context, url, error) => Container(
+        width: 160,
+        height: 284,
+        color: Colors.grey[300],
+        child: const Icon(Icons.broken_image, color: Colors.grey),
+      ),
     );
   }
 }

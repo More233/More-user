@@ -49,8 +49,6 @@ void showViewsBottomSheet({
   required AnimationController animationController,
   required StoryViewState storyState,
   required String currentStoryId,
-  required ValueNotifier<bool> simulateViewsNotifier,
-  required List<Map<String, dynamic>> mockViewers,
 }) {
   animationController.stop();
   showModalBottomSheet(
@@ -58,26 +56,16 @@ void showViewsBottomSheet({
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
     builder: (context) {
-      return ValueListenableBuilder<bool>(
-        valueListenable: simulateViewsNotifier,
-        builder: (context, simulateViewsVal, child) {
-          return StoryViewsSheet(
-            storyState: storyState,
-            currentStoryId: currentStoryId,
-            simulateViews: simulateViewsVal,
-            onSimulateViewsChanged: (val) {
-              simulateViewsNotifier.value = val;
-            },
-            onDeletePressed: () => confirmDeleteStory(
-              context: context,
-              ref: ref,
-              initialGroupIndex: initialGroupIndex,
-              animationController: animationController,
-              storyId: currentStoryId,
-            ),
-            mockViewers: mockViewers,
-          );
-        },
+      return StoryViewsSheet(
+        storyState: storyState,
+        currentStoryId: currentStoryId,
+        onDeletePressed: () => confirmDeleteStory(
+          context: context,
+          ref: ref,
+          initialGroupIndex: initialGroupIndex,
+          animationController: animationController,
+          storyId: currentStoryId,
+        ),
       );
     },
   ).then((_) {

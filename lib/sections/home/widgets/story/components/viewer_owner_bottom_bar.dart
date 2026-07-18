@@ -5,26 +5,20 @@ class ViewerOwnerBottomBar extends StatelessWidget {
   final String currentStoryId;
   final String currentMediaUrl;
   final List<Map<String, dynamic>> viewers;
-  final ValueNotifier<bool> simulateViewsNotifier;
   final VoidCallback onActivityTap;
   final VoidCallback onDeleteTap;
-  final List<Map<String, dynamic>> Function() getMockViewers;
 
   const ViewerOwnerBottomBar({
     super.key,
     required this.currentStoryId,
     required this.currentMediaUrl,
     required this.viewers,
-    required this.simulateViewsNotifier,
     required this.onActivityTap,
     required this.onDeleteTap,
-    required this.getMockViewers,
   });
 
   Widget _buildOverlappingAvatars(List<Map<String, dynamic>> viewersList) {
-    final list = simulateViewsNotifier.value || viewersList.isNotEmpty 
-        ? (viewersList.isNotEmpty ? viewersList : getMockViewers()) 
-        : <Map<String, dynamic>>[];
+    final list = viewersList;
         
     if (list.isEmpty) {
       return const Icon(
@@ -75,9 +69,7 @@ class ViewerOwnerBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final list = simulateViewsNotifier.value || viewers.isNotEmpty 
-        ? (viewers.isNotEmpty ? viewers : getMockViewers()) 
-        : <Map<String, dynamic>>[];
+    final list = viewers;
     final int viewCount = list.length;
 
     return Container(
@@ -98,10 +90,7 @@ class ViewerOwnerBottomBar extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ValueListenableBuilder<bool>(
-                  valueListenable: simulateViewsNotifier,
-                  builder: (context, val, child) => _buildOverlappingAvatars(viewers),
-                ),
+                _buildOverlappingAvatars(viewers),
                 const SizedBox(width: 10),
                 Text(
                   "$viewCount",

@@ -8,6 +8,7 @@ import '../../models/user_story_group.dart';
 import '../../view_models/messages_view_model.dart';
 import '../common/custom_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MessagesScreen extends ConsumerStatefulWidget {
   final Set<String> followedUsernames;
@@ -318,7 +319,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }
@@ -537,6 +538,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                         Expanded(
                           child: TextField(
                             controller: _searchController,
+                            autofocus: true,
                             style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
                             decoration: InputDecoration(
                               hintText: 'Search',

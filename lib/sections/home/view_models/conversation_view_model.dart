@@ -197,22 +197,12 @@ class ConversationViewModel extends StateNotifier<ConversationState> {
       }
 
       try {
-        if (url == 'mock_audio_url') {
-          _playbackTimer?.cancel();
-          _playbackTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-            double newProgress = state.playbackProgress + (0.1 * state.playbackSpeed) / durationSeconds;
-            if (newProgress >= 1.0) {
-              newProgress = 1.0;
-              _playbackTimer?.cancel();
-              state = state.copyWith(playbackProgress: 1.0, clearActiveAudio: true);
-            } else {
-              state = state.copyWith(playbackProgress: newProgress);
-            }
-          });
-        } else {
-          await _audioPlayer.setPlaybackRate(state.playbackSpeed);
-          await _audioPlayer.play(UrlSource(url));
+        String finalUrl = url;
+        if (finalUrl == 'mock_audio_url') {
+          finalUrl = 'https://www.w3schools.com/html/horse.mp3';
         }
+        await _audioPlayer.setPlaybackRate(state.playbackSpeed);
+        await _audioPlayer.play(UrlSource(finalUrl));
       } catch (e) {
         debugPrint("Error playing audio: $e");
       }

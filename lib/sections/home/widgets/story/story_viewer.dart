@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,7 +44,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
   late TextEditingController _textController;
   late FocusNode _focusNode;
   
-  final ValueNotifier<bool> _simulateViewsNotifier = ValueNotifier(false);
   final ValueNotifier<int> _videoCacheRevisionNotifier = ValueNotifier(0);
 
   // Cached video player controllers to avoid lag and recreate delays
@@ -111,7 +111,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
     _animationController.dispose();
     _textController.dispose();
     _focusNode.dispose();
-    _simulateViewsNotifier.dispose();
     _videoCacheRevisionNotifier.dispose();
     // Dispose all preloaded video controllers
     for (final controller in _videoControllers.values) {
@@ -226,8 +225,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                   animationController: _animationController,
                                   storyState: storyState,
                                   currentStoryId: currentGroup.storyIds[storyState.currentStoryIndex],
-                                  simulateViewsNotifier: _simulateViewsNotifier,
-                                  mockViewers: _getMockViewers(),
                                 );
                               }
                             } else if (details.primaryVelocity != null && details.primaryVelocity! > 100) {
@@ -288,32 +285,39 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                                 }
                                               },
                                             )
-                                          : CachedNetworkImage(
-                                              imageUrl: currentMediaUrl,
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                              height: double.infinity,
-                                              placeholder: (context, url) {
-                                                // Make sure timer runs on image
-                                                if (_animationController.duration != const Duration(seconds: 5)) {
-                                                  _animationController.duration = const Duration(seconds: 5);
-                                                  if (_animationController.isAnimating) {
-                                                    _animationController.forward(from: _animationController.value);
-                                                  }
-                                                }
-                                                return const Center(
-                                                  child: CircularProgressIndicator(
-                                                    color: Colors.white,
+                                          : (currentMediaUrl.startsWith('http')
+                                              ? CachedNetworkImage(
+                                                  imageUrl: currentMediaUrl,
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                  placeholder: (context, url) {
+                                                    // Make sure timer runs on image
+                                                    if (_animationController.duration != const Duration(seconds: 5)) {
+                                                      _animationController.duration = const Duration(seconds: 5);
+                                                      if (_animationController.isAnimating) {
+                                                        _animationController.forward(from: _animationController.value);
+                                                      }
+                                                    }
+                                                    return const Center(
+                                                      child: CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                      ),
+                                                    );
+                                                  },
+                                                  errorWidget: (context, url, error) => Container(
+                                                    color: Colors.grey[900],
+                                                    child: const Center(
+                                                      child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                                                    ),
                                                   ),
-                                                );
-                                              },
-                                              errorWidget: (context, url, error) => Container(
-                                                color: Colors.grey[900],
-                                                child: const Center(
-                                                  child: Icon(Icons.broken_image, color: Colors.white54, size: 48),
-                                                ),
-                                              ),
-                                            ),
+                                                )
+                                              : Image.file(
+                                                  File(currentMediaUrl),
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
+                                                )),
                                     ),
                                     ...storyOverlays.map((itemMap) {
                                       final item = Map<String, dynamic>.from(itemMap as Map? ?? {});
@@ -485,7 +489,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                 currentStoryId: currentGroup.storyIds[storyState.currentStoryIndex],
                 currentMediaUrl: currentMediaUrl,
                 viewers: storyState.viewers,
-                simulateViewsNotifier: _simulateViewsNotifier,
                 onActivityTap: () => showViewsBottomSheet(
                   context: context,
                   ref: ref,
@@ -493,8 +496,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                   animationController: _animationController,
                   storyState: storyState,
                   currentStoryId: currentGroup.storyIds[storyState.currentStoryIndex],
-                  simulateViewsNotifier: _simulateViewsNotifier,
-                  mockViewers: _getMockViewers(),
                 ),
                 onDeleteTap: () => confirmDeleteStory(
                   context: context,
@@ -503,7 +504,6 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                   animationController: _animationController,
                   storyId: currentGroup.storyIds[storyState.currentStoryIndex],
                 ),
-                getMockViewers: _getMockViewers,
               ),
             ),
         ],

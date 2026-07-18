@@ -98,6 +98,9 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
         } else if (type == 'comment') {
           final commentText = row['metadata']?['comment'] as String? ?? '';
           text = 'commented on your check-in: "$commentText"';
+        } else if (type == 'comment_mention') {
+          final commentText = row['metadata']?['comment'] as String? ?? '';
+          text = 'mentioned you in a comment: "$commentText"';
         } else if (type == 'mention') {
           text = 'mentioned you in their story.';
         }

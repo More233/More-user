@@ -6,19 +6,13 @@ import '../../models/story_view_state.dart';
 class StoryViewsSheet extends StatelessWidget {
   final StoryViewState storyState;
   final String currentStoryId;
-  final bool simulateViews;
-  final ValueChanged<bool> onSimulateViewsChanged;
   final VoidCallback onDeletePressed;
-  final List<Map<String, dynamic>> mockViewers;
 
   const StoryViewsSheet({
     super.key,
     required this.storyState,
     required this.currentStoryId,
-    required this.simulateViews,
-    required this.onSimulateViewsChanged,
     required this.onDeletePressed,
-    required this.mockViewers,
   });
 
   Widget _buildAvatarWithBadge(Map<String, dynamic> viewer) {
@@ -76,14 +70,8 @@ class StoryViewsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showMock = simulateViews && storyState.viewers.isEmpty;
-    final listToShow = storyState.viewers.isNotEmpty 
-        ? storyState.viewers 
-        : (showMock ? mockViewers : <Map<String, dynamic>>[]);
-        
-    final displayViewsCount = storyState.viewers.isNotEmpty 
-        ? storyState.viewsCount 
-        : listToShow.length;
+    final listToShow = storyState.viewers;
+    final displayViewsCount = storyState.viewsCount;
 
     return Container(
       decoration: const BoxDecoration(
@@ -163,22 +151,6 @@ class StoryViewsSheet extends StatelessWidget {
                 ),
               ),
             ),
-            Center(
-              child: TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  onSimulateViewsChanged(true);
-                },
-                icon: const Icon(Icons.bolt, color: Color(0xFF7C57FC)),
-                label: Text(
-                  "Simulate Views (Figma Demo)",
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    color: const Color(0xFF7C57FC),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
           ] else ...[
             Flexible(
               child: ListView.builder(
@@ -236,22 +208,6 @@ class StoryViewsSheet extends StatelessWidget {
                 },
               ),
             ),
-            if (simulateViews && storyState.viewers.isEmpty)
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    onSimulateViewsChanged(false);
-                  },
-                  child: Text(
-                    "Reset Simulation",
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ],
       ),

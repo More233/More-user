@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,7 +31,7 @@ class SocialFeedView extends ConsumerStatefulWidget {
   final Function(TimelinePost)? onComment;
   final Function(TimelinePost)? onShare;
   final Function(TimelinePost)? onBookmark;
-  final Function(double lat, double lng, String address)? onLocationTapped;
+  final Function(double lat, double lng, String address, String? placeId)? onLocationTapped;
 
   const SocialFeedView({
     super.key,
@@ -70,7 +71,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(socialFeedViewModelProvider);
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final currentUserId = state.currentUserId ?? Supabase.instance.client.auth.currentUser?.id;
 
     ref.listen(socialFeedViewModelProvider, (previous, next) {
       if (previous?.storyGroups != next.storyGroups) {
@@ -79,7 +80,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
     });
 
     final currentUserGroup = state.storyGroups.firstWhere(
-      (g) => g.userId == currentUserId,
+      (g) => currentUserId != null && g.userId == currentUserId,
       orElse: () => UserStoryGroup(
         userId: '',
         username: '',
@@ -227,10 +228,15 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                   child: currentUserGroup.mediaUrls.isNotEmpty
                                       ? (_isVideoFile(currentUserGroup.mediaUrls.first)
                                           ? VideoThumbnailPreview(videoUrl: currentUserGroup.mediaUrls.first)
-                                          : Image.network(
-                                              currentUserGroup.mediaUrls.first,
-                                              fit: BoxFit.cover,
-                                            ))
+                                          : (currentUserGroup.mediaUrls.first.startsWith('http')
+                                              ? Image.network(
+                                                  currentUserGroup.mediaUrls.first,
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : Image.file(
+                                                  File(currentUserGroup.mediaUrls.first),
+                                                  fit: BoxFit.cover,
+                                                )))
                                       : widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
                                           ? (widget.currentUserAvatarUrl!.startsWith('http')
                                               ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
@@ -346,14 +352,19 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                     child: group.mediaUrls.isNotEmpty
                                         ? (_isVideoFile(group.mediaUrls.first)
                                             ? VideoThumbnailPreview(videoUrl: group.mediaUrls.first)
-                                            : Image.network(
-                                                group.mediaUrls.first,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Image.asset(
-                                                  'assets/home/images/element.png',
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ))
+                                            : (group.mediaUrls.first.startsWith('http')
+                                                ? Image.network(
+                                                    group.mediaUrls.first,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                                                      'assets/home/images/element.png',
+                                                      fit: BoxFit.cover,
+                                                    ),
+                                                  )
+                                                : Image.file(
+                                                    File(group.mediaUrls.first),
+                                                    fit: BoxFit.cover,
+                                                  )))
                                         : Image.asset(
                                             'assets/home/images/element.png',
                                             fit: BoxFit.cover,
@@ -857,11 +868,11 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  if (post.locationAddress.isNotEmpty) ...[
+                   if (post.locationAddress.isNotEmpty || post.title.isNotEmpty) ...[
                     GestureDetector(
                       onTap: () async {
                         if (post.latitude != null && post.longitude != null && widget.onLocationTapped != null) {
-                          widget.onLocationTapped!(post.latitude!, post.longitude!, post.shortLocationAddress);
+                          widget.onLocationTapped!(post.latitude!, post.longitude!, post.shortLocationAddress, post.placeId);
                         } else {
                           final String query = (post.latitude != null && post.longitude != null)
                               ? '${post.latitude},${post.longitude}'
@@ -888,7 +899,8 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              post.shortLocationAddress,
+                              // Show place name as primary label; fall back to street address
+                              post.title.isNotEmpty ? post.shortTitle : post.shortLocationAddress,
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w400,

@@ -264,7 +264,8 @@ class TimelinePostCard extends StatelessWidget {
         const DotSeparator(),
         Flexible(
           child: Text(
-            post.shortLocationAddress,
+            // Show place name as primary label; fall back to street address
+            post.title.isNotEmpty ? post.shortTitle : post.shortLocationAddress,
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 14,
               fontWeight: FontWeight.w400,

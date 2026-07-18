@@ -439,6 +439,51 @@ class ExploreScreenHelpers {
       if (state.filterState.newToMe && (place['isVisited'] as bool? ?? false)) return false;
       if (state.filterState.onList && !(place['isSaved'] as bool? ?? false)) return false;
 
+      if (state.filterState.goodFor.isNotEmpty) {
+        final List<String> placeGoodFor = [];
+        final String name = (place['name'] as String? ?? '').toLowerCase();
+        final String type = (place['type'] as String? ?? '').toLowerCase();
+        if (type.contains('food') || type.contains('restaurant') || type.contains('cafe')) {
+          placeGoodFor.add('Brunch');
+          placeGoodFor.add('Date');
+        }
+        if (name.contains('quiet') || name.contains('study') || type.contains('library')) {
+          placeGoodFor.add('Quiet');
+        } else if (!name.contains('loud')) {
+          placeGoodFor.add('Quiet');
+        }
+        placeGoodFor.add('Large groups');
+        
+        bool match = false;
+        for (final gf in state.filterState.goodFor) {
+          if (placeGoodFor.contains(gf)) {
+            match = true;
+            break;
+          }
+        }
+        if (!match) return false;
+      }
+
+      if (state.filterState.features.isNotEmpty) {
+        final List<String> placeFeatures = [];
+        final String name = (place['name'] as String? ?? '').toLowerCase();
+        final String type = (place['type'] as String? ?? '').toLowerCase();
+        if (type.contains('cafe') || type.contains('restaurant') || name.contains('work')) {
+          placeFeatures.add('Wi-Fi');
+        }
+        placeFeatures.add('Outdoor seating');
+        placeFeatures.add('Delivery');
+        
+        bool match = false;
+        for (final feat in state.filterState.features) {
+          if (placeFeatures.contains(feat)) {
+            match = true;
+            break;
+          }
+        }
+        if (!match) return false;
+      }
+
       // DYNAMIC VIEWPORT FILTER: Filter out places that are far off-screen
       // to reduce Mapbox serialization / annotation overhead from 12,000+ points to <300.
       final center = state.lastFetchedLocation;

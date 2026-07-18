@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../models/timeline_post.dart';
 
 class ShareBottomSheet extends StatefulWidget {
-  const ShareBottomSheet({super.key});
+  final TimelinePost? post;
+  final Map<String, dynamic>? place;
+
+  const ShareBottomSheet({
+    super.key,
+    this.post,
+    this.place,
+  });
 
   @override
   State<ShareBottomSheet> createState() => _ShareBottomSheetState();
@@ -295,52 +303,117 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
                   ),
                   onPressed: _selectedUsernames.isEmpty
                       ? null
-                      : () {
-                          Navigator.pop(context);
+                      : () async {
                           final size = MediaQuery.of(context).size;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.only(
-                                bottom: size.height - 140,
-                                left: 24,
-                                right: 24,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              backgroundColor: Colors.black.withValues(alpha: 0.9),
-                              elevation: 6,
-                              duration: const Duration(seconds: 3),
-                              content: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Color(0xFF7C57FC),
-                                    ),
-                                    child: const Icon(
-                                      Icons.check,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      'Shared successfully with ${_selectedUsernames.length} friend(s)!',
-                                      style: GoogleFonts.ibmPlexSansArabic(
-                                        fontSize: 14,
+                          final messenger = ScaffoldMessenger.of(context);
+                          Navigator.pop(context);
+                          final client = Supabase.instance.client;
+                          final currentUserId = client.auth.currentUser?.id;
+                          if (currentUserId == null) return;
+
+                          String shareContent = "Hi! Check out More app.";
+                          if (widget.post != null) {
+                            if (widget.post!.imageUrls.isNotEmpty) {
+                              shareContent = "Shared a post: ${widget.post!.description.isNotEmpty ? widget.post!.description : widget.post!.title}\n${widget.post!.imageUrls.first}";
+                            } else {
+                              shareContent = "Shared a post: ${widget.post!.description.isNotEmpty ? widget.post!.description : widget.post!.title}";
+                            }
+                          } else if (widget.place != null) {
+                            shareContent = "Shared a place: ${widget.place!['name'] ?? 'Place'}\nhttps://more.app/places/${widget.place!['id']}";
+                          }
+
+                          final selectedFriends = _allFriends
+                              .where((f) => _selectedUsernames.contains(f['username']))
+                              .toList();
+
+                          for (final friend in selectedFriends) {
+                            final receiverId = friend['id'];
+                            if (receiverId == null) continue;
+
+                            try {
+                              // Fetch existing threads
+                              final threadsResponse = await client
+                                  .from('chat_threads')
+                                  .select()
+                                  .or('user1_id.eq.$currentUserId,user2_id.eq.$currentUserId');
+
+                              final threads = List<Map<String, dynamic>>.from(threadsResponse);
+                              final existingThreadIndex = threads.indexWhere(
+                                (t) => (t['user1_id'] == currentUserId && t['user2_id'] == receiverId) ||
+                                       (t['user1_id'] == receiverId && t['user2_id'] == currentUserId),
+                              );
+
+                              String? threadId;
+                              if (existingThreadIndex != -1) {
+                                threadId = threads[existingThreadIndex]['id']?.toString();
+                              } else {
+                                // Create new thread
+                                final insertResponse = await client.from('chat_threads').insert({
+                                  'user1_id': currentUserId,
+                                  'user2_id': receiverId,
+                                }).select().single();
+                                threadId = insertResponse['id']?.toString();
+                              }
+
+                              if (threadId != null) {
+                                await client.from('chat_messages').insert({
+                                  'thread_id': threadId,
+                                  'sender_id': currentUserId,
+                                  'message_type': 'text',
+                                  'content': shareContent,
+                                });
+                              }
+                            } catch (e) {
+                              debugPrint("Error sharing message: $e");
+                            }
+                          }
+
+                          // Show confirmation snackbar
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(
+                                behavior: SnackBarBehavior.floating,
+                                margin: EdgeInsets.only(
+                                  bottom: size.height - 140,
+                                  left: 24,
+                                  right: 24,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                backgroundColor: Colors.black.withValues(alpha: 0.9),
+                                elevation: 6,
+                                duration: const Duration(seconds: 3),
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Color(0xFF7C57FC),
+                                      ),
+                                      child: const Icon(
+                                        Icons.check,
                                         color: Colors.white,
-                                        fontWeight: FontWeight.w500,
+                                        size: 16,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Shared successfully with ${_selectedUsernames.length} friend(s)!',
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         },
                   child: Text(
                     'Share (${_selectedUsernames.length})',

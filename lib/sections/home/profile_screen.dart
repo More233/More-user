@@ -20,6 +20,7 @@ import 'widgets/feed/check_in_composer_screen.dart';
 import '../settings/screens/edit_profile_screen.dart';
 import 'widgets/common/custom_loading_indicator.dart';
 import 'followers_following_screen.dart';
+import 'widgets/chat/conversation_screen.dart';
 
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -29,7 +30,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
   const ProfileScreen({
     super.key,
-    required this.userPosts,
+    this.userPosts = const [],
     this.onPostUpdated,
     this.userId,
   });
@@ -49,6 +50,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   int _followersCount = 0;
   int _followingCount = 0;
   String _joinedDate = '';
+  bool _isFollowing = false;
+  bool _followLoading = false;
+  bool _messageLoading = false;
 
   @override
   void initState() {
@@ -87,12 +91,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
             .eq('user_id', targetUserId)
             .order('created_at', ascending: false),
+        client
+            .from('follows')
+            .select()
+            .eq('follower_id', currentUser.id)
+            .eq('following_id', targetUserId)
+            .maybeSingle(),
       ]);
 
       final profile = results[0] as Map<String, dynamic>?;
       final followersData = results[1] as List<dynamic>;
       final followingData = results[2] as List<dynamic>;
       final postsResponse = results[3] as List<dynamic>;
+      final followCheck = results[4];
+      final isFollowing = followCheck != null;
 
       if (profile != null) {
         _fullName = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
@@ -124,10 +136,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
       _posts = userPostsList;
 
-
-
       if (mounted) {
         setState(() {
+          _isFollowing = isFollowing;
           _profileLoading = false;
         });
       }
@@ -394,7 +405,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return const ShareBottomSheet();
+        return ShareBottomSheet(post: post);
       },
     );
   }
@@ -520,6 +531,126 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _toggleFollow() async {
+    final client = Supabase.instance.client;
+    final currentUserId = client.auth.currentUser?.id;
+    final targetUserId = widget.userId;
+    if (currentUserId == null || targetUserId == null) return;
+
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _followLoading = true;
+    });
+
+    try {
+      if (_isFollowing) {
+        await client
+            .from('follows')
+            .delete()
+            .eq('follower_id', currentUserId)
+            .eq('following_id', targetUserId);
+
+        setState(() {
+          _isFollowing = false;
+          _followersCount = (_followersCount - 1).clamp(0, 9999999);
+        });
+      } else {
+        await client.from('follows').insert({
+          'follower_id': currentUserId,
+          'following_id': targetUserId,
+        });
+
+        try {
+          await client.from('notifications').insert({
+            'user_id': targetUserId,
+            'actor_id': currentUserId,
+            'category': 'follow',
+          });
+        } catch (ne) {
+          debugPrint("Error inserting follow notification: $ne");
+        }
+
+        setState(() {
+          _isFollowing = true;
+          _followersCount++;
+        });
+      }
+      widget.onPostUpdated?.call();
+    } catch (e) {
+      debugPrint("Error toggling follow: $e");
+    } finally {
+      setState(() {
+        _followLoading = false;
+      });
+    }
+  }
+
+  Future<void> _openMessageConversation() async {
+    final client = Supabase.instance.client;
+    final currentUserId = client.auth.currentUser?.id;
+    final targetUserId = widget.userId;
+    if (currentUserId == null || targetUserId == null) return;
+
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _messageLoading = true;
+    });
+
+    try {
+      final existingThreadResponse = await client
+          .from('chat_threads')
+          .select()
+          .or('and(user1_id.eq.$currentUserId,user2_id.eq.$targetUserId),and(user1_id.eq.$targetUserId,user2_id.eq.$currentUserId)')
+          .maybeSingle();
+
+      String threadId;
+      if (existingThreadResponse != null) {
+        threadId = existingThreadResponse['id'] as String;
+      } else {
+        final insertResponse = await client.from('chat_threads').insert({
+          'user1_id': currentUserId,
+          'user2_id': targetUserId,
+        }).select().single();
+        threadId = insertResponse['id'] as String;
+      }
+
+      final otherProfile = await client
+          .from('profiles')
+          .select('id, username, avatar_url, first_name, last_name')
+          .eq('id', targetUserId)
+          .single();
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ConversationScreen(
+            threadId: threadId,
+            otherProfile: otherProfile,
+            currentUserId: currentUserId,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Error opening message conversation: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to open chat: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _messageLoading = false;
+        });
       }
     }
   }
@@ -730,6 +861,93 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ],
                       ),
+                      if (!isCurrentUser) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _followLoading ? null : _toggleFollow,
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: _isFollowing
+                                        ? const Color(0xFFF3F4F6)
+                                        : const Color(0xFF7C57FC),
+                                    borderRadius: BorderRadius.circular(100),
+                                    border: _isFollowing
+                                        ? Border.all(color: const Color(0xFFE5E7EB))
+                                        : null,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: _followLoading
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                                          ),
+                                        )
+                                      : Text(
+                                          _isFollowing ? 'Following' : 'Follow',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: _isFollowing
+                                                ? const Color(0xFF374151)
+                                                : Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _messageLoading ? null : _openMessageConversation,
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(100),
+                                    border: Border.all(color: const Color(0xFFD1D5DB)),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: _messageLoading
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                                          ),
+                                        )
+                                      : Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.chat_bubble_outline,
+                                              size: 16,
+                                              color: Color(0xFF374151),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Message',
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: const Color(0xFF374151),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

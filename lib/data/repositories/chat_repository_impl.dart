@@ -119,7 +119,7 @@ class ChatRepositoryImpl implements ChatRepository {
       'sender_id': senderId,
       'message_type': messageType,
       'content': content,
-      'media_duration': ?mediaDuration,
+      'media_duration': mediaDuration,
     });
   }
 

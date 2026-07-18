@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/timeline_post.dart';
+import '../../widgets/bottom_sheets/share_bottom_sheet.dart';
 import '../../view_models/collections_view_model.dart';
 import '../../models/collection_model.dart';
 
@@ -424,7 +425,14 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                                 ),
                               ),
                               onPressed: () {
-                                // Share mock
+                                showModalBottomSheet(
+                                  context: context,
+                                  backgroundColor: Colors.transparent,
+                                  isScrollControlled: true,
+                                  builder: (context) => ShareBottomSheet(
+                                    post: widget.posts[_currentIndex],
+                                  ),
+                                );
                               },
                             ),
                           ],

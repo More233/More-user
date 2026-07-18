@@ -14,6 +14,7 @@ import 'chat_message_bubble.dart';
 import 'chat_recording_overlay.dart';
 import '../../profile_screen.dart';
 import '../common/custom_loading_indicator.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
   final String threadId;
@@ -260,7 +261,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }

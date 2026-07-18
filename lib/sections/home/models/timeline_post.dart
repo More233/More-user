@@ -3,6 +3,7 @@ class TimelineComment {
   final String authorAvatar;
   final String commentText;
   final String timeAgo;
+  final String? authorId;
   bool isLiked;
   int likesCount;
 
@@ -11,6 +12,7 @@ class TimelineComment {
     required this.authorAvatar,
     required this.commentText,
     required this.timeAgo,
+    this.authorId,
     this.isLiked = false,
     this.likesCount = 0,
   });
