@@ -6,7 +6,6 @@ class SidebarButtons extends StatelessWidget {
   final VoidCallback onTextTap;
   final VoidCallback onStickerTap;
   final VoidCallback onMentionTap;
-  final VoidCallback onMoreTap;
   final bool hasVideo;
   final VoidCallback? onVolumeTap;
 
@@ -15,7 +14,6 @@ class SidebarButtons extends StatelessWidget {
     required this.onTextTap,
     required this.onStickerTap,
     required this.onMentionTap,
-    required this.onMoreTap,
     this.hasVideo = false,
     this.onVolumeTap,
   });
@@ -54,12 +52,6 @@ class SidebarButtons extends StatelessWidget {
             VolumeButton(onTap: onVolumeTap!),
             const SizedBox(height: 12),
           ],
-          
-          // More options button
-          StoryIconButton(
-            svgAsset: 'assets/home/icons/post_options.svg',
-            onTap: onMoreTap,
-          ),
         ],
       ),
     );

@@ -496,20 +496,7 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                   simulateViewsNotifier: _simulateViewsNotifier,
                   mockViewers: _getMockViewers(),
                 ),
-                onHighlightTap: () => showHighlightBottomSheet(
-                  context: context,
-                  animationController: _animationController,
-                  currentMediaUrl: currentMediaUrl,
-                ),
-                onSendTap: () => showSendBottomSheet(
-                  context: context,
-                  animationController: _animationController,
-                ),
-                onMentionTap: () => showMentionBottomSheet(
-                  context: context,
-                  animationController: _animationController,
-                ),
-                onMoreTap: () => showMoreOptionsSheet(
+                onDeleteTap: () => confirmDeleteStory(
                   context: context,
                   ref: ref,
                   initialGroupIndex: widget.initialGroupIndex,

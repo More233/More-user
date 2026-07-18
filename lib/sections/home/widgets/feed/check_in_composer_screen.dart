@@ -733,6 +733,37 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                     _mapController = controller;
                     await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
                     await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
+                    try {
+                      final layers = await controller.style.getStyleLayers();
+                      const List<String> hideKeywords = [
+                        'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
+                        'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
+                        'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
+                        'beverage', 'intersection', 'entrance', 'parking'
+                      ];
+                      for (final layerInfo in layers) {
+                        if (layerInfo != null) {
+                          final idLower = layerInfo.id.toLowerCase();
+                          if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
+                            continue;
+                          }
+                          bool shouldHide = false;
+                          for (final keyword in hideKeywords) {
+                            if (idLower.contains(keyword)) {
+                              shouldHide = true;
+                              break;
+                            }
+                          }
+                          if (shouldHide) {
+                            await controller.style.setStyleLayerProperty(
+                              layerInfo.id,
+                              'visibility',
+                              'none',
+                            );
+                          }
+                        }
+                      }
+                    } catch (_) {}
                   },
                 ),
               ),

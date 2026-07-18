@@ -330,10 +330,48 @@ class ExploreScreenHelpers {
         return true;
       }
       if (state.searchQuery.isNotEmpty) {
-        final query = state.searchQuery.toLowerCase();
-        final nameMatches = (place['name'] as String? ?? '').toLowerCase().contains(query);
-        final arMatches = (place['arabicName'] as String? ?? '').toLowerCase().contains(query);
-        if (!nameMatches && !arMatches) return false;
+        final String query = state.searchQuery.trim();
+        
+        // Strict food category filtering
+        if (_isFoodQuery(query)) {
+          final type = (place['type'] as String? ?? 'Other').toLowerCase();
+          final isFoodPlace = type.contains('restaurant') ||
+                              type.contains('coffee') ||
+                              type.contains('bakery') ||
+                              type.contains('dessert') ||
+                              type.contains('juice') ||
+                              type.contains('food') ||
+                              type.contains('cafe');
+          if (!isFoodPlace) {
+            return false;
+          }
+        }
+        final String normQuery = _normalizeArabic(query);
+        final String normName = _normalizeArabic(place['name']?.toString() ?? '');
+        final String normArName = _normalizeArabic(place['arabicName']?.toString() ?? '');
+        final String normAddress = _normalizeArabic(place['address']?.toString() ?? '');
+
+        // Direct containment check
+        bool matched = normName.contains(normQuery) || 
+                       normArName.contains(normQuery) ||
+                       normAddress.contains(normQuery);
+
+        if (!matched) {
+          // Token-based matching (fallback for spelling variations or word order)
+          final List<String> queryTokens = normQuery.split(RegExp(r'\s+')).where((t) => t.length > 1).toList();
+          if (queryTokens.isNotEmpty) {
+            int matchCount = 0;
+            for (final token in queryTokens) {
+              if (normName.contains(token) || normArName.contains(token) || normAddress.contains(token)) {
+                matchCount++;
+              }
+            }
+            // If at least one token matches, it is considered a match
+            matched = matchCount > 0;
+          }
+        }
+
+        if (!matched) return false;
       }
 
       if (state.selectedMapTab == 3) {
@@ -447,5 +485,33 @@ class ExploreScreenHelpers {
 
     // Return all unfiltered places directly. They will be rendered as dots when zoomed out and pins when zoomed in.
     return unfiltered;
+  }
+
+  static String _normalizeArabic(String text) {
+    return text.toLowerCase()
+        .replaceAll('ة', 'ه')
+        .replaceAll('ى', 'ي')
+        .replaceAll('إ', 'ا')
+        .replaceAll('أ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll(RegExp(r'[^\w\s\u0600-\u06FF]'), ' ') // remove special chars/punctuation
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static bool _isFoodQuery(String query) {
+    final normalized = _normalizeArabic(query).toLowerCase();
+    final foodKeywords = [
+      'كشري', 'مطعم', 'حلويات', 'فول', 'طعمية', 'بيتزا', 'برجر', 'كافيه', 'قهوة', 'مقهى', 
+      'أكل', 'شاورما', 'كباب', 'كفتة', 'أسماك', 'سمك', 'سندوتش', 'ساندوتش', 'فود', 'food',
+      'restaurant', 'cafe', 'coffee', 'koshary', 'koshari', 'sweets', 'dessert', 'pizza', 'burger',
+      'حاجه', 'سوق', 'أغذية', 'غذاء', 'مأكولات', 'شاي'
+    ];
+    for (final kw in foodKeywords) {
+      if (normalized.contains(kw)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

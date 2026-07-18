@@ -155,7 +155,7 @@ class ExploreSearchBar extends StatelessWidget {
                             ),
                           ),
                         )
-                      : (searchQuery.isNotEmpty
+                      : ((searchQuery.isNotEmpty || searchController.text.isNotEmpty)
                           ? GestureDetector(
                               onTap: onClearSearch,
                               child: const Icon(

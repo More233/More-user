@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:moor/shared/models/lat_lng.dart' as model;
+import 'package:geolocator/geolocator.dart';
 import '../../../../config/secrets.dart';
 import '../helpers/marker_generator.dart';
 
@@ -124,6 +125,36 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     if (placesChanged || selectedChanged) {
       _updateMarkers();
     }
+
+    if (selectedChanged && widget.selectedPlace != null && !_isDeselecting) {
+      final double plat = double.tryParse(widget.selectedPlace!['latitude']?.toString() ?? '') ?? 0.0;
+      final double plng = double.tryParse(widget.selectedPlace!['longitude']?.toString() ?? '') ?? 0.0;
+      if (plat != 0.0 && plng != 0.0 && _mapboxMap != null) {
+        _mapboxMap!.getCameraState().then((cameraState) {
+          final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(cameraState.center));
+          final double dist = Geolocator.distanceBetween(
+            centerPoint.coordinates.lat.toDouble(),
+            centerPoint.coordinates.lng.toDouble(),
+            plat,
+            plng,
+          );
+          
+          // If distance > 200m, it's a search navigation -> zoom to 18.0 (max zoom)
+          // Otherwise, keep current zoom
+          final double targetZoom = dist > 200.0 ? 18.0 : cameraState.zoom;
+          
+          _mapboxMap!.easeTo(
+            mapbox.CameraOptions(
+              center: mapbox.Point(
+                coordinates: mapbox.Position(plng, plat),
+              ).toJson(),
+              zoom: targetZoom,
+            ),
+            mapbox.MapAnimationOptions(duration: 1000),
+          );
+        });
+      }
+    }
   }
 
   bool _arePlacesEqual(
@@ -147,6 +178,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           cluster: true,
           clusterMaxZoom: 13,
           clusterRadius: 50,
+          clusterProperties: {
+            "dominant_type_code": ["max", ["get", "place_type_code"]],
+            "people_count": ["+", ["get", "people_count"]]
+          },
         );
         await mapboxMap.style.addSource(source);
       } catch (e) {
@@ -235,8 +270,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final placesLayer = mapbox.SymbolLayer(
           id: "places-layer",
           sourceId: "places-source",
-          iconAllowOverlap: false,
-          iconIgnorePlacement: false,
+          iconAllowOverlap: true,
+          iconIgnorePlacement: true,
           textAllowOverlap: false,
           textIgnorePlacement: false,
           textVariableAnchor: ["right", "left"],
@@ -251,10 +286,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         debugPrint("places-layer already exists or error: $e");
       }
 
-      final double maxZoomDots = 6.0;
-      final double minZoomMedium = 6.0;
-      final double maxZoomMedium = 9.0;
-      final double minZoomPins = 9.0;
+      final double maxZoomDots = 2.9;
+      final double minZoomMedium = 2.9;
+      final double maxZoomMedium = 10.8;
+      final double minZoomPins = 10.8;
 
       final String initialDotsFilter = '["has", "point_count"]';
 
@@ -551,7 +586,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       final bool isFilterActive = widget.selectedCategory.isNotEmpty;
 
       // 2. Gather unique image combinations to register
-      final Set<String> imagesToRegister = {};
+      final Set<String> imagesToRegister = {"dot-live-now"};
       for (final type in uniqueTypes) {
         imagesToRegister.add("dot-$type");
         imagesToRegister.add("live-$type");
@@ -620,7 +655,27 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             final String type = parts[1]; // restaurant / hotel / ...
             
             Uint8List pngBytes;
-            if (state == 'checkin' || state == 'selected_checkin') {
+            if (imageId == 'dot-live-now') {
+              final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+              final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+              const double size = 18.0;
+              final recorder = ui.PictureRecorder();
+              final canvas = Canvas(recorder);
+              canvas.scale(dpr);
+              final bgPaint = Paint()
+                ..color = const Color(0xFF7C57FC)
+                ..style = PaintingStyle.fill;
+              canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
+              final borderPaint = Paint()
+                ..color = Colors.white
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.8;
+              canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
+              final picture = recorder.endRecording();
+              final img = await picture.toImage((size * dpr).toInt(), (size * dpr).toInt());
+              final png = await img.toByteData(format: ui.ImageByteFormat.png);
+              pngBytes = png!.buffer.asUint8List();
+            } else if (state == 'checkin' || state == 'selected_checkin') {
               final String checkinId = state == 'checkin'
                   ? imageId.substring('checkin-'.length)
                   : imageId.substring('selected_checkin-'.length);
@@ -670,6 +725,46 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           }
         }
       }
+
+      // Group and rank places locally within 0.02 x 0.02 degree grid cells to ensure even local distribution of pins
+      final Map<String, List<Map<String, dynamic>>> groupedPlaces = {};
+      for (final p in widget.places) {
+        final double plat = double.tryParse(p['latitude']?.toString() ?? '') ?? 0.0;
+        final double lng = double.tryParse(p['longitude']?.toString() ?? '') ?? 0.0;
+        if (plat == 0.0 || lng == 0.0) continue;
+        final double gridLat = (plat / 0.02).round() * 0.02;
+        final double gridLng = (lng / 0.02).round() * 0.02;
+        final String cellKey = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
+        groupedPlaces.putIfAbsent(cellKey, () => []).add(p);
+      }
+
+      final Map<String, int> localPercents = {};
+      groupedPlaces.forEach((cellKey, list) {
+        list.sort((a, b) {
+          final bool aCheck = a['isCheckIn'] == true;
+          final bool bCheck = b['isCheckIn'] == true;
+          if (aCheck != bCheck) return aCheck ? -1 : 1;
+
+          final bool aSaved = a['isSaved'] == true;
+          final bool bSaved = b['isSaved'] == true;
+          if (aSaved != bSaved) return aSaved ? -1 : 1;
+
+          final int aPrio = a['priority'] as int? ?? 3;
+          final int bPrio = b['priority'] as int? ?? 3;
+          if (aPrio != bPrio) return aPrio.compareTo(bPrio);
+
+          final double aRating = double.tryParse(a['rating']?.toString() ?? '') ?? 0.0;
+          final double bRating = double.tryParse(b['rating']?.toString() ?? '') ?? 0.0;
+          return bRating.compareTo(aRating);
+        });
+
+        for (int i = 0; i < list.length; i++) {
+          final int percent = list.length > 1
+              ? ((i / (list.length - 1)) * 99).round()
+              : 0;
+          localPercents[list[i]['id'].toString()] = percent;
+        }
+      });
 
       // 3. Construct GeoJSON features
       final List<Map<String, dynamic>> features = [];
@@ -842,6 +937,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             "people_count": (p['peopleCount'] as num? ?? 0).toInt(),
             "rating_val": ratingVal,
             "is_check_in": isCheckIn,
+            "random_percent": localPercents[p['id'].toString()] ?? 0,
           }
         });
       }
@@ -884,108 +980,102 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       // --- Places Layer Styles ---
       final String iconImageExpression;
       if (widget.selectedMapTab == 2) {
+        List<dynamic> buildLiveIconCaseForPercent(int percent) {
+          return [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected_live-", ["get", "place_type"]],
+            if (percent == 0)
+              ""
+            else if (percent < 100) ...[
+              ["<", ["get", "random_percent"], percent],
+              ["concat", "live-", ["get", "place_type"]],
+              ""
+            ] else
+              ["concat", "live-", ["get", "place_type"]]
+          ];
+        }
+
         iconImageExpression = jsonEncode([
           "step",
           ["zoom"],
-          // Zoom < 4.0
-          [
-            "case",
-            ["coalesce", ["get", "is_check_in"], false],
-            [
-              "case",
-              ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
-              ["concat", "checkin-", ["get", "id"]]
-            ],
-            ["==", ["get", "id"], selectedId],
-            ["concat", "selected_live-", ["get", "place_type"]],
-            ["==", ["get", "priority"], 1],
-            ["concat", "live-", ["get", "place_type"]],
-            ""
-          ],
-          4.0,
-          // 4.0 <= Zoom < 6.0
-          [
-            "case",
-            ["coalesce", ["get", "is_check_in"], false],
-            [
-              "case",
-              ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
-              ["concat", "checkin-", ["get", "id"]]
-            ],
-            ["==", ["get", "id"], selectedId],
-            ["concat", "selected_live-", ["get", "place_type"]],
-            ["<=", ["get", "priority"], 2],
-            ["concat", "live-", ["get", "place_type"]],
-            ""
-          ],
+          buildLiveIconCaseForPercent(0),
+          2.9,
+          buildLiveIconCaseForPercent(10),
+          4.5,
+          buildLiveIconCaseForPercent(20),
           6.0,
-          // Zoom >= 6.0
-          [
-            "case",
-            ["coalesce", ["get", "is_check_in"], false],
-            [
-              "case",
-              ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
-              ["concat", "checkin-", ["get", "id"]]
-            ],
-            ["==", ["get", "id"], selectedId],
-            ["concat", "selected_live-", ["get", "place_type"]],
-            ["concat", "live-", ["get", "place_type"]]
-          ]
+          buildLiveIconCaseForPercent(30),
+          7.5,
+          buildLiveIconCaseForPercent(40),
+          9.0,
+          buildLiveIconCaseForPercent(50),
+          10.8,
+          buildLiveIconCaseForPercent(60),
+          12.5,
+          buildLiveIconCaseForPercent(70),
+          14.5,
+          buildLiveIconCaseForPercent(80),
+          16.5,
+          buildLiveIconCaseForPercent(90),
+          18.5,
+          buildLiveIconCaseForPercent(100),
         ]);
       } else {
+        List<dynamic> buildIconCaseForPercent(int percent) {
+          return [
+            "case",
+            ["coalesce", ["get", "is_check_in"], false],
+            [
+              "case",
+              ["==", ["get", "id"], selectedId],
+              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "checkin-", ["get", "id"]]
+            ],
+            ["==", ["get", "id"], selectedId],
+            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
+            if (percent == 0)
+              ["concat", "dot-", ["get", "place_type"]]
+            else if (percent < 100) ...[
+              ["<", ["get", "random_percent"], percent],
+              ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]],
+              ["concat", "dot-", ["get", "place_type"]]
+            ] else
+              ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]]
+          ];
+        }
+
         iconImageExpression = jsonEncode([
           "step",
           ["zoom"],
-          // Zoom < 4.0: All are dots
-          [
-            "case",
-            ["coalesce", ["get", "is_check_in"], false],
-            [
-              "case",
-              ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
-              ["concat", "checkin-", ["get", "id"]]
-            ],
-            ["==", ["get", "id"], selectedId],
-            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
-            ["concat", "dot-", ["get", "place_type"]]
-          ],
-          2.0,
-          // 2.0 <= Zoom < 11.5: Priority 1 & 2 are pins, others are dots
-          [
-            "case",
-            ["coalesce", ["get", "is_check_in"], false],
-            [
-              "case",
-              ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
-              ["concat", "checkin-", ["get", "id"]]
-            ],
-            ["==", ["get", "id"], selectedId],
-            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
-            ["<=", ["get", "priority"], 2],
-            ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]],
-            ["concat", "dot-", ["get", "place_type"]]
-          ],
-          11.5,
-          // Zoom >= 11.5: All are pins
-          [
-            "case",
-            ["coalesce", ["get", "is_check_in"], false],
-            [
-              "case",
-              ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
-              ["concat", "checkin-", ["get", "id"]]
-            ],
-            ["==", ["get", "id"], selectedId],
-            ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
-            ["concat", "normal-", ["get", "place_type"], "-", ["get", "rating_str"]]
-          ]
+          buildIconCaseForPercent(0),
+          2.9,
+          buildIconCaseForPercent(10),
+          4.5,
+          buildIconCaseForPercent(20),
+          6.0,
+          buildIconCaseForPercent(30),
+          7.5,
+          buildIconCaseForPercent(40),
+          9.0,
+          buildIconCaseForPercent(50),
+          10.8,
+          buildIconCaseForPercent(60),
+          12.5,
+          buildIconCaseForPercent(70),
+          14.5,
+          buildIconCaseForPercent(80),
+          16.5,
+          buildIconCaseForPercent(90),
+          18.5,
+          buildIconCaseForPercent(100),
         ]);
       }
       try {
@@ -996,155 +1086,121 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
       final String textFieldExpression;
       if (widget.selectedMapTab == 2) {
+        final List<dynamic> liveLabelFormatExpr = [
+          "format",
+          ["get", "english_title"],
+          {"font-scale": 1.0},
+          "\n",
+          {},
+          [
+            "case",
+            ["==", ["get", "people_count"], 1],
+            "1 person here",
+            ["concat", ["to-string", ["get", "people_count"]], " people here"]
+          ],
+          {"font-scale": 0.8}
+        ];
+
+        List<dynamic> buildLiveLabelCaseForPercent(int percent) {
+          return [
+            "case",
+            ["==", ["get", "id"], selectedId],
+            liveLabelFormatExpr,
+            if (percent == 0)
+              ""
+            else if (percent < 100) ...[
+              ["<", ["get", "random_percent"], percent],
+              liveLabelFormatExpr,
+              ""
+            ] else
+              liveLabelFormatExpr
+          ];
+        }
+
         textFieldExpression = jsonEncode([
           "step",
           ["zoom"],
-          // Zoom < 4.0: Only show label if selected or priority == 1
-          [
-            "case",
-            ["any", ["==", ["get", "id"], selectedId], ["==", ["get", "priority"], 1]],
-            [
-              "format",
-              ["get", "english_title"],
-              {"font-scale": 1.0},
-              "\n",
-              {},
-              [
-                "case",
-                ["==", ["get", "people_count"], 1],
-                "1 person here",
-                ["concat", ["to-string", ["get", "people_count"]], " people here"]
-              ],
-              {"font-scale": 0.8}
-            ],
-            ""
-          ],
-          4.0,
-          // 4.0 <= Zoom < 6.0: Show if selected or priority <= 2
-          [
-            "case",
-            ["any", ["==", ["get", "id"], selectedId], ["<=", ["get", "priority"], 2]],
-            [
-              "format",
-              ["get", "english_title"],
-              {"font-scale": 1.0},
-              "\n",
-              {},
-              [
-                "case",
-                ["==", ["get", "people_count"], 1],
-                "1 person here",
-                ["concat", ["to-string", ["get", "people_count"]], " people here"]
-              ],
-              {"font-scale": 0.8}
-            ],
-            ""
-          ],
+          buildLiveLabelCaseForPercent(0),
+          2.9,
+          buildLiveLabelCaseForPercent(10),
+          4.5,
+          buildLiveLabelCaseForPercent(20),
           6.0,
-          // Zoom >= 6.0: Show all
+          buildLiveLabelCaseForPercent(30),
+          7.5,
+          buildLiveLabelCaseForPercent(40),
+          9.0,
+          buildLiveLabelCaseForPercent(50),
+          10.8,
+          buildLiveLabelCaseForPercent(60),
+          12.5,
+          buildLiveLabelCaseForPercent(70),
+          14.5,
+          buildLiveLabelCaseForPercent(80),
+          16.5,
+          buildLiveLabelCaseForPercent(90),
+          18.5,
+          buildLiveLabelCaseForPercent(100),
+        ]);
+      } else {
+        final List<dynamic> labelFormatExpr = [
+          "case",
+          ["==", ["get", "arabic_title"], ""],
+          ["get", "english_title"],
           [
             "format",
             ["get", "english_title"],
             {"font-scale": 1.0},
             "\n",
             {},
-            [
-              "case",
-              ["==", ["get", "people_count"], 1],
-              "1 person here",
-              ["concat", ["to-string", ["get", "people_count"]], " people here"]
-            ],
-            {"font-scale": 0.8}
+            ["get", "arabic_title"],
+            {
+              "font-scale": 0.75,
+              "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
+            }
           ]
-        ]);
-      } else {
+        ];
+
+        List<dynamic> buildLabelCaseForPercent(int percent) {
+          return [
+            "case",
+            ["==", ["get", "id"], selectedId],
+            labelFormatExpr,
+            if (percent == 0)
+              ""
+            else if (percent < 100) ...[
+              ["<", ["get", "random_percent"], percent],
+              labelFormatExpr,
+              ""
+            ] else
+              labelFormatExpr
+          ];
+        }
+
         textFieldExpression = jsonEncode([
           "step",
           ["zoom"],
-          // Zoom < 4.0: No labels (except selected)
-          [
-            "case",
-            ["==", ["get", "id"], selectedId],
-            [
-              "case",
-              ["==", ["get", "arabic_title"], ""],
-              ["get", "english_title"],
-              [
-                "format",
-                ["get", "english_title"],
-                {"font-scale": 1.0},
-                "\n",
-                {},
-                ["get", "arabic_title"],
-                {
-                  "font-scale": 0.75,
-                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
-                }
-              ]
-            ],
-            ""
-          ],
-          2.0,
-          // 2.0 <= Zoom < 11.5: Priority 1 & 2 show labels, others don't
-          [
-            "case",
-            ["==", ["get", "id"], selectedId],
-            [
-              "case",
-              ["==", ["get", "arabic_title"], ""],
-              ["get", "english_title"],
-              [
-                "format",
-                ["get", "english_title"],
-                {"font-scale": 1.0},
-                "\n",
-                {},
-                ["get", "arabic_title"],
-                {
-                  "font-scale": 0.75,
-                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
-                }
-              ]
-            ],
-            ["<=", ["get", "priority"], 2],
-            [
-              "case",
-              ["==", ["get", "arabic_title"], ""],
-              ["get", "english_title"],
-              [
-                "format",
-                ["get", "english_title"],
-                {"font-scale": 1.0},
-                "\n",
-                {},
-                ["get", "arabic_title"],
-                {
-                  "font-scale": 0.75,
-                  "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
-                }
-              ]
-            ],
-            ""
-          ],
-          11.5,
-          // Zoom >= 11.5: All show labels
-          [
-            "case",
-            ["==", ["get", "arabic_title"], ""],
-            ["get", "english_title"],
-            [
-              "format",
-              ["get", "english_title"],
-              {"font-scale": 1.0},
-              "\n",
-              {},
-              ["get", "arabic_title"],
-              {
-                "font-scale": 0.75,
-                "text-font": ["literal", ["Cairo Light", "Cairo Regular", "Arial Unicode MS Bold"]]
-              }
-            ]
-          ]
+          buildLabelCaseForPercent(0),
+          2.9,
+          buildLabelCaseForPercent(10),
+          4.5,
+          buildLabelCaseForPercent(20),
+          6.0,
+          buildLabelCaseForPercent(30),
+          7.5,
+          buildLabelCaseForPercent(40),
+          9.0,
+          buildLabelCaseForPercent(50),
+          10.8,
+          buildLabelCaseForPercent(60),
+          12.5,
+          buildLabelCaseForPercent(70),
+          14.5,
+          buildLabelCaseForPercent(80),
+          16.5,
+          buildLabelCaseForPercent(90),
+          18.5,
+          buildLabelCaseForPercent(100),
         ]);
       }
 
@@ -1221,7 +1277,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       }
 
       // --- Clusters Layer Styles ---
-      final String clusterDotsIconImageExpression = jsonEncode([
+      final List<dynamic> clusterDotsIconImage = [
         "case",
         ["==", ["get", "dominant_type_code"], 2],
         "dot-restaurant",
@@ -1242,56 +1298,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         ["==", ["get", "dominant_type_code"], 10],
         "dot-airport",
         "dot-other"
-      ]);
+      ];
 
-      final String clusterPinsIconImageExpression = jsonEncode([
-        "case",
-        ["==", ["%", ["get", "cluster_id"], 5], 0],
-        [
-          "case",
-          ["==", ["get", "dominant_type_code"], 2],
-          "normal-restaurant",
-          ["==", ["get", "dominant_type_code"], 3],
-          "normal-supermarket",
-          ["==", ["get", "dominant_type_code"], 4],
-          "normal-pharmacy",
-          ["==", ["get", "dominant_type_code"], 5],
-          "normal-bakery",
-          ["==", ["get", "dominant_type_code"], 6],
-          "normal-bars",
-          ["==", ["get", "dominant_type_code"], 7],
-          "normal-coffee",
-          ["==", ["get", "dominant_type_code"], 8],
-          "normal-hotel",
-          ["==", ["get", "dominant_type_code"], 9],
-          "normal-park",
-          ["==", ["get", "dominant_type_code"], 10],
-          "normal-airport",
-          "normal-other"
-        ],
-        [
-          "case",
-          ["==", ["get", "dominant_type_code"], 2],
-          "dot-restaurant",
-          ["==", ["get", "dominant_type_code"], 3],
-          "dot-supermarket",
-          ["==", ["get", "dominant_type_code"], 4],
-          "dot-pharmacy",
-          ["==", ["get", "dominant_type_code"], 5],
-          "dot-bakery",
-          ["==", ["get", "dominant_type_code"], 6],
-          "dot-bars",
-          ["==", ["get", "dominant_type_code"], 7],
-          "dot-coffee",
-          ["==", ["get", "dominant_type_code"], 8],
-          "dot-hotel",
-          ["==", ["get", "dominant_type_code"], 9],
-          "dot-park",
-          ["==", ["get", "dominant_type_code"], 10],
-          "dot-airport",
-          "dot-other"
-        ]
-      ]);
+      final String clusterDotsIconImageExpression = jsonEncode(clusterDotsIconImage);
 
       final String clusterIconSizeExpression = jsonEncode([
         "interpolate",
@@ -1319,102 +1328,56 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         ]
       ]);
 
-      final String clusterTextColorExpression = jsonEncode([
-        "case",
-        ["==", ["get", "dominant_type_code"], 2],
-        "#FF5A19",
-        ["==", ["get", "dominant_type_code"], 3],
-        "#5A5D67",
-        ["==", ["get", "dominant_type_code"], 4],
-        "#5A5D67",
-        ["==", ["get", "dominant_type_code"], 5],
-        "#FF5A19",
-        ["==", ["get", "dominant_type_code"], 6],
-        "#FF5A19",
-        ["==", ["get", "dominant_type_code"], 7],
-        "#FF5A19",
-        ["==", ["get", "dominant_type_code"], 8],
-        "#0066FF",
-        ["==", ["get", "dominant_type_code"], 9],
-        "#1B8A5A",
-        ["==", ["get", "dominant_type_code"], 10],
-        "#0066FF",
-        "#5A5D67"
-      ]);
-
-      // Style clusters-dots-layer (dots under zoom 13.0, no text)
+      // Style clusters-dots-layer (dots under zoom 2.9, no text)
       try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "icon-image", clusterDotsIconImageExpression);
+        await _mapboxMap!.style.setStyleLayerProperty(
+          "clusters-dots-layer",
+          "icon-image",
+          widget.selectedMapTab == 2 ? "dot-live-now" : clusterDotsIconImageExpression,
+        );
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "icon-size", clusterIconSizeExpression);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-field", "");
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-size", 0.0);
         await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "text-opacity", 0.0);
         try {
-          await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "maxzoom", 6.0);
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-dots-layer", "maxzoom", 2.9);
         } catch (_) {}
       } catch (e) {
         debugPrint("Error styling clusters-dots-layer: $e");
       }
 
-      final String cluster100PinsIconImageExpression = jsonEncode([
-        "case",
-        ["==", ["get", "dominant_type_code"], 2],
-        "normal-restaurant",
-        ["==", ["get", "dominant_type_code"], 3],
-        "normal-supermarket",
-        ["==", ["get", "dominant_type_code"], 4],
-        "normal-pharmacy",
-        ["==", ["get", "dominant_type_code"], 5],
-        "normal-bakery",
-        ["==", ["get", "dominant_type_code"], 6],
-        "normal-bars",
-        ["==", ["get", "dominant_type_code"], 7],
-        "normal-coffee",
-        ["==", ["get", "dominant_type_code"], 8],
-        "normal-hotel",
-        ["==", ["get", "dominant_type_code"], 9],
-        "normal-park",
-        ["==", ["get", "dominant_type_code"], 10],
-        "normal-airport",
-        "normal-other"
-      ]);
-
-      // Style clusters-medium-layer (pins and dots mix starting from zoom 13.0 to 15.0)
+      // Style clusters-medium-layer (always dots in mid range, no text)
       try {
-        final String clusterMediumTextFieldExpression = jsonEncode([
-          "case",
-          ["==", ["%", ["get", "cluster_id"], 5], 0],
-          ["get", "title"],
-          ""
-        ]);
-
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "icon-image", clusterPinsIconImageExpression);
+        await _mapboxMap!.style.setStyleLayerProperty(
+          "clusters-medium-layer",
+          "icon-image",
+          widget.selectedMapTab == 2 ? "dot-live-now" : clusterDotsIconImageExpression,
+        );
         await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "icon-size", clusterIconSizeExpression);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-field", clusterMediumTextFieldExpression);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-size", textSizeExpr);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-opacity", 1.0);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-color", clusterTextColorExpression);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-radial-offset", textRadialOffsetExpr);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-field", "");
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-size", 0.0);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "text-opacity", 0.0);
         try {
-          await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "minzoom", 6.0);
-          await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "maxzoom", 9.0);
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "minzoom", 2.9);
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-medium-layer", "maxzoom", 10.8);
         } catch (_) {}
       } catch (e) {
         debugPrint("Error styling clusters-medium-layer: $e");
       }
 
-      // Style clusters-pins-layer (100% pins starting from zoom 15.0)
+      // Style clusters-pins-layer (always dots in close range if any cluster remains, no text)
       try {
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-image", cluster100PinsIconImageExpression);
+        await _mapboxMap!.style.setStyleLayerProperty(
+          "clusters-pins-layer",
+          "icon-image",
+          widget.selectedMapTab == 2 ? "dot-live-now" : clusterDotsIconImageExpression,
+        );
         await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "icon-size", clusterIconSizeExpression);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-field", textFieldExpression);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-size", textSizeExpr);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-opacity", 1.0);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-color", clusterTextColorExpression);
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-justify", "left");
-        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-radial-offset", textRadialOffsetExpr);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-field", "");
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-size", 0.0);
+        await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "text-opacity", 0.0);
         try {
-          await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "minzoom", 9.0);
+          await _mapboxMap!.style.setStyleLayerProperty("clusters-pins-layer", "minzoom", 10.8);
         } catch (_) {}
       } catch (e) {
         debugPrint("Error styling clusters-pins-layer: $e");

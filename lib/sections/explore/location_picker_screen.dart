@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../config/secrets.dart';
 
 class LocationPickerScreen extends StatefulWidget {
@@ -25,11 +26,30 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   mapbox.MapboxMap? _mapController;
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
+  String? _avatarUrl;
+
+  void _fetchUserAvatar() async {
+    try {
+      final client = Supabase.instance.client;
+      final user = client.auth.currentUser;
+      if (user != null) {
+        final profile = await client.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle();
+        if (profile != null && mounted) {
+          setState(() {
+            _avatarUrl = profile['avatar_url'] as String?;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching user avatar: $e");
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _currentCenter = LatLng(widget.initialLat, widget.initialLng);
+    _fetchUserAvatar();
   }
 
   @override
@@ -103,6 +123,37 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                 _mapController = controller;
                 await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
                 await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
+                try {
+                  final layers = await controller.style.getStyleLayers();
+                  const List<String> hideKeywords = [
+                    'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
+                    'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
+                    'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
+                    'beverage', 'intersection', 'entrance', 'parking'
+                  ];
+                  for (final layerInfo in layers) {
+                    if (layerInfo != null) {
+                      final idLower = layerInfo.id.toLowerCase();
+                      if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
+                        continue;
+                      }
+                      bool shouldHide = false;
+                      for (final keyword in hideKeywords) {
+                        if (idLower.contains(keyword)) {
+                          shouldHide = true;
+                          break;
+                        }
+                      }
+                      if (shouldHide) {
+                        await controller.style.setStyleLayerProperty(
+                          layerInfo.id,
+                          'visibility',
+                          'none',
+                        );
+                      }
+                    }
+                  }
+                } catch (_) {}
               },
               onCameraChangeListener: (event) {
                 if (_mapController != null) {
@@ -130,10 +181,11 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     Container(
                       width: 48,
                       height: 48,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1F242E),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
                         shape: BoxShape.circle,
-                        boxShadow: [
+                        border: Border.all(color: const Color(0xFF7C57FC), width: 2),
+                        boxShadow: const [
                           BoxShadow(
                             color: Colors.black26,
                             blurRadius: 8,
@@ -141,15 +193,16 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                           ),
                         ],
                       ),
-                      alignment: Alignment.center,
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.rectangle,
-                          borderRadius: BorderRadius.all(Radius.circular(2)),
-                        ),
+                      child: ClipOval(
+                        child: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                            ? (_avatarUrl!.startsWith('http')
+                                ? Image.network(_avatarUrl!, fit: BoxFit.cover)
+                                : Image.asset(_avatarUrl!, fit: BoxFit.cover))
+                            : Image.asset(
+                                'assets/home/images/avatar.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Color(0xFF82858C)),
+                              ),
                       ),
                     ),
                     // Small pin tail triangle/indicator
@@ -241,7 +294,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1F242E),
+                  backgroundColor: const Color(0xFF7C57FC),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
@@ -295,7 +348,7 @@ class _PinTailPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF1F242E)
+      ..color = const Color(0xFF7C57FC)
       ..style = PaintingStyle.fill;
     final path = Path()
       ..moveTo(0, 0)

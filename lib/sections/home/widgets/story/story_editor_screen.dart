@@ -228,57 +228,6 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
     );
   }
 
-  void _showMoreOptionsSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1F1F1F),
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.music_note, color: Colors.white),
-                title: Text("Music (Mock)", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _addMusicOverlay();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.link, color: Colors.white),
-                title: Text("Link (Mock)", style: GoogleFonts.ibmPlexSansArabic(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _addMusicOverlay() {
-    final newItem = StoryOverlayItem(
-      id: UniqueKey().toString(),
-      type: 'music',
-      data: {
-        'title': 'Starlight',
-        'artist': 'Taylor Swift',
-      },
-      position: Offset(_canvasWidth / 2, _canvasHeight / 2),
-    );
-    ref.read(storyEditorViewModelProvider.notifier).addOverlay(newItem);
-  }
 
   Future<void> _publishStory() async {
     final notifier = ref.read(storyEditorViewModelProvider.notifier);
@@ -919,7 +868,6 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                                 _tempSelectedMentionIds.addAll(_hiddenMentionUserIds);
                                 _showMentionBottomSheet();
                               },
-                              onMoreTap: _showMoreOptionsSheet,
                             ),
 
                           // 5. Rich Text Editor Panel Component (No local setState)

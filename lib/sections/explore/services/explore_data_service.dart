@@ -287,7 +287,7 @@ class ExploreDataService {
       'rating': rating,
       'reviewsCount': reviewsCount,
       'price': r'$$',
-      'peopleCount': 0,
+      'peopleCount': calculateSimulatedBusyness(id, reviewsCount),
       'type': type,
       'imageUrl': imageUrl,
       'isSaved': false,
@@ -454,7 +454,7 @@ class ExploreDataService {
       'rating': rating,
       'reviewsCount': reviewsCount,
       'price': r'$$',
-      'peopleCount': 0,
+      'peopleCount': calculateSimulatedBusyness(id, reviewsCount),
       'type': type,
       'imageUrl': imageUrl,
       'photos': photoUrls,
@@ -643,7 +643,7 @@ class ExploreDataService {
       'rating': rating,
       'reviewsCount': reviewsCount,
       'price': priceStr,
-      'peopleCount': 0,
+      'peopleCount': calculateSimulatedBusyness(id, reviewsCount),
       'type': type,
       'imageUrl': imageUrl,
       'photos': parsedPhotos,
@@ -889,23 +889,39 @@ class ExploreDataService {
         '&limit=50'
         '&fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,photos';
 
-    final double latMin = lat - 1.5;
-    final double latMax = lat + 1.5;
-    final double lngMin = lng - 1.5;
-    final double lngMax = lng + 1.5;
+    final normQuery = query.toLowerCase();
+    final hasCityExplicitly = normQuery.contains('رياض') || normQuery.contains('riyadh') ||
+                              normQuery.contains('حلوان') || normQuery.contains('helwan') ||
+                              normQuery.contains('قاهره') || normQuery.contains('قاهرة') || normQuery.contains('cairo') ||
+                              normQuery.contains('جيزه') || normQuery.contains('جيزة') || normQuery.contains('giza') ||
+                              normQuery.contains('زقازيق') || normQuery.contains('zagazig');
+
+    final double range = hasCityExplicitly ? 1.5 : 0.08;
+    final double latMin = lat - range;
+    final double latMax = lat + range;
+    final double lngMin = lng - range;
+    final double lngMax = lng + range;
     final client = Supabase.instance.client;
 
     try {
       // 1. Fetch custom venues from Supabase
-      final venuesResponse = await client
+      final currentUserId = client.auth.currentUser?.id;
+      var venuesQuery = client
           .from('custom_venues')
           .select('*')
           .ilike('name', '%$query%')
           .gte('latitude', latMin)
           .lte('latitude', latMax)
           .gte('longitude', lngMin)
-          .lte('longitude', lngMax)
-          .limit(10);
+          .lte('longitude', lngMax);
+
+      if (currentUserId != null) {
+        venuesQuery = venuesQuery.or('is_private.eq.false,user_id.eq.$currentUserId');
+      } else {
+        venuesQuery = venuesQuery.eq('is_private', false);
+      }
+
+      final venuesResponse = await venuesQuery.limit(10);
 
       final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
       for (final res in venueResults) {
@@ -972,6 +988,20 @@ class ExploreDataService {
       }
     } catch (e) {
       debugPrint("Error performing search: $e");
+    }
+
+    // If we have few results from Foursquare, query Google Places text search as fallback/supplement
+    if (places.length < 5) {
+      try {
+        final googleResults = await searchGooglePlaces(query, lat, lng);
+        for (final gp in googleResults) {
+          if (!places.any((p) => p['name']?.toString().toLowerCase() == gp['name']?.toString().toLowerCase() || p['id'] == gp['id'])) {
+            places.add(gp);
+          }
+        }
+      } catch (e) {
+        debugPrint("Error querying Google Places as search fallback: $e");
+      }
     }
 
     // Fallback: search local hardcoded locations matching search query
@@ -1064,7 +1094,7 @@ class ExploreDataService {
       }
       final String url = 'https://places-api.foursquare.com/places/$cleanPlaceId'
           '?fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,website,tel,hours,hours_popular';
-      final String photosUrl = 'https://places-api.foursquare.com/places/$cleanPlaceId/photos?limit=30';
+      final String photosUrl = 'https://places-api.foursquare.com/places/$cleanPlaceId/photos?limit=50';
 
       final client = Supabase.instance.client;
 
@@ -1240,6 +1270,12 @@ class ExploreDataService {
       var venuesQuery = client
           .from('custom_venues')
           .select('*, creator:profiles(*)');
+
+      if (currentUserId != null) {
+        venuesQuery = venuesQuery.or('is_private.eq.false,user_id.eq.$currentUserId');
+      } else {
+        venuesQuery = venuesQuery.eq('is_private', false);
+      }
 
       if (boxSize != null) {
         final double latMin = lat - boxSize;

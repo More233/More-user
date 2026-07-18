@@ -595,18 +595,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         _searchController.text = updatedPlace['name']?.toString() ?? '';
         
         ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(updatedPlace);
-        _mapController?.easeTo(
-          mapbox.CameraOptions(
-            center: mapbox.Point(
-              coordinates: mapbox.Position(
-                (place['longitude'] as num? ?? 0.0).toDouble(),
-                (place['latitude'] as num? ?? 0.0).toDouble(),
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (mounted && _mapController != null) {
+            _mapController!.easeTo(
+              mapbox.CameraOptions(
+                center: mapbox.Point(
+                  coordinates: mapbox.Position(
+                    (place['longitude'] as num? ?? 0.0).toDouble(),
+                    (place['latitude'] as num? ?? 0.0).toDouble(),
+                  ),
+                ).toJson(),
+                zoom: 18.0,
               ),
-            ).toJson(),
-            zoom: 18.0,
-          ),
-          mapbox.MapAnimationOptions(duration: 1000),
-        );
+              mapbox.MapAnimationOptions(duration: 1000),
+            );
+          }
+        });
       } else if (result['type'] == 'current_location') {
         if (state.userLocation != null) {
           _mapController?.easeTo(
@@ -851,7 +855,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 searchQuery: state.searchQuery,
                 onBackToTimeline: widget.onBackToTimeline,
                 onFilterPressed: () => _openFilterBottomSheet(state),
-                onSearchChanged: (_) {},
+                onSearchChanged: (val) {
+                  ref.read(exploreViewModelProvider.notifier).updateSearchQuery(val);
+                },
                 onSearchSubmitted: (value) async {
                   if (value.trim().isNotEmpty) {
                     await ref.read(exploreViewModelProvider.notifier).searchPlaces(value);
@@ -892,7 +898,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   suggestions: const [],
                   userAvatarUrl: widget.userAvatarUrl,
                   onAvatarTapped: widget.onAvatarTapped,
-                  onSearchChanged: (_) {},
+                  onSearchChanged: (val) {
+                    ref.read(exploreViewModelProvider.notifier).updateSearchQuery(val);
+                  },
                   onSearchSubmitted: (_) {},
                   onClearSearch: () {
                     ref.read(exploreViewModelProvider.notifier).updateSearchQuery("");

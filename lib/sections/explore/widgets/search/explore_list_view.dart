@@ -134,7 +134,7 @@ class ExploreListView extends StatelessWidget {
                             ),
                           ),
                         )
-                      else if (searchQuery.isNotEmpty)
+                      else if (searchQuery.isNotEmpty || searchController.text.isNotEmpty)
                         GestureDetector(
                           onTap: onClearSearch,
                           child: const Icon(

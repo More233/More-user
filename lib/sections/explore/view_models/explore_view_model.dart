@@ -167,7 +167,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
             // 2. Only query external Foursquare API if the cell has not been synced yet
             // Self-healing: if the cell is synced but has few places cached locally, sync anyway!
             final localPlacesCount = initialPlaces.length;
-            if (isCellSynced && !hasCategory && localPlacesCount > 5) {
+            if (isCellSynced && localPlacesCount > 5) {
               debugPrint("ExploreViewModel: Cell $cellId is already synced with $localPlacesCount places. Skipping background external API calls.");
               return;
             }
@@ -203,24 +203,21 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
             }
 
             if (!hasCategory) {
-              // Query 3 main category groups in parallel and update UI incrementally for maximum speed
-              final List<String> categoriesToSync = ['food', 'shops', 'sights'];
-              for (final cat in categoriesToSync) {
-                _exploreRepository.fetchNearbyFoursquarePlaces(
-                  lat,
-                  lng,
-                  radius: apiRadius,
-                  keyword: cat,
-                  cacheOnly: false,
-                ).then((places) {
-                  if (places.isNotEmpty) {
-                    _mergeAndUpdatePlaces(places);
-                    debugPrint("ExploreViewModel: Incremental background sync for $cat completed. Fetched: ${places.length}");
-                  }
-                }).catchError((err) {
-                  debugPrint("ExploreViewModel Error parallel sync for $cat: $err");
-                });
-              }
+              // Query combined categories in a single request to save API quota
+              _exploreRepository.fetchNearbyFoursquarePlaces(
+                lat,
+                lng,
+                radius: apiRadius,
+                keyword: 'food|shops|sights',
+                cacheOnly: false,
+              ).then((places) {
+                if (places.isNotEmpty) {
+                  _mergeAndUpdatePlaces(places);
+                  debugPrint("ExploreViewModel: Background sync completed. Fetched: ${places.length} places.");
+                }
+              }).catchError((err) {
+                debugPrint("ExploreViewModel Error background sync: $err");
+              });
             } else {
               _exploreRepository.fetchNearbyFoursquarePlaces(
                 lat,
@@ -297,7 +294,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final pid = p['id'].toString();
       final updated = Map<String, dynamic>.from(p);
       updated['isSaved'] = BookmarkTracker().isBookmarked(pid);
-      final int baseCount = p['basePeopleCount'] as int? ?? 0;
+      final int baseCount = p['basePeopleCount'] as int? ?? p['peopleCount'] as int? ?? 0;
       if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
         updated['peopleCount'] = (placeVisitorCounts[pid] ?? 0) + baseCount;
         updated['visitors'] = placeVisitorsMap[pid];
@@ -369,7 +366,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
     final lat = state.userLocation?.latitude ?? 24.7136;
     final lng = state.userLocation?.longitude ?? 46.6753;
 
-    state = state.copyWith(isSearching: true);
+    state = state.copyWith(isSearching: true, searchQuery: query);
     try {
       final results = await _exploreRepository.searchPlaces(query, lat, lng);
       final list = List<Map<String, dynamic>>.from(state.allPlaces);

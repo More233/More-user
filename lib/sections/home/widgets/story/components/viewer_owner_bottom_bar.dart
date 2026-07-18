@@ -7,10 +7,7 @@ class ViewerOwnerBottomBar extends StatelessWidget {
   final List<Map<String, dynamic>> viewers;
   final ValueNotifier<bool> simulateViewsNotifier;
   final VoidCallback onActivityTap;
-  final VoidCallback onHighlightTap;
-  final VoidCallback onSendTap;
-  final VoidCallback onMentionTap;
-  final VoidCallback onMoreTap;
+  final VoidCallback onDeleteTap;
   final List<Map<String, dynamic>> Function() getMockViewers;
 
   const ViewerOwnerBottomBar({
@@ -20,10 +17,7 @@ class ViewerOwnerBottomBar extends StatelessWidget {
     required this.viewers,
     required this.simulateViewsNotifier,
     required this.onActivityTap,
-    required this.onHighlightTap,
-    required this.onSendTap,
-    required this.onMentionTap,
-    required this.onMoreTap,
+    required this.onDeleteTap,
     required this.getMockViewers,
   });
 
@@ -33,11 +27,10 @@ class ViewerOwnerBottomBar extends StatelessWidget {
         : <Map<String, dynamic>>[];
         
     if (list.isEmpty) {
-      return SvgPicture.asset(
-        'assets/home/icons/user_multiple.svg',
-        width: 24,
-        height: 24,
-        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+      return const Icon(
+        Icons.remove_red_eye_outlined,
+        color: Colors.white,
+        size: 24,
       );
     }
     
@@ -80,78 +73,58 @@ class ViewerOwnerBottomBar extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomBarItem({
-    required Widget icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 24,
-            child: Center(
-              child: icon,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final list = simulateViewsNotifier.value || viewers.isNotEmpty 
+        ? (viewers.isNotEmpty ? viewers : getMockViewers()) 
+        : <Map<String, dynamic>>[];
+    final int viewCount = list.length;
+
     return Container(
       color: Colors.black,
       padding: EdgeInsets.fromLTRB(
-        16,
+        24,
         12,
-        16,
+        24,
         MediaQuery.of(context).padding.bottom + 12,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildBottomBarItem(
-            icon: ValueListenableBuilder<bool>(
-              valueListenable: simulateViewsNotifier,
-              builder: (context, val, child) => _buildOverlappingAvatars(viewers),
-            ),
-            label: "Activity",
+          // Left: Horizontal View Activity indicators
+          GestureDetector(
             onTap: onActivityTap,
-          ),
-          _buildBottomBarItem(
-            icon: SvgPicture.asset(
-              'assets/home/icons/like_icon.svg',
-              width: 24,
-              height: 24,
-              colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ValueListenableBuilder<bool>(
+                  valueListenable: simulateViewsNotifier,
+                  builder: (context, val, child) => _buildOverlappingAvatars(viewers),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  "$viewCount",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-            label: "Highlight",
-            onTap: onHighlightTap,
           ),
-          _buildBottomBarItem(
-            icon: SvgPicture.string(
-              '''<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 7H20M4 12H20M4 17H20" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
-              </svg>''',
-              width: 24,
-              height: 24,
+          
+          // Right: Delete button (only red assets/home/icons/delete_03.svg icon, no text)
+          GestureDetector(
+            onTap: onDeleteTap,
+            behavior: HitTestBehavior.opaque,
+            child: SvgPicture.asset(
+              'assets/home/icons/delete_03.svg',
+              width: 26,
+              height: 26,
+              colorFilter: const ColorFilter.mode(Color(0xFFFF453A), BlendMode.srcIn),
             ),
-            label: "More",
-            onTap: onMoreTap,
           ),
         ],
       ),
