@@ -41,21 +41,22 @@ class TimelinePostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Left side: icon + vertical line
-          _buildTimelineIndicator(),
+          _buildTimelineIndicator(isDark),
           const SizedBox(width: 16),
           // Right side: post content
-          Expanded(child: _buildPostContent()),
+          Expanded(child: _buildPostContent(context, isDark)),
         ],
       ),
     );
   }
 
-  Widget _buildTimelineIndicator() {
+  Widget _buildTimelineIndicator(bool isDark) {
     return SizedBox(
       width: 34,
       child: Column(
@@ -64,8 +65,8 @@ class TimelinePostCard extends StatelessWidget {
           Container(
             width: 34,
             height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF2EEFC),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2C2541) : const Color(0xFFF2EEFC),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -86,7 +87,7 @@ class TimelinePostCard extends StatelessWidget {
               child: Container(
                 width: 1,
                 margin: const EdgeInsets.symmetric(vertical: 4),
-                color: const Color(0xFFE0E0E0),
+                color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE0E0E0),
               ),
             ),
         ],
@@ -94,12 +95,17 @@ class TimelinePostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPostContent() {
+  Widget _buildPostContent(BuildContext context, bool isDark) {
+    // Subtle text color adapted to dark/light
+    final subtleColor = isDark
+        ? Colors.white54
+        : const Color(0xFF3B3C4F).withValues(alpha: 0.75);
+
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Color(0xFFC8C8C8),
+            color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE8E8E8),
             width: 0.5,
           ),
         ),
@@ -108,13 +114,13 @@ class TimelinePostCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Post card header
-          _buildPostHeader(),
+          _buildPostHeader(isDark),
           const SizedBox(height: 4),
           // Details row
-          _buildDetailsRow(),
+          _buildDetailsRow(subtleColor),
           const SizedBox(height: 4),
           // Time row
-          _buildTimeRow(),
+          _buildTimeRow(subtleColor),
           // Optional image
           if (post.imageUrl != null && post.imageUrl!.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -132,20 +138,20 @@ class TimelinePostCard extends StatelessWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF3B3C4F),
+                color: isDark ? Colors.white : const Color(0xFF3B3C4F),
               ),
             ),
           ],
           const SizedBox(height: 12),
           // Engagement row
-          _buildEngagementRow(),
+          _buildEngagementRow(isDark),
           const SizedBox(height: 12),
         ],
       ),
     );
   }
 
-  Widget _buildPostHeader() {
+  Widget _buildPostHeader(bool isDark) {
     return Container(
       height: 32,
       alignment: Alignment.centerLeft,
@@ -157,7 +163,7 @@ class TimelinePostCard extends StatelessWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -238,8 +244,8 @@ class TimelinePostCard extends StatelessWidget {
               'assets/home/icons/post_options.svg',
               width: 20,
               height: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF3B3C4F),
+              colorFilter: ColorFilter.mode(
+                isDark ? Colors.white54 : const Color(0xFF3B3C4F),
                 BlendMode.srcIn,
               ),
             ),
@@ -250,7 +256,7 @@ class TimelinePostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsRow() {
+  Widget _buildDetailsRow(Color subtleColor) {
     return Row(
       children: [
         Text(
@@ -258,7 +264,7 @@ class TimelinePostCard extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            color: const Color(0xFF3B3C4F).withValues(alpha: 0.75),
+            color: subtleColor,
           ),
         ),
         const DotSeparator(),
@@ -269,7 +275,7 @@ class TimelinePostCard extends StatelessWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: const Color(0xFF3B3C4F).withValues(alpha: 0.75),
+              color: subtleColor,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -279,7 +285,7 @@ class TimelinePostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTimeRow() {
+  Widget _buildTimeRow(Color subtleColor) {
     return Row(
       children: [
         Text(
@@ -287,7 +293,7 @@ class TimelinePostCard extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            color: const Color(0xFF3B3C4F).withValues(alpha: 0.75),
+            color: subtleColor,
           ),
         ),
       ],
@@ -295,7 +301,7 @@ class TimelinePostCard extends StatelessWidget {
   }
 
 
-  Widget _buildEngagementRow() {
+  Widget _buildEngagementRow(bool isDark) {
     return Row(
       children: [
         EngagementButton(
@@ -329,7 +335,9 @@ class TimelinePostCard extends StatelessWidget {
             width: 20,
             height: 20,
             colorFilter: ColorFilter.mode(
-              post.isBookmarked ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
+              post.isBookmarked
+                  ? const Color(0xFF7C57FC)
+                  : (isDark ? Colors.white54 : const Color(0xFF5A5D67)),
               BlendMode.srcIn,
             ),
           ),

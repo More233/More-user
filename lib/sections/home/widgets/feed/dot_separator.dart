@@ -5,13 +5,16 @@ class DotSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Container(
         width: 4,
         height: 4,
         decoration: BoxDecoration(
-          color: const Color(0xFF3B3C4F).withValues(alpha: 0.4),
+          color: isDark
+              ? Colors.white38
+              : const Color(0xFF3B3C4F).withValues(alpha: 0.4),
           shape: BoxShape.circle,
         ),
       ),

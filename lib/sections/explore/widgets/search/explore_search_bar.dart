@@ -105,7 +105,7 @@ class ExploreSearchBar extends StatelessWidget {
             child: Container(
               height: 46,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181C26) : Colors.white,
                 borderRadius: BorderRadius.circular(100),
                 boxShadow: [
                   BoxShadow(
@@ -121,11 +121,14 @@ class ExploreSearchBar extends StatelessWidget {
                 onSubmitted: onSearchSubmitted,
                 readOnly: onTap != null,
                 onTap: onTap,
-                style: GoogleFonts.ibmPlexSansArabic(fontSize: 16),
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 16,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                ),
                 decoration: InputDecoration(
                   hintText: hintText,
                   hintStyle: GoogleFonts.ibmPlexSansArabic(
-                    color: const Color(0x9A1A1A2E),
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.7) : const Color(0x9A1A1A2E),
                   ),
                   prefixIcon: Container(
                     margin: const EdgeInsets.only(left: 16, right: 8),
@@ -133,8 +136,8 @@ class ExploreSearchBar extends StatelessWidget {
                       'assets/explore/search_01.svg',
                       width: 18,
                       height: 18,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF82858C),
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF82858C),
                         BlendMode.srcIn,
                       ),
                     ),
@@ -154,9 +157,9 @@ class ExploreSearchBar extends StatelessWidget {
                       : ((searchQuery.isNotEmpty || searchController.text.isNotEmpty)
                           ? GestureDetector(
                               onTap: onClearSearch,
-                              child: const Icon(
+                              child: Icon(
                                 Icons.close,
-                                color: Color(0xFF82858C),
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF82858C),
                                 size: 18,
                               ),
                             )
@@ -175,9 +178,11 @@ class ExploreSearchBar extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181C26) : Colors.white,
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFE8E8E8)),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2B303C) : const Color(0xFFE8E8E8),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.05),
@@ -187,9 +192,9 @@ class ExploreSearchBar extends StatelessWidget {
                   ],
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.tune,
-                  color: Color(0xFF82858C),
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF82858C),
                   size: 20,
                 ),
               ),
@@ -203,7 +208,7 @@ class ExploreSearchBar extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181C26) : Colors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
@@ -213,9 +218,9 @@ class ExploreSearchBar extends StatelessWidget {
                   ],
                 ),
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   Icons.person_add_outlined,
-                  color: Color(0xFF1F242E),
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1F242E),
                   size: 18,
                 ),
               ),

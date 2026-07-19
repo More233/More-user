@@ -386,7 +386,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
         return Scaffold(
           key: _scaffoldKey,
-          backgroundColor: const Color(0xFFF7F9FA), // Matches Drawer background color
+          backgroundColor: Theme.of(context).brightness == Brightness.dark 
+              ? const Color(0xFF07090C) 
+              : const Color(0xFFF7F9FA), // Matches Drawer background color
           body: Stack(
             children: [
               // Under Layer: The Drawer Menu
@@ -423,7 +425,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   alignment: Alignment.centerLeft,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).scaffoldBackgroundColor,
                       borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0),
                       boxShadow: _menuAnimation.value > 0 ? [
                         BoxShadow(
@@ -455,7 +457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                 ? _onHorizontalDragEnd
                                 : null,
                             child: Scaffold(
-                              backgroundColor: Colors.white,
+                              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                               body: NotificationListener<ScrollNotification>(
                                 onNotification: (ScrollNotification notification) {
                                   if (state.selectedNavIndex == 0) {
@@ -655,7 +657,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
   Widget _buildHeader(TimelineState state) {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).scaffoldBackgroundColor,
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Stack(

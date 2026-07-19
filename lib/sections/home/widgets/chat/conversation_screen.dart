@@ -55,7 +55,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -344,9 +344,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.opaque,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0.5,
           automaticallyImplyLeading: false,
           titleSpacing: 16,
@@ -355,7 +355,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+                child: Icon(Icons.arrow_back_ios_new_rounded, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -390,14 +390,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                               ),
                             ),
                             Text(
                               '@$otherUsername',
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 12,
-                                color: const Color(0xFF545763),
+                                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF82858C) : const Color(0xFF545763),
                               ),
                             ),
                           ],
@@ -418,17 +418,19 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                     ? const CustomLoadingIndicator()
                     : ListView.builder(
                         controller: _scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
-                          final msg = messages[index];
+                          final int reversedIndex = messages.length - 1 - index;
+                          final msg = messages[reversedIndex];
                           final DateTime createdAt = DateTime.parse(msg['created_at'] as String).toLocal();
 
                           bool showDateHeader = false;
-                          if (index == 0) {
+                          if (reversedIndex == 0) {
                             showDateHeader = true;
                           } else {
-                            final prevMsg = messages[index - 1];
+                            final prevMsg = messages[reversedIndex - 1];
                             final DateTime prevCreatedAt = DateTime.parse(prevMsg['created_at'] as String).toLocal();
                             if (createdAt.year != prevCreatedAt.year ||
                                 createdAt.month != prevCreatedAt.month ||
@@ -446,6 +448,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
                           if (showDateHeader) {
                             return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _buildDateHeader(createdAt),
                                 messageBubble,
@@ -459,10 +462,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181C26) : Colors.white,
                   border: Border(
-                    top: BorderSide(color: Color(0xFFEEEEEF), width: 1),
+                    top: BorderSide(
+                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2B303C) : const Color(0xFFEEEEEF),
+                      width: 1,
+                    ),
                   ),
                 ),
                 child: isRecording
@@ -474,8 +480,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                             child: Container(
                               width: 36,
                               height: 36,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFEFEFEF),
+                              decoration: BoxDecoration(
+                                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF252A37) : const Color(0xFFEFEFEF),
                                 shape: BoxShape.circle,
                               ),
                               padding: const EdgeInsets.all(9),
@@ -489,9 +495,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(color: const Color(0xFFEFEFEF), width: 1),
+                                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F1219) : Colors.white,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2B303C) : const Color(0xFFEFEFEF),
+                                    width: 1,
+                                  ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.04),
@@ -504,6 +513,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                                 children: [
                                   Expanded(
                                     child: TextField(
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                      ),
                                       controller: _messageController,
                                       decoration: InputDecoration(
                                         hintText: 'Send Message',

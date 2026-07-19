@@ -401,14 +401,14 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF0D111C),
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF0D111C),
           ),
         ),
         subtitle: Text(
           lastMsgText,
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 14,
-            color: const Color(0xFF545763),
+            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF82858C) : const Color(0xFF545763),
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -477,7 +477,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
               ),
             ),
             const SizedBox(height: 8),
@@ -486,7 +486,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
               textAlign: TextAlign.center,
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
-                color: const Color(0xFF545763),
+                color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF82858C) : const Color(0xFF545763),
               ),
             ),
           ],
@@ -504,9 +504,9 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
 
     if (_isSearchMode) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
           surfaceTintColor: Colors.transparent,
           automaticallyImplyLeading: false,
@@ -516,7 +516,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.black),
+                  icon: Icon(Icons.arrow_back_rounded, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
                   onPressed: () {
                     setState(() {
                       _isSearchMode = false;
@@ -528,7 +528,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                   child: Container(
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEDEFF2),
+                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E2330) : const Color(0xFFEDEFF2),
                       borderRadius: BorderRadius.circular(21),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -540,7 +540,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                           child: TextField(
                             controller: _searchController,
                             autofocus: true,
-                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
                             decoration: InputDecoration(
                               hintText: 'Search',
                               hintStyle: GoogleFonts.ibmPlexSansArabic(
@@ -629,16 +629,16 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
     final avatarUrl = _currentUserAvatarUrl;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         automaticallyImplyLeading: false,
         leadingWidth: 56,
         leading: widget.showBackButton
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black, size: 20),
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
                 onPressed: () => Navigator.pop(context),
               )
             : (widget.onAvatarTapped != null
@@ -670,7 +670,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
           ),
         ),
         centerTitle: true,
@@ -692,7 +692,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                     child: Container(
                       height: 42,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEDEFF2),
+                        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E2330) : const Color(0xFFEDEFF2),
                         borderRadius: BorderRadius.circular(21),
                       ),
                       child: Row(

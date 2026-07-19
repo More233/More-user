@@ -42,10 +42,14 @@ class _ExploreMapTabsState extends State<ExploreMapTabs> {
         child: Container(
           height: 48,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.72),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? const Color(0xFF181C26).withValues(alpha: 0.72)
+                : Colors.white.withValues(alpha: 0.72),
             borderRadius: BorderRadius.circular(100),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.3),
               width: 0.8,
             ),
             boxShadow: [
@@ -94,7 +98,7 @@ class _ExploreMapTabsState extends State<ExploreMapTabs> {
                     height: 38,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEDE6FC),
+                        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2C253B) : const Color(0xFFEDE6FC),
                         borderRadius: BorderRadius.circular(19),
                       ),
                     ),
@@ -180,14 +184,14 @@ class _PillTabItem extends StatelessWidget {
             ? Icon(
                 iconData,
                 size: 18,
-                color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+                color: isActive ? const Color(0xFF7C57FC) : (Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF82858C)),
               )
             : SvgPicture.asset(
                 iconPath,
                 width: 18,
                 height: 18,
                 colorFilter: ColorFilter.mode(
-                  isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+                  isActive ? const Color(0xFF7C57FC) : (Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF82858C)),
                   BlendMode.srcIn,
                 ),
               ),

@@ -259,8 +259,11 @@ class PlaceDetailsInfo extends StatelessWidget {
                   child: Stack(
                     children: [
                       mapbox.MapWidget(
+                        key: ValueKey('place_details_mini_map_${Theme.of(context).brightness == Brightness.dark}'),
                         resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
-                        styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+                        styleUri: Theme.of(context).brightness == Brightness.dark
+                            ? "mapbox://styles/mapbox/dark-v11"
+                            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
                         cameraOptions: mapbox.CameraOptions(
                           center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
                           zoom: 15.0,

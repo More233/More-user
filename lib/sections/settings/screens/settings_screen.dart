@@ -12,6 +12,7 @@ import 'edit_profile_screen.dart';
 import 'notifications_settings_screen.dart';
 import 'location_settings_screen.dart';
 import 'suggestions_settings_screen.dart';
+import 'appearance_screen.dart';
 import 'privacy_settings_screen.dart';
 import 'blocked_users_screen.dart';
 import 'help_support_screen.dart';
@@ -185,18 +186,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final isAr = settings.preferredLanguage == 'ar';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -205,7 +207,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
           centerTitle: true,
@@ -220,14 +222,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             : SingleChildScrollView(
                 child: Column(
                   children: [
-                    const Divider(height: 1, color: Color(0xFFE8E8E8)),
-                    _buildProfileRow(isAr),
-                    const Divider(height: 8, color: Color(0xFFF6F6F6)),
-                    _buildSectionHeader(isAr ? 'الحساب' : 'ACCOUNT', isAr),
+                    Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
+                    _buildProfileRow(isAr, isDark),
+                    Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
+                    _buildSectionHeader(isAr ? 'الحساب' : 'ACCOUNT', isAr, isDark),
                     _buildFeatureRow(
                       icon: Icons.person_outline,
                       title: isAr ? 'تعديل الملف الشخصي' : 'Edit Profile',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () async {
                         final updated = await Navigator.push<bool>(
                           context,
@@ -240,22 +243,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         }
                       },
                     ),
-                    _buildDivider(),
+                    _buildDivider(isDark),
                     _buildFeatureRow(
                       icon: Icons.language_outlined,
                       title: isAr ? 'اللغة' : 'Language',
                       isAr: isAr,
+                      isDark: isDark,
                       trailingText: settings.preferredLanguage == 'ar'
                           ? 'العربية'
                           : (settings.preferredLanguage == 'en' ? 'English' : 'Device'),
                       onTap: () => _showLanguageBottomSheet(context),
                     ),
-                    const Divider(height: 8, color: Color(0xFFF6F6F6)),
-                    _buildSectionHeader(isAr ? 'التجربة' : 'EXPERIENCE', isAr),
+                    Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
+                    _buildSectionHeader(isAr ? 'التجربة' : 'EXPERIENCE', isAr, isDark),
                     _buildFeatureRow(
                       icon: Icons.notifications_none_outlined,
                       title: isAr ? 'التنبيهات' : 'Notifications',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -265,11 +270,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    _buildDivider(),
+                    _buildDivider(isDark),
                     _buildFeatureRow(
                       icon: Icons.location_on_outlined,
                       title: isAr ? 'الموقع والأماكن المجاورة' : 'Location & Nearby',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -279,11 +285,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    _buildDivider(),
+                    _buildDivider(isDark),
+                    _buildFeatureRow(
+                      icon: Icons.dark_mode_outlined,
+                      title: isAr ? 'المظهر' : 'Appearance',
+                      isAr: isAr,
+                      isDark: isDark,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AppearanceScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildDivider(isDark),
                     _buildFeatureRow(
                       icon: Icons.lightbulb_outline,
                       title: isAr ? 'مقترحات تسجيل الوصول' : 'Check-in Suggestions',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -293,12 +315,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    const Divider(height: 8, color: Color(0xFFF6F6F6)),
-                    _buildSectionHeader(isAr ? 'الخصوصية' : 'PRIVACY', isAr),
+                    Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
+                    _buildSectionHeader(isAr ? 'الخصوصية' : 'PRIVACY', isAr, isDark),
                     _buildFeatureRow(
                       icon: Icons.lock_outline,
                       title: isAr ? 'الخصوصية والظهور' : 'Privacy & Visibility',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -308,11 +331,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    _buildDivider(),
+                    _buildDivider(isDark),
                     _buildFeatureRow(
                       icon: Icons.block_outlined,
                       title: isAr ? 'الأشخاص المحظورين' : 'Blocked People',
                       isAr: isAr,
+                      isDark: isDark,
                       trailingText: isAr
                           ? '${settings.blockedUsers.length} محظور'
                           : '${settings.blockedUsers.length} blocked',
@@ -325,12 +349,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    const Divider(height: 8, color: Color(0xFFF6F6F6)),
-                    _buildSectionHeader(isAr ? 'الدعم' : 'SUPPORT', isAr),
+                    Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
+                    _buildSectionHeader(isAr ? 'الدعم' : 'SUPPORT', isAr, isDark),
                     _buildFeatureRow(
                       icon: Icons.help_outline,
                       title: isAr ? 'المساعدة والدعم' : 'Help & Support',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -340,11 +365,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    _buildDivider(),
+                    _buildDivider(isDark),
                     _buildFeatureRow(
                       icon: Icons.mail_outline,
                       title: isAr ? 'إرسال ملاحظاتك' : 'Send Feedback',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () {
                         Navigator.push(
                           context,
@@ -354,11 +380,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    _buildDivider(),
+                    _buildDivider(isDark),
                     _buildFeatureRow(
                       icon: Icons.info_outline,
                       title: isAr ? 'حول More' : 'About More',
                       isAr: isAr,
+                      isDark: isDark,
                       onTap: () => _showAboutMoreDialog(context, isAr),
                     ),
                     const SizedBox(height: 32),
@@ -373,7 +400,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: Colors.white,
+                            backgroundColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
                             foregroundColor: const Color(0xFFFF3B30),
                           ),
                           onPressed: () => _handleLogout(context),
@@ -413,6 +440,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showAboutMoreDialog(BuildContext context, bool isAr) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -422,7 +450,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           insetPadding: const EdgeInsets.symmetric(horizontal: 32),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
@@ -461,7 +489,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -555,7 +583,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildProfileRow(bool isAr) {
+  Widget _buildProfileRow(bool isAr, bool isDark) {
     return InkWell(
       onTap: () async {
         final updated = await Navigator.push<bool>(
@@ -587,7 +615,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -595,7 +623,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _username.isNotEmpty ? '@$_username' : '',
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 14,
-                      color: const Color(0xFF707070),
+                      color: isDark ? Colors.white54 : const Color(0xFF707070),
                     ),
                   ),
                 ],
@@ -612,17 +640,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, bool isAr) {
+  Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFFFAFAFA),
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFFAFAFA),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF909090),
+          color: isDark ? Colors.white54 : const Color(0xFF909090),
           letterSpacing: 1.0,
         ),
       ),
@@ -635,6 +663,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required bool isAr,
     String? trailingText,
     required VoidCallback onTap,
+    required bool isDark,
   }) {
     return ListTile(
       leading: Container(
@@ -654,7 +683,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: Colors.black,
+          color: isDark ? Colors.white : Colors.black,
         ),
       ),
       trailing: Row(
@@ -665,7 +694,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               trailingText,
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
-                color: const Color(0xFF909090),
+                color: isDark ? Colors.white38 : const Color(0xFF909090),
               ),
             ),
             const SizedBox(width: 8),
@@ -682,10 +711,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
 
-  Widget _buildDivider() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 64, right: 16),
-      child: Divider(height: 1, color: Color(0xFFE8E8E8)),
+  Widget _buildDivider(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 64, right: 16),
+      child: Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
     );
   }
 }

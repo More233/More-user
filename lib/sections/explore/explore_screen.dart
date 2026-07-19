@@ -291,7 +291,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   void _openPriceMiniBottomSheet(ExploreState state) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -431,7 +431,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
   void _openRatingMiniBottomSheet(ExploreState state) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -804,7 +804,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         _searchController.text.trim().isNotEmpty;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           Positioned.fill(
@@ -1353,7 +1353,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       context: context,
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),

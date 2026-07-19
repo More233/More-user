@@ -20,6 +20,7 @@ import '../../../settings/screens/location_settings_screen.dart';
 import '../../../settings/screens/suggestions_settings_screen.dart';
 import '../../../settings/screens/blocked_users_screen.dart';
 import '../../../settings/screens/settings_screen.dart';
+import '../../../settings/screens/appearance_screen.dart';
 import '../../../settings/screens/help_support_screen.dart';
 
 
@@ -95,8 +96,9 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: const Color(0xFFF7F9FA),
+      color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF7F9FA),
       child: _loading
           ? const Center(
               child: CupertinoActivityIndicator(
@@ -147,9 +149,9 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                               ),
                             ),
                              IconButton(
-                               icon: const Icon(
+                               icon: Icon(
                                  CupertinoIcons.person_crop_circle_badge_plus,
-                                 color: Colors.black87,
+                                 color: isDark ? Colors.white70 : Colors.black87,
                                  size: 24,
                                ),
                                padding: EdgeInsets.zero,
@@ -168,7 +170,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 19,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                          color: isDark ? Colors.white : Colors.black,
                             letterSpacing: -0.3,
                           ),
                         ),
@@ -177,7 +179,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           _username.isNotEmpty ? '@$_username' : '',
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
-                            color: const Color(0xFF687684),
+                            color: isDark ? Colors.white54 : const Color(0xFF687684),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -206,7 +208,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
-                                      color: Colors.black,
+                                      color: isDark ? Colors.white : Colors.black,
                                     ),
                                   ),
                                   const SizedBox(width: 4),
@@ -244,7 +246,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
-                                      color: Colors.black,
+                                      color: isDark ? Colors.white : Colors.black,
                                     ),
                                   ),
                                   const SizedBox(width: 4),
@@ -271,6 +273,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                       padding: EdgeInsets.zero,
                       children: [
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.person,
                           title: 'Profile',
                           onTap: () {
@@ -291,6 +294,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           },
                         ),
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.bookmark,
                           title: 'Bookmarks',
                           onTap: () {
@@ -305,6 +309,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           },
                         ),
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.globe,
                           title: 'Language',
                           onTap: () {
@@ -319,6 +324,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           },
                         ),
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.bell,
                           title: 'Notifications',
                           onTap: () {
@@ -333,6 +339,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           },
                         ),
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.location,
                           title: 'Location',
                           onTap: () {
@@ -347,6 +354,22 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           },
                         ),
                         _buildDrawerItem(
+                          context: context,
+                          icon: CupertinoIcons.moon,
+                          title: 'Appearance',
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            widget.onCloseMenu?.call();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AppearanceScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.sparkles,
                           title: 'Check-in Suggestions',
                           onTap: () {
@@ -362,6 +385,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                         ),
 
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.person_crop_circle_badge_xmark,
                           title: 'Blocked people',
                           onTap: () {
@@ -375,12 +399,12 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                             );
                           },
                         ),
-                        // The single line/divider separating footer settings per Twitter layout
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 4),
                           child: Divider(height: 1, color: Color(0xFFF0F0F0), thickness: 1),
                         ),
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.settings,
                           title: 'Settings and privacy',
                           onTap: () async {
@@ -397,6 +421,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           },
                         ),
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.question_circle,
                           title: 'Help Center',
                           onTap: () {
@@ -411,6 +436,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           },
                         ),
                         _buildDrawerItem(
+                          context: context,
                           icon: CupertinoIcons.square_arrow_left,
                           title: 'Logout',
                           onTap: () {
@@ -428,6 +454,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
   }
 
   void _showLogoutConfirmationDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -436,7 +463,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
           elevation: 12,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -448,7 +475,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                   style: GoogleFonts.outfit(
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111827),
+                    color: isDark ? Colors.white : const Color(0xFF111827),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -457,7 +484,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                   'Are you sure you want to log out?',
                   style: GoogleFonts.outfit(
                     fontSize: 14,
-                    color: const Color(0xFF6B7280),
+                    color: isDark ? Colors.white54 : const Color(0xFF6B7280),
                     height: 1.5,
                   ),
                   textAlign: TextAlign.center,
@@ -537,6 +564,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
 
   void _showAccountsBottomSheet() async {
     debugPrint("==== _showAccountsBottomSheet() Called ====");
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     // Save current session first to ensure it's in SharedPreferences
     await AccountManager.saveCurrentAccount();
@@ -555,9 +583,9 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
@@ -605,7 +633,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                               Text(
                                 "Accounts",
                                 style: GoogleFonts.ibmPlexSansArabic(
-                                  color: Colors.black,
+                                  color: isDark ? Colors.white : Colors.black,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -647,7 +675,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                       title: Text(
                                         acc.fullName,
                                         style: GoogleFonts.ibmPlexSansArabic(
-                                          color: Colors.black,
+                                          color: isDark ? Colors.white : Colors.black,
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
                                         ),
@@ -655,7 +683,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                       subtitle: Text(
                                         "@${acc.username}",
                                         style: GoogleFonts.ibmPlexSansArabic(
-                                          color: const Color(0xFF687684),
+                                          color: isDark ? Colors.white54 : const Color(0xFF687684),
                                           fontSize: 14,
                                         ),
                                       ),
@@ -765,10 +793,12 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
   }
 
   Widget _buildDrawerItem({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -777,7 +807,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
           children: [
             Icon(
               icon,
-              color: Colors.black87,
+              color: isDark ? Colors.white70 : Colors.black87,
               size: 24,
             ),
             const SizedBox(width: 20),
@@ -786,7 +816,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: isDark ? Colors.white : Colors.black,
                 letterSpacing: -0.2,
               ),
             ),

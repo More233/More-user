@@ -24,6 +24,9 @@ class EngagementButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final inactiveColor = isDark ? Colors.white54 : const Color(0xFF5A5D67);
+
     return GestureDetector(
       onTap: onTap,
       child: Row(
@@ -34,7 +37,7 @@ class EngagementButton extends StatelessWidget {
             width: iconSize,
             height: iconSize,
             colorFilter: ColorFilter.mode(
-              active ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
+              active ? const Color(0xFF7C57FC) : inactiveColor,
               BlendMode.srcIn,
             ),
           ),
@@ -45,7 +48,7 @@ class EngagementButton extends StatelessWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w500,
-                color: active ? const Color(0xFF7C57FC) : const Color(0xFF5A5D67),
+                color: active ? const Color(0xFF7C57FC) : inactiveColor,
               ),
             ),
           ],

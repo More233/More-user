@@ -117,7 +117,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          color: const Color(0xFFF2F2F7),
+                          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E2330) : const Color(0xFFF2F2F7),
                         ),
                         child: Stack(
                           children: [
@@ -155,7 +155,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                         color: const Color(0xFF7C57FC),
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: Colors.white,
+                                          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E2330) : Colors.white,
                                           width: 1.5,
                                         ),
                                       ),
@@ -217,7 +217,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          color: const Color(0xFFF2F2F7),
+                          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E2330) : const Color(0xFFF2F2F7),
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
@@ -336,7 +336,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                         child: Container(
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
-                            color: Colors.white,
+                            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F1219) : Colors.white,
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(hasViewed ? 15 : 12.5),
@@ -510,12 +510,16 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
   }
 
   Widget _buildFindFriendsCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF181C26) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF0F0F0), width: 1.5),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2B303C) : const Color(0xFFF0F0F0),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -538,7 +542,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2EEFC),
+                      color: isDark ? const Color(0xFF2B283A) : const Color(0xFFF2EEFC),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -557,7 +561,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: isDark ? Colors.white : Colors.black,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -576,11 +580,11 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                     onTap: () {
                       ref.read(socialFeedViewModelProvider.notifier).hideFindFriendsCard();
                     },
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
                       child: Icon(
                         Icons.close,
-                        color: Colors.black,
+                        color: isDark ? Colors.white70 : Colors.black,
                         size: 20,
                       ),
                     ),
@@ -767,7 +771,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black,
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                               height: 1.0,
                             ),
                           ),
@@ -917,7 +921,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                       post.description,
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 13.5,
-                        color: const Color(0xFF221F26),
+                        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFE1E1E6) : const Color(0xFF221F26),
                         height: 1.4,
                       ),
                     ),

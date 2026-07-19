@@ -1457,6 +1457,11 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       defaultValue: Secrets.mapboxAccessToken,
     );
 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final String resolvedStyleUri = isDark 
+        ? "mapbox://styles/mapbox/dark-v11" 
+        : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (pointerEvent) {
@@ -1497,9 +1502,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         }
       },
       child: mapbox.MapWidget(
-        key: const ValueKey('explore_mapbox_widget_key'),
+        key: ValueKey('explore_mapbox_widget_key_$isDark'),
         resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
-        styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+        styleUri: resolvedStyleUri,
         onStyleLoadedListener: (styleLoaded) {
           debugPrint(
             "ExploreMapWidget: Style fully loaded. Reinitializing annotations...",
@@ -1522,6 +1527,20 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               } catch (e) {
                 debugPrint("Error disabling map rotation on style load: $e");
               }
+
+              if (widget.myLocationEnabled) {
+                try {
+                  await _mapboxMap!.location.updateSettings(
+                    mapbox.LocationComponentSettings(
+                      enabled: true,
+                      pulsingEnabled: true,
+                    ),
+                  );
+                } catch (e) {
+                  debugPrint("Error updating mapbox location puck on style load: $e");
+                }
+              }
+
               await _initNativeClusteringSourceAndLayers(_mapboxMap!);
               await _updateMarkers();
             });
@@ -1541,6 +1560,19 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
           Future.microtask(() async {
             await _hideDefaultLayers(mapboxMap);
+
+            if (widget.myLocationEnabled) {
+              try {
+                await mapboxMap.location.updateSettings(
+                  mapbox.LocationComponentSettings(
+                    enabled: true,
+                    pulsingEnabled: true,
+                  ),
+                );
+              } catch (e) {
+                debugPrint("Error enabling mapbox location puck: $e");
+              }
+            }
 
             // Set projection to flat map (Mercator) instead of 3D Globe
             try {

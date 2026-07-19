@@ -33,10 +33,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     final state = ref.watch(notificationsViewModelProvider);
     final activities = state.activities;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
         automaticallyImplyLeading: widget.showBackButton,
@@ -49,6 +50,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     'assets/home/icons/arrow_left_01.svg',
                     width: 24,
                     height: 24,
+                    colorFilter: isDark ? const ColorFilter.mode(Colors.white, BlendMode.srcIn) : null,
                   ),
                 ),
               )
@@ -58,7 +60,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.w500,
-            color: Colors.black,
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
       ),
@@ -139,7 +141,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 20,
                 fontWeight: FontWeight.w500,
-                color: Colors.black,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
               ),
             ),
           ],
@@ -187,7 +189,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     text: TextSpan(
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: Colors.black,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                       ),
                       children: [
                         TextSpan(
@@ -200,7 +202,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         TextSpan(
                           text: act['text'],
                           style: GoogleFonts.ibmPlexSansArabic(
-                            color: const Color(0xFF3B3C4F),
+                            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFC0C1D0) : const Color(0xFF3B3C4F),
                           ),
                         ),
                         const TextSpan(text: ' '),
@@ -225,9 +227,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             height: 32,
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(
-                backgroundColor: act['isFollowing'] ? Colors.white : const Color(0xFF7C57FC),
+                backgroundColor: act['isFollowing']
+                    ? (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181C26) : Colors.white)
+                    : const Color(0xFF7C57FC),
                 side: BorderSide(
-                  color: act['isFollowing'] ? const Color(0xFFC8C8C8) : const Color(0xFF7C57FC),
+                  color: act['isFollowing']
+                      ? (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF3B404E) : const Color(0xFFC8C8C8))
+                      : const Color(0xFF7C57FC),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),

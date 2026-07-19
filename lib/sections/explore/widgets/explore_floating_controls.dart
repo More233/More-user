@@ -32,10 +32,14 @@ class ExploreFloatingControls extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.72),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF181C26).withValues(alpha: 0.72)
+                      : Colors.white.withValues(alpha: 0.72),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.white.withValues(alpha: 0.3),
                     width: 0.8,
                   ),
                   boxShadow: [

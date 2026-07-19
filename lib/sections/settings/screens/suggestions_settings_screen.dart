@@ -12,18 +12,19 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final isAr = settings.preferredLanguage == 'ar';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -32,7 +33,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
           centerTitle: true,
@@ -41,15 +42,15 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
+              Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
               // Promo card banner matching Figma - 309
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9F9FA),
+                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FA),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFF0F0F2)),
+                    border: Border.all(color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFF0F0F2)),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -63,7 +64,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: isDark ? Colors.white : Colors.black,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -73,7 +74,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
                                   : 'Smart suggestions help you remember places you\'ve been and make it easy to check in.',
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 12,
-                                color: const Color(0xFF666666),
+                                color: isDark ? Colors.white54 : const Color(0xFF666666),
                                 height: 1.4,
                               ),
                             ),
@@ -101,38 +102,42 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              const Divider(height: 8, color: Color(0xFFF6F6F6)),
-              _buildSectionHeader(isAr ? 'التفضيلات والمقترحات الذكية' : 'INTELLIGENT SUGGESTIONS', isAr),
+              Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
+              _buildSectionHeader(isAr ? 'التفضيلات والمقترحات الذكية' : 'INTELLIGENT SUGGESTIONS', isAr, isDark),
               // Show check-in suggestions
               _buildToggleRow(
                 iconPath: 'assets/setting/icons/idea_01.svg',
                 title: isAr ? 'إظهار مقترحات تسجيل الوصول' : 'Show check-in suggestions',
                 value: settings.showCheckInSuggestions,
                 onChanged: (val) => notifier.updateField('show_check_in_suggestions', val),
+                isDark: isDark,
               ),
-              _buildDivider(),
+              _buildDivider(isDark),
               // Suggest places when nearby
               _buildToggleRow(
                 iconPath: 'assets/setting/icons/location_06.svg',
                 title: isAr ? 'اقتراح الأماكن عندما أكون قريباً' : 'Suggest places when nearby',
                 value: settings.suggestPlacesWhenNearby,
                 onChanged: (val) => notifier.updateField('suggest_places_when_nearby', val),
+                isDark: isDark,
               ),
-              _buildDivider(),
+              _buildDivider(isDark),
               // Suggest from recent visits
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/toggle_base.svg', // Fallback or placeholder clock icon
+                iconPath: 'assets/setting/icons/toggle_base.svg',
                 title: isAr ? 'الاقتراح من الزيارات الأخيرة' : 'Suggest from recent visits',
                 value: settings.suggestFromRecentVisits,
                 onChanged: (val) => notifier.updateField('suggest_from_recent_visits', val),
+                isDark: isDark,
               ),
-              _buildDivider(),
+              _buildDivider(isDark),
               // Use photo time & location
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/radios.svg', // Fallback or placeholder camera icon
+                iconPath: 'assets/setting/icons/radios.svg',
                 title: isAr ? 'استخدام وقت وموقع الصور' : 'Use photo time & location',
                 value: settings.usePhotoTimeLocation,
                 onChanged: (val) => notifier.updateField('use_photo_time_location', val),
+                isDark: isDark,
               ),
               const SizedBox(height: 40),
             ],
@@ -142,17 +147,17 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, bool isAr) {
+  Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFFFAFAFA),
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFFAFAFA),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF909090),
+          color: isDark ? Colors.white54 : const Color(0xFF909090),
           letterSpacing: 1.0,
         ),
       ),
@@ -164,6 +169,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
+    required bool isDark,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -193,7 +199,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: Colors.black,
+                color: isDark ? Colors.white : Colors.black,
               ),
             ),
           ),
@@ -210,10 +216,10 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDivider() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 64, right: 16),
-      child: Divider(height: 1, color: Color(0xFFE8E8E8)),
+  Widget _buildDivider(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 64, right: 16),
+      child: Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
     );
   }
 }

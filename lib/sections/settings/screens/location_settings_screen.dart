@@ -224,18 +224,19 @@ class LocationSettingsScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final isAr = settings.preferredLanguage == 'ar';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -244,7 +245,7 @@ class LocationSettingsScreen extends ConsumerWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
           centerTitle: true,
@@ -253,8 +254,8 @@ class LocationSettingsScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
-              _buildSectionHeader(isAr ? 'صلاحية الوصول للموقع' : 'Location access', isAr),
+              Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
+              _buildSectionHeader(isAr ? 'صلاحية الوصول للموقع' : 'Location access', isAr, isDark),
               // Permission selector row
               ListTile(
                 leading: Container(
@@ -274,7 +275,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: Colors.black,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 trailing: Row(
@@ -284,7 +285,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                       _getPermissionText(settings.locationPermission, isAr),
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: const Color(0xFF909090),
+                        color: isDark ? Colors.white38 : const Color(0xFF909090),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -297,7 +298,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                 ),
                 onTap: () => _showPermissionBottomSheet(context, ref, isAr),
               ),
-              _buildDivider(),
+              _buildDivider(isDark),
               // Precise Location toggle
               _buildToggleRow(
                 icon: Icons.gps_fixed_outlined,
@@ -307,8 +308,9 @@ class LocationSettingsScreen extends ConsumerWidget {
                     : 'Improve accuracy for check-ins and nearby results',
                 value: settings.preciseLocation,
                 onChanged: (val) => notifier.updateField('precise_location', val),
+                isDark: isDark,
               ),
-              _buildDivider(),
+              _buildDivider(isDark),
               // Show nearby spots toggle
               _buildToggleRow(
                 icon: Icons.storefront_outlined,
@@ -318,8 +320,9 @@ class LocationSettingsScreen extends ConsumerWidget {
                     : 'Discover shops, cafes, and spots around you',
                 value: settings.showNearbyPlaces,
                 onChanged: (val) => notifier.updateField('show_nearby_places', val),
+                isDark: isDark,
               ),
-              _buildDivider(),
+              _buildDivider(isDark),
               // Prompts when arrive toggle
               _buildToggleRow(
                 icon: Icons.notifications_none_outlined,
@@ -329,6 +332,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                     : 'Get prompts to check in when you arrive',
                 value: settings.nearbyCheckInPrompts,
                 onChanged: (val) => notifier.updateField('nearby_check_in_prompts', val),
+                isDark: isDark,
               ),
               const SizedBox(height: 40),
             ],
@@ -338,17 +342,17 @@ class LocationSettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, bool isAr) {
+  Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
     return Container(
       width: double.infinity,
-      color: const Color(0xFFFAFAFA),
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFFAFAFA),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF909090),
+          color: isDark ? Colors.white54 : const Color(0xFF909090),
           letterSpacing: 1.0,
         ),
       ),
@@ -361,6 +365,7 @@ class LocationSettingsScreen extends ConsumerWidget {
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
+    required bool isDark,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -389,7 +394,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: isDark ? Colors.white : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -397,7 +402,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                   subtitle,
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 12,
-                    color: const Color(0xFF888888),
+                    color: isDark ? Colors.white38 : const Color(0xFF888888),
                     height: 1.3,
                   ),
                 ),
@@ -418,10 +423,10 @@ class LocationSettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDivider() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 64, right: 16),
-      child: Divider(height: 1, color: Color(0xFFE8E8E8)),
+  Widget _buildDivider(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 64, right: 16),
+      child: Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
     );
   }
 }
