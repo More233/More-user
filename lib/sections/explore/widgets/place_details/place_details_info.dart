@@ -49,13 +49,13 @@ class PlaceDetailsInfo extends StatelessWidget {
     );
   }
 
-  Widget _buildGreyPillButton(String label, VoidCallback onTap) {
+  Widget _buildGreyPillButton(String label, VoidCallback onTap, {bool isDark = false}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F6F8),
+          color: isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8),
           borderRadius: BorderRadius.circular(100),
         ),
         child: Text(
@@ -63,7 +63,7 @@ class PlaceDetailsInfo extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF1F242E),
+            color: isDark ? Colors.white : const Color(0xFF1F242E),
           ),
         ),
       ),
@@ -72,6 +72,11 @@ class PlaceDetailsInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+    final Color borderColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -81,7 +86,7 @@ class PlaceDetailsInfo extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F242E),
+            color: textColor,
           ),
         ),
         const SizedBox(height: 4),
@@ -91,7 +96,7 @@ class PlaceDetailsInfo extends StatelessWidget {
           "${place['type'] ?? 'Pizzeria'} • ${place['address'] ?? 'Zagazig, Eastern'} • ${place['price'] ?? '\$\$'} • $distanceStr",
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 14,
-            color: const Color(0xFF82858C),
+            color: textMutedColor,
           ),
         ),
         const SizedBox(height: 8),
@@ -99,9 +104,9 @@ class PlaceDetailsInfo extends StatelessWidget {
         // Overall Rating Row
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.sentiment_satisfied_alt,
-              color: Color(0xFF1F242E),
+              color: textColor,
               size: 20,
             ),
             const SizedBox(width: 6),
@@ -110,7 +115,7 @@ class PlaceDetailsInfo extends StatelessWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF1F242E),
+                color: textColor,
               ),
             ),
             const SizedBox(width: 4),
@@ -118,7 +123,7 @@ class PlaceDetailsInfo extends StatelessWidget {
               "($reviewsCount)",
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
-                color: const Color(0xFF82858C),
+                color: textMutedColor,
               ),
             ),
           ],
@@ -131,7 +136,7 @@ class PlaceDetailsInfo extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F242E),
+            color: textColor,
           ),
         ),
         const SizedBox(height: 12),
@@ -163,7 +168,7 @@ class PlaceDetailsInfo extends StatelessWidget {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF1F242E),
+                          color: textColor,
                         ),
                       ),
                       if (openNow != null) ...[
@@ -171,7 +176,9 @@ class PlaceDetailsInfo extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: openNow ? const Color(0xFFE6F7ED) : const Color(0xFFFDECEB),
+                            color: openNow
+                                ? (isDark ? const Color(0xFF133F1F) : const Color(0xFFE6F7ED))
+                                : (isDark ? const Color(0xFF5F1F1F) : const Color(0xFFFDECEB)),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -179,7 +186,9 @@ class PlaceDetailsInfo extends StatelessWidget {
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: openNow ? const Color(0xFF1B5E20) : const Color(0xFFC62828),
+                              color: openNow
+                                  ? (isDark ? const Color(0xFF81C784) : const Color(0xFF1B5E20))
+                                  : (isDark ? const Color(0xFFE57373) : const Color(0xFFC62828)),
                             ),
                           ),
                         ),
@@ -188,7 +197,7 @@ class PlaceDetailsInfo extends StatelessWidget {
                   )
                 : Row(
                     children: [
-                      _buildGreyPillButton("Add opening hours", onAddHoursTap),
+                      _buildGreyPillButton("Add opening hours", onAddHoursTap, isDark: isDark),
                     ],
                   ),
           );
@@ -202,7 +211,7 @@ class PlaceDetailsInfo extends StatelessWidget {
               place['phone'].toString(),
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 15,
-                color: const Color(0xFF1F242E),
+                color: textColor,
               ),
             ),
           ),
@@ -242,17 +251,17 @@ class PlaceDetailsInfo extends StatelessWidget {
                     : (place['name']?.toString() ?? 'Zagazig'),
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 15,
-                  color: const Color(0xFF1F242E),
+                  color: textColor,
                 ),
               ),
               const SizedBox(height: 12),
 
-              // Real Google Maps Preview Container
+              // Real Mapbox Map Preview Container
               Container(
                 height: 140,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE8E8E8)),
+                  border: Border.all(color: borderColor),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),
@@ -297,13 +306,13 @@ class PlaceDetailsInfo extends StatelessWidget {
                                     layerInfo.id,
                                     'visibility',
                                     'none',
-                                  );
+                                    );
+                                  }
                                 }
                               }
-                            }
-                          } catch (_) {}
-                        },
-                      ),
+                            } catch (_) {}
+                          },
+                        ),
                       const Center(
                         child: Icon(
                           Icons.location_on,
@@ -328,7 +337,7 @@ class PlaceDetailsInfo extends StatelessWidget {
                       "Suggest an edit",
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: const Color(0xFF1F242E),
+                        color: textColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -352,7 +361,7 @@ class PlaceDetailsInfo extends StatelessWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1F242E),
+                    color: textColor,
                   ),
                 ),
                 const Icon(Icons.chevron_right, color: Color(0xFF82858C)),

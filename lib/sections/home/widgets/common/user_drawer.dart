@@ -98,7 +98,14 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF7F9FA),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131722) : const Color(0xFFF7F9FA),
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: _loading
           ? const Center(
               child: CupertinoActivityIndicator(
@@ -151,7 +158,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                              IconButton(
                                icon: Icon(
                                  CupertinoIcons.person_crop_circle_badge_plus,
-                                 color: isDark ? Colors.white70 : Colors.black87,
+                                 color: isDark ? Colors.white : Colors.black87,
                                  size: 24,
                                ),
                                padding: EdgeInsets.zero,
@@ -179,7 +186,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           _username.isNotEmpty ? '@$_username' : '',
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
-                            color: isDark ? Colors.white54 : const Color(0xFF687684),
+                            color: isDark ? Colors.white70 : const Color(0xFF687684),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -212,14 +219,14 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    'Following',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      fontSize: 14,
-                                      color: const Color(0xFF687684),
+                                    Text(
+                                      'Following',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 14,
+                                        color: isDark ? Colors.white70 : const Color(0xFF687684),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -250,13 +257,13 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    'Followers',
-                                    style: GoogleFonts.ibmPlexSansArabic(
-                                      fontSize: 14,
-                                      color: const Color(0xFF687684),
+                                    Text(
+                                      'Followers',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 14,
+                                        color: isDark ? Colors.white70 : const Color(0xFF687684),
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -399,9 +406,9 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                             );
                           },
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4),
-                          child: Divider(height: 1, color: Color(0xFFF0F0F0), thickness: 1),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Divider(height: 1, color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF0F0F0), thickness: 1),
                         ),
                         _buildDrawerItem(
                           context: context,
@@ -642,7 +649,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                             ],
                           ),
                         ),
-                        const Divider(color: Color(0xFFF1F1F1), height: 1),
+                        Divider(color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF1F1F1), height: 1),
                         Flexible(
                           child: accounts.isEmpty
                               ? const SizedBox(
@@ -739,7 +746,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                   },
                                 ),
                         ),
-                        const Divider(color: Color(0xFFF1F1F1), height: 1),
+                        Divider(color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF1F1F1), height: 1),
                         ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                           leading: const CircleAvatar(
@@ -807,7 +814,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
           children: [
             Icon(
               icon,
-              color: isDark ? Colors.white70 : Colors.black87,
+              color: isDark ? Colors.white : Colors.black87,
               size: 24,
             ),
             const SizedBox(width: 20),

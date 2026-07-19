@@ -247,6 +247,8 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
 
   Widget _buildUserTile(SuggestedUser user) {
     final isFollowing = _localFollowed.contains(user.username);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -259,7 +261,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: Colors.black,
+          color: textColor,
         ),
       ),
       subtitle: Row(
@@ -289,7 +291,9 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
         height: 32,
         child: OutlinedButton(
           style: OutlinedButton.styleFrom(
-            backgroundColor: isFollowing ? const Color(0xFFF2EEFC) : Colors.white,
+            backgroundColor: isFollowing
+                ? (isDark ? const Color(0xFF221F33) : const Color(0xFFF2EEFC))
+                : (isDark ? Colors.transparent : Colors.white),
             side: BorderSide(
               color: isFollowing ? Colors.transparent : const Color(0xFF7C57FC),
               width: 1,
@@ -328,12 +332,17 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
     final filteredSuggestions = _filterList(_allSuggestions);
     final filteredContacts = _filterList(_contacts);
     final double screenHeight = MediaQuery.of(context).size.height;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color fieldColor = isDark ? const Color(0xFF1F2433) : const Color(0xFFF6F6F6);
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFC1C1C1);
 
     return Container(
       height: screenHeight * 0.85,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SafeArea(
@@ -348,7 +357,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
                 width: 56,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC1C1C1),
+                  color: dragHandleColor,
                   borderRadius: BorderRadius.circular(100),
                 ),
               ),
@@ -362,7 +371,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: textColor,
                 ),
               ),
             ),
@@ -372,7 +381,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF6F6F6),
+                color: fieldColor,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -382,7 +391,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                      style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: textColor),
                       decoration: InputDecoration(
                         hintText: 'Search by name or username',
                         hintStyle: GoogleFonts.ibmPlexSansArabic(
@@ -420,8 +429,8 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
                             child: Text(
                               'No suggestions found',
                               style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 16,
-                                color: const Color(0xFF82858C),
+                                  fontSize: 16,
+                                  color: const Color(0xFF82858C),
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -441,29 +450,31 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
                                       style: GoogleFonts.ibmPlexSansArabic(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black,
+                                        color: textColor,
                                       ),
                                     ),
                                     Text(
                                       'See all',
                                       style: GoogleFonts.ibmPlexSansArabic(
                                         fontSize: 14,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.w600,
                                         color: const Color(0xFF7C57FC),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                ListView.builder(
+                                const SizedBox(height: 12),
+                                ListView.separated(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
                                   itemCount: filteredSuggestions.length,
-                                  itemBuilder: (context, index) {
-                                    return _buildUserTile(filteredSuggestions[index]);
-                                  },
+                                  separatorBuilder: (context, index) => Divider(
+                                    height: 1,
+                                    color: isDark ? const Color(0xFF1E2433) : const Color(0xFFEEEEEE),
+                                  ),
+                                  itemBuilder: (context, index) => _buildUserTile(filteredSuggestions[index]),
                                 ),
-                                const SizedBox(height: 20),
+                                const SizedBox(height: 24),
                               ],
 
                               // Contacts section
@@ -476,14 +487,14 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
                                       style: GoogleFonts.ibmPlexSansArabic(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.black,
+                                        color: textColor,
                                       ),
                                     ),
                                     Text(
                                       'See all',
                                       style: GoogleFonts.ibmPlexSansArabic(
                                         fontSize: 14,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.w600,
                                         color: const Color(0xFF7C57FC),
                                       ),
                                     ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -17,7 +16,6 @@ import 'privacy_settings_screen.dart';
 import 'blocked_users_screen.dart';
 import 'help_support_screen.dart';
 import 'send_feedback_screen.dart';
-import '../../auth/auth_flow_page.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -77,98 +75,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     }
     return const AssetImage('assets/home/images/element.png');
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    final stateSettings = ref.read(settingsProvider);
-    final isAr = stateSettings.preferredLanguage == 'ar';
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Container(
-            width: 286,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            padding: const EdgeInsets.only(top: 24, bottom: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isAr ? 'تسجيل الخروج من حسابك؟' : 'Sign out of your account?',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF323232),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                // Sign Out Button
-                GestureDetector(
-                  onTap: () => Navigator.pop(context, true),
-                  child: Container(
-                    width: 286,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    alignment: Alignment.center,
-                    child: Text(
-                      isAr ? 'تسجيل الخروج' : 'Sign Out',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFFD80000),
-                      ),
-                    ),
-                  ),
-                ),
-                // Cancel Button
-                GestureDetector(
-                  onTap: () => Navigator.pop(context, false),
-                  child: Container(
-                    width: 286,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    alignment: Alignment.center,
-                    child: Text(
-                      isAr ? 'إلغاء' : 'Cancel',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF373737),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    if (confirm == true) {
-      try {
-        await Supabase.instance.client.auth.signOut();
-        if (!context.mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const AuthFlowPage()),
-          (route) => false,
-        );
-      } catch (e) {
-        debugPrint("Error signing out: $e");
-      }
-    }
   }
 
   void _showLanguageBottomSheet(BuildContext context) {
@@ -389,49 +295,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onTap: () => _showAboutMoreDialog(context, isAr),
                     ),
                     const SizedBox(height: 32),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFFF3B30), width: 1.2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            backgroundColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
-                            foregroundColor: const Color(0xFFFF3B30),
-                          ),
-                          onPressed: () => _handleLogout(context),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SvgPicture.asset(
-                                'assets/setting/icons/logout_02.svg',
-                                width: 20,
-                                height: 20,
-                                colorFilter: const ColorFilter.mode(
-                                  Color(0xFFFF3B30),
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                isAr ? 'تسجيل الخروج' : 'Log out',
-                                style: GoogleFonts.ibmPlexSansArabic(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFFFF3B30),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 40),
+                     const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -441,26 +305,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   void _showAboutMoreDialog(BuildContext context, bool isAr) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color dialogBg = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF323232);
+    final Color secondaryTextColor = isDark ? Colors.white70 : const Color(0xFF555555);
+    final Color versionTextColor = isDark ? Colors.white54 : const Color(0xFF888888);
+    final Color borderDividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFBFBFBF);
+
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
           child: Container(
+            width: 286,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+              color: dialogBg,
+              borderRadius: BorderRadius.circular(20),
             ),
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.only(top: 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -489,7 +353,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -497,83 +361,74 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   isAr ? 'الإصدار 1.0.1 (169)' : 'Version 1.0.1 (169)',
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
-                    color: const Color(0xFF888888),
+                    color: versionTextColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  width: 48,
-                  height: 3,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C57FC).withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(1.5),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    isAr
+                        ? 'تطبيق More لتسجيلات الوصول واستكشاف الأماكن المفضلة ومشاركتها مع أصدقائك.'
+                        : 'More is a check-in app to discover, save and share your favorite places with friends.',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 14,
+                      color: secondaryTextColor,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  isAr
-                      ? 'تطبيق More لتسجيلات الوصول واستكشاف الأماكن المفضلة ومشاركتها مع أصدقائك.'
-                      : 'More is a check-in app to discover, save and share your favorite places with friends.',
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 14,
-                    color: const Color(0xFF555555),
-                    height: 1.5,
+                const SizedBox(height: 24),
+                
+                // Licenses Button
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    showLicensePage(
+                      context: context,
+                      applicationName: 'More',
+                      applicationVersion: '1.0.1',
+                    );
+                  },
+                  child: Container(
+                    width: 286,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: borderDividerColor, width: 0.7),
+                        bottom: BorderSide(color: borderDividerColor, width: 0.7),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      isAr ? 'عرض التراخيص' : 'Licenses',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? const Color(0xFF9E85FF) : const Color(0xFF7C57FC),
+                      ),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 28),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          showLicensePage(
-                            context: context,
-                            applicationName: 'More',
-                            applicationVersion: '1.0.1',
-                          );
-                        },
-                        child: Text(
-                          isAr ? 'عرض التراخيص' : 'Licenses',
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF888888),
-                          ),
-                        ),
+                
+                // Close Button
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 286,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    child: Text(
+                      isAr ? 'إغلاق' : 'Close',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white : const Color(0xFF373737),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF7C57FC),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: Text(
-                          isAr ? 'إغلاق' : 'Close',
-                          style: GoogleFonts.ibmPlexSansArabic(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

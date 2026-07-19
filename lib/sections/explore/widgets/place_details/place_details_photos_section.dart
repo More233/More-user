@@ -24,6 +24,10 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
   @override
   Widget build(BuildContext context) {
     final List<String> currentPhotos = _activePhotoTab == 'All' ? widget.images : widget.peopleImages;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+    final Color placeholderBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,7 +37,7 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F242E),
+            color: textColor,
           ),
         ),
         const SizedBox(height: 12),
@@ -42,7 +46,7 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
             "No photos available for this place",
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 14,
-              color: const Color(0xFF82858C),
+              color: textMutedColor,
             ),
           )
         else ...[
@@ -53,14 +57,14 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
                 setState(() {
                   _activePhotoTab = 'All';
                 });
-              }),
+              }, isDark),
               if (widget.peopleImages.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 _buildPhotoTabButton("People", widget.peopleImages.length, _activePhotoTab == 'People', () {
                   setState(() {
                     _activePhotoTab = 'People';
                   });
-                }),
+                }, isDark),
               ],
             ],
           ),
@@ -93,8 +97,8 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
                         imageUrl: currentPhotos[index],
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
-                          color: const Color(0xFFF5F6F8),
-                          child: Center(
+                          color: placeholderBg,
+                          child: const Center(
                             child: CupertinoActivityIndicator(
                               color: Color(0xFF7C57FC),
                               radius: 8,
@@ -102,8 +106,8 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
                           ),
                         ),
                         errorWidget: (context, url, error) => Container(
-                          color: const Color(0xFFF5F6F8),
-                          child: const Icon(Icons.broken_image, color: Color(0xFF82858C)),
+                          color: placeholderBg,
+                          child: Icon(Icons.broken_image, color: textMutedColor),
                         ),
                       ),
                     ),
@@ -117,13 +121,15 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
     );
   }
 
-  Widget _buildPhotoTabButton(String label, int count, bool isSelected, VoidCallback onTap) {
+  Widget _buildPhotoTabButton(String label, int count, bool isSelected, VoidCallback onTap, bool isDark) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEDE6FC) : const Color(0xFFF5F6F8),
+          color: isSelected
+              ? (isDark ? const Color(0xFF2C2548) : const Color(0xFFEDE6FC))
+              : (isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8)),
           borderRadius: BorderRadius.circular(100),
           border: Border.all(
             color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
@@ -135,7 +141,9 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFF636268),
+            color: isSelected
+                ? (isDark ? const Color(0xFFB5A3FF) : const Color(0xFF7C57FC))
+                : (isDark ? Colors.white70 : const Color(0xFF636268)),
           ),
         ),
       ),

@@ -446,10 +446,10 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
               if (widget.followedUsernames.isEmpty && state.showFindFriendsCard)
                 _buildFindFriendsCard(),
               const SizedBox(height: 8),
-              const Divider(
+              Divider(
                 height: 1,
                 thickness: 0.5,
-                color: Color(0xFFE8E8E8),
+                color: Theme.of(context).dividerColor,
               ),
               const SizedBox(height: 20),
             ],
@@ -994,10 +994,10 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
       ),
     ),
     const SizedBox(height: 12),
-    const Divider(
+    Divider(
       height: 1,
       thickness: 0.8,
-      color: Color(0xFFE8E8E8),
+      color: Theme.of(context).dividerColor,
     ),
     const SizedBox(height: 16),
   ],

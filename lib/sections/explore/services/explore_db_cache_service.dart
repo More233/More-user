@@ -20,7 +20,7 @@ class ExploreDbCacheService {
 
     return await openDatabase(
       path,
-      version: 8,
+      version: 9,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE cached_places (
@@ -59,7 +59,7 @@ class ExploreDbCacheService {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 8) {
+        if (oldVersion < 9) {
           await db.execute("DROP TABLE IF EXISTS cached_places");
           await db.execute("DROP TABLE IF EXISTS sync_grid_cells");
           await db.execute('''

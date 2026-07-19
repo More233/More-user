@@ -294,11 +294,12 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
   Widget _buildUnfollowConfirmationSheet(Map<String, dynamic> profile) {
     final avatarUrl = profile['avatar_url'] as String?;
     final username = profile['username'] ?? '';
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131722) : Colors.white,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
@@ -312,14 +313,14 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
               width: 36,
               height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFE5E5EA),
+                color: isDark ? const Color(0xFF323A4E) : const Color(0xFFE5E5EA),
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
             const SizedBox(height: 24),
             CircleAvatar(
               radius: 44,
-              backgroundColor: const Color(0xFFF5F5F5),
+              backgroundColor: isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F5F5),
               backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                   ? (avatarUrl.startsWith('http')
                       ? CachedNetworkImageProvider(avatarUrl) as ImageProvider
@@ -330,13 +331,13 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
             Text(
               "Unfollow @$username?",
               style: GoogleFonts.ibmPlexSansArabic(
-                color: Colors.black,
+                color: isDark ? Colors.white : Colors.black,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 24),
-            const Divider(color: Color(0xFFE5E5EA), height: 1),
+            Divider(color: isDark ? const Color(0xFF1E2433) : const Color(0xFFE5E5EA), height: 1),
             ListTile(
               onTap: () => Navigator.pop(context, true),
               title: Center(
@@ -349,13 +350,13 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
                 ),
               ),
             ),
-            const Divider(color: Color(0xFFE5E5EA), height: 1),
+            Divider(color: isDark ? const Color(0xFF1E2433) : const Color(0xFFE5E5EA), height: 1),
             ListTile(
               onTap: () => Navigator.pop(context, false),
               title: Center(
                 child: Text(
                   "Cancel",
-                  style: GoogleFonts.ibmPlexSansArabic(color: Colors.black),
+                  style: GoogleFonts.ibmPlexSansArabic(color: isDark ? Colors.white70 : Colors.black),
                 ),
               ),
             ),
@@ -445,6 +446,8 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
   Widget _buildAvatarWidget(Map<String, dynamic> user, int index) {
     final avatarUrl = user['avatar_url'] as String?;
     final hasActiveStory = _activeStoryUserIds.contains(user['id']); 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color avatarBgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
 
     final avatarImage = avatarUrl != null && avatarUrl.isNotEmpty
         ? (avatarUrl.startsWith('http')
@@ -481,8 +484,8 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
               height: 46,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white,
-                border: hasActiveStory ? Border.all(color: Colors.white, width: 2) : null,
+                color: avatarBgColor,
+                border: hasActiveStory ? Border.all(color: avatarBgColor, width: 2) : null,
               ),
               child: ClipOval(
                 child: Image(
@@ -503,6 +506,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
 
     final isFollowing = _currentUserFollowingIds.contains(targetId);
     final followsUs = _currentUserFollowerIds.contains(targetId);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isFollowing) {
       return GestureDetector(
@@ -511,15 +515,15 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
           width: 100,
           height: 32,
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
+            color: isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F5F5),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE5E5EA), width: 1),
+            border: Border.all(color: isDark ? const Color(0xFF2B313F) : const Color(0xFFE5E5EA), width: 1),
           ),
           alignment: Alignment.center,
           child: Text(
             "Message",
             style: GoogleFonts.ibmPlexSansArabic(
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -557,6 +561,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
     final isOwnProfile = widget.userId == _currentUserId;
     final targetId = user['id'] as String;
     final isFollowing = _currentUserFollowingIds.contains(targetId);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -574,7 +579,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
                   Text(
                     username,
                     style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.black,
+                      color: isDark ? Colors.white : Colors.black,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
@@ -615,19 +620,23 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black),
+          icon: Icon(Icons.arrow_back_ios_new, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           widget.username,
           style: GoogleFonts.ibmPlexSansArabic(
-            color: Colors.black,
+            color: textColor,
             fontSize: 17,
             fontWeight: FontWeight.bold,
           ),
@@ -637,8 +646,8 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
           controller: _tabController,
           indicatorColor: const Color(0xFF7C57FC),
           indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: Colors.black,
-          unselectedLabelColor: const Color(0xFF687684),
+          labelColor: textColor,
+          unselectedLabelColor: isDark ? Colors.white54 : const Color(0xFF687684),
           isScrollable: false,
           tabs: [
             Tab(text: "${_followers.length} followers"),
@@ -664,6 +673,10 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
 
   Widget _buildTabContent(bool isFollowersTab) {
     final list = isFollowersTab ? _filteredFollowers : _filteredFollowing;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color fieldColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF3F4F6);
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color hintColor = isDark ? Colors.white54 : const Color(0xFF687684);
 
     return Column(
       children: [
@@ -673,20 +686,20 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
+              color: fieldColor,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
-                const Icon(Icons.search, color: Color(0xFF687684), size: 20),
+                Icon(Icons.search, color: hintColor, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _searchController,
-                    style: GoogleFonts.ibmPlexSansArabic(color: Colors.black, fontSize: 15),
+                    style: GoogleFonts.ibmPlexSansArabic(color: textColor, fontSize: 15),
                     decoration: InputDecoration(
                       hintText: "Search",
-                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF687684)),
+                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: hintColor),
                       border: InputBorder.none,
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -704,7 +717,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
               ? Center(
                   child: Text(
                     isFollowersTab ? "No followers found" : "No following found",
-                    style: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF687684)),
+                    style: GoogleFonts.ibmPlexSansArabic(color: hintColor),
                   ),
                 )
               : ListView.builder(

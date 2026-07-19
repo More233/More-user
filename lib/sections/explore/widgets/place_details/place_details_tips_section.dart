@@ -12,10 +12,18 @@ class PlaceTipsSection extends StatelessWidget {
   });
 
   void _showAllTipsDialog(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color sheetBg = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF636268);
+    final Color dragColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFE8E8E8);
+    final Color avatarBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8);
+    final Color starBorder = isDark ? const Color(0xFF131722) : Colors.white;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -33,7 +41,7 @@ class PlaceTipsSection extends StatelessWidget {
                   height: 4,
                   margin: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8E8E8),
+                    color: dragColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -42,11 +50,11 @@ class PlaceTipsSection extends StatelessWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1F242E),
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Divider(height: 1),
+                Divider(height: 1, color: isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8)),
                 Expanded(
                   child: ListView.builder(
                     controller: scrollController,
@@ -75,22 +83,22 @@ class PlaceTipsSection extends StatelessWidget {
                                   child: Container(
                                     width: 40,
                                     height: 40,
-                                    color: const Color(0xFFF5F6F8),
+                                    color: avatarBg,
                                     child: avatarUrl != null && avatarUrl.trim().isNotEmpty
                                         ? CachedNetworkImage(
                                             imageUrl: avatarUrl,
                                             fit: BoxFit.cover,
                                             placeholder: (context, url) => Center(
                                               child: CupertinoActivityIndicator(
-                                                color: Color(0xFF7C57FC),
+                                                color: const Color(0xFF7C57FC),
                                                 radius: 8,
                                               ),
                                             ),
                                             errorWidget: (context, url, error) {
-                                              return const Icon(Icons.person, color: Color(0xFF82858C), size: 20);
+                                              return Icon(Icons.person, color: isDark ? Colors.white70 : const Color(0xFF82858C), size: 20);
                                             },
                                           )
-                                        : const Icon(Icons.person, color: Color(0xFF82858C), size: 20),
+                                        : Icon(Icons.person, color: isDark ? Colors.white70 : const Color(0xFF82858C), size: 20),
                                   ),
                                 ),
                                 Positioned(
@@ -103,7 +111,7 @@ class PlaceTipsSection extends StatelessWidget {
                                       color: const Color(0xFFFFAE34), // Gold/Orange star badge
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.white,
+                                        color: starBorder,
                                         width: 1.5,
                                       ),
                                       boxShadow: [
@@ -133,7 +141,7 @@ class PlaceTipsSection extends StatelessWidget {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1F242E),
+                                      color: textColor,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -141,7 +149,7 @@ class PlaceTipsSection extends StatelessWidget {
                                     tipText,
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontSize: 13,
-                                      color: const Color(0xFF636268),
+                                      color: textMutedColor,
                                       height: 1.4,
                                     ),
                                   ),
@@ -165,6 +173,12 @@ class PlaceTipsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (placePosts.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF636268);
+    final Color avatarBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8);
+    final Color buttonBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8);
+    final Color starBorder = isDark ? const Color(0xFF131722) : Colors.white;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +188,7 @@ class PlaceTipsSection extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F242E),
+            color: textColor,
           ),
         ),
         const SizedBox(height: 12),
@@ -205,22 +219,22 @@ class PlaceTipsSection extends StatelessWidget {
                         child: Container(
                           width: 40,
                           height: 40,
-                          color: const Color(0xFFF5F6F8),
+                          color: avatarBg,
                           child: avatarUrl != null && avatarUrl.trim().isNotEmpty
                               ? CachedNetworkImage(
                                   imageUrl: avatarUrl,
                                   fit: BoxFit.cover,
                                   placeholder: (context, url) => Center(
                                     child: CupertinoActivityIndicator(
-                                      color: Color(0xFF7C57FC),
+                                      color: const Color(0xFF7C57FC),
                                       radius: 8,
                                     ),
                                   ),
                                   errorWidget: (context, url, error) {
-                                    return const Icon(Icons.person, color: Color(0xFF82858C), size: 20);
+                                    return Icon(Icons.person, color: isDark ? Colors.white70 : const Color(0xFF82858C), size: 20);
                                   },
                                 )
-                              : const Icon(Icons.person, color: Color(0xFF82858C), size: 20),
+                              : Icon(Icons.person, color: isDark ? Colors.white70 : const Color(0xFF82858C), size: 20),
                         ),
                       ),
                       Positioned(
@@ -233,7 +247,7 @@ class PlaceTipsSection extends StatelessWidget {
                             color: const Color(0xFFFFAE34), // Gold/Orange star badge
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: Colors.white,
+                              color: starBorder,
                               width: 1.5,
                             ),
                             boxShadow: [
@@ -263,7 +277,7 @@ class PlaceTipsSection extends StatelessWidget {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F242E),
+                            color: textColor,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -271,7 +285,7 @@ class PlaceTipsSection extends StatelessWidget {
                           tipText,
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 13,
-                            color: const Color(0xFF636268),
+                            color: textMutedColor,
                             height: 1.4,
                           ),
                         ),
@@ -291,7 +305,7 @@ class PlaceTipsSection extends StatelessWidget {
               height: 48,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F6F8),
+                color: buttonBg,
                 borderRadius: BorderRadius.circular(100),
               ),
               alignment: Alignment.center,
@@ -300,7 +314,7 @@ class PlaceTipsSection extends StatelessWidget {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1F242E),
+                  color: textColor,
                 ),
               ),
             ),

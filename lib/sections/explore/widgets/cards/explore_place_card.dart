@@ -25,14 +25,15 @@ class ExplorePlaceCard extends StatelessWidget {
     required IconData icon,
     required String label,
     Color? iconColor,
+    bool isDark = false,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1F2430) : Colors.white,
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: const Color(0xFFE8E8E8),
+          color: isDark ? const Color(0xFF2D3548) : const Color(0xFFE8E8E8),
           width: 1,
         ),
       ),
@@ -42,7 +43,7 @@ class ExplorePlaceCard extends StatelessWidget {
           Icon(
             icon,
             size: 14,
-            color: iconColor ?? const Color(0xFF82858C),
+            color: iconColor ?? (isDark ? Colors.white70 : const Color(0xFF82858C)),
           ),
           const SizedBox(width: 4),
           Text(
@@ -50,7 +51,7 @@ class ExplorePlaceCard extends StatelessWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF636268),
+              color: isDark ? Colors.white70 : const Color(0xFF636268),
             ),
           ),
         ],
@@ -58,14 +59,14 @@ class ExplorePlaceCard extends StatelessWidget {
     );
   }
 
-  static Widget buildStatusBadge({required bool isOpen}) {
+  static Widget buildStatusBadge({required bool isOpen, bool isDark = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1F2430) : Colors.white,
         borderRadius: BorderRadius.circular(100),
         border: Border.all(
-          color: const Color(0xFFE8E8E8),
+          color: isDark ? const Color(0xFF2D3548) : const Color(0xFFE8E8E8),
           width: 1,
         ),
       ),
@@ -86,7 +87,7 @@ class ExplorePlaceCard extends StatelessWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF636268),
+              color: isDark ? Colors.white70 : const Color(0xFF636268),
             ),
           ),
         ],
@@ -96,13 +97,21 @@ class ExplorePlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color subtitleColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : Colors.grey[300]!;
+    final Color iconColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color quoteColor = isDark ? Colors.white60 : const Color(0xFF4B5563);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.12),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -119,7 +128,7 @@ class ExplorePlaceCard extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: dragHandleColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -193,7 +202,7 @@ class ExplorePlaceCard extends StatelessWidget {
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1A1A2E),
+                              color: textColor,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -211,7 +220,7 @@ class ExplorePlaceCard extends StatelessWidget {
                             })(),
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 14,
-                              color: const Color(0xFF82858C),
+                              color: subtitleColor,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -219,7 +228,7 @@ class ExplorePlaceCard extends StatelessWidget {
                             place['address']?.toString() ?? '',
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 14,
-                              color: const Color(0xFF82858C),
+                              color: subtitleColor,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -228,9 +237,9 @@ class ExplorePlaceCard extends StatelessWidget {
                           // Rating Row: Smile icon, Rating value, total reviews
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.sentiment_satisfied_alt,
-                                color: Color(0xFF1A1A2E),
+                                color: iconColor,
                                 size: 16,
                               ),
                               const SizedBox(width: 4),
@@ -239,7 +248,7 @@ class ExplorePlaceCard extends StatelessWidget {
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1A1A2E),
+                                  color: iconColor,
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -247,7 +256,7 @@ class ExplorePlaceCard extends StatelessWidget {
                                 "(${place['reviewsCount']?.toString() ?? '0'})",
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 13,
-                                  color: const Color(0xFF82858C),
+                                  color: subtitleColor,
                                 ),
                               ),
                             ],
@@ -275,7 +284,7 @@ class ExplorePlaceCard extends StatelessWidget {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 13.5,
                           fontStyle: FontStyle.italic,
-                          color: const Color(0xFF4B5563),
+                          color: quoteColor,
                           height: 1.35,
                         ),
                         maxLines: 2,

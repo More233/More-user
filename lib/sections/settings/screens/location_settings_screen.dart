@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/settings_provider.dart';
@@ -16,12 +17,19 @@ class LocationSettingsScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        final Color modalBg = isDark ? const Color(0xFF131722) : Colors.white;
+        final Color textColor = isDark ? Colors.white : Colors.black;
+        final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF707070);
+        final Color handleColor = isDark ? const Color(0xFF333D52) : const Color(0xFFE8E8E8);
+        final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
         return StatefulBuilder(
           builder: (context, setState) {
             return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: modalBg,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
@@ -37,7 +45,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                       width: 56,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8E8E8),
+                        color: handleColor,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -56,7 +64,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                              color: textColor,
                             ),
                           ),
                           Text(
@@ -65,7 +73,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                                 : 'Manage your location access.',
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 14,
-                              color: const Color(0xFF707070),
+                              color: textMutedColor,
                             ),
                           ),
                         ],
@@ -79,27 +87,31 @@ class LocationSettingsScreen extends ConsumerWidget {
                     value: 'never',
                     currentValue: selectedPerm,
                     onTap: (val) => setState(() => selectedPerm = val),
+                    isDark: isDark,
                   ),
-                  const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                  Divider(height: 1, color: dividerColor),
                   _buildRadioOption(
                     title: isAr ? 'السؤال في المرة القادمة أو عند المشاركة' : 'Ask Next Time Or when I Share',
                     value: 'ask_next_time',
                     currentValue: selectedPerm,
                     onTap: (val) => setState(() => selectedPerm = val),
+                    isDark: isDark,
                   ),
-                  const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                  Divider(height: 1, color: dividerColor),
                   _buildRadioOption(
                     title: isAr ? 'أثناء استخدام التطبيق' : 'While Using the App',
                     value: 'while_using',
                     currentValue: selectedPerm,
                     onTap: (val) => setState(() => selectedPerm = val),
+                    isDark: isDark,
                   ),
-                  const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                  Divider(height: 1, color: dividerColor),
                   _buildRadioOption(
                     title: isAr ? 'دائماً' : 'Always',
                     value: 'always',
                     currentValue: selectedPerm,
                     onTap: (val) => setState(() => selectedPerm = val),
+                    isDark: isDark,
                   ),
                   const SizedBox(height: 32),
                   // Buttons: Save & Cancel
@@ -137,7 +149,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF707070),
+                          color: textMutedColor,
                         ),
                       ),
                     ),
@@ -157,8 +169,12 @@ class LocationSettingsScreen extends ConsumerWidget {
     required String value,
     required String currentValue,
     required ValueChanged<String> onTap,
+    required bool isDark,
   }) {
     final isSelected = value == currentValue;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color radioBorderColor = isDark ? const Color(0xFF3E4E6C) : const Color(0xFFCCCCCC);
+
     return InkWell(
       onTap: () => onTap(value),
       child: Padding(
@@ -171,7 +187,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 15,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: Colors.black,
+                  color: textColor,
                 ),
               ),
             ),
@@ -181,7 +197,7 @@ class LocationSettingsScreen extends ConsumerWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFCCCCCC),
+                  color: isSelected ? const Color(0xFF7C57FC) : radioBorderColor,
                   width: 2,
                 ),
               ),
@@ -225,18 +241,24 @@ class LocationSettingsScreen extends ConsumerWidget {
     final notifier = ref.read(settingsProvider.notifier);
     final isAr = settings.preferredLanguage == 'ar';
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF909090);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+    final Color arrowColor = isDark ? Colors.white24 : const Color(0xFFCCCCCC);
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          backgroundColor: bgColor,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: isDark ? Colors.white : Colors.black,
+              color: textColor,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -245,7 +267,7 @@ class LocationSettingsScreen extends ConsumerWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black,
+              color: textColor,
             ),
           ),
           centerTitle: true,
@@ -254,14 +276,14 @@ class LocationSettingsScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
+              Divider(height: 1, color: dividerColor),
               _buildSectionHeader(isAr ? 'صلاحية الوصول للموقع' : 'Location access', isAr, isDark),
               // Permission selector row
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3EFFF),
+                    color: iconWrapperBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -275,7 +297,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? Colors.white : Colors.black,
+                    color: textColor,
                   ),
                 ),
                 trailing: Row(
@@ -285,14 +307,14 @@ class LocationSettingsScreen extends ConsumerWidget {
                       _getPermissionText(settings.locationPermission, isAr),
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: isDark ? Colors.white38 : const Color(0xFF909090),
+                        color: textMutedColor,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
                       isAr ? Icons.arrow_back : Icons.arrow_forward_ios,
                       size: isAr ? 20 : 14,
-                      color: const Color(0xFFCCCCCC),
+                      color: arrowColor,
                     ),
                   ],
                 ),
@@ -343,16 +365,19 @@ class LocationSettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
+    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
+    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF909090);
+
     return Container(
       width: double.infinity,
-      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFFAFAFA),
+      color: sectionHeaderBg,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: isDark ? Colors.white54 : const Color(0xFF909090),
+          color: sectionHeaderTextColor,
           letterSpacing: 1.0,
         ),
       ),
@@ -367,6 +392,10 @@ class LocationSettingsScreen extends ConsumerWidget {
     required ValueChanged<bool> onChanged,
     required bool isDark,
   }) {
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF888888);
+    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -375,7 +404,7 @@ class LocationSettingsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3EFFF),
+              color: iconWrapperBg,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -394,7 +423,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black,
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -402,7 +431,7 @@ class LocationSettingsScreen extends ConsumerWidget {
                   subtitle,
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 12,
-                    color: isDark ? Colors.white38 : const Color(0xFF888888),
+                    color: textMutedColor,
                     height: 1.3,
                   ),
                 ),
@@ -410,13 +439,10 @@ class LocationSettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Switch(
+          CupertinoSwitch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF7C57FC),
-            activeTrackColor: const Color(0xFFECE7FF),
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: const Color(0xFFE0E0E0),
+            activeTrackColor: const Color(0xFF7C57FC),
           ),
         ],
       ),
@@ -424,9 +450,10 @@ class LocationSettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildDivider(bool isDark) {
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
     return Padding(
       padding: const EdgeInsets.only(left: 64, right: 16),
-      child: Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
+      child: Divider(height: 1, color: dividerColor),
     );
   }
 }

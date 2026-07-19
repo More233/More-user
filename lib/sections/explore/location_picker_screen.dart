@@ -135,7 +135,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Fullscreen Google Map
+          // Fullscreen Mapbox Map
           Positioned.fill(
             child: mapbox.MapWidget(
               key: ValueKey('location_picker_map_${Theme.of(context).brightness == Brightness.dark}'),

@@ -21,12 +21,18 @@ class PlaceDetailsActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color borderColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color buttonBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+
     return Container(
       padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding > 0 ? bottomPadding + 6 : 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: bgColor,
         border: Border(
-          top: BorderSide(color: Color(0xFFE8E8E8), width: 1),
+          top: BorderSide(color: borderColor, width: 1),
         ),
       ),
       child: Column(
@@ -74,7 +80,7 @@ class PlaceDetailsActions extends StatelessWidget {
                   child: Container(
                     height: 44,
                     decoration: BoxDecoration(
-                      color: isSaved ? const Color(0xFFEDE6FC) : const Color(0xFFF5F6F8),
+                      color: isSaved ? const Color(0xFFEDE6FC) : buttonBg,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -82,7 +88,7 @@ class PlaceDetailsActions extends StatelessWidget {
                       children: [
                         Icon(
                           isSaved ? Icons.bookmark : Icons.bookmark_border,
-                          color: isSaved ? const Color(0xFF7C57FC) : const Color(0xFF1F242E),
+                          color: isSaved ? const Color(0xFF7C57FC) : textColor,
                           size: 18,
                         ),
                         const SizedBox(width: 6),
@@ -91,7 +97,7 @@ class PlaceDetailsActions extends StatelessWidget {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: isSaved ? const Color(0xFF7C57FC) : const Color(0xFF1F242E),
+                            color: isSaved ? const Color(0xFF7C57FC) : textColor,
                           ),
                         ),
                       ],
@@ -106,15 +112,15 @@ class PlaceDetailsActions extends StatelessWidget {
                   child: Container(
                     height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F6F8),
+                      color: buttonBg,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.share,
-                          color: Color(0xFF1F242E),
+                          color: textColor,
                           size: 18,
                         ),
                         const SizedBox(width: 6),
@@ -123,7 +129,7 @@ class PlaceDetailsActions extends StatelessWidget {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1F242E),
+                            color: textColor,
                           ),
                         ),
                       ],

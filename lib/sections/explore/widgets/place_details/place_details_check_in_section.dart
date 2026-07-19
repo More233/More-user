@@ -16,6 +16,13 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF636268);
+    final Color containerColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8);
+    final Color iconColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+    final Color avatarBgColor = isDark ? const Color(0xFF131722) : Colors.white;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -24,7 +31,7 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F242E),
+            color: textColor,
           ),
         ),
         const SizedBox(height: 12),
@@ -33,14 +40,14 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F6F8),
+              color: containerColor,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.location_off_outlined,
-                  color: Color(0xFF82858C),
+                  color: iconColor,
                   size: 32,
                 ),
                 const SizedBox(height: 8),
@@ -48,7 +55,7 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
                   "No one has checked in yet. Be the first to check in!",
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
-                    color: const Color(0xFF636268),
+                    color: textMutedColor,
                     fontWeight: FontWeight.w500,
                   ),
                   textAlign: TextAlign.center,
@@ -77,7 +84,7 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-               color: const Color(0xFFF5F6F8),
+               color: containerColor,
                borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
@@ -122,7 +129,7 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
                         left: index * 14.0,
                         child: CircleAvatar(
                           radius: 12,
-                          backgroundColor: Colors.white,
+                          backgroundColor: avatarBgColor,
                           child: avatarChild,
                         ),
                       );
@@ -133,23 +140,23 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
                 Expanded(
                   child: Builder(
                     builder: (context) {
-                      final int count = visitors.length;
-                      String text = '';
-                      if (count == 1) {
-                        text = '${visitors[0]['name']} is here now.';
-                      } else if (count == 2) {
-                        text = '${visitors[0]['name']} and ${visitors[1]['name']} are here.';
-                      } else {
-                        text = '${visitors[0]['name']}, ${visitors[1]['name']} and ${count - 2} others are here.';
-                      }
-                      return Text(
-                        text,
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 13,
-                          color: const Color(0xFF636268),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      );
+                       final int count = visitors.length;
+                       String text = '';
+                       if (count == 1) {
+                         text = '${visitors[0]['name']} is here now.';
+                       } else if (count == 2) {
+                         text = '${visitors[0]['name']} and ${visitors[1]['name']} are here.';
+                       } else {
+                         text = '${visitors[0]['name']}, ${visitors[1]['name']} and ${count - 2} others are here.';
+                       }
+                       return Text(
+                         text,
+                         style: GoogleFonts.ibmPlexSansArabic(
+                           fontSize: 13,
+                           color: textMutedColor,
+                           fontWeight: FontWeight.w600,
+                         ),
+                       );
                     }
                   ),
                 ),

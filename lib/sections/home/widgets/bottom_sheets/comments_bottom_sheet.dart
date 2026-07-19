@@ -316,15 +316,20 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     // Determine screen height and push sheet upwards when keyboard is open
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFC8C8C8);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.opaque,
       child: Container(
         height: MediaQuery.of(context).size.height * 0.75,
         padding: EdgeInsets.only(bottom: bottomInset),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
@@ -337,7 +342,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               width: 48,
               height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFC8C8C8),
+                color: dragHandleColor,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -348,11 +353,11 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: isDark ? Colors.white : Colors.black,
               ),
             ),
             const SizedBox(height: 8),
-            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            Divider(height: 1, color: dividerColor),
             // List of comments
             Expanded(
               child: widget.post.comments.isEmpty
@@ -426,7 +431,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 ),
               ),
             ],
-            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            Divider(height: 1, color: dividerColor),
             // Bottom Input bar
             _buildInputBar(),
           ],
@@ -465,7 +470,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 20,
               fontWeight: FontWeight.w500,
-              color: Colors.black,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black,
             ),
           ),
         ],
@@ -525,7 +530,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                         ),
                       ),
                     ),
@@ -594,6 +599,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   }
 
   Widget _buildCommentText(String text) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white70 : const Color(0xFF3B3C4F);
     final List<TextSpan> spans = [];
     final words = text.split(' ');
     for (int i = 0; i < words.length; i++) {
@@ -614,7 +621,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           TextSpan(
             text: '$word$spacing',
             style: GoogleFonts.ibmPlexSansArabic(
-              color: const Color(0xFF3B3C4F),
+              color: textColor,
             ),
           ),
         );
@@ -629,6 +636,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   }
 
   Widget _buildInputBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final emojis = ['😊', '😂', '❤️', '👍', '🔥', '😍', '🙌', '✨', '👏'];
 
     return SafeArea(
@@ -682,7 +690,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               ),
             ),
           Container(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF131722) : Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
@@ -700,7 +708,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF6F6F6),
+                      color: isDark ? const Color(0xFF1F2430) : const Color(0xFFF6F6F6),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Row(
@@ -708,12 +716,12 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         Expanded(
                           child: TextField(
                             controller: _commentController,
-                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: isDark ? Colors.white : Colors.black),
                             decoration: InputDecoration(
                               hintText: 'Add a comment...',
                               hintStyle: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 14,
-                                color: const Color(0xFF82858C),
+                                color: isDark ? Colors.white54 : const Color(0xFF82858C),
                               ),
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(vertical: 8),

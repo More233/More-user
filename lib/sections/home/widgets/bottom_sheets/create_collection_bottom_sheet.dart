@@ -180,6 +180,13 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
 
   Widget _buildMainView() {
     final isShared = _selectedSharedUserIds.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color fieldColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF6F6F6);
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFC1C1C1);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF5A5D67);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
@@ -191,7 +198,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
               width: 56,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFC1C1C1),
+                color: dragHandleColor,
                 borderRadius: BorderRadius.circular(100),
               ),
             ),
@@ -216,7 +223,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: textColor,
                 ),
               ),
               GestureDetector(
@@ -246,19 +253,22 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F6F6),
+              color: fieldColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: TextField(
               controller: _nameController,
-              style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 14,
+                color: textColor,
+              ),
               decoration: InputDecoration(
                 hintText: 'Add a collection name',
                 hintStyle: GoogleFonts.ibmPlexSansArabic(
@@ -271,16 +281,16 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
             ),
           ),
           const SizedBox(height: 16),
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          Divider(height: 1, color: dividerColor),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.people_outline, color: Color(0xFF5A5D67)),
+            leading: Icon(Icons.people_outline, color: textMutedColor),
             title: Text(
               'Add people to collection',
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: textColor,
               ),
             ),
             subtitle: Row(
@@ -309,7 +319,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
               _loadAllProfilesForSearch();
             },
           ),
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          Divider(height: 1, color: dividerColor),
           const SizedBox(height: 24),
         ],
       ),
@@ -327,6 +337,11 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
       return username.contains(query) || firstName.contains(query) || lastName.contains(query);
     }).toList();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFC1C1C1);
+    final Color searchBgColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF2F2F7);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       height: MediaQuery.of(context).size.height * 0.7,
@@ -337,7 +352,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
               width: 56,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFC1C1C1),
+                color: dragHandleColor,
                 borderRadius: BorderRadius.circular(100),
               ),
             ),
@@ -366,7 +381,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: textColor,
                 ),
               ),
               GestureDetector(
@@ -390,7 +405,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
           Container(
             height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F7),
+              color: searchBgColor,
               borderRadius: BorderRadius.circular(12),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -401,10 +416,16 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
                 Expanded(
                   child: TextField(
                     onChanged: _onSearchQueryChanged,
-                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 14,
+                      color: textColor,
+                    ),
                     decoration: InputDecoration(
                       hintText: "Search",
-                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 14),
+                      hintStyle: GoogleFonts.ibmPlexSansArabic(
+                        color: const Color(0xFF82858C),
+                        fontSize: 14,
+                      ),
                       border: InputBorder.none,
                       isDense: true,
                     ),
@@ -452,7 +473,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                               color: textColor,
                               ),
                             ),
                             subtitle: Text(
@@ -502,14 +523,15 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: EdgeInsets.only(bottom: bottomInset),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF131722) : Colors.white,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(32),
             topRight: Radius.circular(32),
           ),

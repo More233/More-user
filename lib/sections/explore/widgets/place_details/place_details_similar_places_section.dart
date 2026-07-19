@@ -17,6 +17,8 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (similarPlaces.isEmpty) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -26,7 +28,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF1F242E),
+            color: textColor,
           ),
         ),
         const SizedBox(height: 12),
@@ -64,6 +66,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
                   reviews: reviews.toString(),
                   imageUrl: imageUrl,
                   isHappy: rating >= 4.0,
+                  isDark: isDark,
                 ),
               );
             },
@@ -80,14 +83,20 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
     required String reviews,
     required String imageUrl,
     required bool isHappy,
+    required bool isDark,
   }) {
+    final Color cardBg = isDark ? const Color(0xFF1F2430) : Colors.white;
+    final Color borderColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+
     return Container(
       width: 180,
       margin: const EdgeInsets.only(right: 12, bottom: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE8E8E8)),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,17 +112,17 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
                     placeholder: (context, url) => Container(
                       height: 100,
                       width: 180,
-                      color: const Color(0xFFF3F4F6),
-                      child: Center(
+                      color: isDark ? const Color(0xFF131722) : const Color(0xFFF3F4F6),
+                      child: const Center(
                         child: CupertinoActivityIndicator(
                           color: Color(0xFF7C57FC),
                           radius: 8,
                         ),
                       ),
                     ),
-                    errorWidget: (context, url, error) => _buildSimilarCardPlaceholder(),
+                    errorWidget: (context, url, error) => _buildSimilarCardPlaceholder(isDark),
                   )
-                : _buildSimilarCardPlaceholder(),
+                : _buildSimilarCardPlaceholder(isDark),
           ),
           Padding(
             padding: const EdgeInsets.all(12.0),
@@ -125,7 +134,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
-                    color: const Color(0xFF1F242E),
+                    color: textColor,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -135,7 +144,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
                   typeAndPrice,
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 12,
-                    color: const Color(0xFF82858C),
+                    color: textMutedColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -152,7 +161,7 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1F242E),
+                        color: textColor,
                       ),
                     ),
                   ],
@@ -165,15 +174,15 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildSimilarCardPlaceholder() {
+  Widget _buildSimilarCardPlaceholder(bool isDark) {
     return Container(
       height: 100,
       width: 180,
-      color: const Color(0xFFF5F6F8),
+      color: isDark ? const Color(0xFF131722) : const Color(0xFFF5F6F8),
       alignment: Alignment.center,
-      child: const Icon(
+      child: Icon(
         Icons.storefront_outlined,
-        color: Color(0xFF82858C),
+        color: isDark ? Colors.white70 : const Color(0xFF82858C),
         size: 32,
       ),
     );

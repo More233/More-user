@@ -387,8 +387,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         return Scaffold(
           key: _scaffoldKey,
           backgroundColor: Theme.of(context).brightness == Brightness.dark 
-              ? const Color(0xFF07090C) 
-              : const Color(0xFFF7F9FA), // Matches Drawer background color
+              ? const Color(0xFF090B0F) // Deeper black background for shadow contrast
+              : const Color(0xFFE5E7EB), // Distinct grey background for light mode contrast
           body: Stack(
             children: [
               // Under Layer: The Drawer Menu
@@ -429,14 +429,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                       borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0),
                       boxShadow: _menuAnimation.value > 0 ? [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15 * _menuAnimation.value), // deep outer shadow
-                          blurRadius: 16,
-                          spreadRadius: 0,
-                          offset: const Offset(-5, 0),
+                          color: Colors.black.withValues(
+                            alpha: (Theme.of(context).brightness == Brightness.dark ? 0.8 : 0.15) * _menuAnimation.value,
+                          ), // deep outer shadow
+                          blurRadius: 24,
+                          spreadRadius: Theme.of(context).brightness == Brightness.dark ? 2.0 : 0.0,
+                          offset: const Offset(-6, 0),
                         ),
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.07 * _menuAnimation.value), // soft inner shadow
-                          blurRadius: 6,
+                          color: Colors.black.withValues(
+                            alpha: (Theme.of(context).brightness == Brightness.dark ? 0.5 : 0.08) * _menuAnimation.value,
+                          ), // soft inner shadow
+                          blurRadius: 8,
                           spreadRadius: 0,
                           offset: const Offset(-2, 0),
                         ),
@@ -521,6 +525,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                       right: 0,
                                       bottom: _isNavBarVisible ? 0.0 : -navBarHeight,
                                       child: BottomNavBar(
+                                        borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0),
                                         selectedIndex: state.selectedNavIndex,
                                         userAvatarUrl: state.currentUserAvatarUrl,
                                         unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
@@ -692,8 +697,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           SvgPicture.asset(
             'assets/Splash/logo.svg',
             height: 22,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF7C57FC),
+            colorFilter: ColorFilter.mode(
+              Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF7C57FC),
               BlendMode.srcIn,
             ),
           ),
@@ -712,13 +717,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF7C57FC), width: 1.8),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF7C57FC),
+                    width: 1.8,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.add,
-                    color: Color(0xFF7C57FC),
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF7C57FC),
                     size: 18,
                   ),
                 ),

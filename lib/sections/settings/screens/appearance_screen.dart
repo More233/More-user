@@ -165,6 +165,9 @@ class AppearanceScreen extends ConsumerWidget {
     required VoidCallback onTap,
   }) {
     final themeColor = const Color(0xFF7C57FC);
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color unselectedBorderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFE5E7EB);
+    final Color radioBorderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFD1D5DB);
 
     return GestureDetector(
       onTap: onTap,
@@ -179,7 +182,7 @@ class AppearanceScreen extends ConsumerWidget {
               color: isDarkTheme ? const Color(0xFF0F1219) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? themeColor : const Color(0xFFE5E7EB),
+                color: isSelected ? themeColor : unselectedBorderColor,
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: [
@@ -281,7 +284,7 @@ class AppearanceScreen extends ConsumerWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? themeColor : const Color(0xFFD1D5DB),
+                color: isSelected ? themeColor : radioBorderColor,
                 width: isSelected ? 6.5 : 1.5,
               ),
             ),

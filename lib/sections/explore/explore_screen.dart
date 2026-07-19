@@ -231,12 +231,20 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     IconData? icon,
     required VoidCallback onTap,
   }) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color pillBgColor = isActive
+        ? (isDark ? const Color(0xFF7C57FC) : const Color(0xFF1F242E))
+        : (isDark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5));
+    final Color pillContentColor = isActive
+        ? Colors.white
+        : (isDark ? const Color(0xFF9EABB8) : const Color(0xFF1A1A2E));
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF1F242E) : const Color(0xFFF1F3F5),
+          color: pillBgColor,
           borderRadius: BorderRadius.circular(100),
         ),
         child: Row(
@@ -246,7 +254,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               Icon(
                 icon,
                 size: 14,
-                color: isActive ? Colors.white : const Color(0xFF1A1A2E),
+                color: pillContentColor,
               ),
               const SizedBox(width: 4),
             ],
@@ -255,7 +263,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: isActive ? Colors.white : const Color(0xFF1A1A2E),
+                color: pillContentColor,
               ),
             ),
             if (icon == Icons.keyboard_arrow_down) ...[
@@ -263,7 +271,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               Icon(
                 icon,
                 size: 16,
-                color: isActive ? Colors.white : const Color(0xFF1A1A2E),
+                color: pillContentColor,
               ),
             ],
           ],
@@ -1017,14 +1025,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     left: 16,
                     right: 16,
                   ),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF131722) : Colors.white,
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.black38 : Colors.black12,
                         blurRadius: 10,
-                        offset: Offset(0, 4),
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -1045,15 +1053,15 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                           height: 46,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F3F5),
+                            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5),
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.arrow_back_ios_new,
                                 size: 14,
-                                color: Color(0xFF1A1A2E),
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1A1A2E),
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1061,7 +1069,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1A1A2E),
+                                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1A1A2E),
                                 ),
                               ),
                             ],
@@ -1084,14 +1092,14 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                                   Container(
                                     width: 38,
                                     height: 38,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFF1F3F5),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5),
                                       shape: BoxShape.circle,
                                     ),
                                     alignment: Alignment.center,
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.tune,
-                                      color: Color(0xFF1A1A2E),
+                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1A1A2E),
                                       size: 16,
                                     ),
                                   ),

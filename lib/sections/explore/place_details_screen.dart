@@ -184,8 +184,15 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
     final double lng = (place['longitude'] as num?)?.toDouble() ?? 30.697478;
     final bool hasPhotos = state.images.isNotEmpty;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+    final Color cardColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF5F6F8);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: Column(
         children: [
           // 1. Swipable Hero Header Image Stack OR Placeholder
@@ -228,7 +235,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                     onSuggestEditTap: () {},
                     onSeeMoreInfoTap: () => _showMoreInfoBottomSheet(place),
                   ),
-                  const Divider(height: 32, color: Color(0xFFE8E8E8)),
+                  Divider(height: 32, color: dividerColor),
                   
                   PlacePhotosSection(images: state.images, peopleImages: state.peopleImages),
                   const SizedBox(height: 24),
@@ -238,7 +245,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                     hasCheckedIn: state.hasCheckedIn,
                     onCheckInTap: () => _performCheckIn(state, viewModel),
                   ),
-                  const Divider(height: 32, color: Color(0xFFE8E8E8)),
+                  Divider(height: 32, color: dividerColor),
 
                   PlaceRatingSection(
                     ratingVal: "$ratingVal",
@@ -260,7 +267,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1F242E),
+                      color: textColor,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -269,7 +276,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F6F8),
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -282,7 +289,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                                 "Check-ins",
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 12,
-                                  color: const Color(0xFF82858C),
+                                  color: textMutedColor,
                                 ),
                               ),
                               Text(
@@ -290,7 +297,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1F242E),
+                                  color: textColor,
                                 ),
                               ),
                             ],
@@ -304,7 +311,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                                 "Tips",
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 12,
-                                  color: const Color(0xFF82858C),
+                                  color: textMutedColor,
                                 ),
                               ),
                               Text(
@@ -312,7 +319,7 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1F242E),
+                                  color: textColor,
                                 ),
                               ),
                             ],

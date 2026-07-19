@@ -9,6 +9,7 @@ class BottomNavBar extends StatelessWidget {
   final String? userAvatarUrl;
   final int unreadNotificationsCount;
   final int unreadMessagesCount;
+  final BorderRadius borderRadius;
 
   const BottomNavBar({
     super.key,
@@ -17,6 +18,7 @@ class BottomNavBar extends StatelessWidget {
     this.userAvatarUrl,
     required this.unreadNotificationsCount,
     required this.unreadMessagesCount,
+    this.borderRadius = BorderRadius.zero,
   });
 
   static const _items = [
@@ -28,9 +30,12 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+    return ClipRRect(
+      borderRadius: borderRadius,
+      clipBehavior: Clip.antiAlias,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).brightness == Brightness.dark
@@ -75,7 +80,8 @@ class BottomNavBar extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

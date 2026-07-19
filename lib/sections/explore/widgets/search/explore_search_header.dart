@@ -30,28 +30,33 @@ class ExploreSearchHeader extends StatelessWidget {
     this.onSubmitted,
   });
 
-  Widget _buildCategoryChip(String label, IconData icon, String type) {
+  Widget _buildCategoryChip(BuildContext context, String label, IconData icon, String type) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color chipBgColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5);
+    final Color chipBorderColor = isDark ? const Color(0xFF2B313F) : const Color(0xFFE8E8E8);
+    final Color chipTextColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+
     return GestureDetector(
       onTap: () => onCategoryTap(type),
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F3F5),
+          color: chipBgColor,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: const Color(0xFFE8E8E8)),
+          border: Border.all(color: chipBorderColor),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: const Color(0xFF1A1A2E)),
+            Icon(icon, size: 16, color: chipTextColor),
             const SizedBox(width: 6),
             Text(
               label,
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF1A1A2E),
+                color: chipTextColor,
               ),
             ),
           ],
@@ -62,8 +67,15 @@ class ExploreSearchHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color cardColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color iconColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color dividerColor = isDark ? const Color(0xFF2E3544) : const Color(0xFFE2E4E6);
+
     return Container(
-      color: Colors.white,
+      color: bgColor,
       padding: EdgeInsets.only(
         top: topPadding + 8,
         bottom: 12,
@@ -77,7 +89,7 @@ class ExploreSearchHeader extends StatelessWidget {
           // Unified grey card containing Search input and Current Location
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F3F5),
+              color: cardColor,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -88,11 +100,11 @@ class ExploreSearchHeader extends StatelessWidget {
                   children: [
                     GestureDetector(
                       onTap: onBackTap,
-                      child: const Padding(
-                        padding: EdgeInsets.only(left: 12, right: 8, top: 12, bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 8, top: 12, bottom: 12),
                         child: Icon(
                           Icons.chevron_left,
-                          color: Color(0xFF1A1A2E),
+                          color: iconColor,
                           size: 26,
                         ),
                       ),
@@ -105,7 +117,7 @@ class ExploreSearchHeader extends StatelessWidget {
                         onSubmitted: onSubmitted,
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 16,
-                          color: const Color(0xFF1A1A2E),
+                          color: textColor,
                         ),
                         decoration: InputDecoration(
                           hintText: "Find a place",
@@ -139,11 +151,11 @@ class ExploreSearchHeader extends StatelessWidget {
                   ],
                 ),
                 // Subtle horizontal divider
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Divider(
                     height: 1,
-                    color: Color(0xFFE2E4E6),
+                    color: dividerColor,
                   ),
                 ),
                 // Row 2: Current Location
@@ -155,9 +167,9 @@ class ExploreSearchHeader extends StatelessWidget {
                     color: Colors.transparent, // Ensure full area is clickable
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on,
-                          color: Color(0xFF1A1A2E),
+                          color: iconColor,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -166,7 +178,7 @@ class ExploreSearchHeader extends StatelessWidget {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
-                            color: const Color(0xFF1A1A2E),
+                            color: textColor,
                           ),
                         ),
                       ],
@@ -184,11 +196,11 @@ class ExploreSearchHeader extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.zero,
               children: [
-                _buildCategoryChip("Restaurants", Icons.restaurant, "Restaurant"),
-                _buildCategoryChip("Coffee", Icons.local_cafe, "Coffee"),
-                _buildCategoryChip("Bakery", Icons.breakfast_dining, "Bakery"),
-                _buildCategoryChip("Bars", Icons.local_bar, "Bars"),
-                _buildCategoryChip("Desserts", Icons.icecream, "Desserts"),
+                _buildCategoryChip(context, "Restaurants", Icons.restaurant, "Restaurant"),
+                _buildCategoryChip(context, "Coffee", Icons.local_cafe, "Coffee"),
+                _buildCategoryChip(context, "Bakery", Icons.breakfast_dining, "Bakery"),
+                _buildCategoryChip(context, "Bars", Icons.local_bar, "Bars"),
+                _buildCategoryChip(context, "Desserts", Icons.icecream, "Desserts"),
               ],
             ),
           ),

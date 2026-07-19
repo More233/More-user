@@ -10,56 +10,59 @@ class MarkerGenerator {
   static final Map<String, Uint8List> _selectedPinCache = {};
   static final Map<String, Uint8List> _dotCache = {};
 
-  static Future<Uint8List> getNormalPin(String type) async {
+  static Future<Uint8List> getNormalPin(String type, {bool isDark = false}) async {
     final t = type.toLowerCase().trim();
-    if (_normalPinCache.containsKey(t)) {
-      return _normalPinCache[t]!;
+    final key = "${t}_$isDark";
+    if (_normalPinCache.containsKey(key)) {
+      return _normalPinCache[key]!;
     }
-    final bytes = await _generateTeardropPin(type, isSelected: false);
-    _normalPinCache[t] = bytes;
+    final bytes = await _generateTeardropPin(type, isSelected: false, isDark: isDark);
+    _normalPinCache[key] = bytes;
     return bytes;
   }
 
-  static Future<Uint8List> getSelectedPin(String type) async {
+  static Future<Uint8List> getSelectedPin(String type, {bool isDark = false}) async {
     final t = type.toLowerCase().trim();
-    if (_selectedPinCache.containsKey(t)) {
-      return _selectedPinCache[t]!;
+    final key = "${t}_$isDark";
+    if (_selectedPinCache.containsKey(key)) {
+      return _selectedPinCache[key]!;
     }
-    final bytes = await _generateTeardropPin(type, isSelected: true);
-    _selectedPinCache[t] = bytes;
+    final bytes = await _generateTeardropPin(type, isSelected: true, isDark: isDark);
+    _selectedPinCache[key] = bytes;
     return bytes;
   }
 
-  static Future<Uint8List> getDotPin(String type) async {
+  static Future<Uint8List> getDotPin(String type, {bool isDark = false}) async {
     final t = type.toLowerCase().trim();
-    if (_dotCache.containsKey(t)) {
-      return _dotCache[t]!;
+    final key = "${t}_$isDark";
+    if (_dotCache.containsKey(key)) {
+      return _dotCache[key]!;
     }
-    final bytes = await _generateDotPin(type);
-    _dotCache[t] = bytes;
+    final bytes = await _generateDotPin(type, isDark: isDark);
+    _dotCache[key] = bytes;
     return bytes;
   }
 
   static final Map<String, Uint8List> _liveCache = {};
 
-  static Future<Uint8List> getLivePin(String type, {required bool isSelected}) async {
-    final key = "${type.toLowerCase().trim()}_$isSelected";
+  static Future<Uint8List> getLivePin(String type, {required bool isSelected, bool isDark = false}) async {
+    final key = "${type.toLowerCase().trim()}_${isSelected}_$isDark";
     if (_liveCache.containsKey(key)) {
       return _liveCache[key]!;
     }
-    final bytes = await _generateLivePin(type, isSelected: isSelected);
+    final bytes = await _generateLivePin(type, isSelected: isSelected, isDark: isDark);
     _liveCache[key] = bytes;
     return bytes;
   }
 
   static final Map<String, Uint8List> _capsuleCache = {};
 
-  static Future<Uint8List> getCapsulePin(String type, String rating, {required bool isSelected}) async {
-    final key = "${type.toLowerCase().trim()}_${rating.trim()}_$isSelected";
+  static Future<Uint8List> getCapsulePin(String type, String rating, {required bool isSelected, bool isDark = false}) async {
+    final key = "${type.toLowerCase().trim()}_${rating.trim()}_${isSelected}_$isDark";
     if (_capsuleCache.containsKey(key)) {
       return _capsuleCache[key]!;
     }
-    final bytes = await _generateCapsulePin(type, rating, isSelected: isSelected);
+    final bytes = await _generateCapsulePin(type, rating, isSelected: isSelected, isDark: isDark);
     _capsuleCache[key] = bytes;
     return bytes;
   }
@@ -68,6 +71,7 @@ class MarkerGenerator {
     String type,
     String rating, {
     required bool isSelected,
+    bool isDark = false,
   }) async {
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
@@ -118,9 +122,9 @@ class MarkerGenerator {
     final Paint fillPaint = Paint()..color = color;
     canvas.drawPath(capsulePath, fillPaint);
 
-    // 3. Draw White Border
+    // 3. Draw Border
     final Paint borderPaint = Paint()
-      ..color = Colors.white
+      ..color = isDark ? const Color(0xFF1E1E1E) : Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0 * scale;
     canvas.drawPath(capsulePath, borderPaint);
@@ -145,9 +149,9 @@ class MarkerGenerator {
       Offset(dx + leftCenter - iconPainter.width / 2, cy - iconPainter.height / 2),
     );
 
-    // 5. Draw White Divider
+    // 5. Draw Divider
     final Paint dividerPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.5)
+      ..color = (isDark ? const Color(0xFF1E1E1E) : Colors.white).withValues(alpha: 0.5)
       ..strokeWidth = 1.0 * scale;
     canvas.drawLine(
       Offset(dx + 24.0 * scale, dy + 5.0 * scale),
@@ -179,7 +183,7 @@ class MarkerGenerator {
     return pngBytes!.buffer.asUint8List();
   }
 
-  static Future<Uint8List> _generateTeardropPin(String type, {required bool isSelected}) async {
+  static Future<Uint8List> _generateTeardropPin(String type, {required bool isSelected, bool isDark = false}) async {
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
     
@@ -229,9 +233,9 @@ class MarkerGenerator {
     final Paint fillPaint = Paint()..color = color;
     canvas.drawPath(path, fillPaint);
 
-    // 3. Draw White Border around teardrop pin
+    // 3. Draw Border around teardrop pin
     final Paint borderPaint = Paint()
-      ..color = Colors.white
+      ..color = isDark ? const Color(0xFF1E1E1E) : Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0 * finalScale;
     canvas.drawPath(path, borderPaint);
@@ -274,7 +278,7 @@ class MarkerGenerator {
 
       // 7. Draw Bottom Dot Border
       final Paint dotBorderPaint = Paint()
-        ..color = Colors.white
+        ..color = isDark ? const Color(0xFF1E1E1E) : Colors.white
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0 * finalScale;
       canvas.drawCircle(Offset(dotCx, dotCy), dotRadius, dotBorderPaint);
@@ -286,7 +290,7 @@ class MarkerGenerator {
     return pngBytes!.buffer.asUint8List();
   }
 
-  static Future<Uint8List> _generateDotPin(String type) async {
+  static Future<Uint8List> _generateDotPin(String type, {bool isDark = false}) async {
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
     
@@ -304,7 +308,7 @@ class MarkerGenerator {
     canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
     
     final borderPaint = Paint()
-      ..color = Colors.white
+      ..color = isDark ? const Color(0xFF1E1E1E) : Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.8;
     canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
@@ -435,7 +439,7 @@ class MarkerGenerator {
     return 'other';
   }
 
-  static Future<Uint8List> _generateLivePin(String type, {required bool isSelected}) async {
+  static Future<Uint8List> _generateLivePin(String type, {required bool isSelected, bool isDark = false}) async {
     final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
     final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
 
@@ -467,9 +471,9 @@ class MarkerGenerator {
     final Paint fillPaint = Paint()..color = color;
     canvas.drawCircle(Offset(cx, cy), radius, fillPaint);
 
-    // 3. Draw White Border
+    // 3. Draw Border
     final Paint borderPaint = Paint()
-      ..color = Colors.white
+      ..color = isDark ? const Color(0xFF1E1E1E) : Colors.white
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0 * scale;
     canvas.drawCircle(Offset(cx, cy), radius, borderPaint);
@@ -506,8 +510,9 @@ class MarkerGenerator {
     required String? avatarUrl,
     required String authorName,
     required bool isSelected,
+    bool isDark = false,
   }) async {
-    final String key = "${type.toLowerCase().trim()}_${avatarUrl ?? 'placeholder'}_${authorName}_$isSelected";
+    final String key = "${type.toLowerCase().trim()}_${avatarUrl ?? 'placeholder'}_${authorName}_${isSelected}_$isDark";
     if (_calloutPinCache.containsKey(key)) {
       return _calloutPinCache[key]!;
     }
@@ -571,8 +576,8 @@ class MarkerGenerator {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
       );
 
-      // 2. Draw White Fill
-      canvas.drawPath(combinedPath, Paint()..color = Colors.white);
+      // 2. Draw Fill
+      canvas.drawPath(combinedPath, Paint()..color = isDark ? const Color(0xFF21242E) : Colors.white);
 
       // 3. Draw Border Stroke matching the pin's color
       canvas.drawPath(
@@ -642,7 +647,7 @@ class MarkerGenerator {
         style: TextStyle(
           fontSize: 7.5 * scale,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF1F242E),
+          color: isDark ? Colors.white : const Color(0xFF1F242E),
         ),
       );
       textPainter.layout(maxWidth: boxWidth - (textLeft - boxLeft) - 2.0);
@@ -666,8 +671,8 @@ class MarkerGenerator {
 
   static final Map<String, Uint8List> _checkInAvatarCache = {};
 
-  static Future<Uint8List> getCheckInAvatarPin(String? avatarUrl, {required bool isSelected}) async {
-    final String key = "${avatarUrl ?? 'placeholder'}_$isSelected";
+  static Future<Uint8List> getCheckInAvatarPin(String? avatarUrl, {required bool isSelected, bool isDark = false}) async {
+    final String key = "${avatarUrl ?? 'placeholder'}_${isSelected}_$isDark";
     if (_checkInAvatarCache.containsKey(key)) {
       return _checkInAvatarCache[key]!;
     }
@@ -744,9 +749,9 @@ class MarkerGenerator {
         canvas.restore();
       }
 
-      // 4. Draw White Border
+      // 4. Draw Border
       final Paint borderPaint = Paint()
-        ..color = Colors.white
+        ..color = isDark ? const Color(0xFF1E1E1E) : Colors.white
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0 * scale;
       canvas.drawCircle(Offset(cx, cy), radius - 0.5, borderPaint);
@@ -764,9 +769,9 @@ class MarkerGenerator {
       final Paint checkBgPaint = Paint()..color = const Color(0xFF7C57FC);
       canvas.drawCircle(Offset(checkCx, checkCy), checkRadius, checkBgPaint);
 
-      // Draw Checkmark Circle border (White)
+      // Draw Checkmark Circle border
       final Paint checkBorderPaint = Paint()
-        ..color = Colors.white
+        ..color = isDark ? const Color(0xFF1E1E1E) : Colors.white
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0 * scale;
       canvas.drawCircle(Offset(checkCx, checkCy), checkRadius, checkBorderPaint);
@@ -797,7 +802,7 @@ class MarkerGenerator {
     } catch (e) {
       debugPrint("Outer error in getCheckInAvatarPin: $e");
       // Fallback: return standard live pin
-      return getLivePin("other", isSelected: isSelected);
+      return getLivePin("other", isSelected: isSelected, isDark: isDark);
     }
   }
 }

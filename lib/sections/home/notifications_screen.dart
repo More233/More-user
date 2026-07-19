@@ -67,7 +67,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          Divider(height: 1, color: isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8)),
           Expanded(
             child: state.isLoading
                 ? const CustomLoadingIndicator()
@@ -151,6 +151,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   Widget _buildActivityItem(Map<String, dynamic> act) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF0D111C);
+    final Color textMutedColor = isDark ? const Color(0xFF82858C) : const Color(0xFF545763);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -175,7 +179,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 // User Avatar
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: isDark ? const Color(0xFF131722) : Colors.grey[200],
                   backgroundImage: act['avatar_url'] != null && (act['avatar_url'] as String).isNotEmpty
                       ? CachedNetworkImageProvider(act['avatar_url'] as String) as ImageProvider
                       : const AssetImage(
@@ -189,20 +193,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     text: TextSpan(
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                        color: textColor,
                       ),
                       children: [
                         TextSpan(
                           text: act['username'],
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontWeight: FontWeight.bold,
+                            color: textColor,
                           ),
                         ),
                         const TextSpan(text: ' '),
                         TextSpan(
                           text: act['text'],
                           style: GoogleFonts.ibmPlexSansArabic(
-                            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFFC0C1D0) : const Color(0xFF3B3C4F),
+                            color: textMutedColor,
                           ),
                         ),
                         const TextSpan(text: ' '),

@@ -440,10 +440,15 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
   }
 
 
-  @override
-  Widget build(BuildContext context) {
+  @override  Widget build(BuildContext context) {
     final double keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
     final double sheetHeight = MediaQuery.of(context).size.height * 0.85;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color hintColor = isDark ? Colors.white54 : const Color(0xFF82858C);
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : Colors.grey[300]!;
+    final Color fieldColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF3F4F6);
 
     if (_selectedLocationForPreview != null) {
       final name = _selectedLocationForPreview!['name'] as String;
@@ -457,9 +462,9 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
         behavior: HitTestBehavior.opaque,
         child: Container(
           height: sheetHeight,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           padding: EdgeInsets.only(bottom: keyboardPadding),
           child: Column(
@@ -469,7 +474,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                 height: 5,
                 margin: const EdgeInsets.only(top: 8, bottom: 8),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: dragHandleColor,
                   borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
@@ -636,9 +641,9 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
       behavior: HitTestBehavior.opaque,
       child: Container(
         height: sheetHeight,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: EdgeInsets.only(bottom: keyboardPadding),
         child: Column(
@@ -648,7 +653,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
               height: 5,
               margin: const EdgeInsets.only(top: 8, bottom: 8),
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: dragHandleColor,
                 borderRadius: BorderRadius.circular(2.5),
               ),
             ),
@@ -656,9 +661,9 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.near_me,
-                    color: Color(0xFF1F242E),
+                    color: textColor,
                     size: 24,
                   ),
                   const SizedBox(width: 8),
@@ -666,7 +671,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                     child: Text(
                       'Locations',
                       style: GoogleFonts.ibmPlexSansArabic(
-                        color: const Color(0xFF1F242E),
+                        color: textColor,
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
@@ -698,7 +703,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                   Text(
                     'Choose a location to tag',
                     style: GoogleFonts.ibmPlexSansArabic(
-                      color: const Color(0xFF1F242E),
+                      color: textColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -708,7 +713,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                     'People you share this content with can see the location you tag and view this content on the map.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.ibmPlexSansArabic(
-                      color: const Color(0xFF82858C),
+                      color: hintColor,
                       fontSize: 13,
                       height: 1.3,
                     ),
@@ -721,15 +726,15 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
+                  color: fieldColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.search,
-                      color: Color(0xFF82858C),
+                      color: hintColor,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -739,13 +744,13 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                         onChanged: _onSearchChanged,
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 15,
-                          color: const Color(0xFF1F242E),
+                          color: textColor,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Search',
                           hintStyle: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 15,
-                            color: const Color(0xFF9CA3AF),
+                            color: hintColor,
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -869,8 +874,8 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                                         leading: Container(
                                           width: 36,
                                           height: 36,
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFF3F4F6),
+                                          decoration: BoxDecoration(
+                                            color: fieldColor,
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
@@ -884,7 +889,7 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                                           style: GoogleFonts.ibmPlexSansArabic(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF1F242E),
+                                            color: textColor,
                                           ),
                                         ),
                                         subtitle: Text(

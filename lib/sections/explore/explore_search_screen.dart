@@ -64,7 +64,7 @@ class _ExploreSearchScreenState extends ConsumerState<ExploreSearchScreen> {
       behavior: HitTestBehavior.opaque,
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Column(
           children: [
             ExploreSearchHeader(

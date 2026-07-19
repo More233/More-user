@@ -25,26 +25,28 @@ class PlaceDetailsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (!hasPhotos) {
       return Container(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF131722) : Colors.white,
         padding: EdgeInsets.only(top: topPadding, left: 8, right: 8),
         height: topPadding + 56,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.arrow_back,
-                color: Color(0xFF1F242E),
+                color: isDark ? Colors.white : const Color(0xFF1F242E),
                 size: 24,
               ),
               onPressed: onBackTap,
             ),
             IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.more_horiz,
-                color: Color(0xFF1F242E),
+                color: isDark ? Colors.white : const Color(0xFF1F242E),
                 size: 24,
               ),
               onPressed: onMoreTap ?? () {},
@@ -68,16 +70,16 @@ class PlaceDetailsHeader extends StatelessWidget {
                 height: 280,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
-                  color: const Color(0xFFF3F4F6),
+                  color: isDark ? const Color(0xFF1F2430) : const Color(0xFFF3F4F6),
                   child: Center(
                     child: CupertinoActivityIndicator(
-                      color: Color(0xFF7C57FC),
+                      color: const Color(0xFF7C57FC),
                       radius: 8,
                     ),
                   ),
                 ),
                 errorWidget: (context, url, error) => Container(
-                  color: const Color(0xFFF3F4F6),
+                  color: isDark ? const Color(0xFF1F2430) : const Color(0xFFF3F4F6),
                   child: const Icon(Icons.broken_image, color: Colors.grey, size: 40),
                 ),
               );

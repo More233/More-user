@@ -583,7 +583,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
         ),
         body: Column(
           children: [
-            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            Divider(height: 1, color: Theme.of(context).dividerColor),
             Expanded(
               child: _isSearching
                   ? const CustomLoadingIndicator()
@@ -713,7 +713,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                     ),
                   ),
                 ),
-                const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                Divider(height: 1, color: Theme.of(context).dividerColor),
 
                 // Messages thread list / empty state
                 Expanded(
@@ -800,12 +800,18 @@ class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : Colors.black87;
+    final Color fieldColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFEDEFF2);
+    final Color hintColor = isDark ? Colors.white54 : const Color(0xFF82858C);
     
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(bottom: keyboardHeight),
       child: Column(
@@ -824,7 +830,7 @@ class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
                       'Cancel',
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
-                        color: Colors.black87,
+                        color: textMutedColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -835,7 +841,7 @@ class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: textColor,
                   ),
                 ),
               ],
@@ -847,24 +853,24 @@ class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
             child: Container(
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFEDEFF2),
+                color: fieldColor,
                 borderRadius: BorderRadius.circular(21),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  const Icon(CupertinoIcons.search, color: Color(0xFF82858C), size: 18),
+                  Icon(CupertinoIcons.search, color: hintColor, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                       controller: _searchController,
                       onChanged: _onSearchChanged,
-                      style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
+                      style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: textColor),
                       decoration: InputDecoration(
                         hintText: 'Search',
                         hintStyle: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 14,
-                          color: const Color(0xFF82858C),
+                          color: hintColor,
                         ),
                         border: InputBorder.none,
                         isDense: true,
@@ -913,7 +919,7 @@ class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
                     contentPadding: const EdgeInsets.symmetric(vertical: 4),
                     leading: CircleAvatar(
                       radius: 22,
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: isDark ? const Color(0xFF1F2430) : Colors.grey[200],
                       backgroundImage: widget.getAvatarProvider(username, avatarUrl),
                     ),
                     title: Row(
@@ -923,7 +929,7 @@ class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: textColor,
                           ),
                         ),
                         if (isVerified) ...[
@@ -940,7 +946,7 @@ class _NewChatBottomSheetState extends State<_NewChatBottomSheet> {
                       '@$username',
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: const Color(0xFF536471),
+                        color: isDark ? Colors.white54 : const Color(0xFF536471),
                       ),
                     ),
                     onTap: () => widget.onUserSelected(profile),

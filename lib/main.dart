@@ -40,6 +40,11 @@ class MyApp extends ConsumerWidget {
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
+        dividerColor: const Color(0xFFE8E8E8),
+        dividerTheme: const DividerThemeData(
+          color: Color(0xFFE8E8E8),
+          thickness: 1.0,
+        ),
         colorScheme: ColorScheme.fromSeed(
           brightness: Brightness.light,
           seedColor: const Color(0xFF7C57FC),
@@ -51,6 +56,18 @@ class MyApp extends ConsumerWidget {
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0F1219),
+        dividerColor: const Color(0xFF1E2433),
+        dividerTheme: const DividerThemeData(
+          color: Color(0xFF1E2433),
+          thickness: 1.0,
+        ),
+        drawerTheme: const DrawerThemeData(
+          backgroundColor: Color(0xFF131722),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: Color(0xFF131722),
+          modalBackgroundColor: Color(0xFF131722),
+        ),
         colorScheme: ColorScheme.fromSeed(
           brightness: Brightness.dark,
           seedColor: const Color(0xFF7C57FC),

@@ -113,13 +113,19 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
       context: context,
       barrierDismissible: true,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final Color dialogBg = isDark ? const Color(0xFF131722) : Colors.white;
+        final Color textColor = isDark ? Colors.white : const Color(0xFF323232);
+        final Color sepColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFBFBFBF);
+        final Color cancelColor = isDark ? Colors.white70 : const Color(0xFF373737);
+
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 40),
           child: Container(
             width: 286,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: dialogBg,
               borderRadius: BorderRadius.circular(20),
             ),
             padding: const EdgeInsets.only(top: 24, bottom: 24),
@@ -131,7 +137,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF323232),
+                    color: textColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -144,10 +150,10 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                   },
                   child: Container(
                     width: 286,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
-                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                        top: BorderSide(color: sepColor, width: 0.7),
+                        bottom: BorderSide(color: sepColor, width: 0.7),
                       ),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -174,7 +180,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF373737),
+                        color: cancelColor,
                       ),
                     ),
                   ),
@@ -279,13 +285,22 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color containerBg = isDark ? const Color(0xFF1F2430) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color hintColor = isDark ? Colors.white54 : const Color(0xFF1A1A2E).withValues(alpha: 0.5);
+    final Color borderSideColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color dateBtnBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFEDE6FC);
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Row(
@@ -295,10 +310,10 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: containerBg,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE8E8E8)),
-                  boxShadow: [
+                  border: Border.all(color: borderSideColor),
+                  boxShadow: isDark ? [] : [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 8,
@@ -321,13 +336,13 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        style: GoogleFonts.ibmPlexSansArabic(fontSize: 14),
+                        style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: textColor),
                         autofocus: true,
                         decoration: InputDecoration(
                           hintText: 'Search your history',
                           hintStyle: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
-                            color: const Color(0xFF1A1A2E).withValues(alpha: 0.5),
+                            color: hintColor,
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -365,7 +380,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          Divider(height: 1, color: dividerColor),
           // Jump to date picker tag
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -376,7 +391,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEDE6FC),
+                    color: dateBtnBg,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -444,6 +459,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
   }
 
   Widget _buildSuggestedSearches() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,7 +471,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF1A1A2E),
+                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
               ),
             ),
           ),
@@ -502,6 +518,11 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
     String? timeText,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF303030);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF3B3C4F).withValues(alpha: 0.75);
+    final Color iconBgColor = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF2EEFC);
+
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -513,8 +534,8 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
             Container(
               width: 34,
               height: 34,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF2EEFC),
+              decoration: BoxDecoration(
+                color: iconBgColor,
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -540,7 +561,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF303030),
+                      color: textColor,
                     ),
                   ),
                   if (subtitle != null) ...[
@@ -549,7 +570,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                       subtitle,
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: const Color(0xFF3B3C4F).withValues(alpha: 0.75),
+                        color: textMutedColor,
                       ),
                     ),
                   ],
@@ -559,7 +580,7 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
                       timeText,
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: const Color(0xFF3B3C4F).withValues(alpha: 0.75),
+                        color: textMutedColor,
                       ),
                     ),
                   ],

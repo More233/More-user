@@ -151,14 +151,23 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF1F242E);
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFC8C8C8);
+    final Color fieldColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF3F4F6);
+    final Color hintColor = isDark ? Colors.white54 : const Color(0xFF9CA3AF);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Container(
         height: MediaQuery.of(context).size.height * 0.65,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
@@ -171,7 +180,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               width: 48,
               height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFC8C8C8),
+                color: dragHandleColor,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -182,7 +191,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: textColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -192,24 +201,24 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
+                  color: fieldColor,
                   borderRadius: BorderRadius.circular(100),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.search, color: Color(0xFF82858C), size: 20),
+                    Icon(Icons.search, color: hintColor, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 15,
-                          color: const Color(0xFF1F242E),
+                          color: textMutedColor,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Search by name or username',
                           hintStyle: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 15,
-                            color: const Color(0xFF9CA3AF),
+                            color: hintColor,
                           ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -222,7 +231,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
               ),
             ),
           const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          Divider(height: 1, color: dividerColor),
           // Friends List
           Expanded(
             child: _isLoading
@@ -236,15 +245,18 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
                     ? Center(
                         child: Text(
                           'No friends found',
-                          style: GoogleFonts.ibmPlexSansArabic(color: Colors.grey),
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 14,
+                            color: const Color(0xFF82858C),
+                          ),
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _filteredFriends.length,
                         itemBuilder: (context, index) {
                           final friend = _filteredFriends[index];
-                          final isSelected = _selectedUsernames.contains(friend['username']);
+                          final isSelected = _selectedUsernames.contains(friend['username']!);
 
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
@@ -258,7 +270,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black,
+                                color: textColor,
                               ),
                             ),
                             subtitle: Text(
@@ -288,7 +300,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
                         },
                       )),
           ),
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          Divider(height: 1, color: dividerColor),
           SafeArea(
             top: false,
             child: Padding(

@@ -67,18 +67,27 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final isAr = settings.preferredLanguage == 'ar';
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF666666);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color promoBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF9F9FA);
+    final Color promoBorder = isDark ? const Color(0xFF1E2433) : const Color(0xFFF0F0F2);
+    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+    final Color arrowColor = isDark ? Colors.white24 : const Color(0xFFCCCCCC);
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: bgColor,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: Colors.black,
+              color: textColor,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -87,7 +96,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: textColor,
             ),
           ),
           centerTitle: true,
@@ -96,15 +105,15 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
+              Divider(height: 1, color: dividerColor),
               // Promo card banner matching Figma - 321
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9F9FA),
+                    color: promoBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFF0F0F2)),
+                    border: Border.all(color: promoBorder),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -118,7 +127,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: textColor,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -128,7 +137,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                                   : 'Our support team typically replies within 24 hours.',
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 12,
-                                color: const Color(0xFF666666),
+                                color: textMutedColor,
                                 height: 1.4,
                               ),
                             ),
@@ -147,7 +156,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                           errorBuilder: (context, error, stackTrace) => Container(
                             width: 120,
                             height: 96,
-                            color: Colors.grey[200],
+                            color: isDark ? const Color(0xFF1F2430) : Colors.grey[200],
                             child: const Icon(Icons.help_center_outlined, color: Colors.grey),
                           ),
                         ),
@@ -162,17 +171,18 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                 child: TextField(
                   controller: _searchController,
                   onChanged: (val) {},
+                  style: GoogleFonts.ibmPlexSansArabic(color: textColor),
                   decoration: InputDecoration(
                     hintText: isAr ? 'ابحث في مواضيع المساعدة...' : 'Search help topics...',
-                    hintStyle: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFFBBBBBB)),
+                    hintStyle: GoogleFonts.ibmPlexSansArabic(color: isDark ? Colors.white38 : const Color(0xFFBBBBBB)),
                     prefixIcon: Padding(
                       padding: const EdgeInsets.all(12),
                       child: SvgPicture.asset(
                         'assets/setting/icons/search_01.svg',
                         width: 18,
                         height: 18,
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFF888888),
+                        colorFilter: ColorFilter.mode(
+                          isDark ? Colors.white38 : const Color(0xFF888888),
                           BlendMode.srcIn,
                         ),
                       ),
@@ -180,11 +190,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: dividerColor),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: dividerColor),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -243,7 +253,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                     : 'Update your profile and account preferences',
                 isAr: isAr,
               ),
-              const Divider(height: 8, color: Color(0xFFF6F6F6)),
+              Divider(height: 8, color: isDark ? const Color(0xFF131722) : const Color(0xFFF6F6F6)),
               
               // Reach Out options section matching Figma - 321
               _buildSectionHeader(isAr ? 'اختر طريقة للاتصال بنا' : 'CHOOSE A WAY TO REACH US', isAr),
@@ -251,7 +261,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3EFFF),
+                    color: iconWrapperBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: SvgPicture.asset(
@@ -269,6 +279,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
                 ),
                 subtitle: Text(
@@ -281,7 +292,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                 trailing: Icon(
                   isAr ? Icons.arrow_back : Icons.arrow_forward_ios,
                   size: isAr ? 20 : 14,
-                  color: const Color(0xFFCCCCCC),
+                  color: arrowColor,
                 ),
                 onTap: _launchEmail,
               ),
@@ -290,7 +301,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3EFFF),
+                    color: iconWrapperBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.chat_bubble_outline, color: Color(0xFF7C57FC), size: 20),
@@ -300,19 +311,20 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
                 ),
                 subtitle: Text(
                   isAr ? 'راسلنا على واتساب' : 'Message us on WhatsApp',
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 13,
-                    color: const Color(0xFF707070),
+                    color: textMutedColor,
                   ),
                 ),
                 trailing: Icon(
                   isAr ? Icons.arrow_back : Icons.arrow_forward_ios,
                   size: isAr ? 20 : 14,
-                  color: const Color(0xFFCCCCCC),
+                  color: arrowColor,
                 ),
                 onTap: _launchWhatsApp,
               ),
@@ -325,16 +337,20 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
   }
 
   Widget _buildSectionHeader(String title, bool isAr) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
+    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF909090);
+
     return Container(
       width: double.infinity,
-      color: const Color(0xFFFAFAFA),
+      color: sectionHeaderBg,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF909090),
+          color: sectionHeaderTextColor,
           letterSpacing: 1.0,
         ),
       ),
@@ -347,11 +363,17 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
     required String subtitle,
     required bool isAr,
   }) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF707070);
+    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+    final Color arrowColor = isDark ? Colors.white24 : const Color(0xFFCCCCCC);
+
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3EFFF),
+          color: iconWrapperBg,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -365,20 +387,20 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 15,
           fontWeight: FontWeight.bold,
-          color: Colors.black,
+          color: textColor,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
-          color: const Color(0xFF707070),
+          color: textMutedColor,
         ),
       ),
       trailing: Icon(
         isAr ? Icons.arrow_back : Icons.arrow_forward_ios,
         size: isAr ? 20 : 14,
-        color: const Color(0xFFCCCCCC),
+        color: arrowColor,
       ),
       onTap: () {
         // Expand/navigate to sub-topic details (mocked or simple dialog)
@@ -387,9 +409,12 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
   }
 
   Widget _buildDivider() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 64, right: 16),
-      child: Divider(height: 1, color: Color(0xFFE8E8E8)),
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 64, right: 16),
+      child: Divider(height: 1, color: dividerColor),
     );
   }
 }

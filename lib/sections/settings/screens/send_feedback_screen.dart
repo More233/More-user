@@ -144,18 +144,30 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final isAr = settings.preferredLanguage == 'ar';
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textLabelColor = isDark ? Colors.white : const Color(0xFF333333);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF666666);
+    final Color promoBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF9F9FA);
+    final Color promoBorder = isDark ? const Color(0xFF1E2433) : const Color(0xFFF0F0F2);
+    final Color inputBg = isDark ? const Color(0xFF1A1F2C) : Colors.white;
+    final Color inputBorder = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final Color hintColor = isDark ? Colors.white30 : const Color(0xFFBBBBBB);
+    final Color attachmentBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFFAFAFA);
+    final Color iconColor = isDark ? Colors.white54 : const Color(0xFF888888);
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: bgColor,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: Colors.black,
+              color: textColor,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -164,7 +176,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: textColor,
             ),
           ),
           centerTitle: true,
@@ -179,9 +191,9 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                 // Promo card banner matching Figma - 320
                 Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF9F9FA),
+                    color: promoBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFF0F0F2)),
+                    border: Border.all(color: promoBorder),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -195,7 +207,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: textColor,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -205,7 +217,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                                   : 'Your feedback helps us make More better.',
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 12,
-                                color: const Color(0xFF666666),
+                                color: textMutedColor,
                                 height: 1.4,
                               ),
                             ),
@@ -224,8 +236,8 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                           errorBuilder: (context, error, stackTrace) => Container(
                             width: 96,
                             height: 96,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.feedback_outlined, color: Colors.grey),
+                            color: isDark ? const Color(0xFF131722) : Colors.grey[200],
+                            child: Icon(Icons.feedback_outlined, color: iconColor),
                           ),
                         ),
                       ),
@@ -239,7 +251,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF333333),
+                    color: textLabelColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -249,18 +261,22 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                     isAr ? 'اختر تصنيف الملاحظة' : 'Select feedback category',
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 15,
-                      color: const Color(0xFFBBBBBB),
+                      color: hintColor,
                     ),
                   ),
+                  style: GoogleFonts.ibmPlexSansArabic(color: textColor),
+                  dropdownColor: isDark ? const Color(0xFF1F2430) : Colors.white,
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: inputBg,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: inputBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: inputBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -298,7 +314,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF333333),
+                    color: textLabelColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -306,6 +322,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                   controller: _descriptionController,
                   maxLines: 5,
                   maxLength: 500,
+                  style: GoogleFonts.ibmPlexSansArabic(color: textColor),
                   validator: (val) {
                     if (val == null || val.trim().isEmpty) {
                       return isAr ? 'يرجى كتابة تفاصيل الملاحظة' : 'Please describe your feedback';
@@ -313,19 +330,21 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                     return null;
                   },
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: inputBg,
                     hintText: isAr ? 'اكتب ملاحظاتك هنا...' : 'Write your feedback here...',
                     hintStyle: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 15,
-                      color: const Color(0xFFBBBBBB),
+                      color: hintColor,
                     ),
                     contentPadding: const EdgeInsets.all(16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: inputBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: inputBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -340,7 +359,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF333333),
+                    color: textLabelColor,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -352,7 +371,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                     return IconButton(
                       icon: Icon(
                         isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
-                        color: isFilled ? const Color(0xFFFFC107) : const Color(0xFFCCCCCC),
+                        color: isFilled ? const Color(0xFFFFC107) : (isDark ? const Color(0xFF2C354A) : const Color(0xFFCCCCCC)),
                         size: 40,
                       ),
                       onPressed: () {
@@ -370,7 +389,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF333333),
+                    color: textLabelColor,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -380,10 +399,10 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                     width: double.infinity,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFAFAFA),
+                      color: attachmentBg,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFFE8E8E8),
+                        color: inputBorder,
                         style: BorderStyle.solid,
                       ),
                     ),
@@ -419,13 +438,13 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                         : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.add_photo_alternate_outlined, color: Color(0xFF888888), size: 28),
+                              Icon(Icons.add_photo_alternate_outlined, color: iconColor, size: 28),
                               const SizedBox(height: 8),
                               Text(
                                 isAr ? 'اضغط لإضافة صورة' : 'Click to add screenshot',
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 14,
-                                  color: const Color(0xFF888888),
+                                  color: iconColor,
                                 ),
                               ),
                             ],
@@ -439,31 +458,34 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF333333),
+                    color: textLabelColor,
                   ),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  style: GoogleFonts.ibmPlexSansArabic(color: textColor),
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: inputBg,
                     hintText: isAr ? 'بريدك الإلكتروني' : 'Your email address',
                     hintStyle: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 15,
-                      color: const Color(0xFFBBBBBB),
+                      color: hintColor,
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    prefixIcon: const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Icon(Icons.mail_outline, color: Color(0xFF888888)),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Icon(Icons.mail_outline, color: iconColor),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: inputBorder),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                      borderSide: BorderSide(color: inputBorder),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),

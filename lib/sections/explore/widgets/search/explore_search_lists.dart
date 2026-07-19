@@ -24,7 +24,7 @@ class ExploreSearchLists extends StatelessWidget {
     required this.onPlaceTap,
   });
 
-  Widget _buildPlaceItem(Map<String, dynamic> place) {
+  Widget _buildPlaceItem(BuildContext context, Map<String, dynamic> place) {
     final String name = place['name'] as String? ?? '';
     final String distance = place['distance'] as String? ?? '';
     final String address = place['address'] as String? ?? '';
@@ -36,18 +36,23 @@ class ExploreSearchLists extends StatelessWidget {
       subtitle = "$distance • $area";
     }
 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color iconBgColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5);
+    final Color iconColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 40,
         height: 40,
-        decoration: const BoxDecoration(
-          color: Color(0xFFF1F3F5),
+        decoration: BoxDecoration(
+          color: iconBgColor,
           shape: BoxShape.circle,
         ),
-        child: const Icon(
+        child: Icon(
           Icons.location_on,
-          color: Color(0xFF1A1A2E),
+          color: iconColor,
           size: 20,
         ),
       ),
@@ -56,7 +61,7 @@ class ExploreSearchLists extends StatelessWidget {
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF1A1A2E),
+          color: textColor,
         ),
       ),
       subtitle: Text(
@@ -72,6 +77,12 @@ class ExploreSearchLists extends StatelessWidget {
   }
 
   Widget _buildAddNewPlaceItem(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color itemBgColor = isDark ? const Color(0xFF181C26) : Colors.white;
+    final Color iconBgColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color borderColor = isDark ? const Color(0xFF2B313F) : const Color(0xFFE8E8E8);
+
     return GestureDetector(
       onTap: () {
         Navigator.pop(context, {
@@ -82,22 +93,22 @@ class ExploreSearchLists extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: itemBgColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE8E8E8)),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
             Container(
               width: 32,
               height: 32,
-              decoration: const BoxDecoration(
-                color: Color(0xFFF1F3F5),
+              decoration: BoxDecoration(
+                color: iconBgColor,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.add,
-                color: Color(0xFF1A1A2E),
+                color: textColor,
                 size: 18,
               ),
             ),
@@ -108,7 +119,7 @@ class ExploreSearchLists extends StatelessWidget {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1A1A2E),
+                  color: textColor,
                 ),
               ),
             ),
@@ -160,7 +171,7 @@ class ExploreSearchLists extends StatelessWidget {
           if (index == searchResults.length) {
             return _buildAddNewPlaceItem(context);
           }
-          return _buildPlaceItem(searchResults[index]);
+          return _buildPlaceItem(context, searchResults[index]);
         },
       );
     }
@@ -178,7 +189,7 @@ class ExploreSearchLists extends StatelessWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF1A1A2E),
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1A1A2E),
               ),
             ),
           ),
@@ -211,7 +222,7 @@ class ExploreSearchLists extends StatelessWidget {
               padding: EdgeInsets.zero,
               itemCount: nearbyPlaces.length > 5 ? 5 : nearbyPlaces.length,
               itemBuilder: (context, index) {
-                return _buildPlaceItem(nearbyPlaces[index]);
+                return _buildPlaceItem(context, nearbyPlaces[index]);
               },
             ),
 
@@ -228,7 +239,7 @@ class ExploreSearchLists extends StatelessWidget {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1A1A2E),
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF1A1A2E),
                 ),
               ),
             ),
@@ -239,7 +250,7 @@ class ExploreSearchLists extends StatelessWidget {
               padding: EdgeInsets.zero,
               itemCount: recentPlaces.length,
               itemBuilder: (context, index) {
-                return _buildPlaceItem(recentPlaces[index]);
+                return _buildPlaceItem(context, recentPlaces[index]);
               },
             ),
           ],

@@ -341,6 +341,11 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       _isDropdownOpen = false;
     });
 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color modalBg = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color handleColor = isDark ? const Color(0xFF333D52) : const Color(0xFFCCCCCC);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -348,9 +353,9 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
       builder: (context) {
         return Container(
           height: MediaQuery.of(context).size.height * 0.8,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: modalBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
@@ -359,7 +364,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCCCCCC),
+                  color: handleColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -369,7 +374,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.black),
+                      icon: Icon(Icons.close, color: textColor),
                       onPressed: () => Navigator.pop(context),
                     ),
                     Expanded(
@@ -378,7 +383,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          color: textColor,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -461,9 +466,16 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
   Widget build(BuildContext context) {
     final double topPadding = MediaQuery.of(context).padding.top;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color previewBgColor = isDark ? const Color(0xFF131722) : const Color(0xFFF9F9F9);
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color headerTitleColor = isDark ? Colors.white : Colors.black;
+    final Color selectBtnBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFE8E8E8);
+    final Color selectBtnTextColor = isDark ? Colors.white : const Color(0xFF333333);
     
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: SafeArea(
         top: false,
         bottom: false,
@@ -482,6 +494,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                           'assets/home/icons/cancel_01.svg',
                           width: 24,
                           height: 24,
+                          colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
                         ),
                       ),
                       Expanded(
@@ -490,7 +503,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: headerTitleColor,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -504,10 +517,10 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                 Container(
                   width: double.infinity,
                   height: 266,
-                  color: const Color(0xFFF9F9F9),
+                  color: previewBgColor,
                   child: _activePreviewImage != null
                       ? _buildActivePreviewWidget(_activePreviewImage!)
-                      : Container(color: Colors.grey[300]),
+                      : Container(color: isDark ? const Color(0xFF1F2430) : Colors.grey[300]),
                 ),
                 
                 // Dropdown selector & Select / Cancel Button Bar
@@ -530,7 +543,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: textColor,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -538,6 +551,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                               'assets/home/icons/arrow_down_01.svg',
                               width: 20,
                               height: 20,
+                              colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
                             ),
                           ],
                         ),
@@ -549,7 +563,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                         onTap: _toggleMultiSelect,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFFE8E8E8),
+                            color: selectBtnBg,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -562,7 +576,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                                     : 'assets/home/icons/select_multiple.svg',
                                 width: 16,
                                 height: 16,
-                                colorFilter: const ColorFilter.mode(Color(0xFF333333), BlendMode.srcIn),
+                                colorFilter: ColorFilter.mode(selectBtnTextColor, BlendMode.srcIn),
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -570,7 +584,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF333333),
+                                  color: selectBtnTextColor,
                                 ),
                               ),
                             ],
@@ -686,10 +700,10 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                   ),
                 ),
 
-                // Selected Bottom Tray (Visible when selection not empty)
+                 // Selected Bottom Tray (Visible when selection not empty)
                 if (_isMultiSelect && _selectedImages.isNotEmpty)
                   Container(
-                    color: Colors.white,
+                    color: bgColor,
                     padding: EdgeInsets.fromLTRB(16, 4, 16, bottomPadding > 0 ? bottomPadding + 8 : 16),
                     child: Row(
                       children: [
@@ -754,7 +768,7 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
                         // Next button
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF2EEFC),
+                            backgroundColor: isDark ? const Color(0xFF2A1C54) : const Color(0xFFF2EEFC),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -919,6 +933,11 @@ class AlbumGridItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF666666);
+    final Color emptyCoverBgColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFEEEEEE);
+
     return FutureBuilder<int>(
       future: album.assetCountAsync,
       builder: (context, countSnapshot) {
@@ -944,9 +963,13 @@ class AlbumGridItem extends StatelessWidget {
                               thumbnailSize: const ThumbnailSize(200, 200),
                               width: double.infinity,
                               fit: BoxFit.cover,
+                              errorBuilder: (context, err, stack) => Container(
+                                color: emptyCoverBgColor,
+                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                              ),
                             )
                           : Container(
-                              color: const Color(0xFFEEEEEE),
+                              color: emptyCoverBgColor,
                               child: const Icon(Icons.image, color: Colors.grey),
                             ),
                     ),
@@ -957,7 +980,7 @@ class AlbumGridItem extends StatelessWidget {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: textColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -966,7 +989,7 @@ class AlbumGridItem extends StatelessWidget {
                     '$count',
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 14,
-                      color: const Color(0xFF666666),
+                      color: textMutedColor,
                     ),
                   ),
                 ],

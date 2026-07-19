@@ -66,40 +66,43 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (context) => Dialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CupertinoActivityIndicator(
-                      color: Color(0xFF7C57FC),
-                      radius: 12,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Scanning photo...",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1A1A2E),
+            builder: (context) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return Dialog(
+                backgroundColor: isDark ? const Color(0xFF131722) : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CupertinoActivityIndicator(
+                        color: Color(0xFF7C57FC),
+                        radius: 12,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Extracting place details automatically...",
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 12,
-                        color: const Color(0xFF82858C),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Scanning photo...",
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        "Extracting place details automatically...",
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 12,
+                          color: isDark ? Colors.white70 : const Color(0xFF82858C),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         }
 
@@ -132,9 +135,10 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
   }
 
   void _showImageSourceActionSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF131722) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -144,7 +148,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Color(0xFF7C57FC)),
-                title: Text("Take Photo", style: GoogleFonts.ibmPlexSansArabic()),
+                title: Text("Take Photo", style: GoogleFonts.ibmPlexSansArabic(color: isDark ? Colors.white : Colors.black)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
@@ -152,7 +156,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Color(0xFF7C57FC)),
-                title: Text("Choose from Gallery", style: GoogleFonts.ibmPlexSansArabic()),
+                title: Text("Choose from Gallery", style: GoogleFonts.ibmPlexSansArabic(color: isDark ? Colors.white : Colors.black)),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
@@ -218,9 +222,10 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
 
   void _openCategorySelector() {
     final categories = ["Restaurant", "Coffee", "Bakery", "Bars", "Desserts", "Park", "Other"];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF131722) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -235,12 +240,12 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1A1A2E),
+                  color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                 ),
               ),
               const SizedBox(height: 12),
               ...categories.map((cat) => ListTile(
-                title: Text(cat, style: GoogleFonts.ibmPlexSansArabic()),
+                title: Text(cat, style: GoogleFonts.ibmPlexSansArabic(color: isDark ? Colors.white : Colors.black)),
                 trailing: _category == cat ? const Icon(Icons.check, color: Color(0xFF7C57FC)) : null,
                 onTap: () {
                   setState(() => _category = cat);
@@ -260,13 +265,19 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
       context: context,
       barrierDismissible: true,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final Color dialogBg = isDark ? const Color(0xFF131722) : Colors.white;
+        final Color textColor = isDark ? Colors.white : const Color(0xFF323232);
+        final Color borderSideColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+        final Color sepColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFBFBFBF);
+
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 40),
           child: Container(
             width: 286,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: dialogBg,
               borderRadius: BorderRadius.circular(20),
             ),
             padding: const EdgeInsets.only(top: 24, bottom: 24),
@@ -278,7 +289,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF323232),
+                    color: textColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -288,14 +299,14 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                   child: TextField(
                     controller: hoursInput,
                     autofocus: true,
-                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 15),
+                    style: GoogleFonts.ibmPlexSansArabic(fontSize: 15, color: textColor),
                     decoration: InputDecoration(
                       hintText: "e.g., Mon-Fri: 9 AM - 10 PM",
-                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFFC4C4C4), fontSize: 14),
+                      hintStyle: GoogleFonts.ibmPlexSansArabic(color: isDark ? Colors.white60 : const Color(0xFFC4C4C4), fontSize: 14),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(
+                      enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                        borderSide: BorderSide(color: borderSideColor),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -315,10 +326,10 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                   },
                   child: Container(
                     width: 286,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
-                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                        top: BorderSide(color: sepColor, width: 0.7),
+                        bottom: BorderSide(color: sepColor, width: 0.7),
                       ),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -363,13 +374,19 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
       context: context,
       barrierDismissible: true,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final Color dialogBg = isDark ? const Color(0xFF131722) : Colors.white;
+        final Color textColor = isDark ? Colors.white : const Color(0xFF323232);
+        final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+        final Color sepColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFBFBFBF);
+
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 40),
           child: Container(
             width: 286,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: dialogBg,
               borderRadius: BorderRadius.circular(20),
             ),
             padding: const EdgeInsets.only(top: 24, bottom: 24),
@@ -381,7 +398,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF323232),
+                    color: textColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -392,7 +409,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                     "Are you sure you want to discard this place?",
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 14,
-                      color: const Color(0xFF82858C),
+                      color: textMutedColor,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -406,10 +423,10 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                   },
                   child: Container(
                     width: 286,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
-                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                        top: BorderSide(color: sepColor, width: 0.7),
+                        bottom: BorderSide(color: sepColor, width: 0.7),
                       ),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -476,6 +493,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
         context: context,
         barrierDismissible: false,
         builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           Future.delayed(const Duration(milliseconds: 1500), () {
             if (context.mounted) {
               Navigator.pop(context); // Pop dialog
@@ -483,7 +501,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
             }
           });
           return Dialog(
-            backgroundColor: Colors.white,
+            backgroundColor: isDark ? const Color(0xFF131722) : Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -501,7 +519,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1A1A2E),
+                      color: isDark ? Colors.white : const Color(0xFF1A1A2E),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -528,6 +546,12 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
     IconData? icon,
     bool isRequired = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+    final Color placeholderColor = isDark ? const Color(0xFF1F2430) : Colors.white;
+    final Color borderSideColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -538,7 +562,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF1A1A2E),
+                color: textColor,
               ),
             ),
             if (isRequired)
@@ -551,20 +575,20 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: placeholderColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE8E8E8)),
+            border: Border.all(color: borderSideColor),
           ),
           child: TextFormField(
             controller: controller,
-            style: GoogleFonts.ibmPlexSansArabic(fontSize: 15),
+            style: GoogleFonts.ibmPlexSansArabic(fontSize: 15, color: textColor),
             onChanged: (val) => setState(() {}),
             decoration: InputDecoration(
               hintText: hintText,
-              hintStyle: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFF82858C)),
+              hintStyle: GoogleFonts.ibmPlexSansArabic(color: textMutedColor),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              prefixIcon: icon != null ? Icon(icon, size: 20, color: const Color(0xFF82858C)) : null,
+              prefixIcon: icon != null ? Icon(icon, size: 20, color: textMutedColor) : null,
             ),
           ),
         ),
@@ -576,17 +600,26 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
   @override
   Widget build(BuildContext context) {
     final double topPadding = MediaQuery.of(context).padding.top;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color headerColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+    final Color borderSideColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color separatorColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFF1F3F5);
+    final Color buttonBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF1F3F5);
+    final Color placeholderColor = isDark ? const Color(0xFF1F2430) : Colors.white;
     
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: Column(
         children: [
           // Header Bar
           Container(
             padding: EdgeInsets.only(top: topPadding + 10, bottom: 12, left: 16, right: 16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Color(0xFFF1F3F5))),
+            decoration: BoxDecoration(
+              color: headerColor,
+              border: Border(bottom: BorderSide(color: separatorColor)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -595,11 +628,11 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                   onTap: _discardDialog,
                   child: Container(
                     padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF1F3F5),
+                    decoration: BoxDecoration(
+                      color: buttonBg,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close, size: 18, color: Color(0xFF1A1A2E)),
+                    child: Icon(Icons.close, size: 18, color: textColor),
                   ),
                 ),
                 Text(
@@ -607,7 +640,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1A1A2E),
+                    color: textColor,
                   ),
                 ),
                 const SizedBox(width: 32),
@@ -629,9 +662,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: placeholderColor,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE8E8E8)),
+                        border: Border.all(color: borderSideColor),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -641,7 +674,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1A1A2E),
+                              color: textColor,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -649,7 +682,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                             "Upload a photo to capture the details needed to automatically add a new place.",
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 13,
-                              color: const Color(0xFF82858C),
+                              color: textMutedColor,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -694,8 +727,8 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                             child: OutlinedButton(
                               onPressed: _showImageSourceActionSheet,
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFE8E8E8)),
-                                backgroundColor: const Color(0xFFF1F3F5),
+                                side: BorderSide(color: borderSideColor),
+                                backgroundColor: buttonBg,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                               ),
                               child: Text(
@@ -703,7 +736,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1A1A2E),
+                                  color: textColor,
                                 ),
                               ),
                             ),
@@ -718,7 +751,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1A1A2E),
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -739,7 +772,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF1A1A2E),
+                            color: textColor,
                           ),
                         ),
                         const Text(
@@ -754,9 +787,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: placeholderColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE8E8E8)),
+                          border: Border.all(color: borderSideColor),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -766,11 +799,11 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                 _address,
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 15,
-                                  color: const Color(0xFF1A1A2E),
+                                  color: textColor,
                                 ),
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF82858C)),
+                            Icon(Icons.arrow_forward_ios, size: 14, color: textMutedColor),
                           ],
                         ),
                       ),
@@ -782,7 +815,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       height: 160,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE8E8E8)),
+                        border: Border.all(color: borderSideColor),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
@@ -842,18 +875,18 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                 child: Container(
                                   width: 32,
                                   height: 32,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF1F242E),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white : const Color(0xFF1F242E),
                                     shape: BoxShape.circle,
                                   ),
                                   alignment: Alignment.center,
                                   child: Container(
                                     width: 10,
                                     height: 10,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF1F242E) : Colors.white,
                                       shape: BoxShape.rectangle,
-                                      borderRadius: BorderRadius.all(Radius.circular(1.5)),
+                                      borderRadius: const BorderRadius.all(Radius.circular(1.5)),
                                     ),
                                   ),
                                 ),
@@ -868,9 +901,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: placeholderColor,
                                     borderRadius: BorderRadius.circular(100),
-                                    border: Border.all(color: const Color(0xFFE8E8E8)),
+                                    border: Border.all(color: borderSideColor),
                                     boxShadow: const [
                                       BoxShadow(
                                         color: Colors.black12,
@@ -883,7 +916,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,
-                                      color: const Color(0xFF1A1A2E),
+                                      color: textColor,
                                     ),
                                   ),
                                 ),
@@ -903,7 +936,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF1A1A2E),
+                            color: textColor,
                           ),
                         ),
                         const Text(
@@ -918,9 +951,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: placeholderColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE8E8E8)),
+                          border: Border.all(color: borderSideColor),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -929,10 +962,10 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                               _category.isEmpty ? "Enter category" : _category,
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 15,
-                                color: _category.isEmpty ? const Color(0xFF82858C) : const Color(0xFF1A1A2E),
+                                color: _category.isEmpty ? textMutedColor : textColor,
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF82858C)),
+                            Icon(Icons.arrow_forward_ios, size: 14, color: textMutedColor),
                           ],
                         ),
                       ),
@@ -948,14 +981,13 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF1A1A2E),
+                            color: textColor,
                           ),
                         ),
-                        Switch(
+                        CupertinoSwitch(
                           value: _isPrivate,
                           onChanged: (val) => setState(() => _isPrivate = val),
-                          activeThumbColor: const Color(0xFF7C57FC),
-                          activeTrackColor: const Color(0xFF7C57FC).withValues(alpha: 0.5),
+                          activeTrackColor: const Color(0xFF7C57FC),
                         ),
                       ],
                     ),
@@ -963,7 +995,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       "This place will only be visible to you and won't appear in public searches.",
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 12,
-                        color: const Color(0xFF82858C),
+                        color: textMutedColor,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -990,7 +1022,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1A1A2E),
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -999,9 +1031,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: placeholderColor,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE8E8E8)),
+                          border: Border.all(color: borderSideColor),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1010,10 +1042,10 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                               _hoursText,
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 15,
-                                color: _hoursText == "Add hours" ? const Color(0xFF82858C) : const Color(0xFF1A1A2E),
+                                color: _hoursText == "Add hours" ? textMutedColor : textColor,
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF82858C)),
+                            Icon(Icons.arrow_forward_ios, size: 14, color: textMutedColor),
                           ],
                         ),
                       ),
@@ -1025,7 +1057,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1A1A2E),
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1046,7 +1078,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1A1A2E),
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -1075,9 +1107,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
           // Persistent Action Buttons (Cancel / Submit)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: Color(0xFFF1F3F5))),
+            decoration: BoxDecoration(
+              color: headerColor,
+              border: Border(top: BorderSide(color: separatorColor)),
             ),
             child: Row(
               children: [
@@ -1087,8 +1119,8 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                     child: OutlinedButton(
                       onPressed: _discardDialog,
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE8E8E8)),
-                        backgroundColor: const Color(0xFFF1F3F5),
+                        side: BorderSide(color: borderSideColor),
+                        backgroundColor: buttonBg,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                       ),
                       child: Text(
@@ -1096,7 +1128,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1A1A2E),
+                          color: textColor,
                         ),
                       ),
                     ),
@@ -1109,14 +1141,14 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                     child: ElevatedButton(
                       onPressed: (_isFormValid() && !_isSubmitting) ? _submitPlace : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFormValid() ? const Color(0xFF1F242E) : const Color(0xFFF1F3F5),
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: const Color(0xFFF1F3F5),
+                        backgroundColor: _isFormValid() ? (isDark ? Colors.white : const Color(0xFF1F242E)) : buttonBg,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
+                        disabledBackgroundColor: buttonBg,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                       ),
                       child: _isSubmitting
-                          ? const CupertinoActivityIndicator(
-                              color: Colors.white,
+                          ? CupertinoActivityIndicator(
+                              color: isDark ? Colors.black : Colors.white,
                               radius: 8,
                             )
                           : Text(
@@ -1124,7 +1156,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: _isFormValid() ? Colors.white : const Color(0xFF82858C),
+                                color: _isFormValid() ? (isDark ? Colors.black : Colors.white) : textMutedColor,
                               ),
                             ),
                     ),

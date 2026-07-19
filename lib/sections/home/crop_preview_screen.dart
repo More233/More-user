@@ -54,9 +54,14 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
     final isAsset = !activeImage.startsWith('/') && !activeImage.startsWith('file:');
     final double topPadding = MediaQuery.of(context).padding.top;
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color cardBgColor = isDark ? const Color(0xFF131722) : const Color(0xFFF3F4F6);
+    final Color addMoreBgColor = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF2EEFC);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       body: SafeArea(
         top: false,
         bottom: false,
@@ -72,7 +77,7 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
                       'assets/home/icons/arrow_left_01.svg',
                       width: 24,
                       height: 24,
-                      colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(textColor, BlendMode.srcIn),
                     ),
                     onPressed: () => Navigator.pop(context),
                   ),
@@ -91,10 +96,10 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        color: const Color(0xFFF3F4F6),
+                        color: cardBgColor,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
+                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -176,7 +181,7 @@ class _CropPreviewScreenState extends State<CropPreviewScreen> {
                             width: 80,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF2EEFC),
+                              color: addMoreBgColor,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Center(

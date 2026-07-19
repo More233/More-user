@@ -35,10 +35,16 @@ class ConversationScreen extends ConsumerStatefulWidget {
 class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        Future.delayed(const Duration(milliseconds: 150), _scrollToBottom);
+      }
+    });
     Future.microtask(() {
       ref.read(conversationViewModelProvider(widget.threadId).notifier).init(widget.currentUserId);
     });
@@ -48,15 +54,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
   void _scrollToBottom() {
+    if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           0.0,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
       }
@@ -68,6 +76,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     if (text.isEmpty) return;
 
     _messageController.clear();
+    _scrollToBottom();
     try {
       await ref.read(conversationViewModelProvider(widget.threadId).notifier).sendMessage(text);
       _scrollToBottom();
@@ -513,6 +522,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                                 children: [
                                   Expanded(
                                     child: TextField(
+                                      focusNode: _focusNode,
                                       style: GoogleFonts.ibmPlexSansArabic(
                                         color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                                       ),

@@ -14,7 +14,10 @@ class PlaceDetailsMoreInfoSheet extends StatelessWidget {
     required this.lng,
   });
 
-  Widget _buildModalDetailRow(IconData icon, String label, String value, {bool isLink = false}) {
+  Widget _buildModalDetailRow(IconData icon, String label, String value, bool isDark, {bool isLink = false}) {
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF82858C);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -28,7 +31,7 @@ class PlaceDetailsMoreInfoSheet extends StatelessWidget {
                 label,
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 12,
-                  color: const Color(0xFF82858C),
+                  color: textMutedColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -55,7 +58,7 @@ class PlaceDetailsMoreInfoSheet extends StatelessWidget {
                       value,
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
-                        color: const Color(0xFF1F242E),
+                        color: textColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -68,10 +71,16 @@ class PlaceDetailsMoreInfoSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1F242E);
+    final Color dragColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFC1C1C1);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Column(
@@ -83,7 +92,7 @@ class PlaceDetailsMoreInfoSheet extends StatelessWidget {
               width: 48,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFC1C1C1),
+                color: dragColor,
                 borderRadius: BorderRadius.circular(100),
               ),
             ),
@@ -94,24 +103,24 @@ class PlaceDetailsMoreInfoSheet extends StatelessWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF1F242E),
+              color: titleColor,
             ),
           ),
           const SizedBox(height: 20),
-          _buildModalDetailRow(Icons.storefront_outlined, "Name", place['name']?.toString() ?? 'N/A'),
-          const Divider(height: 24, color: Color(0xFFE8E8E8)),
-          _buildModalDetailRow(Icons.category_outlined, "Category", place['type']?.toString() ?? 'Other'),
-          const Divider(height: 24, color: Color(0xFFE8E8E8)),
-          _buildModalDetailRow(Icons.location_on_outlined, "Address", place['address']?.toString() ?? 'Zagazig'),
-          const Divider(height: 24, color: Color(0xFFE8E8E8)),
-          _buildModalDetailRow(Icons.pin_drop_outlined, "Coordinates", "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"),
+          _buildModalDetailRow(Icons.storefront_outlined, "Name", place['name']?.toString() ?? 'N/A', isDark),
+          Divider(height: 24, color: dividerColor),
+          _buildModalDetailRow(Icons.category_outlined, "Category", place['type']?.toString() ?? 'Other', isDark),
+          Divider(height: 24, color: dividerColor),
+          _buildModalDetailRow(Icons.location_on_outlined, "Address", place['address']?.toString() ?? 'Zagazig', isDark),
+          Divider(height: 24, color: dividerColor),
+          _buildModalDetailRow(Icons.pin_drop_outlined, "Coordinates", "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}", isDark),
           if (place['phone'] != null && place['phone'].toString().isNotEmpty) ...[
-            const Divider(height: 24, color: Color(0xFFE8E8E8)),
-            _buildModalDetailRow(Icons.phone_outlined, "Phone", place['phone'].toString()),
+            Divider(height: 24, color: dividerColor),
+            _buildModalDetailRow(Icons.phone_outlined, "Phone", place['phone'].toString(), isDark),
           ],
           if (place['website'] != null && place['website'].toString().isNotEmpty) ...[
-            const Divider(height: 24, color: Color(0xFFE8E8E8)),
-            _buildModalDetailRow(Icons.language_outlined, "Website", place['website'].toString(), isLink: true),
+            Divider(height: 24, color: dividerColor),
+            _buildModalDetailRow(Icons.language_outlined, "Website", place['website'].toString(), isDark, isLink: true),
           ],
           const SizedBox(height: 24),
         ],

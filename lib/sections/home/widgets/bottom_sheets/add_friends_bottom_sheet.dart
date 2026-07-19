@@ -69,11 +69,17 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color dragHandleColor = isDark ? const Color(0xFF323A4E) : const Color(0xFFC8C8C8);
+    final Color dividerColor = isDark ? const Color(0xFF1F2433) : const Color(0xFFE8E8E8);
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.6,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
@@ -86,7 +92,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
             width: 48,
             height: 5,
             decoration: BoxDecoration(
-              color: const Color(0xFFC8C8C8),
+              color: dragHandleColor,
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -97,7 +103,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: textColor,
             ),
           ),
           const SizedBox(height: 16),
@@ -123,7 +129,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
                           final name = profile['name'] as String;
                           final avatarUrl = profile['avatar_url'] as String?;
                           final isSelected = _selectedFriends.any((f) => f['name'] == name);
-
+ 
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: CircleAvatar(
@@ -140,7 +146,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black,
+                                color: textColor,
                               ),
                             ),
                             trailing: Checkbox(
@@ -166,7 +172,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
                         },
                       ),
           ),
-          const Divider(height: 1, color: Color(0xFFE8E8E8)),
+          Divider(height: 1, color: dividerColor),
           SafeArea(
             top: false,
             child: Padding(

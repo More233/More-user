@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -13,18 +14,25 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
     final notifier = ref.read(settingsProvider.notifier);
     final isAr = settings.preferredLanguage == 'ar';
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF666666);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color promoBg = isDark ? const Color(0xFF1F2430) : const Color(0xFFF9F9FA);
+    final Color promoBorder = isDark ? const Color(0xFF1E2433) : const Color(0xFFF0F0F2);
+    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          backgroundColor: bgColor,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: isDark ? Colors.white : Colors.black,
+              color: textColor,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -33,7 +41,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black,
+              color: textColor,
             ),
           ),
           centerTitle: true,
@@ -42,15 +50,15 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
+              Divider(height: 1, color: dividerColor),
               // Promo card banner matching Figma - 309
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF9F9FA),
+                    color: promoBg,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFF0F0F2)),
+                    border: Border.all(color: promoBorder),
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -64,7 +72,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : Colors.black,
+                                color: textColor,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -74,7 +82,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
                                   : 'Smart suggestions help you remember places you\'ve been and make it easy to check in.',
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 12,
-                                color: isDark ? Colors.white54 : const Color(0xFF666666),
+                                color: textMutedColor,
                                 height: 1.4,
                               ),
                             ),
@@ -93,8 +101,8 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
                           errorBuilder: (context, error, stackTrace) => Container(
                             width: 96,
                             height: 96,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.image, color: Colors.grey),
+                            color: isDark ? const Color(0xFF131722) : Colors.grey[200],
+                            child: Icon(Icons.image, color: isDark ? Colors.white24 : Colors.grey),
                           ),
                         ),
                       ),
@@ -102,7 +110,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
+              Divider(height: 8, color: sectionHeaderBg),
               _buildSectionHeader(isAr ? 'التفضيلات والمقترحات الذكية' : 'INTELLIGENT SUGGESTIONS', isAr, isDark),
               // Show check-in suggestions
               _buildToggleRow(
@@ -148,16 +156,19 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
+    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
+    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF909090);
+
     return Container(
       width: double.infinity,
-      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFFAFAFA),
+      color: sectionHeaderBg,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: isDark ? Colors.white54 : const Color(0xFF909090),
+          color: sectionHeaderTextColor,
           letterSpacing: 1.0,
         ),
       ),
@@ -171,6 +182,9 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
     required ValueChanged<bool> onChanged,
     required bool isDark,
   }) {
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -178,7 +192,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3EFFF),
+              color: iconWrapperBg,
               borderRadius: BorderRadius.circular(8),
             ),
             child: SvgPicture.asset(
@@ -199,17 +213,14 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : Colors.black,
+                color: textColor,
               ),
             ),
           ),
-          Switch(
+          CupertinoSwitch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF7C57FC),
-            activeTrackColor: const Color(0xFFECE7FF),
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: const Color(0xFFE0E0E0),
+            activeTrackColor: const Color(0xFF7C57FC),
           ),
         ],
       ),
@@ -217,9 +228,10 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildDivider(bool isDark) {
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
     return Padding(
       padding: const EdgeInsets.only(left: 64, right: 16),
-      child: Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
+      child: Divider(height: 1, color: dividerColor),
     );
   }
 }

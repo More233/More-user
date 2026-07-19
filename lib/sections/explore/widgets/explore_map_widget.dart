@@ -170,6 +170,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   }
 
   Future<void> _initNativeClusteringSourceAndLayers(mapbox.MapboxMap mapboxMap) async {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final int initialHaloColor = isDark ? 0x00000000 : 0xFFFFFFFF.toSigned(32);
+    final double initialHaloWidth = isDark ? 0.0 : 1.5;
+
     try {
       try {
         final source = mapbox.GeoJsonSource(
@@ -276,8 +280,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           textIgnorePlacement: false,
           textVariableAnchor: ["right", "left"],
           textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
-          textHaloColor: 0xFFFFFFFF.toSigned(32),
-          textHaloWidth: 1.5,
+          textHaloColor: initialHaloColor,
+          textHaloWidth: initialHaloWidth,
         );
         await mapboxMap.style.addLayer(placesLayer);
         await mapboxMap.style.setStyleLayerProperty("places-layer", "filter", '["!", ["has", "point_count"]]');
@@ -320,8 +324,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           textIgnorePlacement: false,
           textVariableAnchor: ["right", "left"],
           textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
-          textHaloColor: 0xFFFFFFFF.toSigned(32),
-          textHaloWidth: 1.5,
+          textHaloColor: initialHaloColor,
+          textHaloWidth: initialHaloWidth,
           minZoom: minZoomMedium,
           maxZoom: maxZoomMedium,
         );
@@ -342,8 +346,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
           textIgnorePlacement: false,
           textVariableAnchor: ["right", "left"],
           textFont: ["DIN Pro Bold", "Arial Unicode MS Bold"],
-          textHaloColor: 0xFFFFFFFF.toSigned(32),
-          textHaloWidth: 1.5,
+          textHaloColor: initialHaloColor,
+          textHaloWidth: initialHaloWidth,
           minZoom: minZoomPins,
         );
         await mapboxMap.style.addLayer(clustersPinsLayer);
@@ -535,6 +539,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
   Future<void> _updateMarkers() async {
     if (_mapboxMap == null) return;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isUpdatingMarkers) {
       _needsUpdateAgain = true;
@@ -667,7 +672,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
                 ..style = PaintingStyle.fill;
               canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
               final borderPaint = Paint()
-                ..color = Colors.white
+                ..color = isDark ? const Color(0xFF1D1D1D) : Colors.white
                 ..style = PaintingStyle.stroke
                 ..strokeWidth = 1.8;
               canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
@@ -688,24 +693,24 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
               debugPrint("ExploreMapWidget: checkinId=$checkinId, resolved place keys=${place.keys}, resolved avatarUrl=$avatarUrl");
               final bool isSelected = state == 'selected_checkin';
-              pngBytes = await MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: isSelected);
+              pngBytes = await MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: isSelected, isDark: isDark);
             } else if (state == 'dot') {
-              pngBytes = await MarkerGenerator.getDotPin(type);
+              pngBytes = await MarkerGenerator.getDotPin(type, isDark: isDark);
             } else if (state == 'live' || state == 'selected_live') {
               final bool isSelected = state == 'selected_live';
-              pngBytes = await MarkerGenerator.getLivePin(type, isSelected: isSelected);
+              pngBytes = await MarkerGenerator.getLivePin(type, isSelected: isSelected, isDark: isDark);
             } else {
               final String ratingStr = parts.length > 2 ? parts[2] : 'none';
               final bool isSelected = state == 'selected';
               
               if (ratingStr == 'none') {
                 if (isSelected) {
-                  pngBytes = await MarkerGenerator.getSelectedPin(type);
+                  pngBytes = await MarkerGenerator.getSelectedPin(type, isDark: isDark);
                 } else {
-                  pngBytes = await MarkerGenerator.getNormalPin(type);
+                  pngBytes = await MarkerGenerator.getNormalPin(type, isDark: isDark);
                 }
               } else {
-                pngBytes = await MarkerGenerator.getCapsulePin(type, ratingStr, isSelected: isSelected);
+                pngBytes = await MarkerGenerator.getCapsulePin(type, ratingStr, isSelected: isSelected, isDark: isDark);
               }
             }
 
@@ -1223,6 +1228,21 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         debugPrint("Error setting places-layer text-color: $e");
       }
 
+      // Dynamically remove or set text halo/outline based on theme mode to avoid white strokes in dark mode
+      try {
+        final String haloColor = isDark ? "rgba(0,0,0,0)" : "rgba(255,255,255,1.0)";
+        final double haloWidth = isDark ? 0.0 : 1.5;
+
+        for (final layerId in ["places-layer", "clusters-medium-layer", "clusters-pins-layer"]) {
+          try {
+            await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-halo-color", jsonEncode(haloColor));
+            await _mapboxMap!.style.setStyleLayerProperty(layerId, "text-halo-width", jsonEncode(haloWidth));
+          } catch (_) {}
+        }
+      } catch (e) {
+        debugPrint("Error setting text-halo properties: $e");
+      }
+
       try {
         final String heatmapVisibility = widget.selectedMapTab == 2 ? "visible" : "none";
         await _mapboxMap!.style.setStyleLayerProperty("places-heatmap-layer", "visibility", heatmapVisibility);
@@ -1414,6 +1434,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       defaultValue: Secrets.mapboxAccessToken,
     );
 
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: (pointerEvent) {
@@ -1454,9 +1476,11 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         }
       },
       child: mapbox.MapWidget(
-        key: const ValueKey('explore_mapbox_widget_key'),
+        key: ValueKey('explore_mapbox_widget_key_$isDark'),
         resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
-        styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+        styleUri: isDark
+            ? "mapbox://styles/mapbox/dark-v11"
+            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
         onStyleLoadedListener: (styleLoaded) {
           debugPrint(
             "ExploreMapWidget: Style fully loaded. Reinitializing annotations...",
@@ -1495,13 +1519,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         ),
         onMapCreated: (mapboxMap) {
           _mapboxMap = mapboxMap;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
 
           Future.microtask(() async {
             await _hideDefaultLayers(mapboxMap);
 
-            // Set projection to flat map (Mercator) instead of 3D Globe
+            // Set projection dynamically based on theme (Mercator for light mode, Globe for dark mode to support Night preset)
             try {
-              await mapboxMap.style.setProjection("mercator");
+              await mapboxMap.style.setProjection(isDark ? "globe" : "mercator");
             } catch (e) {
               debugPrint("Error setting map projection: $e");
             }

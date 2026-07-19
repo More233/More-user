@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/settings_provider.dart';
@@ -32,12 +33,20 @@ class PrivacySettingsScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        final Color modalBg = isDark ? const Color(0xFF131722) : Colors.white;
+        final Color textColor = isDark ? Colors.white : Colors.black;
+        final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF707070);
+        final Color handleColor = isDark ? const Color(0xFF333D52) : const Color(0xFFE8E8E8);
+        final Color radioBorderColor = isDark ? const Color(0xFF3E4E6C) : const Color(0xFFCCCCCC);
+        final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
         return StatefulBuilder(
           builder: (context, setState) {
             return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: modalBg,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
@@ -52,7 +61,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
                       width: 56,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8E8E8),
+                        color: handleColor,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -71,14 +80,14 @@ class PrivacySettingsScreen extends ConsumerWidget {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: textColor,
                               ),
                             ),
                             Text(
                               subtitle,
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 13,
-                                color: const Color(0xFF707070),
+                                color: textMutedColor,
                               ),
                             ),
                           ],
@@ -104,7 +113,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontSize: 15,
                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                      color: Colors.black,
+                                      color: textColor,
                                     ),
                                   ),
                                 ),
@@ -114,7 +123,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFCCCCCC),
+                                      color: isSelected ? const Color(0xFF7C57FC) : radioBorderColor,
                                       width: 2,
                                     ),
                                   ),
@@ -135,7 +144,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                        Divider(height: 1, color: dividerColor),
                       ],
                     );
                   }),
@@ -174,7 +183,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF707070),
+                          color: textMutedColor,
                         ),
                       ),
                     ),
@@ -211,18 +220,23 @@ class PrivacySettingsScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final isAr = settings.preferredLanguage == 'ar';
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF707070);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: bgColor,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: Colors.black,
+              color: textColor,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -231,7 +245,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: textColor,
             ),
           ),
           centerTitle: true,
@@ -240,10 +254,10 @@ class PrivacySettingsScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
+              Divider(height: 1, color: dividerColor),
               
               // SECTION 1: PROFILE
-              _buildSectionHeader(isAr ? 'الملف الشخصي' : 'PROFILE', isAr),
+              _buildSectionHeader(context, isAr ? 'الملف الشخصي' : 'PROFILE', isAr),
               _buildSelectorRow(
                 context: context,
                 ref: ref,
@@ -254,11 +268,11 @@ class PrivacySettingsScreen extends ConsumerWidget {
                 currentValue: settings.profileVisibility,
                 isAr: isAr,
               ),
-              _buildDivider(),
+              _buildDivider(context),
               _buildSelectorRow(
                 context: context,
                 ref: ref,
-                icon: Icons.person_add_outlined, // Fallback or placeholder icon
+                icon: Icons.person_add_outlined,
                 title: isAr ? 'طلبات الصداقة' : 'Friend requests',
                 subtitle: isAr ? 'إدارة من يمكنه إرسال طلبات الصداقة إليك' : 'Manage who can request friendships',
                 fieldKey: 'friend_requests_visibility',
@@ -271,7 +285,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
               ),
 
               // SECTION 2: CHECK-INS
-              _buildSectionHeader(isAr ? 'تسجيلات الوصول' : 'CHECK-INS', isAr),
+              _buildSectionHeader(context, isAr ? 'تسجيلات الوصول' : 'CHECK-INS', isAr),
               _buildSelectorRow(
                 context: context,
                 ref: ref,
@@ -282,15 +296,17 @@ class PrivacySettingsScreen extends ConsumerWidget {
                 currentValue: settings.checkInVisibility,
                 isAr: isAr,
               ),
-              _buildDivider(),
+              _buildDivider(context),
               _buildToggleRow(
+                context: context,
                 icon: Icons.group_outlined,
                 title: isAr ? 'إظهاري في "هنا الآن"' : 'Show me in Here now',
                 value: settings.showMeHereNow,
                 onChanged: (val) => notifier.updateField('show_me_here_now', val),
               ),
-              _buildDivider(),
+              _buildDivider(context),
               _buildToggleRow(
+                context: context,
                 icon: Icons.verified_user_outlined,
                 title: isAr ? 'السماح للأصدقاء بتسجيل الوصول معي' : 'Let friends check in with me',
                 value: settings.letFriendsCheckInWithMe,
@@ -298,27 +314,29 @@ class PrivacySettingsScreen extends ConsumerWidget {
               ),
 
               // SECTION 3: ACTIVITY & SOCIAL
-              _buildSectionHeader(isAr ? 'النشاط والاجتماع' : 'ACTIVITY & SOCIAL', isAr),
+              _buildSectionHeader(context, isAr ? 'النشاط والاجتماع' : 'ACTIVITY & SOCIAL', isAr),
               _buildSelectorRow(
                 context: context,
                 ref: ref,
-                icon: Icons.show_chart_outlined, // Fallback or placeholder icon
+                icon: Icons.show_chart_outlined,
                 title: isAr ? 'إظهار الإحصائيات والمتتاليات' : 'Show stats & streaks',
                 subtitle: isAr ? 'إدارة من يمكنه رؤية إحصائياتك' : 'Manage who can see your stats & streaks',
                 fieldKey: 'show_stats_streaks',
                 currentValue: settings.showStatsStreaks,
                 isAr: isAr,
               ),
-              _buildDivider(),
+              _buildDivider(context),
               _buildToggleRow(
-                icon: Icons.storefront_outlined, // Fallback or placeholder icon
+                context: context,
+                icon: Icons.storefront_outlined,
                 title: isAr ? 'إظهار الأماكن المحفوظة في ملفي الشخصي' : 'Show saved places on profile',
                 value: settings.showSavedPlacesProfile,
                 onChanged: (val) => notifier.updateField('show_saved_places_profile', val),
               ),
-              _buildDivider(),
+              _buildDivider(context),
               _buildToggleRow(
-                icon: Icons.alternate_email_outlined, // Fallback or placeholder at icon
+                context: context,
+                icon: Icons.alternate_email_outlined,
                 title: isAr ? 'السماح بالإشارات والذكر' : 'Allow tags & mentions',
                 value: settings.allowTagsMentions,
                 onChanged: (val) => notifier.updateField('allow_tags_mentions', val),
@@ -331,7 +349,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.info_outline, color: Color(0xFF909090), size: 20),
+                    Icon(Icons.info_outline, color: textMutedColor, size: 20),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -340,7 +358,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
                             : 'You control who can see your activity across More.',
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 13,
-                          color: const Color(0xFF707070),
+                          color: textMutedColor,
                           height: 1.4,
                         ),
                       ),
@@ -356,17 +374,21 @@ class PrivacySettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, bool isAr) {
+  Widget _buildSectionHeader(BuildContext context, String title, bool isAr) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
+    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF909090);
+
     return Container(
       width: double.infinity,
-      color: const Color(0xFFFAFAFA),
+      color: sectionHeaderBg,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: const Color(0xFF909090),
+          color: sectionHeaderTextColor,
           letterSpacing: 1.0,
         ),
       ),
@@ -384,11 +406,17 @@ class PrivacySettingsScreen extends ConsumerWidget {
     required bool isAr,
     List<Map<String, String>>? customOptions,
   }) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF909090);
+    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+    final Color arrowColor = isDark ? Colors.white24 : const Color(0xFFCCCCCC);
+
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3EFFF),
+          color: iconWrapperBg,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -402,7 +430,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: Colors.black,
+          color: textColor,
         ),
       ),
       trailing: Row(
@@ -412,14 +440,14 @@ class PrivacySettingsScreen extends ConsumerWidget {
             _getVisibilityLabel(currentValue, isAr),
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 14,
-              color: const Color(0xFF909090),
+              color: textMutedColor,
             ),
           ),
           const SizedBox(width: 8),
           Icon(
             isAr ? Icons.arrow_back : Icons.arrow_forward_ios,
             size: isAr ? 20 : 14,
-            color: const Color(0xFFCCCCCC),
+            color: arrowColor,
           ),
         ],
       ),
@@ -437,11 +465,16 @@ class PrivacySettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildToggleRow({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -449,7 +482,7 @@ class PrivacySettingsScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3EFFF),
+              color: iconWrapperBg,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -465,27 +498,27 @@ class PrivacySettingsScreen extends ConsumerWidget {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: Colors.black,
+                color: textColor,
               ),
             ),
           ),
-          Switch(
+          CupertinoSwitch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: const Color(0xFF7C57FC),
-            activeTrackColor: const Color(0xFFECE7FF),
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: const Color(0xFFE0E0E0),
+            activeTrackColor: const Color(0xFF7C57FC),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDivider() {
-    return const Padding(
-      padding: EdgeInsets.only(left: 64, right: 16),
-      child: Divider(height: 1, color: Color(0xFFE8E8E8)),
+  Widget _buildDivider(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 64, right: 16),
+      child: Divider(height: 1, color: dividerColor),
     );
   }
 }

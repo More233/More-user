@@ -68,20 +68,27 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     final isAr = settings.preferredLanguage == 'ar';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color tipBgColor = isDark ? const Color(0xFF2A1C54) : const Color(0xFFECE7FF);
+    final Color tipTextColor = isDark ? Colors.white : const Color(0xFF4C30A0);
+    final Color inputBorderColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
 
     final blockedIds = settings.blockedUsers.map((u) => u['id'] as String).toSet();
 
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: bgColor,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
               isAr ? Icons.arrow_forward : Icons.arrow_back,
-              color: Colors.black,
+              color: textColor,
             ),
             onPressed: () => Navigator.pop(context),
           ),
@@ -90,20 +97,20 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Colors.black,
+              color: textColor,
             ),
           ),
           centerTitle: true,
         ),
         body: Column(
           children: [
-            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            Divider(height: 1, color: dividerColor),
             // Top banner tip row - Figma
             Padding(
               padding: const EdgeInsets.all(16),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFECE7FF),
+                  color: tipBgColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.all(12),
@@ -128,7 +135,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF4C30A0),
+                          color: tipTextColor,
                           height: 1.4,
                         ),
                       ),
@@ -143,17 +150,18 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
+                style: GoogleFonts.ibmPlexSansArabic(color: textColor),
                 decoration: InputDecoration(
                   hintText: isAr ? 'ابحث بالاسم أو اسم المستخدم' : 'Search by name or username',
-                  hintStyle: GoogleFonts.ibmPlexSansArabic(color: const Color(0xFFBBBBBB)),
+                  hintStyle: GoogleFonts.ibmPlexSansArabic(color: isDark ? Colors.white38 : const Color(0xFFBBBBBB)),
                   prefixIcon: Padding(
                     padding: const EdgeInsets.all(12),
                     child: SvgPicture.asset(
                       'assets/setting/icons/search_01.svg',
                       width: 18,
                       height: 18,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF888888),
+                      colorFilter: ColorFilter.mode(
+                        isDark ? Colors.white38 : const Color(0xFF888888),
                         BlendMode.srcIn,
                       ),
                     ),
@@ -161,11 +169,11 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                    borderSide: BorderSide(color: inputBorderColor),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                    borderSide: BorderSide(color: inputBorderColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -178,7 +186,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
             // Body results
             Expanded(
               child: _searching
-                  ? Center(
+                  ? const Center(
                       child: CupertinoActivityIndicator(
                         color: Color(0xFF7C57FC),
                         radius: 12,
@@ -199,6 +207,14 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
     SettingsNotifier notifier,
     bool isAr,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF707070);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color btnBgColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFEEEEEE);
+    final Color btnTextColor = isDark ? Colors.white : Colors.black;
+    final Color btnBorderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFDDDDDD);
+
     if (_searchResults.isEmpty) {
       return Center(
         child: Text(
@@ -214,7 +230,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
     return ListView.separated(
       itemCount: _searchResults.length,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFE8E8E8)),
+      separatorBuilder: (context, index) => Divider(height: 1, color: dividerColor),
       itemBuilder: (context, index) {
         final user = _searchResults[index];
         final userId = user['id'] as String;
@@ -227,7 +243,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: const Color(0xFFF2F2F2),
+                backgroundColor: isDark ? const Color(0xFF1F2430) : const Color(0xFFF2F2F2),
                 backgroundImage: _getAvatarProvider(user['avatar_url']),
               ),
               const SizedBox(width: 16),
@@ -240,7 +256,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -248,7 +264,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                       '@${user['username'] ?? ''}',
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 13,
-                        color: const Color(0xFF707070),
+                        color: textMutedColor,
                       ),
                     ),
                   ],
@@ -256,12 +272,12 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isBlocked ? const Color(0xFFEEEEEE) : const Color(0xFFFFECEC),
-                  foregroundColor: isBlocked ? Colors.black : const Color(0xFFD80000),
+                  backgroundColor: isBlocked ? btnBgColor : const Color(0xFFFFECEC),
+                  foregroundColor: isBlocked ? btnTextColor : const Color(0xFFD80000),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                     side: BorderSide(
-                      color: isBlocked ? const Color(0xFFDDDDDD) : const Color(0xFFFFCCCC),
+                      color: isBlocked ? btnBorderColor : const Color(0xFFFFCCCC),
                     ),
                   ),
                   elevation: 0,
@@ -296,6 +312,14 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
     SettingsNotifier notifier,
     bool isAr,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF707070);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
+    final Color btnBgColor = isDark ? const Color(0xFF1F2430) : const Color(0xFFEEEEEE);
+    final Color btnTextColor = isDark ? Colors.white : Colors.black;
+    final Color btnBorderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFDDDDDD);
+
     if (blockedUsers.isEmpty) {
       return Center(
         child: Column(
@@ -318,7 +342,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
     return ListView.separated(
       itemCount: blockedUsers.length,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      separatorBuilder: (context, index) => const Divider(height: 1, color: Color(0xFFE8E8E8)),
+      separatorBuilder: (context, index) => Divider(height: 1, color: dividerColor),
       itemBuilder: (context, index) {
         final user = blockedUsers[index];
         final userId = user['id'] as String;
@@ -330,7 +354,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: const Color(0xFFF2F2F2),
+                backgroundColor: isDark ? const Color(0xFF1F2430) : const Color(0xFFF2F2F2),
                 backgroundImage: _getAvatarProvider(user['avatar_url']),
               ),
               const SizedBox(width: 16),
@@ -343,7 +367,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: textColor,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -351,7 +375,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                       '@${user['username'] ?? ''}',
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 13,
-                        color: const Color(0xFF707070),
+                        color: textMutedColor,
                       ),
                     ),
                   ],
@@ -359,11 +383,11 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEEEEEE),
-                  foregroundColor: Colors.black,
+                  backgroundColor: btnBgColor,
+                  foregroundColor: btnTextColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
-                    side: const BorderSide(color: Color(0xFFDDDDDD)),
+                    side: BorderSide(color: btnBorderColor),
                   ),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
