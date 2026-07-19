@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,7 +27,7 @@ class ChatMessageBubble extends ConsumerWidget {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return CachedNetworkImageProvider(dbUrl);
+        return ResizeImage(CachedNetworkImageProvider(dbUrl), width: 100, height: 100);
       } else {
         return AssetImage(dbUrl);
       }
@@ -418,13 +419,9 @@ class ChatMessageBubble extends ConsumerWidget {
                                                 height: 200,
                                                 color: Colors.grey[200],
                                                 child: const Center(
-                                                  child: SizedBox(
-                                                    width: 20,
-                                                    height: 20,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2,
-                                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                                                    ),
+                                                  child: CupertinoActivityIndicator(
+                                                    color: Color(0xFF7C57FC),
+                                                    radius: 8,
                                                   ),
                                                 ),
                                               ),
@@ -540,10 +537,9 @@ class _StorySharePreviewState extends State<StorySharePreview> {
                 ),
               )
             : const Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(color: Color(0xFF7C57FC), strokeWidth: 2),
+                child: CupertinoActivityIndicator(
+                  color: Color(0xFF7C57FC),
+                  radius: 10,
                 ),
               ),
       );
@@ -577,13 +573,9 @@ class _StorySharePreviewState extends State<StorySharePreview> {
         height: 284,
         color: Colors.grey[200],
         child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-            ),
+          child: CupertinoActivityIndicator(
+            color: Color(0xFF7C57FC),
+            radius: 10,
           ),
         ),
       ),

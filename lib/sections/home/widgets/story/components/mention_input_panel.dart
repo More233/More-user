@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../view_models/story_editor_view_model.dart';
 
 class MentionInputPanel extends ConsumerWidget {
@@ -73,7 +74,7 @@ class MentionInputPanel extends ConsumerWidget {
                       leading: CircleAvatar(
                         radius: 18,
                         backgroundImage: user['avatar_url'] != null
-                            ? NetworkImage(user['avatar_url'])
+                            ? CachedNetworkImageProvider(user['avatar_url'])
                             : null,
                         child: user['avatar_url'] == null
                             ? const Icon(Icons.person, color: Colors.white)

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ExploreSearchBar extends StatelessWidget {
   final TextEditingController searchController;
@@ -73,10 +75,10 @@ class ExploreSearchBar extends StatelessWidget {
               ),
               child: ClipOval(
                 child: userAvatarUrl != null && userAvatarUrl!.isNotEmpty
-                    ? Image.network(
-                        userAvatarUrl!,
+                    ? CachedNetworkImage(
+                        imageUrl: userAvatarUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+                        errorWidget: (context, url, error) => Container(
                           color: const Color(0xFFEDE6FC),
                           child: const Icon(
                             Icons.person_outline,
@@ -142,17 +144,11 @@ class ExploreSearchBar extends StatelessWidget {
                     minHeight: 18,
                   ),
                   suffixIcon: isSearching
-                      ? const Padding(
-                          padding: EdgeInsets.all(14),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF7C57FC),
-                              ),
-                            ),
+                      ? Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: CupertinoActivityIndicator(
+                            color: Color(0xFF7C57FC),
+                            radius: 8,
                           ),
                         )
                       : ((searchQuery.isNotEmpty || searchController.text.isNotEmpty)

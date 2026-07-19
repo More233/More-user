@@ -810,78 +810,80 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           Positioned.fill(
             child: Offstage(
               offstage: state.isListView,
-              child: ExploreMapWidget(
-                key: const ValueKey('explore_map_widget_wrapper_key'),
-                initialCameraPosition: CameraPosition(
-                  target: (widget.initialLatitude != null && widget.initialLongitude != null)
-                      ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
-                      : (state.userLocation ?? const LatLng(24.7136, 46.6753)),
-                  zoom: (widget.initialLatitude != null && widget.initialLongitude != null) ? 15.0 : 13.0,
-                ),
-                myLocationEnabled: state.userLocation != null,
-                places: filteredPlaces,
-                selectedPlace: state.selectedPlace,
-                selectedMapTab: state.selectedMapTab,
-                selectedCategory: state.selectedCategory,
-                onPlaceTap: (place) {
-                  ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
-                },
-                onGestureStart: () {
-                  _showCardNotifier.value = false;
-                },
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                  if (widget.initialLatitude != null && widget.initialLongitude != null) {
-                    _moveToInitialLocation(
-                      widget.initialLatitude!,
-                      widget.initialLongitude!,
-                      widget.initialAddress,
-                    );
-                  }
-                },
-                onCameraMove: (zoom) {
-                  _currentZoom = zoom;
-                  _zoomNotifier.value = zoom;
-                },
-                onCameraIdle: () {
-                  if (_mapController != null) {
-                    _mapController!.getCameraState().then((cameraState) {
-                      final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(cameraState.center));
-                      final center = LatLng(
-                        centerPoint.coordinates.lat.toDouble(),
-                        centerPoint.coordinates.lng.toDouble(),
+              child: RepaintBoundary(
+                child: ExploreMapWidget(
+                  key: const ValueKey('explore_map_widget_wrapper_key'),
+                  initialCameraPosition: CameraPosition(
+                    target: (widget.initialLatitude != null && widget.initialLongitude != null)
+                        ? LatLng(widget.initialLatitude!, widget.initialLongitude!)
+                        : (state.userLocation ?? const LatLng(24.7136, 46.6753)),
+                    zoom: (widget.initialLatitude != null && widget.initialLongitude != null) ? 15.0 : 13.0,
+                  ),
+                  myLocationEnabled: state.userLocation != null,
+                  places: filteredPlaces,
+                  selectedPlace: state.selectedPlace,
+                  selectedMapTab: state.selectedMapTab,
+                  selectedCategory: state.selectedCategory,
+                  onPlaceTap: (place) {
+                    ref.read(exploreViewModelProvider.notifier).selectPlaceAndLoadDetails(place);
+                  },
+                  onGestureStart: () {
+                    _showCardNotifier.value = false;
+                  },
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                    if (widget.initialLatitude != null && widget.initialLongitude != null) {
+                      _moveToInitialLocation(
+                        widget.initialLatitude!,
+                        widget.initialLongitude!,
+                        widget.initialAddress,
                       );
-                      
-                      bool shouldFetch = false;
-                      if (state.lastFetchedLocation == null || _lastFetchedZoom == null) {
-                        shouldFetch = true;
-                      } else {
-                        final distance = Geolocator.distanceBetween(
-                          state.lastFetchedLocation!.latitude,
-                          state.lastFetchedLocation!.longitude,
-                          center.latitude,
-                          center.longitude,
+                    }
+                  },
+                  onCameraMove: (zoom) {
+                    _currentZoom = zoom;
+                    _zoomNotifier.value = zoom;
+                  },
+                  onCameraIdle: () {
+                    if (_mapController != null) {
+                      _mapController!.getCameraState().then((cameraState) {
+                        final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(cameraState.center));
+                        final center = LatLng(
+                          centerPoint.coordinates.lat.toDouble(),
+                          centerPoint.coordinates.lng.toDouble(),
                         );
-                        // Highly responsive thresholds: Trigger updates if moved more than 150m or zoom changed by 0.15
-                        if (distance > 150.0 || (_currentZoom - _lastFetchedZoom!).abs() > 0.15) {
+                        
+                        bool shouldFetch = false;
+                        if (state.lastFetchedLocation == null || _lastFetchedZoom == null) {
                           shouldFetch = true;
+                        } else {
+                          final distance = Geolocator.distanceBetween(
+                            state.lastFetchedLocation!.latitude,
+                            state.lastFetchedLocation!.longitude,
+                            center.latitude,
+                            center.longitude,
+                          );
+                          // Highly responsive thresholds: Trigger updates if moved more than 600m or zoom changed by 0.8
+                          if (distance > 600.0 || (_currentZoom - _lastFetchedZoom!).abs() > 0.8) {
+                            shouldFetch = true;
+                          }
                         }
-                      }
-
-                      if (shouldFetch) {
-                        _lastFetchedZoom = _currentZoom;
-                        ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
-                      }
-                      ref.read(exploreViewModelProvider.notifier).updateZoom(_currentZoom);
-                    });
-                  }
-                },
-                onTap: (latLng) {
-                  ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
-                },
-                onLongPress: (latLng) {
-                  _onMapTapped(latLng, state);
-                },
+  
+                        if (shouldFetch) {
+                          _lastFetchedZoom = _currentZoom;
+                          ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(center.latitude, center.longitude, zoom: _currentZoom);
+                        }
+                        ref.read(exploreViewModelProvider.notifier).updateZoom(_currentZoom);
+                      });
+                    }
+                  },
+                  onTap: (latLng) {
+                    ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(null);
+                  },
+                  onLongPress: (latLng) {
+                    _onMapTapped(latLng, state);
+                  },
+                ),
               ),
             ),
           ),

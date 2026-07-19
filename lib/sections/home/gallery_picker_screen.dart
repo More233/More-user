@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -290,9 +291,10 @@ class _GalleryPickerScreenState extends State<GalleryPickerScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(
+      builder: (context) => Center(
+        child: CupertinoActivityIndicator(
           color: Color(0xFF7C57FC),
+          radius: 12,
         ),
       ),
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class AddFriendsBottomSheet extends StatefulWidget {
   final List<Map<String, dynamic>> previouslySelected;
@@ -102,7 +104,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
           // Scrollable List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC)))
+                ? const Center(child: CupertinoActivityIndicator())
                 : _deviceProfiles.isEmpty
                     ? Center(
                         child: Text(
@@ -128,7 +130,7 @@ class _AddFriendsBottomSheetState extends State<AddFriendsBottomSheet> {
                               radius: 18,
                               backgroundColor: Colors.grey[200],
                               backgroundImage: avatarUrl != null
-                                  ? NetworkImage(avatarUrl) as ImageProvider
+                                  ? CachedNetworkImageProvider(avatarUrl) as ImageProvider
                                   : const AssetImage(
                                       'assets/home/images/element.png',
                                     ),

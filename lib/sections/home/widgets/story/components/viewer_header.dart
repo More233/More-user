@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ViewerHeader extends StatelessWidget {
   final String? avatarUrl;
@@ -38,7 +39,7 @@ class ViewerHeader extends StatelessWidget {
           radius: 18,
           backgroundColor: Colors.grey[800],
           backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-              ? NetworkImage(avatarUrl!) as ImageProvider
+              ? CachedNetworkImageProvider(avatarUrl!) as ImageProvider
               : const AssetImage('assets/home/images/avatar_placeholder.png'),
         ),
         const SizedBox(width: 10),

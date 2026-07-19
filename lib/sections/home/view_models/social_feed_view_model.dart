@@ -47,10 +47,10 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
     if (_currentUserId == null) return;
     state = state.copyWith(isLoading: true, currentUserId: _currentUserId);
     try {
-      final follows = await _postRepository.fetchFollows(_currentUserId!);
+      final followData = await _postRepository.fetchFollowData(_currentUserId!);
       await Future.wait([
-        fetchStories(follows),
-        fetchSocialFeed(follows),
+        fetchStories(followData.followedUserIds),
+        fetchSocialFeed(followData.followedUserIds),
       ]);
     } catch (e) {
       debugPrint("Error refreshing social feed: $e");
@@ -59,22 +59,13 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
     }
   }
 
-  Future<void> fetchStories(Set<String> followedUsernames) async {
+  Future<void> fetchStories(List<String> followedUserIds) async {
     if (_currentUserId == null) return;
     try {
-      final client = Supabase.instance.client;
-
-      // 1. Fetch followed user IDs
-      final followsResponse = await client
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', _currentUserId!);
-
-      final userIds = List<Map<String, dynamic>>.from(followsResponse)
-          .map((f) => f['following_id'] as String)
-          .toList();
-
-      userIds.add(_currentUserId!);
+      final userIds = List<String>.from(followedUserIds);
+      if (!userIds.contains(_currentUserId!)) {
+        userIds.add(_currentUserId!);
+      }
 
       final storiesList = await _storyRepository.fetchActiveStories(userIds);
 
@@ -117,22 +108,13 @@ class SocialFeedViewModel extends StateNotifier<SocialFeedState> {
     }
   }
 
-  Future<void> fetchSocialFeed(Set<String> followedUsernames) async {
+  Future<void> fetchSocialFeed(List<String> followedUserIds) async {
     if (_currentUserId == null) return;
     try {
-      final client = Supabase.instance.client;
-
-      // 1. Fetch followed user IDs
-      final followsResponse = await client
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', _currentUserId!);
-
-      final followingIds = List<Map<String, dynamic>>.from(followsResponse)
-          .map((f) => f['following_id'] as String)
-          .toList();
-
-      followingIds.add(_currentUserId!);
+      final followingIds = List<String>.from(followedUserIds);
+      if (!followingIds.contains(_currentUserId!)) {
+        followingIds.add(_currentUserId!);
+      }
 
       final fetchedPosts = await _postRepository.fetchSocialFeed(
         userId: _currentUserId!,

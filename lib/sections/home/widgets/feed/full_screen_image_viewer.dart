@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+
+import 'package:cached_network_image/cached_network_image.dart';
 
 class FullScreenImageViewer extends StatelessWidget {
   final List<String> imageUrls;
@@ -28,16 +31,13 @@ class FullScreenImageViewer extends StatelessWidget {
               Widget imageWidget;
               
               if (path.startsWith('http://') || path.startsWith('https://')) {
-                imageWidget = Image.network(
-                  path,
+                imageWidget = CachedNetworkImage(
+                  imageUrl: path,
                   fit: BoxFit.contain,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) => const Icon(
+                  placeholder: (context, url) => const Center(
+                    child: CupertinoActivityIndicator(color: Colors.white),
+                  ),
+                  errorWidget: (context, url, error) => const Icon(
                     Icons.broken_image,
                     color: Colors.white54,
                     size: 48,

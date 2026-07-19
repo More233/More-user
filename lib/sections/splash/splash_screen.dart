@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../permissions/permissions_page.dart';
@@ -35,6 +36,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     // Run one-time startup background API places fetcher to seed SQLite cache
     ExploreDataService.seedRealGlobalPlacesFromApi();
+
+    // Pre-cache common SVG icons asynchronously on launch
+    _precacheSvgs();
 
     // Creative drawing path animation
     _controller = AnimationController(
@@ -114,6 +118,28 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         ),
       ),
     );
+  }
+
+  Future<void> _precacheSvgs() async {
+    final assets = [
+      'assets/home/icons/home.svg',
+      'assets/home/icons/search_01.svg',
+      'assets/home/icons/like_icon.svg',
+      'assets/home/icons/comment_icon.svg',
+      'assets/home/icons/share_icon_1.svg',
+      'assets/home/icons/bookmark_icon.svg',
+      'assets/home/icons/post_options.svg',
+      'assets/explore/sent.svg',
+      'assets/explore/earth.svg',
+    ];
+    for (final asset in assets) {
+      try {
+        final loader = SvgAssetLoader(asset);
+        await loader.loadBytes(null);
+      } catch (e) {
+        debugPrint("Error precaching SVG $asset: $e");
+      }
+    }
   }
 }
 

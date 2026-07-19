@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -78,13 +79,9 @@ class ViewerMessageInput extends StatelessWidget {
                       ),
                       child: isSending
                           ? const Center(
-                              child: SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
+                              child: CupertinoActivityIndicator(
+                                color: Colors.white,
+                                radius: 8,
                               ),
                             )
                           : Center(

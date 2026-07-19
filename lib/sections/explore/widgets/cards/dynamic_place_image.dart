@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:moor/sections/explore/helpers/marker_generator.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../home/widgets/common/cached_image.dart';
 
 class DynamicPlaceImage extends StatelessWidget {
   final String placeId;
@@ -33,32 +35,23 @@ class DynamicPlaceImage extends StatelessWidget {
     Widget displayWidget;
 
     if (hasRealImage) {
-      displayWidget = Image.network(
-        imageUrl!,
+      displayWidget = CustomCachedImage(
+        url: imageUrl!,
         width: width,
         height: height,
         fit: fit,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            width: width,
-            height: height,
-            color: const Color(0xFFF5F5F7),
-            child: const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                ),
-              ),
+        placeholder: Container(
+          width: width,
+          height: height,
+          color: const Color(0xFFF5F5F7),
+          child: const Center(
+            child: CupertinoActivityIndicator(
+              color: Color(0xFF7C57FC),
+              radius: 8,
             ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _buildFallbackIcon();
-        },
+          ),
+        ),
+        errorWidget: _buildFallbackIcon(),
       );
     } else {
       displayWidget = _buildFallbackIcon();
@@ -84,12 +77,12 @@ class DynamicPlaceImage extends StatelessWidget {
       color: const Color(0xFFF5F5F7),
       alignment: Alignment.center,
       child: iconUrl != null && iconUrl!.isNotEmpty
-          ? Image.network(
-              iconUrl!,
+          ? CachedNetworkImage(
+              imageUrl: iconUrl!,
               width: 32,
               height: 32,
               color: color,
-              errorBuilder: (context, error, stackTrace) {
+              errorWidget: (context, url, error) {
                 return Icon(
                   iconData,
                   color: color,

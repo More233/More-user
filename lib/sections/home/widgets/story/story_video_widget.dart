@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:video_player/video_player.dart';
 
 class StoryVideoWidget extends StatefulWidget {
@@ -99,9 +100,10 @@ class _StoryVideoWidgetState extends State<StoryVideoWidget> {
         ),
       );
     }
-    return const Center(
-      child: CircularProgressIndicator(
+    return Center(
+      child: CupertinoActivityIndicator(
         color: Colors.white,
+        radius: 12,
       ),
     );
   }

@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/timeline_post.dart';
 import '../../widgets/bottom_sheets/share_bottom_sheet.dart';
 import '../../view_models/collections_view_model.dart';
@@ -152,10 +154,13 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
 
   Widget _buildViewerImage(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
+      return CachedNetworkImage(
+        imageUrl: path,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => Container(
+        placeholder: (context, url) => const Center(
+          child: CupertinoActivityIndicator(color: Colors.white),
+        ),
+        errorWidget: (context, url, error) => Container(
           color: Colors.grey[900],
           child: const Icon(Icons.broken_image, color: Colors.grey, size: 64),
         ),

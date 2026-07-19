@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -68,10 +69,10 @@ class PlaceDetailsHeader extends StatelessWidget {
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
                   color: const Color(0xFFF3F4F6),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                  child: Center(
+                    child: CupertinoActivityIndicator(
+                      color: Color(0xFF7C57FC),
+                      radius: 8,
                     ),
                   ),
                 ),

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../view_models/messages_view_model.dart';
 import '../../view_models/social_feed_view_model.dart';
 import '../../../explore/view_models/explore_view_model.dart';
@@ -98,8 +99,9 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
       color: const Color(0xFFF7F9FA),
       child: _loading
           ? const Center(
-              child: CircularProgressIndicator(
+              child: CupertinoActivityIndicator(
                 color: Color(0xFF7C57FC),
+                radius: 12,
               ),
             )
           : SafeArea(
@@ -139,7 +141,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                 backgroundColor: Colors.grey[200],
                                 backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
                                     ? (_avatarUrl!.startsWith('http')
-                                        ? NetworkImage(_avatarUrl!)
+                                        ? CachedNetworkImageProvider(_avatarUrl!)
                                         : AssetImage(_avatarUrl!)) as ImageProvider
                                     : const AssetImage('assets/home/images/avatar_placeholder.png'),
                               ),
@@ -441,22 +443,6 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFEE2E2), // Light red background
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      CupertinoIcons.square_arrow_left,
-                      color: Color(0xFFEF4444), // Primary warning red
-                      size: 28,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
                 Text(
                   'Log out of More?',
                   style: GoogleFonts.outfit(
@@ -468,7 +454,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Are you sure you want to log out? You will need to re-authenticate the next time you sign in.',
+                  'Are you sure you want to log out?',
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     color: const Color(0xFF6B7280),
@@ -634,7 +620,10 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                               ? const SizedBox(
                                   height: 100,
                                   child: Center(
-                                    child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                                    child: CupertinoActivityIndicator(
+                                      color: Color(0xFF7C57FC),
+                                      radius: 10,
+                                    ),
                                   ),
                                 )
                               : ListView.builder(
@@ -652,7 +641,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                         radius: 22,
                                         backgroundColor: Colors.grey[200],
                                         backgroundImage: acc.avatarUrl != null && acc.avatarUrl!.isNotEmpty
-                                            ? NetworkImage(acc.avatarUrl!)
+                                            ? CachedNetworkImageProvider(acc.avatarUrl!)
                                             : const AssetImage('assets/home/images/avatar_placeholder.png') as ImageProvider,
                                       ),
                                       title: Text(
@@ -696,7 +685,10 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                           context: context,
                                           barrierDismissible: false,
                                           builder: (context) => const Center(
-                                            child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                                            child: CupertinoActivityIndicator(
+                                              color: Color(0xFF7C57FC),
+                                              radius: 12,
+                                            ),
                                           ),
                                         );
 

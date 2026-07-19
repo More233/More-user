@@ -266,7 +266,6 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
     final String? currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final Set<String> currentUserVisitedPlaceIds = {};
 
-    final placeVisitorCounts = <String, int>{};
     final placeVisitorsMap = <String, List<Map<String, dynamic>>>{};
     final placeSeenUser = <String, Set<String>>{};
 
@@ -300,11 +299,6 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       }
     }
 
-    placeVisitorsMap.forEach((placeId, visitors) {
-      final activeCount = visitors.where((v) => (v['weight'] as double? ?? 0.0) > 0.0).length;
-      placeVisitorCounts[placeId] = activeCount;
-    });
-
     Map<String, dynamic> updatePlaceData(Map<String, dynamic> p) {
       final pid = p['id'].toString();
       final updated = Map<String, dynamic>.from(p);
@@ -314,16 +308,31 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
         updated['isVisited'] = true;
       }
       final int baseCount = p['basePeopleCount'] as int? ?? p['peopleCount'] as int? ?? 0;
-      if (placeVisitorCounts.containsKey(pid) && (placeVisitorCounts[pid] ?? 0) > 0) {
-        updated['peopleCount'] = (placeVisitorCounts[pid] ?? 0) + baseCount;
-        updated['visitors'] = placeVisitorsMap[pid];
+      if (placeVisitorsMap.containsKey(pid) && placeVisitorsMap[pid]!.isNotEmpty) {
+        final visitors = placeVisitorsMap[pid]!;
+        updated['visitors'] = visitors;
+        updated['peopleCount'] = visitors.length + baseCount;
+
+        // Decorate the Foursquare place as a check-in pin since visitors are here
+        updated['isCheckIn'] = true;
+        updated['authorAvatar'] = visitors.first['avatarUrl'];
+        updated['authorName'] = visitors.first['name'];
       } else {
         updated['peopleCount'] = baseCount;
         updated['visitors'] = <Map<String, dynamic>>[];
+        if (updated['isCustomVenue'] != true && updated['actionType'] != 'check-in') {
+          updated['isCheckIn'] = false;
+        }
       }
       return updated;
     }
 
+    // 1. Decorate all existing places in the list using the Supabase check-in data
+    for (int i = 0; i < list.length; i++) {
+      list[i] = updatePlaceData(list[i]);
+    }
+
+    // 2. Add/update newPlaces
     for (final p in newPlaces) {
       final updated = updatePlaceData(p);
       final pidStr = p['id'].toString();
@@ -332,26 +341,54 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       } else {
         final index = list.indexWhere((x) => x['id'].toString() == pidStr);
         if (index != -1) {
-          list[index] = updatePlaceData(list[index]);
+          list[index] = updated;
         }
       }
     }
 
+    // Build a set of all Foursquare + Custom Venue IDs currently in list to prevent duplicate check-in markers
+    final Set<String> existingPlaceIds = list
+        .where((p) => p['actionType'] != 'check-in')
+        .map((p) => p['id'].toString())
+        .toSet();
+
     for (final c in checkins) {
       final cidStr = c['id'].toString();
+      final String? pid = c['place_id']?.toString();
+
+      // If this check-in is at a place that is already on the map, skip it
+      if (pid != null && pid.isNotEmpty && existingPlaceIds.contains(pid)) {
+        continue;
+      }
+
       if (!existingIds.contains(cidStr)) {
         list.add(c);
       }
       
       final String? avatarUrl = c['authorAvatar'] as String?;
+      final String authorName = c['authorName'] as String? ?? 'User';
+      final String resolvedType = MarkerGenerator.resolveType(
+        c['type']?.toString() ?? '',
+        c['name']?.toString() ?? '',
+        c['arabicName']?.toString() ?? '',
+      );
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
-        // Pre-cache/Pre-download avatar image in background for instant map rendering
-        MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: false).catchError((e) {
-          debugPrint("Failed to pre-download check-in pin for false: $e");
+        MarkerGenerator.getCheckInCalloutPin(
+          type: resolvedType,
+          avatarUrl: avatarUrl,
+          authorName: authorName,
+          isSelected: false,
+        ).catchError((e) {
+          debugPrint("Failed to pre-download callout pin for false: $e");
           return Uint8List(0);
         });
-        MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: true).catchError((e) {
-          debugPrint("Failed to pre-download check-in pin for true: $e");
+        MarkerGenerator.getCheckInCalloutPin(
+          type: resolvedType,
+          avatarUrl: avatarUrl,
+          authorName: authorName,
+          isSelected: true,
+        ).catchError((e) {
+          debugPrint("Failed to pre-download callout pin for true: $e");
           return Uint8List(0);
         });
       }
@@ -375,6 +412,31 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       final spIdStr = sp['id'].toString();
       if (!existingIds.contains(spIdStr)) {
         list.add(sp);
+      }
+    }
+
+    // Pre-cache all check-in callout pins for instant Mapbox loading
+    for (final p in list) {
+      if (p['isCheckIn'] == true) {
+        final String? avatarUrl = p['authorAvatar'] as String?;
+        final String authorName = p['authorName'] as String? ?? 'User';
+        final String resolvedType = MarkerGenerator.resolveType(
+          p['type']?.toString() ?? '',
+          p['name']?.toString() ?? '',
+          p['arabicName']?.toString() ?? '',
+        );
+        MarkerGenerator.getCheckInCalloutPin(
+          type: resolvedType,
+          avatarUrl: avatarUrl,
+          authorName: authorName,
+          isSelected: false,
+        ).catchError((_) => Uint8List(0));
+        MarkerGenerator.getCheckInCalloutPin(
+          type: resolvedType,
+          avatarUrl: avatarUrl,
+          authorName: authorName,
+          isSelected: true,
+        ).catchError((_) => Uint8List(0));
       }
     }
 

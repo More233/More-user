@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -68,7 +69,7 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
       await client.storage.from('post-images').upload(
         fileName,
         _screenshotFile!,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+        fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
       );
       return client.storage.from('post-images').getPublicUrl(fileName);
     } catch (e) {
@@ -486,13 +487,9 @@ class _SendFeedbackScreenState extends ConsumerState<SendFeedbackScreen> {
                     ),
                     onPressed: _submitting ? null : _submitFeedback,
                     child: _submitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
+                        ? const CupertinoActivityIndicator(
+                            color: Colors.white,
+                            radius: 8,
                           )
                         : Text(
                             isAr ? 'إرسال الملاحظات' : 'Submit Feedback',

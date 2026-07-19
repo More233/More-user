@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -21,6 +21,7 @@ import '../story/story_viewer.dart';
 import 'check_in_composer_screen.dart';
 import '../../profile_screen.dart';
 import '../common/custom_loading_indicator.dart';
+import '../common/cached_image.dart';
 
 class SocialFeedView extends ConsumerStatefulWidget {
   final String? currentUserAvatarUrl;
@@ -139,7 +140,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                       backgroundColor: Colors.grey[300],
                                       backgroundImage: widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
                                           ? (widget.currentUserAvatarUrl!.startsWith('http')
-                                              ? NetworkImage(widget.currentUserAvatarUrl!)
+                                              ? CachedNetworkImageProvider(widget.currentUserAvatarUrl!)
                                               : AssetImage(widget.currentUserAvatarUrl!)) as ImageProvider
                                           : const AssetImage('assets/home/images/avatar_placeholder.png'),
                                     ),
@@ -228,19 +229,15 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                   child: currentUserGroup.mediaUrls.isNotEmpty
                                       ? (_isVideoFile(currentUserGroup.mediaUrls.first)
                                           ? VideoThumbnailPreview(videoUrl: currentUserGroup.mediaUrls.first)
-                                          : (currentUserGroup.mediaUrls.first.startsWith('http')
-                                              ? Image.network(
-                                                  currentUserGroup.mediaUrls.first,
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : Image.file(
-                                                  File(currentUserGroup.mediaUrls.first),
-                                                  fit: BoxFit.cover,
-                                                )))
+                                          : CustomCachedImage(
+                                              url: currentUserGroup.mediaUrls.first,
+                                              fit: BoxFit.cover,
+                                            ))
                                       : widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
-                                          ? (widget.currentUserAvatarUrl!.startsWith('http')
-                                              ? Image.network(widget.currentUserAvatarUrl!, fit: BoxFit.cover)
-                                              : Image.asset(widget.currentUserAvatarUrl!, fit: BoxFit.cover))
+                                          ? CustomCachedImage(
+                                              url: widget.currentUserAvatarUrl!,
+                                              fit: BoxFit.cover,
+                                            )
                                           : Image.asset(
                                               'assets/home/images/avatar_placeholder.png',
                                               fit: BoxFit.cover,
@@ -271,7 +268,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                     backgroundColor: Colors.grey[200],
                                     backgroundImage: widget.currentUserAvatarUrl != null && widget.currentUserAvatarUrl!.isNotEmpty
                                         ? (widget.currentUserAvatarUrl!.startsWith('http')
-                                            ? NetworkImage(widget.currentUserAvatarUrl!)
+                                            ? CachedNetworkImageProvider(widget.currentUserAvatarUrl!)
                                             : AssetImage(widget.currentUserAvatarUrl!)) as ImageProvider
                                         : const AssetImage('assets/home/images/avatar_placeholder.png'),
                                   ),
@@ -352,19 +349,14 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                     child: group.mediaUrls.isNotEmpty
                                         ? (_isVideoFile(group.mediaUrls.first)
                                             ? VideoThumbnailPreview(videoUrl: group.mediaUrls.first)
-                                            : (group.mediaUrls.first.startsWith('http')
-                                                ? Image.network(
-                                                    group.mediaUrls.first,
-                                                    fit: BoxFit.cover,
-                                                    errorBuilder: (context, error, stackTrace) => Image.asset(
-                                                      'assets/home/images/element.png',
-                                                      fit: BoxFit.cover,
-                                                    ),
-                                                  )
-                                                : Image.file(
-                                                    File(group.mediaUrls.first),
-                                                    fit: BoxFit.cover,
-                                                  )))
+                                            : CustomCachedImage(
+                                                url: group.mediaUrls.first,
+                                                fit: BoxFit.cover,
+                                                errorWidget: Image.asset(
+                                                  'assets/home/images/element.png',
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ))
                                         : Image.asset(
                                             'assets/home/images/element.png',
                                             fit: BoxFit.cover,
@@ -419,7 +411,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                                                 backgroundColor: Colors.grey[200],
                                                 backgroundImage: group.avatarUrl != null && group.avatarUrl!.isNotEmpty
                                                     ? (group.avatarUrl!.startsWith('http')
-                                                        ? NetworkImage(group.avatarUrl!)
+                                                        ? CachedNetworkImageProvider(group.avatarUrl!)
                                                         : AssetImage(group.avatarUrl!)) as ImageProvider
                                                     : const AssetImage('assets/home/images/avatar_placeholder.png'),
                                               ),
@@ -479,7 +471,11 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  return _buildSocialPostCard(state.socialPosts[index]);
+                  final post = state.socialPosts[index];
+                  return RepaintBoundary(
+                    key: ValueKey('social_post_${post.id}'),
+                    child: _buildSocialPostCard(post),
+                  );
                 },
                 childCount: state.socialPosts.length,
               ),
@@ -738,7 +734,7 @@ class _SocialFeedViewState extends ConsumerState<SocialFeedView> {
                   backgroundColor: Colors.grey[200],
                   backgroundImage: post.authorAvatar != null && post.authorAvatar!.isNotEmpty
                       ? (post.authorAvatar!.startsWith('http')
-                          ? NetworkImage(post.authorAvatar!)
+                          ? CachedNetworkImageProvider(post.authorAvatar!)
                           : AssetImage(post.authorAvatar!)) as ImageProvider
                       : const AssetImage('assets/home/images/avatar_placeholder.png'),
                 ),
@@ -1075,10 +1071,9 @@ class _VideoThumbnailPreviewState extends State<VideoThumbnailPreview> {
     return Container(
       color: Colors.grey[300],
       child: const Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF7C57FC)),
+        child: CupertinoActivityIndicator(
+          color: Color(0xFF7C57FC),
+          radius: 8,
         ),
       ),
     );

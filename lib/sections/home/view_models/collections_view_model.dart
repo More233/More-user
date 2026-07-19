@@ -67,35 +67,67 @@ class CollectionsViewModel extends StateNotifier<CollectionsState> {
   }
 
   Future<void> addPostToCollection(String collectionId, String postId) async {
-    state = state.copyWith(isLoading: true);
+    final originalCollections = state.collections;
+    final updatedCollections = state.collections.map((col) {
+      if (col.id == collectionId) {
+        if (!col.postIds.contains(postId)) {
+          return col.copyWith(postIds: [...col.postIds, postId]);
+        }
+      }
+      return col;
+    }).toList();
+    state = state.copyWith(collections: updatedCollections);
+
     try {
       await collectionRepository.addPostToCollection(collectionId, postId);
-      await loadCollections();
+      if (_currentUserId != null) {
+        final list = await collectionRepository.fetchCollections(_currentUserId!);
+        state = state.copyWith(collections: list);
+      }
     } catch (e) {
       debugPrint("Error adding post to collection: $e");
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(collections: originalCollections);
     }
   }
 
   Future<void> removePostFromCollection(String collectionId, String postId) async {
-    state = state.copyWith(isLoading: true);
+    final originalCollections = state.collections;
+    final updatedCollections = state.collections.map((col) {
+      if (col.id == collectionId) {
+        return col.copyWith(postIds: col.postIds.where((id) => id != postId).toList());
+      }
+      return col;
+    }).toList();
+    state = state.copyWith(collections: updatedCollections);
+
     try {
       await collectionRepository.removePostFromCollection(collectionId, postId);
-      await loadCollections();
+      if (_currentUserId != null) {
+        final list = await collectionRepository.fetchCollections(_currentUserId!);
+        state = state.copyWith(collections: list);
+      }
     } catch (e) {
       debugPrint("Error removing post from collection: $e");
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(collections: originalCollections);
     }
   }
 
   Future<void> removePostFromAllCollections(String postId) async {
-    state = state.copyWith(isLoading: true);
+    final originalCollections = state.collections;
+    final updatedCollections = state.collections.map((col) {
+      return col.copyWith(postIds: col.postIds.where((id) => id != postId).toList());
+    }).toList();
+    state = state.copyWith(collections: updatedCollections);
+
     try {
       await collectionRepository.removePostFromAllCollections(postId);
-      await loadCollections();
+      if (_currentUserId != null) {
+        final list = await collectionRepository.fetchCollections(_currentUserId!);
+        state = state.copyWith(collections: list);
+      }
     } catch (e) {
       debugPrint("Error removing post from all collections: $e");
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(collections: originalCollections);
     }
   }
 

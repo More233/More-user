@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/otp_input.dart';
@@ -206,13 +207,9 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
                     elevation: 0,
                   ),
                   child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                      ? const CupertinoActivityIndicator(
+                          color: Colors.white,
+                          radius: 10,
                         )
                       : Text(
                           'Verify',

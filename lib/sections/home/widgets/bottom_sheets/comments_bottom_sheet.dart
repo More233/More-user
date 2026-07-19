@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/timeline_post.dart';
 import '../../profile_screen.dart';
 
@@ -385,7 +386,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     if (avatarUrl.startsWith('http')) {
                       avatarWidget = CircleAvatar(
                         radius: 12,
-                        backgroundImage: NetworkImage(avatarUrl),
+                        backgroundImage: CachedNetworkImageProvider(avatarUrl),
                       );
                     } else if (avatarUrl.isNotEmpty) {
                       avatarWidget = CircleAvatar(
@@ -494,7 +495,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               radius: 18,
               backgroundColor: Colors.grey[200],
               backgroundImage: comment.authorAvatar.startsWith('http')
-                  ? NetworkImage(comment.authorAvatar) as ImageProvider
+                  ? CachedNetworkImageProvider(comment.authorAvatar) as ImageProvider
                   : (comment.authorAvatar.isNotEmpty
                       ? AssetImage(comment.authorAvatar)
                       : const AssetImage('assets/home/images/element.png')) as ImageProvider,
@@ -690,7 +691,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                   radius: 16,
                   backgroundColor: Colors.grey[200],
                   backgroundImage: _currentUserAvatar != null && _currentUserAvatar!.isNotEmpty
-                      ? NetworkImage(_currentUserAvatar!) as ImageProvider
+                      ? CachedNetworkImageProvider(_currentUserAvatar!) as ImageProvider
                       : const AssetImage('assets/home/images/element.png'),
                 ),
                 const SizedBox(width: 12),

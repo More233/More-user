@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ViewerOwnerBottomBar extends StatelessWidget {
   final String currentStoryId;
@@ -56,7 +57,7 @@ class ViewerOwnerBottomBar extends StatelessWidget {
               child: ClipOval(
                 child: avatarUrl != null && avatarUrl.isNotEmpty
                     ? (avatarUrl.startsWith('http')
-                        ? Image.network(avatarUrl, fit: BoxFit.cover)
+                        ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover, errorWidget: (context, url, error) => Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover))
                         : Image.asset(avatarUrl, fit: BoxFit.cover))
                     : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
               ),

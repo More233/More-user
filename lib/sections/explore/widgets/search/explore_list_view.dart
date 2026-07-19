@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../place_details_screen.dart';
 import '../cards/explore_list_place_card.dart';
 
@@ -75,7 +77,7 @@ class ExploreListView extends StatelessWidget {
                     shape: BoxShape.circle,
                     image: DecorationImage(
                       image: userAvatarUrl != null
-                          ? NetworkImage(userAvatarUrl!)
+                          ? CachedNetworkImageProvider(userAvatarUrl!)
                           : const AssetImage('assets/home/images/element.png') as ImageProvider,
                       fit: BoxFit.cover,
                     ),
@@ -123,15 +125,11 @@ class ExploreListView extends StatelessWidget {
                         ),
                       ),
                       if (isSearching)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 8),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                            ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: CupertinoActivityIndicator(
+                            color: Color(0xFF7C57FC),
+                            radius: 8,
                           ),
                         )
                       else if (searchQuery.isNotEmpty || searchController.text.isNotEmpty)

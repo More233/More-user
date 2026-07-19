@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -79,12 +80,10 @@ class PlaceTipsSection extends StatelessWidget {
                                         ? CachedNetworkImage(
                                             imageUrl: avatarUrl,
                                             fit: BoxFit.cover,
-                                            placeholder: (context, url) => const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 1.5,
-                                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                                            placeholder: (context, url) => Center(
+                                              child: CupertinoActivityIndicator(
+                                                color: Color(0xFF7C57FC),
+                                                radius: 8,
                                               ),
                                             ),
                                             errorWidget: (context, url, error) {
@@ -211,12 +210,10 @@ class PlaceTipsSection extends StatelessWidget {
                               ? CachedNetworkImage(
                                   imageUrl: avatarUrl,
                                   fit: BoxFit.cover,
-                                  placeholder: (context, url) => const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 1.5,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                                  placeholder: (context, url) => Center(
+                                    child: CupertinoActivityIndicator(
+                                      color: Color(0xFF7C57FC),
+                                      radius: 8,
                                     ),
                                   ),
                                   errorWidget: (context, url, error) {

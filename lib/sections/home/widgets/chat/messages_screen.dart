@@ -7,6 +7,7 @@ import '../../helpers/story_tracker.dart';
 import '../../models/user_story_group.dart';
 import '../../view_models/messages_view_model.dart';
 import '../common/custom_loading_indicator.dart';
+import '../common/cached_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -319,7 +320,7 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return CachedNetworkImageProvider(dbUrl);
+        return ResizeImage(CachedNetworkImageProvider(dbUrl), width: 100, height: 100);
       } else {
         return AssetImage(dbUrl);
       }
@@ -654,14 +655,10 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: ClipOval(
-                            child: avatarUrl != null && avatarUrl.isNotEmpty
-                                ? (avatarUrl.startsWith('http')
-                                    ? Image.network(avatarUrl, fit: BoxFit.cover)
-                                    : Image.asset(avatarUrl, fit: BoxFit.cover))
-                                : Image.asset(
-                                    'assets/home/images/avatar_placeholder.png',
-                                    fit: BoxFit.cover,
-                                  ),
+                            child: CustomCachedImage(
+                              url: avatarUrl ?? 'assets/home/images/avatar_placeholder.png',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
@@ -677,39 +674,6 @@ class MessagesScreenState extends ConsumerState<MessagesScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFFE2E4E6)),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'All',
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      CupertinoIcons.chevron_down,
-                      size: 12,
-                      color: Colors.black,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: isLoading
           ? const CustomLoadingIndicator()

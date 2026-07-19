@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../place_details_screen.dart';
@@ -103,14 +104,10 @@ class PlaceSimilarPlacesSection extends StatelessWidget {
                       height: 100,
                       width: 180,
                       color: const Color(0xFFF3F4F6),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 1.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                          ),
+                      child: Center(
+                        child: CupertinoActivityIndicator(
+                          color: Color(0xFF7C57FC),
+                          radius: 8,
                         ),
                       ),
                     ),

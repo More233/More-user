@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -451,10 +452,10 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
             ),
             Expanded(
               child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                        strokeWidth: 3,
+                  ? Center(
+                      child: CupertinoActivityIndicator(
+                        color: Color(0xFF7C57FC),
+                        radius: 12,
                       ),
                     )
                   : _errorMessage != null

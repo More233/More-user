@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -772,8 +773,9 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const CircularProgressIndicator(
+                          const CupertinoActivityIndicator(
                             color: Color(0xFF7C57FC),
+                            radius: 12,
                           ),
                           const SizedBox(height: 16),
                           Text(

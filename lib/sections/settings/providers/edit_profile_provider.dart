@@ -125,7 +125,7 @@ class EditProfileNotifier extends StateNotifier<EditProfileState> {
       await _client.storage.from('post-images').upload(
         fileName,
         file,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+        fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
       );
 
       final publicUrl = _client.storage.from('post-images').getPublicUrl(fileName);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class PlaceDetailsCheckInSection extends StatelessWidget {
   final List<Map<String, dynamic>> visitors;
@@ -93,7 +94,7 @@ class PlaceDetailsCheckInSection extends StatelessWidget {
                       if (avatarUrl != null && avatarUrl.isNotEmpty) {
                         avatarChild = CircleAvatar(
                           radius: 11,
-                          backgroundImage: NetworkImage(avatarUrl),
+                          backgroundImage: CachedNetworkImageProvider(avatarUrl),
                         );
                       } else {
                         final initials = visitor['name']

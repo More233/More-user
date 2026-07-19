@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/story_overlay_item.dart';
 import '../../view_models/story_editor_view_model.dart';
@@ -367,7 +369,7 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                                 leading: CircleAvatar(
                                   radius: 20,
                                   backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? NetworkImage(avatarUrl)
+                                      ? CachedNetworkImageProvider(avatarUrl)
                                       : null,
                                   child: avatarUrl == null || avatarUrl.isEmpty
                                       ? const Icon(Icons.person, color: Colors.grey)
@@ -891,7 +893,10 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                               child: Container(
                                 color: Colors.black54,
                                 alignment: Alignment.center,
-                                child: const CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                                child: const CupertinoActivityIndicator(
+                                  color: Color(0xFF7C57FC),
+                                  radius: 12,
+                                ),
                               ),
                             ),
 
@@ -962,10 +967,9 @@ class _StoryEditorScreenState extends ConsumerState<StoryEditorScreen> {
                         ),
                         alignment: Alignment.center,
                         child: state.isPublishing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            ? const CupertinoActivityIndicator(
+                                color: Colors.white,
+                                radius: 8,
                               )
                             : SvgPicture.asset(
                                 'assets/home/icons/sent.svg',

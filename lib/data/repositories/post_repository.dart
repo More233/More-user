@@ -1,6 +1,14 @@
 import '../../sections/home/models/timeline_post.dart';
 
+class FollowData {
+  final Set<String> followedUsernames;
+  final List<String> followedUserIds;
+
+  FollowData({required this.followedUsernames, required this.followedUserIds});
+}
+
 abstract class PostRepository {
+  Future<FollowData> fetchFollowData(String userId);
   Future<Set<String>> fetchFollows(String userId);
 
   Future<void> toggleFollow({

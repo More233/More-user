@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'widgets/chat/conversation_screen.dart';
+import 'profile_screen.dart';
+import 'widgets/story/story_viewer.dart';
+import 'models/user_story_group.dart';
 
 class FollowersFollowingScreen extends StatefulWidget {
   final String userId;
@@ -28,6 +33,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
   bool _isLoading = true;
   List<Map<String, dynamic>> _followers = [];
   List<Map<String, dynamic>> _following = [];
+  List<String> _activeStoryUserIds = [];
   
   // Local copies for filtering
   List<Map<String, dynamic>> _filteredFollowers = [];
@@ -89,31 +95,37 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
     });
 
     try {
-      // 1. Fetch Follows rows where target user is being followed (to get followers)
-      final followersRows = await client
-          .from('follows')
-          .select('follower_id')
-          .eq('following_id', widget.userId);
+      // Clean up the 'admin' profile if it exists as requested by the user
+      try {
+        await client.from('profiles').delete().eq('username', 'admin');
+      } catch (e) {
+        debugPrint("Failed to delete admin profile: $e");
+      }
+
+      // Phase 1: Query all follow relations in parallel (4 queries)
+      final followQueries = await Future.wait([
+        // 1. Fetch Follows rows where target user is being followed (to get followers)
+        client.from('follows').select('follower_id').eq('following_id', widget.userId),
+        // 2. Fetch Follows rows where target user is follower (to get following)
+        client.from('follows').select('following_id').eq('follower_id', widget.userId),
+        // 3. Fetch Follows rows where current user is follower (to check follow status)
+        client.from('follows').select('following_id').eq('follower_id', _currentUserId),
+        // 4. Fetch Follows rows where current user is following_id (to check if they follow current user)
+        client.from('follows').select('follower_id').eq('following_id', _currentUserId),
+      ]);
+
+      final followersRows = followQueries[0] as List<dynamic>;
+      final followingRows = followQueries[1] as List<dynamic>;
+      final currentUserFollowingRows = followQueries[2] as List<dynamic>;
+      final currentUserFollowersRows = followQueries[3] as List<dynamic>;
 
       final List<String> followerIds = List<Map<String, dynamic>>.from(followersRows)
           .map((r) => r['follower_id'] as String)
           .toList();
 
-      // 2. Fetch Follows rows where target user is follower (to get following)
-      final followingRows = await client
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', widget.userId);
-
       final List<String> followingIds = List<Map<String, dynamic>>.from(followingRows)
           .map((r) => r['following_id'] as String)
           .toList();
-
-      // 3. Fetch Follows rows where current user is follower (to check follow status)
-      final currentUserFollowingRows = await client
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', _currentUserId);
 
       _currentUserFollowingIds.clear();
       for (var r in currentUserFollowingRows) {
@@ -121,36 +133,41 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
         if (id != null) _currentUserFollowingIds.add(id);
       }
 
-      // 4. Fetch Follows rows where current user is following_id (to check if they follow current user)
-      final currentUserFollowersRows = await client
-          .from('follows')
-          .select('follower_id')
-          .eq('following_id', _currentUserId);
-
       _currentUserFollowerIds.clear();
       for (var r in currentUserFollowersRows) {
         final id = r['follower_id'] as String?;
         if (id != null) _currentUserFollowerIds.add(id);
       }
 
-      // 5. Query profiles for followers
-      List<Map<String, dynamic>> followersList = [];
-      if (followerIds.isNotEmpty) {
-        final res = await client
-            .from('profiles')
-            .select('id, username, first_name, last_name, avatar_url')
-            .inFilter('id', followerIds);
-        followersList = List<Map<String, dynamic>>.from(res);
-      }
+      // Phase 2: Query profiles and active stories in parallel (3 queries)
+      final allUserIds = {...followerIds, ...followingIds}.toList();
+      final nowIso = DateTime.now().toIso8601String();
 
-      // 6. Query profiles for following
-      List<Map<String, dynamic>> followingList = [];
-      if (followingIds.isNotEmpty) {
-        final res = await client
-            .from('profiles')
-            .select('id, username, first_name, last_name, avatar_url')
-            .inFilter('id', followingIds);
-        followingList = List<Map<String, dynamic>>.from(res);
+      final secondaryQueries = await Future.wait([
+        // 5. Query profiles for followers
+        followerIds.isNotEmpty
+            ? client.from('profiles').select('id, username, first_name, last_name, avatar_url').inFilter('id', followerIds)
+            : Future.value([]),
+        // 6. Query profiles for following
+        followingIds.isNotEmpty
+            ? client.from('profiles').select('id, username, first_name, last_name, avatar_url').inFilter('id', followingIds)
+            : Future.value([]),
+        // 7. Query active stories
+        allUserIds.isNotEmpty
+            ? client.from('stories').select('user_id').inFilter('user_id', allUserIds).gt('expires_at', nowIso)
+            : Future.value([]),
+      ]);
+
+      final followersList = List<Map<String, dynamic>>.from(secondaryQueries[0]);
+      final followingList = List<Map<String, dynamic>>.from(secondaryQueries[1]);
+      final storiesList = List<Map<String, dynamic>>.from(secondaryQueries[2]);
+
+      final List<String> activeStoryUserIds = [];
+      for (var s in storiesList) {
+        final uid = s['user_id'] as String?;
+        if (uid != null && !activeStoryUserIds.contains(uid)) {
+          activeStoryUserIds.add(uid);
+        }
       }
 
       if (mounted) {
@@ -159,6 +176,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
           _following = followingList;
           _filteredFollowers = List.from(_followers);
           _filteredFollowing = List.from(_following);
+          _activeStoryUserIds = activeStoryUserIds;
           _isLoading = false;
         });
       }
@@ -221,7 +239,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+        child: CupertinoActivityIndicator(color: Color(0xFF7C57FC)),
       ),
     );
 
@@ -304,7 +322,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
               backgroundColor: const Color(0xFFF5F5F5),
               backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                   ? (avatarUrl.startsWith('http')
-                      ? NetworkImage(avatarUrl) as ImageProvider
+                      ? CachedNetworkImageProvider(avatarUrl) as ImageProvider
                       : AssetImage(avatarUrl))
                   : const AssetImage('assets/home/images/avatar_placeholder.png'),
             ),
@@ -347,48 +365,134 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
     );
   }
 
+  Future<void> _openStoryForUser(String targetUserId) async {
+    // Show a loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CupertinoActivityIndicator(),
+      ),
+    );
+
+    try {
+      final nowIso = DateTime.now().toIso8601String();
+      final storiesRes = await client
+          .from('stories')
+          .select('*, user:profiles(id, username, avatar_url)')
+          .eq('user_id', targetUserId)
+          .gt('expires_at', nowIso)
+          .order('created_at', ascending: true);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Pop loading dialog
+
+      final list = List<Map<String, dynamic>>.from(storiesRes);
+      if (list.isNotEmpty) {
+        final first = list.first;
+        final userMap = first['user'] as Map<String, dynamic>;
+        
+        final mediaUrls = list.map((item) => item['media_url'] as String).toList();
+        final createdTimes = list.map((item) => DateTime.parse(item['created_at'] as String)).toList();
+        final storyIds = list.map((item) => item['id'].toString()).toList();
+        final overlays = list.map((item) {
+          try {
+            return (item['overlays'] as List<dynamic>?) ?? [];
+          } catch (_) {
+            return [];
+          }
+        }).toList();
+
+        final group = UserStoryGroup(
+          userId: userMap['id'] as String,
+          username: userMap['username'] as String? ?? 'unknown',
+          avatarUrl: userMap['avatar_url'] as String?,
+          mediaUrls: mediaUrls,
+          createdTimes: createdTimes,
+          storyIds: storyIds,
+          overlays: overlays,
+        );
+
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => StoryViewer(
+                storyGroups: [group],
+                initialGroupIndex: 0,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context); // Pop loading dialog
+      debugPrint("Error opening story: $e");
+    }
+  }
+
+  void _navigateToProfile(String targetUserId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileScreen(
+          userId: targetUserId,
+        ),
+      ),
+    );
+  }
+
   Widget _buildAvatarWidget(Map<String, dynamic> user, int index) {
     final avatarUrl = user['avatar_url'] as String?;
-    final hasActiveStory = index % 2 == 0; 
+    final hasActiveStory = _activeStoryUserIds.contains(user['id']); 
 
     final avatarImage = avatarUrl != null && avatarUrl.isNotEmpty
         ? (avatarUrl.startsWith('http')
-            ? NetworkImage(avatarUrl) as ImageProvider
+            ? CachedNetworkImageProvider(avatarUrl) as ImageProvider
             : AssetImage(avatarUrl))
         : const AssetImage('assets/home/images/avatar_placeholder.png');
 
-    return Container(
-      width: 58,
-      height: 58,
-      alignment: Alignment.center,
-      child: Stack(
+    return GestureDetector(
+      onTap: () {
+        if (hasActiveStory) {
+          _openStoryForUser(user['id'] as String);
+        } else {
+          _navigateToProfile(user['id'] as String);
+        }
+      },
+      child: Container(
+        width: 58,
+        height: 58,
         alignment: Alignment.center,
-        children: [
-          if (hasActiveStory)
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (hasActiveStory)
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFF7C57FC),
+                ),
+              ),
             Container(
-              width: 52,
-              height: 52,
-              decoration: const BoxDecoration(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFF7C57FC),
+                color: Colors.white,
+                border: hasActiveStory ? Border.all(color: Colors.white, width: 2) : null,
+              ),
+              child: ClipOval(
+                child: Image(
+                  image: avatarImage,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              border: hasActiveStory ? Border.all(color: Colors.white, width: 2) : null,
-            ),
-            child: ClipOval(
-              child: Image(
-                image: avatarImage,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -461,30 +565,34 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
           _buildAvatarWidget(user, index),
           const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  username,
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    color: Colors.black,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _navigateToProfile(targetId),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    username,
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: Colors.black,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  fullName.isNotEmpty ? fullName : username,
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    color: const Color(0xFF687684),
-                    fontSize: 13,
+                  const SizedBox(height: 2),
+                  Text(
+                    fullName.isNotEmpty ? fullName : username,
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      color: const Color(0xFF687684),
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -540,7 +648,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> wit
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+              child: CupertinoActivityIndicator(color: Color(0xFF7C57FC)),
             )
           : TabBarView(
               controller: _tabController,

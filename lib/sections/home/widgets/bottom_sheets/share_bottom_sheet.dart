@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/timeline_post.dart';
 
 class ShareBottomSheet extends StatefulWidget {
@@ -139,7 +141,7 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
   ImageProvider _getAvatarProvider(String? avatarUrl) {
     if (avatarUrl != null && avatarUrl.isNotEmpty) {
       if (avatarUrl.startsWith('http')) {
-        return NetworkImage(avatarUrl);
+        return CachedNetworkImageProvider(avatarUrl);
       } else {
         return AssetImage(avatarUrl);
       }
@@ -225,8 +227,9 @@ class _ShareBottomSheetState extends State<ShareBottomSheet> {
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
+                    child: CupertinoActivityIndicator(
                       color: Color(0xFF7C57FC),
+                      radius: 12,
                     ),
                   )
                 : (_filteredFriends.isEmpty

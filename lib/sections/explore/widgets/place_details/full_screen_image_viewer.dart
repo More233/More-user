@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class FullScreenImageViewer extends StatefulWidget {
@@ -55,9 +56,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
               imageUrl: widget.images[index],
               fit: BoxFit.contain,
               placeholder: (context, url) => const Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                child: CupertinoActivityIndicator(
+                  color: Colors.white,
+                  radius: 12,
                 ),
               ),
               errorWidget: (context, url, error) => const Icon(

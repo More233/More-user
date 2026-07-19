@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'steps/splash_step.dart';
 import 'steps/login_step.dart';
@@ -274,9 +275,10 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
               if (_isSavingProfile)
                 Container(
                   color: Colors.black.withValues(alpha: 0.3),
-                  child: const Center(
-                    child: CircularProgressIndicator(
+                  child: Center(
+                    child: CupertinoActivityIndicator(
                       color: Color(0xFF7C57FC),
+                      radius: 14,
                     ),
                   ),
                 ),

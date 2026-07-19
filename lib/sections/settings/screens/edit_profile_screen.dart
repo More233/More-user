@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../providers/edit_profile_provider.dart';
@@ -80,7 +82,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   ImageProvider _getAvatarProvider(String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }
@@ -138,9 +140,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           centerTitle: true,
         ),
         body: editState.loading
-            ? const Center(
-                child: CircularProgressIndicator(
+            ? Center(
+                child: CupertinoActivityIndicator(
                   color: Color(0xFF7C57FC),
+                  radius: 12,
                 ),
               )
             : SingleChildScrollView(
@@ -278,13 +281,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           ),
                           onPressed: editState.saving ? null : _saveChanges,
                           child: editState.saving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
+                              ? CupertinoActivityIndicator(
+                                  color: Colors.white,
+                                  radius: 8,
                                 )
                               : Text(
                                   isAr ? 'حفظ التغييرات' : 'Save Changes',

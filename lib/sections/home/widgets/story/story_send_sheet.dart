@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../view_models/friends_list_view_model.dart';
 
 class StorySendSheetContent extends ConsumerWidget {
@@ -10,7 +12,7 @@ class StorySendSheetContent extends ConsumerWidget {
   ImageProvider _getAvatarProvider(String? avatarUrl) {
     if (avatarUrl != null && avatarUrl.isNotEmpty) {
       if (avatarUrl.startsWith('http')) {
-        return NetworkImage(avatarUrl);
+        return CachedNetworkImageProvider(avatarUrl);
       } else {
         return AssetImage(avatarUrl);
       }
@@ -95,8 +97,9 @@ class StorySendSheetContent extends ConsumerWidget {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 36),
                 child: Center(
-                  child: CircularProgressIndicator(
+                  child: CupertinoActivityIndicator(
                     color: Color(0xFF7C57FC),
+                    radius: 12,
                   ),
                 ),
               )

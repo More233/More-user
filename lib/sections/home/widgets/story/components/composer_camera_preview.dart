@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:camera/camera.dart';
@@ -87,7 +88,10 @@ class ComposerCameraPreview extends ConsumerWidget {
       return Container(
         color: Colors.black,
         child: const Center(
-          child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+          child: CupertinoActivityIndicator(
+            color: Color(0xFF7C57FC),
+            radius: 12,
+          ),
         ),
       );
     }

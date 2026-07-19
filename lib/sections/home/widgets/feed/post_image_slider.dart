@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'full_screen_image_viewer.dart';
+import '../common/cached_image.dart';
 
 class PostImageSlider extends StatefulWidget {
   final List<String> imageUrls;
@@ -102,42 +102,18 @@ class _PostImageSliderState extends State<PostImageSlider> {
   }
 
   Widget _buildSingleImage(String path, {bool applyBorderRadius = true}) {
-    Widget image;
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      image = Image.network(
-        path,
+    final Widget image = CustomCachedImage(
+      url: path,
+      width: widget.width,
+      height: widget.height,
+      fit: BoxFit.cover,
+      errorWidget: Container(
         width: widget.width,
         height: widget.height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          width: widget.width,
-          height: widget.height,
-          color: Colors.grey[200],
-          child: const Icon(Icons.broken_image, color: Colors.grey),
-        ),
-      );
-    } else {
-      final isAsset = !path.startsWith('/') && !path.startsWith('file:');
-      image = isAsset
-          ? Image.asset(
-              path,
-              width: widget.width,
-              height: widget.height,
-              fit: BoxFit.cover,
-            )
-          : Image.file(
-              File(path),
-              width: widget.width,
-              height: widget.height,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: widget.width,
-                height: widget.height,
-                color: Colors.grey[200],
-                child: const Icon(Icons.broken_image, color: Colors.grey),
-              ),
-            );
-    }
+        color: Colors.grey[200],
+        child: const Icon(Icons.broken_image, color: Colors.grey),
+      ),
+    );
 
     if (applyBorderRadius) {
       return ClipRRect(

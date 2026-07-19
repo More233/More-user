@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'full_screen_image_viewer.dart';
@@ -93,14 +94,10 @@ class _PlacePhotosSectionState extends State<PlacePhotosSection> {
                         fit: BoxFit.cover,
                         placeholder: (context, url) => Container(
                           color: const Color(0xFFF5F6F8),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                              ),
+                          child: Center(
+                            child: CupertinoActivityIndicator(
+                              color: Color(0xFF7C57FC),
+                              radius: 8,
                             ),
                           ),
                         ),

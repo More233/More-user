@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 import '../../models/suggested_user.dart';
@@ -62,7 +64,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }
@@ -408,7 +410,7 @@ class _FollowFriendsBottomSheetState extends State<FollowFriendsBottomSheet> {
                   ? const Center(
                       child: Padding(
                         padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                        child: CupertinoActivityIndicator(color: Color(0xFF7C57FC)),
                       ),
                     )
                   : (filteredSuggestions.isEmpty && filteredContacts.isEmpty)

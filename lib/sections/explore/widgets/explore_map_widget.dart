@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:moor/shared/models/lat_lng.dart' as model;
 import 'package:geolocator/geolocator.dart';
 import '../../../../config/secrets.dart';
@@ -686,9 +685,16 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
                     : {},
               );
               final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
-              debugPrint("ExploreMapWidget: checkinId=$checkinId, resolved place keys=${place.keys}, resolved avatarUrl=$avatarUrl");
+              final String authorName = place['authorName'] as String? ?? 'User';
+              final String resolvedType = _resolvePlaceType(place);
+              debugPrint("ExploreMapWidget: checkinId=$checkinId, resolved place keys=${place.keys}, resolved avatarUrl=$avatarUrl, authorName=$authorName");
               final bool isSelected = state == 'selected_checkin';
-              pngBytes = await MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: isSelected);
+              pngBytes = await MarkerGenerator.getCheckInCalloutPin(
+                type: resolvedType,
+                avatarUrl: avatarUrl,
+                authorName: authorName,
+                isSelected: isSelected,
+              );
             } else if (state == 'dot') {
               pngBytes = await MarkerGenerator.getDotPin(type);
             } else if (state == 'live' || state == 'selected_live') {
@@ -779,82 +785,74 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final bool isCheckIn = p['isCheckIn'] == true;
         String englishTitle = '';
         String arabicTitle = '';
+        String placeEngTitle = '';
+        String placeArTitle = '';
 
-        if (isCheckIn) {
-          final String authorName = p['authorName'] as String? ?? '';
-          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-          final postUserId = p['user_id'] as String? ?? p['userId'] as String? ?? '';
-          if (postUserId == currentUserId || authorName.toLowerCase() == 'you') {
-            englishTitle = 'You';
-            arabicTitle = 'أنت';
-          } else {
-            englishTitle = authorName;
-            arabicTitle = authorName;
-          }
-        } else {
-          bool containsArabicChar(String text) {
-            return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
-          }
+        bool containsArabicChar(String text) {
+          return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
+        }
 
-          // 1. Check if name contains both separated by / or - or |
-          final separators = ['/', '-', '|'];
-          bool separated = false;
-          for (final sep in separators) {
-            if (name.contains(sep)) {
-              final parts = name.split(sep);
-              if (parts.length == 2) {
-                final part1 = parts[0].trim();
-                final part2 = parts[1].trim();
-                final hasAr1 = containsArabicChar(part1);
-                final hasAr2 = containsArabicChar(part2);
-                if (hasAr1 && !hasAr2) {
-                  englishTitle = part2;
-                  arabicTitle = part1;
-                  separated = true;
-                  break;
-                } else if (!hasAr1 && hasAr2) {
-                  englishTitle = part1;
-                  arabicTitle = part2;
-                  separated = true;
-                  break;
-                }
+        // 1. Check if name contains both separated by / or - or |
+        final separators = ['/', '-', '|'];
+        bool separated = false;
+        for (final sep in separators) {
+          if (name.contains(sep)) {
+            final parts = name.split(sep);
+            if (parts.length == 2) {
+              final part1 = parts[0].trim();
+              final part2 = parts[1].trim();
+              final hasAr1 = containsArabicChar(part1);
+              final hasAr2 = containsArabicChar(part2);
+              if (hasAr1 && !hasAr2) {
+                placeEngTitle = part2;
+                placeArTitle = part1;
+                separated = true;
+                break;
+              } else if (!hasAr1 && hasAr2) {
+                placeEngTitle = part1;
+                placeArTitle = part2;
+                separated = true;
+                break;
               }
             }
           }
+        }
 
-          if (!separated) {
-            final nameHasAr = containsArabicChar(name);
-            final arNameHasAr = containsArabicChar(arName);
+        if (!separated) {
+          final nameHasAr = containsArabicChar(name);
+          final arNameHasAr = containsArabicChar(arName);
 
-            if (nameHasAr && arNameHasAr) {
-              // Both are Arabic
-              englishTitle = '';
-              arabicTitle = name;
-            } else if (!nameHasAr && arNameHasAr) {
-              // name is English, arName is Arabic
-              englishTitle = name;
-              arabicTitle = arName;
-            } else if (!nameHasAr && !arNameHasAr) {
-              // Both are English
-              englishTitle = name;
-              arabicTitle = '';
-            } else {
-              // name is Arabic, arName is English
-              englishTitle = arName;
-              arabicTitle = name;
-            }
-          }
-
-          // Clean city name in parentheses from titles
-          englishTitle = englishTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
-          arabicTitle = arabicTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
-
-          // Fallback: If English title ends up empty but we have Arabic title, use Arabic as primary
-          if (englishTitle.isEmpty && arabicTitle.isNotEmpty) {
-            englishTitle = arabicTitle;
-            arabicTitle = '';
+          if (nameHasAr && arNameHasAr) {
+            // Both are Arabic
+            placeEngTitle = '';
+            placeArTitle = name;
+          } else if (!nameHasAr && arNameHasAr) {
+            // name is English, arName is Arabic
+            placeEngTitle = name;
+            placeArTitle = arName;
+          } else if (!nameHasAr && !arNameHasAr) {
+            // Both are English
+            placeEngTitle = name;
+            placeArTitle = '';
+          } else {
+            // name is Arabic, arName is English
+            placeEngTitle = arName;
+            placeArTitle = name;
           }
         }
+
+        // Clean city name in parentheses from titles
+        placeEngTitle = placeEngTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+        placeArTitle = placeArTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+
+        // Fallback: If English title ends up empty but we have Arabic title, use Arabic as primary
+        if (placeEngTitle.isEmpty && placeArTitle.isNotEmpty) {
+          placeEngTitle = placeArTitle;
+          placeArTitle = '';
+        }
+
+        englishTitle = placeEngTitle;
+        arabicTitle = placeArTitle;
 
         final String resolvedType = _resolvePlaceType(p);
         if (resolvedType == 'airport' && widget.selectedMapTab != 2) {
@@ -936,10 +934,34 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             "rating_str": ratingStr,
             "people_count": (p['peopleCount'] as num? ?? 0).toInt(),
             "rating_val": ratingVal,
-            "is_check_in": isCheckIn,
+            "is_check_in": false, // Set to false to draw standard category pins
             "random_percent": localPercents[p['id'].toString()] ?? 0,
           }
         });
+
+        // Add a separate overlay feature for the callout speech bubble if check-in exists
+        if (isCheckIn) {
+          features.add({
+            "type": "Feature",
+            "id": "callout_${p['id']}",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [lng, lat]
+            },
+            "properties": {
+              "id": "callout_${p['id']}",
+              "place_id": p['id'].toString(),
+              "place_type": "callout_bubble",
+              "title": "",
+              "english_title": "",
+              "arabic_title": "",
+              "is_callout_feature": true,
+              "is_check_in": true,
+              "rating_str": "",
+              "random_percent": localPercents[p['id'].toString()] ?? 0,
+            }
+          });
+        }
       }
 
       final geojson = {
@@ -987,7 +1009,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             [
               "case",
               ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "selected_live-", ["get", "place_type"]],
               ["concat", "checkin-", ["get", "id"]]
             ],
             ["==", ["get", "id"], selectedId],
@@ -1036,7 +1058,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             [
               "case",
               ["==", ["get", "id"], selectedId],
-              ["concat", "selected_checkin-", ["get", "id"]],
+              ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
               ["concat", "checkin-", ["get", "id"]]
             ],
             ["==", ["get", "id"], selectedId],
@@ -1383,14 +1405,21 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         debugPrint("Error styling clusters-pins-layer: $e");
       }
 
-      // Repeatedly enforce hiding default road labels, shields, and intersections to override Mapbox async style loads
       try {
         await _mapboxMap!.style.setStyleLayerProperty("road-label", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("road-number-shield", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("road-exit-shield", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("road-intersection", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("crosswalks", "visibility", "none");
-        debugPrint("ExploreMapWidget: Enforced road/shield layer visibility overrides.");
+        
+        // Hide native POI layers to prevent duplicate icon/dot markers behind our custom pins
+        try { await _mapboxMap!.style.setStyleLayerProperty("poi", "visibility", "none"); } catch (_) {}
+        try { await _mapboxMap!.style.setStyleLayerProperty("poi-label", "visibility", "none"); } catch (_) {}
+        try { await _mapboxMap!.style.setStyleLayerProperty("poi-level-1", "visibility", "none"); } catch (_) {}
+        try { await _mapboxMap!.style.setStyleLayerProperty("poi-level-2", "visibility", "none"); } catch (_) {}
+        try { await _mapboxMap!.style.setStyleLayerProperty("poi-level-3", "visibility", "none"); } catch (_) {}
+        
+        debugPrint("ExploreMapWidget: Enforced road/shield/poi layer visibility overrides.");
       } catch (e) {
         // Ignore if some layers do not exist
       }

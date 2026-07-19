@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../models/timeline_post.dart';
@@ -72,7 +73,7 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
       await client.storage.from('post-images').upload(
         fileName,
         file,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+        fileOptions: const FileOptions(cacheControl: '31536000', upsert: false),
       );
       
       final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
@@ -212,10 +213,10 @@ class _PostingLoadingScreenState extends State<PostingLoadingScreen> with Single
                     ),
                     child: ClipOval(
                       child: widget.currentUserAvatarUrl != null
-                          ? Image.network(
-                              widget.currentUserAvatarUrl!,
+                          ? CachedNetworkImage(
+                              imageUrl: widget.currentUserAvatarUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, e, s) => Image.asset(
+                              errorWidget: (context, url, error) => Image.asset(
                                 'assets/home/images/element.png',
                                 fit: BoxFit.cover,
                               ),

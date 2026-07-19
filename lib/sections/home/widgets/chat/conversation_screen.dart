@@ -261,7 +261,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return CachedNetworkImageProvider(dbUrl);
+        return ResizeImage(CachedNetworkImageProvider(dbUrl), width: 100, height: 100);
       } else {
         return AssetImage(dbUrl);
       }

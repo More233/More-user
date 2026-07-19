@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../view_models/story_editor_view_model.dart';
 import '../../../models/story_overlay_item.dart';
 import '../../bottom_sheets/location_search_sheet.dart';
@@ -679,7 +680,7 @@ class _TextEditorPanelState extends ConsumerState<TextEditorPanel> {
                                       CircleAvatar(
                                         radius: 20,
                                         backgroundImage: user['avatar_url'] != null
-                                            ? NetworkImage(user['avatar_url'])
+                                            ? CachedNetworkImageProvider(user['avatar_url'])
                                             : null,
                                         child: user['avatar_url'] == null
                                             ? const Icon(Icons.person, color: Colors.white, size: 20)

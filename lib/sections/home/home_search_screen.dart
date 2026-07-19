@@ -599,19 +599,22 @@ class _TimelineSearchScreenState extends ConsumerState<TimelineSearchScreen> {
         final post = _searchResults[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: TimelinePostCard(
-            post: post,
-            onLike: () {
-              widget.onLikeToggle(post.id);
-              setState(() {
-                post.isLiked = !post.isLiked;
-                post.likesCount += post.isLiked ? 1 : -1;
-              });
-            },
-            onBookmark: () => _handleBookmarkTap(post),
-            onEdit: () => _editPost(post),
-            onDelete: () => _confirmDeletePost(post),
-            isLastInSection: index == _searchResults.length - 1,
+          child: RepaintBoundary(
+            key: ValueKey('search_post_${post.id}'),
+            child: TimelinePostCard(
+              post: post,
+              onLike: () {
+                widget.onLikeToggle(post.id);
+                setState(() {
+                  post.isLiked = !post.isLiked;
+                  post.likesCount += post.isLiked ? 1 : -1;
+                });
+              },
+              onBookmark: () => _handleBookmarkTap(post),
+              onEdit: () => _editPost(post),
+              onDelete: () => _confirmDeletePost(post),
+              isLastInSection: index == _searchResults.length - 1,
+            ),
           ),
         );
       },

@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -656,7 +658,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
             await client.storage.from('post-images').upload(
               fileName,
               file,
-              fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+              fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
             );
             final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
             uploadedUrls.add(publicUrl);
@@ -793,10 +795,10 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                           ),
                           child: ClipOval(
                             child: _currentUserAvatarUrl != null
-                                ? Image.network(
-                                    _currentUserAvatarUrl!,
+                                ? CachedNetworkImage(
+                                    imageUrl: _currentUserAvatarUrl!,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, e, s) => Image.asset(
+                                    errorWidget: (context, url, error) => Image.asset(
                                       'assets/home/images/element.png',
                                       fit: BoxFit.cover,
                                     ),
@@ -1184,12 +1186,23 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(12),
                                     child: isNetwork
-                                        ? Image.network(
-                                            imgPath,
+                                        ? CachedNetworkImage(
+                                            imageUrl: imgPath,
                                             width: 100,
                                             height: 100,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => Container(
+                                            placeholder: (context, url) => Container(
+                                              width: 100,
+                                              height: 100,
+                                              color: Colors.grey[200],
+                                              child: Center(
+                                                child: CupertinoActivityIndicator(
+                                                  color: Color(0xFF7C57FC),
+                                                  radius: 8,
+                                                ),
+                                              ),
+                                            ),
+                                            errorWidget: (context, url, error) => Container(
                                               color: Colors.grey[200],
                                               child: const Icon(Icons.broken_image, color: Colors.grey),
                                             ),
@@ -1369,10 +1382,10 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                           ),
                                           child: ClipOval(
                                             child: avatarUrl != null
-                                                ? Image.network(
-                                                    avatarUrl,
+                                                ? CachedNetworkImage(
+                                                    imageUrl: avatarUrl,
                                                     fit: BoxFit.cover,
-                                                    errorBuilder: (context, e, s) => Image.asset(
+                                                    errorWidget: (context, url, error) => Image.asset(
                                                       'assets/home/images/element.png',
                                                       fit: BoxFit.cover,
                                                     ),
@@ -1609,13 +1622,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                   child: Opacity(
                     opacity: hasCaption && !_isSaving ? 1.0 : 0.6,
                     child: _isSaving
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
+                        ? CupertinoActivityIndicator(
+                            color: Colors.white,
+                            radius: 10,
                           )
                         : Text(
                             widget.editPost != null ? 'Save changes' : 'Continue',

@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'widgets/common/bottom_nav_bar.dart';
 import 'view_models/timeline_view_model.dart';
 import 'view_models/notifications_view_model.dart';
@@ -21,6 +22,8 @@ import '../settings/screens/edit_profile_screen.dart';
 import 'widgets/common/custom_loading_indicator.dart';
 import 'followers_following_screen.dart';
 import 'widgets/chat/conversation_screen.dart';
+import 'widgets/common/cached_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -257,7 +260,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         await client.storage.from('post-images').upload(
           fileName,
           file,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
         );
 
         final publicUrl = client.storage.from('post-images').getPublicUrl(fileName);
@@ -292,7 +295,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }
@@ -657,10 +660,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildGridImage(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
+      return CustomCachedImage(
+        url: path,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
+        errorWidget: Container(
           color: Colors.grey[200],
           child: const Icon(Icons.broken_image, color: Colors.grey),
         ),
@@ -881,13 +884,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   ),
                                   alignment: Alignment.center,
                                   child: _followLoading
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-                                          ),
+                                      ? const CupertinoActivityIndicator(
+                                          color: Colors.grey,
+                                          radius: 8,
                                         )
                                       : Text(
                                           _isFollowing ? 'Following' : 'Follow',
@@ -915,13 +914,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   ),
                                   alignment: Alignment.center,
                                   child: _messageLoading
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
-                                          ),
+                                      ? const CupertinoActivityIndicator(
+                                          color: Color(0xFF7C57FC),
+                                          radius: 8,
                                         )
                                       : Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1012,15 +1007,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       final post = _posts[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: TimelinePostCard(
-                          post: post,
-                          onLike: () => _toggleLike(post),
-                          onBookmark: () => _handleBookmarkTap(post),
-                          onComment: () => _openComments(post),
-                          onShare: () => _openShare(post),
-                          onEdit: () => _editPost(post),
-                          onDelete: () => _confirmDeletePost(post),
-                          isLastInSection: index == _posts.length - 1,
+                        child: RepaintBoundary(
+                          key: ValueKey('profile_post_${post.id}'),
+                          child: TimelinePostCard(
+                            post: post,
+                            onLike: () => _toggleLike(post),
+                            onBookmark: () => _handleBookmarkTap(post),
+                            onComment: () => _openComments(post),
+                            onShare: () => _openShare(post),
+                            onEdit: () => _editPost(post),
+                            onDelete: () => _confirmDeletePost(post),
+                            isLastInSection: index == _posts.length - 1,
+                          ),
                         ),
                       );
                     },
@@ -1158,7 +1156,7 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
             child: Container(
               color: const Color(0xFF7C57FC),
               child: coverUrl != null && coverUrl!.isNotEmpty
-                  ? Image.network(coverUrl!, fit: BoxFit.cover)
+                  ? CustomCachedImage(url: coverUrl!, fit: BoxFit.cover)
                   : null,
             ),
           ),

@@ -391,6 +391,18 @@ class ExploreScreenHelpers {
         }
       }
 
+      if (state.selectedMapTab == 2) {
+        final String pid = place['id']?.toString() ?? '';
+        final bool isLiveLandmark = pid.startsWith('global_swarm_');
+        final bool isCheckIn = place['isCheckIn'] == true;
+        final int peopleCount = (place['peopleCount'] as num? ?? 0).toInt();
+
+        // Only keep if it is a live landmark, an active check-in, or has people count > 0
+        if (!isLiveLandmark && !isCheckIn && peopleCount <= 0) {
+          return false;
+        }
+      }
+
       if (state.selectedMapTab == 0) {
         final type = place['type'] as String? ?? 'Other';
         if (state.selectedCategory.isNotEmpty) {

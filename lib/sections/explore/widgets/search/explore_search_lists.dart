@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ExploreSearchLists extends StatelessWidget {
@@ -126,9 +127,10 @@ class ExploreSearchLists extends StatelessWidget {
   Widget build(BuildContext context) {
     if (searchQuery.isNotEmpty) {
       if (isSearching) {
-        return const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+        return Center(
+          child: CupertinoActivityIndicator(
+            color: Color(0xFF7C57FC),
+            radius: 12,
           ),
         );
       }
@@ -182,11 +184,12 @@ class ExploreSearchLists extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (isLoadingNearby)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(24.0),
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC)),
+                padding: const EdgeInsets.all(24.0),
+                child: CupertinoActivityIndicator(
+                  color: Color(0xFF7C57FC),
+                  radius: 12,
                 ),
               ),
             )

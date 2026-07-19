@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class CreateCollectionBottomSheet extends StatefulWidget {
   final List<Map<String, dynamic>> profilesList;
@@ -24,10 +27,15 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
   bool _isSaveEnabled = false;
   final Set<String> _selectedSharedUserIds = {};
   String _searchQuery = "";
+  List<Map<String, dynamic>> _localProfilesList = [];
+  bool _isLoadingLocal = false;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
+    _localProfilesList = List<Map<String, dynamic>>.from(widget.profilesList);
+    _isLoadingLocal = widget.isLoadingProfiles;
     _nameController.addListener(() {
       setState(() {
         _isSaveEnabled = _nameController.text.trim().isNotEmpty;
@@ -37,8 +45,67 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _nameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAllProfilesForSearch() async {
+    if (_localProfilesList.length > 20) return;
+    setState(() => _isLoadingLocal = true);
+    try {
+      final res = await Supabase.instance.client
+          .from('profiles')
+          .select('id, username, first_name, last_name, avatar_url')
+          .limit(100);
+      if (mounted) {
+        setState(() {
+          final existingIds = _localProfilesList.map((p) => p['id']).toSet();
+          for (final p in res) {
+            if (!existingIds.contains(p['id'])) {
+              _localProfilesList.add(p);
+            }
+          }
+          _isLoadingLocal = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading profiles for search: $e");
+      if (mounted) {
+        setState(() => _isLoadingLocal = false);
+      }
+    }
+  }
+
+  void _onSearchQueryChanged(String val) {
+    setState(() {
+      _searchQuery = val;
+    });
+
+    if (val.trim().isEmpty) return;
+
+    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      try {
+        final res = await Supabase.instance.client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .or('username.ilike.%$val%,first_name.ilike.%$val%,last_name.ilike.%$val%')
+            .limit(50);
+        if (mounted) {
+          setState(() {
+            final existingIds = _localProfilesList.map((p) => p['id']).toSet();
+            for (final p in res) {
+              if (!existingIds.contains(p['id'])) {
+                _localProfilesList.add(p);
+              }
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint("Error searching profiles: $e");
+      }
+    });
   }
 
   Widget _buildOverlappingSharedAvatars(List<String> userIds, {double size = 16}) {
@@ -46,7 +113,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
     
     final List<Map<String, dynamic>> matchingProfiles = [];
     for (final id in userIds) {
-      final profile = widget.profilesList.firstWhere(
+      final profile = _localProfilesList.firstWhere(
         (p) => p['id'] == id,
         orElse: () => <String, dynamic>{},
       );
@@ -78,7 +145,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
               child: ClipOval(
                 child: avatarUrl != null && avatarUrl.isNotEmpty
                     ? (avatarUrl.startsWith('http')
-                        ? Image.network(avatarUrl, fit: BoxFit.cover)
+                        ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover, errorWidget: (context, url, error) => Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover))
                         : Image.asset(avatarUrl, fit: BoxFit.cover))
                     : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
               ),
@@ -94,7 +161,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
     
     final List<String> names = [];
     for (final id in userIds) {
-      final profile = widget.profilesList.firstWhere(
+      final profile = _localProfilesList.firstWhere(
         (p) => p['id'] == id,
         orElse: () => <String, dynamic>{},
       );
@@ -239,6 +306,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
                 _isAddPeopleView = true;
                 _searchQuery = "";
               });
+              _loadAllProfilesForSearch();
             },
           ),
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
@@ -250,7 +318,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
 
   Widget _buildAddPeopleView() {
     final currentUser = Supabase.instance.client.auth.currentUser;
-    final otherProfiles = widget.profilesList.where((p) => p['id'] != currentUser?.id).toList();
+    final otherProfiles = _localProfilesList.where((p) => p['id'] != currentUser?.id).toList();
     final filteredProfiles = otherProfiles.where((p) {
       final query = _searchQuery.toLowerCase();
       final username = (p['username'] as String? ?? '').toLowerCase();
@@ -332,11 +400,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val;
-                      });
-                    },
+                    onChanged: _onSearchQueryChanged,
                     style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
                     decoration: InputDecoration(
                       hintText: "Search",
@@ -351,8 +415,8 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: widget.isLoadingProfiles
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC)))
+            child: _isLoadingLocal
+                ? const Center(child: CupertinoActivityIndicator())
                 : filteredProfiles.isEmpty
                     ? Center(
                         child: Text(
@@ -379,7 +443,7 @@ class _CreateCollectionBottomSheetState extends State<CreateCollectionBottomShee
                               backgroundColor: Colors.grey[200],
                               backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                                   ? (avatarUrl.startsWith('http')
-                                      ? NetworkImage(avatarUrl)
+                                      ? CachedNetworkImageProvider(avatarUrl)
                                       : AssetImage(avatarUrl) as ImageProvider)
                                   : const AssetImage('assets/home/images/avatar_placeholder.png'),
                             ),

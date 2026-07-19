@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/settings_provider.dart';
 
 class BlockedUsersScreen extends ConsumerStatefulWidget {
@@ -53,7 +55,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
   ImageProvider _getAvatarProvider(String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }
@@ -176,9 +178,10 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
             // Body results
             Expanded(
               child: _searching
-                  ? const Center(
-                      child: CircularProgressIndicator(
+                  ? Center(
+                      child: CupertinoActivityIndicator(
                         color: Color(0xFF7C57FC),
+                        radius: 12,
                       ),
                     )
                   : (_query.trim().isNotEmpty

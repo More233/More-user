@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -447,13 +448,9 @@ class _LoginStepState extends State<LoginStep> {
                     elevation: 0,
                   ),
                   child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                      ? const CupertinoActivityIndicator(
+                          color: Colors.white,
+                          radius: 10,
                         )
                       : Text(
                           'Continue',

@@ -22,6 +22,10 @@ final storyViewModelProvider = StateNotifierProvider.autoDispose
 class StoryViewModel extends StateNotifier<StoryViewState> {
   final StoryRepository _storyRepository;
 
+  // In-memory cache for story viewers to avoid layout shift/flickers during transition
+  static final Map<String, List<Map<String, dynamic>>> _viewersCache = {};
+  String? _activeStoryId;
+
   StoryViewModel({
     required this._storyRepository,
     required int initialGroupIndex,
@@ -39,25 +43,64 @@ class StoryViewModel extends StateNotifier<StoryViewState> {
     final currentMediaUrl = currentGroup.mediaUrls[currentStoryIndex];
     final currentStoryId = currentGroup.storyIds[currentStoryIndex];
 
+    _activeStoryId = currentStoryId;
+
     // Mark as viewed locally
     StoryTracker().markAsViewed(currentMediaUrl);
 
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {
       if (currentGroup.userId == currentUser.id) {
+        // Synchronously update the state using cache first to prevent displaying previous story's views
+        if (_viewersCache.containsKey(currentStoryId)) {
+          final cached = _viewersCache[currentStoryId]!;
+          state = state.copyWith(
+            viewers: cached,
+            viewsCount: cached.length,
+          );
+        } else {
+          state = state.copyWith(
+            viewers: [],
+            viewsCount: 0,
+          );
+        }
         await fetchStoryViews(currentStoryId);
       } else {
-        await recordStoryView(currentStoryId, currentUser.id);
+        await recordStoryView(currentStoryId, currentUser.id, currentGroup.userId);
       }
     }
   }
 
-  Future<void> recordStoryView(String storyId, String userId) async {
+  Future<void> recordStoryView(String storyId, String userId, String ownerId) async {
     try {
       await _storyRepository.markStoryAsViewed(
         storyId: storyId,
         userId: userId,
       );
+
+      // Send a notification to the owner of the story if it's not our own story
+      if (userId != ownerId) {
+        final client = Supabase.instance.client;
+
+        // Check if a view notification for this story and user already exists to avoid duplicates
+        final existing = await client
+            .from('notifications')
+            .select('id')
+            .eq('sender_id', userId)
+            .eq('receiver_id', ownerId)
+            .eq('type', 'story_view')
+            .eq('metadata->story_id', storyId)
+            .maybeSingle();
+
+        if (existing == null) {
+          await client.from('notifications').insert({
+            'sender_id': userId,
+            'receiver_id': ownerId,
+            'type': 'story_view',
+            'metadata': {'story_id': storyId},
+          });
+        }
+      }
     } catch (e) {
       debugPrint("Note: view already recorded or error: $e");
     }
@@ -66,7 +109,12 @@ class StoryViewModel extends StateNotifier<StoryViewState> {
   Future<void> fetchStoryViews(String storyId) async {
     try {
       final viewersList = await _storyRepository.fetchStoryViewers(storyId);
-      if (!mounted) return;
+      
+      // Update in-memory cache
+      _viewersCache[storyId] = viewersList;
+
+      if (!mounted || _activeStoryId != storyId) return;
+
       state = state.copyWith(
         viewers: viewersList,
         viewsCount: viewersList.length,

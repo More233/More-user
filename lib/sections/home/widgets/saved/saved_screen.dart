@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,6 +11,7 @@ import '../../view_models/collections_view_model.dart';
 import 'collection_details_screen.dart';
 import '../bottom_sheets/create_collection_bottom_sheet.dart';
 import 'photo_viewer_screen.dart';
+import '../common/cached_image.dart';
 
 class SavedScreen extends ConsumerStatefulWidget {
   const SavedScreen({super.key});
@@ -62,12 +64,37 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
 
   Future<void> _loadProfiles() async {
     try {
-      final res = await Supabase.instance.client.from('profiles').select();
-      if (mounted) {
-        setState(() {
-          _profilesList = List<Map<String, dynamic>>.from(res);
-          _isLoadingProfiles = false;
-        });
+      final client = Supabase.instance.client;
+      final currentUser = client.auth.currentUser;
+      final Set<String> idsToFetch = {};
+      if (currentUser != null) {
+        idsToFetch.add(currentUser.id);
+      }
+
+      // Wait a bit for collections to be loaded if they are loading
+      final collections = ref.read(collectionsViewModelProvider).collections;
+      for (final col in collections) {
+        idsToFetch.addAll(col.sharedUserIds);
+      }
+
+      if (idsToFetch.isNotEmpty) {
+        final res = await client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .inFilter('id', idsToFetch.toList());
+        if (mounted) {
+          setState(() {
+            _profilesList = List<Map<String, dynamic>>.from(res);
+            _isLoadingProfiles = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _profilesList = [];
+            _isLoadingProfiles = false;
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error loading profiles: $e");
@@ -111,31 +138,13 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     }
     
     if (coverUrl != null && coverUrl.isNotEmpty) {
-      if (coverUrl.startsWith('http://') || coverUrl.startsWith('https://')) {
-        return Image.network(
-          coverUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _buildFolderPlaceholder(size: size),
-        );
-      }
-      final isAsset = !coverUrl.startsWith('/') && !coverUrl.startsWith('file:');
-      if (isAsset) {
-        return Image.asset(
-          coverUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        );
-      } else {
-        return Image.file(
-          File(coverUrl),
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        );
-      }
+      return CustomCachedImage(
+        url: coverUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorWidget: _buildFolderPlaceholder(size: size),
+      );
     }
     return _buildFolderPlaceholder(size: size);
   }
@@ -182,11 +191,10 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                 ],
               ),
               child: ClipOval(
-                child: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? (avatarUrl.startsWith('http')
-                        ? Image.network(avatarUrl, fit: BoxFit.cover)
-                        : Image.asset(avatarUrl, fit: BoxFit.cover))
-                    : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
+                child: CustomCachedImage(
+                  url: avatarUrl ?? 'assets/home/images/avatar_placeholder.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           );
@@ -505,10 +513,10 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: post.imageUrl != null
-                ? Image.network(
-                    post.imageUrl!,
+                ? CustomCachedImage(
+                    url: post.imageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => _buildTextGridPlaceholder(post),
+                    errorWidget: _buildTextGridPlaceholder(post),
                   )
                 : _buildTextGridPlaceholder(post),
           ),
@@ -604,7 +612,12 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
         ],
       ),
       body: _isLoadingPosts || colState.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC)))
+          ? const Center(
+              child: CupertinoActivityIndicator(
+                color: Color(0xFF7C57FC),
+                radius: 12,
+              ),
+            )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

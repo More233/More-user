@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:moor/shared/models/lat_lng.dart';
 import 'package:geolocator/geolocator.dart';
@@ -219,7 +221,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                       child: ClipOval(
                         child: _avatarUrl != null && _avatarUrl!.isNotEmpty
                             ? (_avatarUrl!.startsWith('http')
-                                ? Image.network(_avatarUrl!, fit: BoxFit.cover)
+                                ? CachedNetworkImage(imageUrl: _avatarUrl!, fit: BoxFit.cover, errorWidget: (context, url, error) => const Icon(Icons.person, color: Color(0xFF82858C)))
                                 : Image.asset(_avatarUrl!, fit: BoxFit.cover))
                             : Image.asset(
                                 'assets/home/images/avatar_placeholder.png',
@@ -278,10 +280,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   if (_isSearching)
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16.0),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C57FC))),
+                      child: CupertinoActivityIndicator(
+                        color: Color(0xFF7C57FC),
+                        radius: 8,
                       ),
                     )
                   else
@@ -306,7 +307,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC))),
+                    builder: (context) => const Center(child: CupertinoActivityIndicator(color: Color(0xFF7C57FC))),
                   );
                   String address;
                   if (_searchController.text.isNotEmpty) {

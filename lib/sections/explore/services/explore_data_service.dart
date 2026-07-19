@@ -1335,6 +1335,7 @@ class ExploreDataService {
           'description': res['description'] as String? ?? '',
           'stickerIndex': res['sticker_index'] as int? ?? -1,
           'createdAt': res['created_at'] as String? ?? '',
+          'place_id': res['place_id'] as String?,
         });
       }
 

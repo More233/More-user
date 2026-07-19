@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ExploreSearchHeader extends StatelessWidget {
@@ -115,17 +116,11 @@ class ExploreSearchHeader extends StatelessWidget {
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(vertical: 12),
                           suffixIcon: isSearching
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Color(0xFF7C57FC),
-                                      ),
-                                    ),
+                              ? Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: CupertinoActivityIndicator(
+                                    color: Color(0xFF7C57FC),
+                                    radius: 8,
                                   ),
                                 )
                               : (searchQuery.isNotEmpty

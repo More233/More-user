@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,6 +8,7 @@ import '../../models/timeline_post.dart';
 import '../../models/collection_model.dart';
 import '../../view_models/collections_view_model.dart';
 import 'photo_viewer_screen.dart';
+import '../common/cached_image.dart';
 
 class CollectionDetailsScreen extends ConsumerStatefulWidget {
   final String collectionId;
@@ -142,28 +143,14 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
   }
 
   Widget _buildGridImage(String path) {
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          color: Colors.grey[200],
-          child: const Icon(Icons.broken_image, color: Colors.grey),
-        ),
-      );
-    }
-    final isAsset = !path.startsWith('/') && !path.startsWith('file:');
-    if (isAsset) {
-      return Image.asset(
-        path,
-        fit: BoxFit.cover,
-      );
-    } else {
-      return Image.file(
-        File(path),
-        fit: BoxFit.cover,
-      );
-    }
+    return CustomCachedImage(
+      url: path,
+      fit: BoxFit.cover,
+      errorWidget: Container(
+        color: Colors.grey[200],
+        child: const Icon(Icons.broken_image, color: Colors.grey),
+      ),
+    );
   }
 
   Widget _buildTextGridPlaceholder(TimelinePost post) {
@@ -267,7 +254,7 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CupertinoActivityIndicator())
           : _collectionPosts.isEmpty
               ? Center(
                   child: Column(

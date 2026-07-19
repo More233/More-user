@@ -33,12 +33,14 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'receiver_id',
+            value: currentUser.id,
+          ),
           callback: (payload) {
             debugPrint("Realtime notification change received: $payload");
-            final newRecord = payload.newRecord;
-            if (newRecord['receiver_id'] == currentUser.id) {
-              loadNotifications();
-            }
+            loadNotifications();
           },
         );
     _notificationsSubscription?.subscribe();
@@ -103,6 +105,8 @@ class NotificationsViewModel extends StateNotifier<NotificationsState> {
           text = 'mentioned you in a comment: "$commentText"';
         } else if (type == 'mention') {
           text = 'mentioned you in their story.';
+        } else if (type == 'story_view') {
+          text = 'viewed your story.';
         }
 
         // Relative time formatting

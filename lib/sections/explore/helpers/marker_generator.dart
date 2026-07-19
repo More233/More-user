@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class MarkerGenerator {
   static final Map<String, Uint8List> _normalPinCache = {};
@@ -496,6 +497,171 @@ class MarkerGenerator {
     final img = await picture.toImage((width * dpr).toInt(), (height * dpr).toInt());
     final pngBytes = await img.toByteData(format: ui.ImageByteFormat.png);
     return pngBytes!.buffer.asUint8List();
+  }
+
+  static final Map<String, Uint8List> _calloutPinCache = {};
+
+  static Future<Uint8List> getCheckInCalloutPin({
+    required String type,
+    required String? avatarUrl,
+    required String authorName,
+    required bool isSelected,
+  }) async {
+    final String key = "${type.toLowerCase().trim()}_${avatarUrl ?? 'placeholder'}_${authorName}_$isSelected";
+    if (_calloutPinCache.containsKey(key)) {
+      return _calloutPinCache[key]!;
+    }
+
+    try {
+      final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+      final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+
+      final double scale = isSelected ? 1.15 : 0.95;
+
+      final double pinScale = scale * 0.85;
+      final double R = 15.0 * pinScale;
+      final double gap = 4.0 * scale;
+      final double boxWidth = 110.0 * scale;
+      final double boxHeight = 24.0 * scale;
+
+      // Symmetrical horizontal dimensions
+      final double halfWidth = R + gap + boxWidth + 4.0;
+      final double width = 2 * halfWidth;
+      
+      // Symmetrical vertical dimensions to align bottom tip of pin exactly at the center (cy)
+      final double height = 60.0 * scale;
+
+      final double cx = halfWidth;
+      final double cy = height / 2; // Bottom tip of teardrop is anchored exactly at the center (cy)
+
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.scale(dpr);
+
+      final Color pinColor = getMarkerColor(type);
+
+      // Position callout box to the LEFT of the pin
+      final double boxRight = cx - R - gap;
+      final double boxLeft = boxRight - boxWidth;
+      final double boxCy = cy - 19.0 * pinScale; // Center box vertically with pin's head
+      final double boxTop = boxCy - boxHeight / 2;
+
+      final Path bubblePath = Path();
+      final RRect boxRRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(boxLeft, boxTop, boxWidth, boxHeight),
+        Radius.circular(6.0 * scale),
+      );
+      bubblePath.addRRect(boxRRect);
+
+      final Path pointerPath = Path();
+      // Draw a triangle pointing right towards the pin head
+      pointerPath.moveTo(boxRight, boxCy - 3.5 * scale);
+      pointerPath.lineTo(boxRight + gap + 0.5, boxCy); // Tip of pointer touching the pin
+      pointerPath.lineTo(boxRight, boxCy + 3.5 * scale);
+      pointerPath.close();
+
+      // Merge both paths into a single unified speech bubble path
+      final Path combinedPath = Path.combine(PathOperation.union, bubblePath, pointerPath);
+
+      // 1. Draw Shadow
+      canvas.drawPath(
+        combinedPath.shift(const Offset(0.0, 1.0)),
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.1)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
+
+      // 2. Draw White Fill
+      canvas.drawPath(combinedPath, Paint()..color = Colors.white);
+
+      // 3. Draw Border Stroke matching the pin's color
+      canvas.drawPath(
+        combinedPath,
+        Paint()
+          ..color = pinColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.1 * scale,
+      );
+
+      final double avatarRadius = 8.0 * scale;
+      final double avatarCx = boxLeft + 4.0 * scale + avatarRadius;
+      final double avatarCy = boxCy;
+
+      ui.Image? avatarImage;
+      try {
+        final pathOrUrl = avatarUrl != null && avatarUrl.isNotEmpty
+            ? avatarUrl
+            : 'assets/home/images/avatar_placeholder.png';
+
+        Uint8List bytes;
+        if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+          final file = await DefaultCacheManager().getSingleFile(pathOrUrl).timeout(const Duration(seconds: 5));
+          bytes = await file.readAsBytes();
+        } else {
+          final data = await rootBundle.load(pathOrUrl);
+          bytes = data.buffer.asUint8List();
+        }
+
+        final codec = await ui.instantiateImageCodec(
+          bytes,
+          targetWidth: (avatarRadius * 2 * dpr).toInt(),
+          targetHeight: (avatarRadius * 2 * dpr).toInt(),
+        );
+        final frameInfo = await codec.getNextFrame();
+        avatarImage = frameInfo.image;
+      } catch (e) {
+        debugPrint("Error loading avatar for callout: $e");
+      }
+
+      if (avatarImage != null) {
+        canvas.save();
+        final Path clipPath = Path()..addOval(Rect.fromCircle(center: Offset(avatarCx, avatarCy), radius: avatarRadius));
+        canvas.clipPath(clipPath);
+
+        final src = Rect.fromLTWH(0, 0, avatarImage.width.toDouble(), avatarImage.height.toDouble());
+        final dest = Rect.fromCircle(center: Offset(avatarCx, avatarCy), radius: avatarRadius);
+
+        canvas.drawImageRect(avatarImage, src, dest, Paint()..isAntiAlias = true);
+        canvas.restore();
+      } else {
+        canvas.drawCircle(Offset(avatarCx, avatarCy), avatarRadius, Paint()..color = const Color(0xFFE8E8E8));
+      }
+
+      final double textLeft = avatarCx + avatarRadius + 4.0 * scale;
+      final bool containsArabic = RegExp(r'[\u0600-\u06FF]').hasMatch(authorName);
+      final String displayName = authorName.length > 10 ? '${authorName.substring(0, 8)}...' : authorName;
+      final String textStr = containsArabic ? 'زار $displayName' : 'Visited by $displayName';
+
+      final TextPainter textPainter = TextPainter(
+        textDirection: containsArabic ? TextDirection.rtl : TextDirection.ltr,
+        maxLines: 1,
+        ellipsis: '...',
+      );
+      textPainter.text = TextSpan(
+        text: textStr,
+        style: TextStyle(
+          fontSize: 7.5 * scale,
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFF1F242E),
+        ),
+      );
+      textPainter.layout(maxWidth: boxWidth - (textLeft - boxLeft) - 2.0);
+      textPainter.paint(
+        canvas,
+        Offset(textLeft, boxCy - textPainter.height / 2),
+      );
+
+      final picture = recorder.endRecording();
+      final img = await picture.toImage((width * dpr).toInt(), (height * dpr).toInt());
+      final pngBytes = await img.toByteData(format: ui.ImageByteFormat.png);
+
+      final resultBytes = pngBytes!.buffer.asUint8List();
+      _calloutPinCache[key] = resultBytes;
+      return resultBytes;
+    } catch (e) {
+      debugPrint("Error generating checkin callout pin: $e");
+      return getNormalPin(type);
+    }
   }
 
   static final Map<String, Uint8List> _checkInAvatarCache = {};

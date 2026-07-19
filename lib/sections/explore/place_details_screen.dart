@@ -15,6 +15,10 @@ import 'widgets/place_details/place_details_info.dart';
 import 'widgets/place_details/place_details_actions.dart';
 import 'widgets/place_details/place_details_more_info_sheet.dart';
 import '../home/widgets/feed/check_in_composer_screen.dart';
+import 'services/explore_data_service.dart';
+import 'view_models/explore_view_model.dart';
+import '../home/view_models/timeline_view_model.dart';
+import '../home/view_models/social_feed_view_model.dart';
 
 class PlaceDetailsScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> place;
@@ -113,28 +117,27 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
     );
 
     if (result == true && mounted) {
-      String myName = "أنت";
-      String? myAvatarUrl;
-      try {
-        final client = Supabase.instance.client;
-        final user = client.auth.currentUser;
-        if (user != null) {
-          final profile = await client.from('profiles').select().eq('id', user.id).maybeSingle();
-          if (profile != null) {
-            final firstName = profile['first_name'] as String? ?? '';
-            final lastName = profile['last_name'] as String? ?? '';
-            myName = '$firstName $lastName'.trim();
-            if (myName.isEmpty) myName = "أنت";
-            myAvatarUrl = profile['avatar_url'] as String?;
-          }
-        }
-      } catch (e) {
-        debugPrint("Error fetching user profile for check-in: $e");
-      }
+      // 1. Clear Supabase cache so new check-in shows up
+      ExploreDataService.clearSupabaseCache();
 
-      viewModel.addCheckInVisitor(myName, myAvatarUrl);
+      // 2. Reload home timeline and social feeds
+      ref.read(timelineViewModelProvider.notifier).loadPosts();
+      ref.read(timelineViewModelProvider.notifier).completeFirstCheckIn();
+      ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
 
-      if (!mounted) return;
+      // 3. Re-fetch explore places
+      final exploreState = ref.read(exploreViewModelProvider);
+      final lat = exploreState.userLocation?.latitude ?? 24.7136;
+      final lng = exploreState.userLocation?.longitude ?? 46.6753;
+      ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
+
+      // 4. Close the details screen to go back to home screen
+      Navigator.of(context).pop();
+
+      // 5. Direct user to home timeline index
+      ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
+
+      // 6. Show snackbar on target screen
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -144,9 +147,6 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
           backgroundColor: const Color(0xFF7C57FC),
         ),
       );
-
-      viewModel.loadPlacePosts();
-      widget.onActionTriggered();
     }
   }
 

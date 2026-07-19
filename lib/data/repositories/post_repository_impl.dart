@@ -14,19 +14,30 @@ class PostRepositoryImpl implements PostRepository {
   PostRepositoryImpl({required this._client});
 
   @override
-  Future<Set<String>> fetchFollows(String userId) async {
+  Future<FollowData> fetchFollowData(String userId) async {
     final List<dynamic> response = await _client
         .from('follows')
         .select('following_id, profiles!follows_following_id_fkey(username)')
         .eq('follower_id', userId);
 
-    final Set<String> followingUsernames = {};
+    final Set<String> followedUsernames = {};
+    final List<String> followedUserIds = [];
     for (var row in response) {
+      final followingId = row['following_id'] as String?;
+      if (followingId != null) {
+        followedUserIds.add(followingId);
+      }
       if (row['profiles'] != null && row['profiles']['username'] != null) {
-        followingUsernames.add(row['profiles']['username'] as String);
+        followedUsernames.add(row['profiles']['username'] as String);
       }
     }
-    return followingUsernames;
+    return FollowData(followedUsernames: followedUsernames, followedUserIds: followedUserIds);
+  }
+
+  @override
+  Future<Set<String>> fetchFollows(String userId) async {
+    final data = await fetchFollowData(userId);
+    return data.followedUsernames;
   }
 
   @override
@@ -94,7 +105,8 @@ class PostRepositoryImpl implements PostRepository {
         _client
             .from('posts')
             .select()
-            .order('created_at', ascending: false),
+            .order('created_at', ascending: false)
+            .limit(25),
         _client
             .from('post_likes')
             .select('post_id')
@@ -130,7 +142,8 @@ class PostRepositoryImpl implements PostRepository {
       response = await _client
           .from('posts')
           .select()
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .limit(25);
     }
 
     return response
@@ -164,7 +177,8 @@ class PostRepositoryImpl implements PostRepository {
           .from('posts')
           .select('*, author:profiles!posts_user_id_fkey(id, username, first_name, last_name, avatar_url)')
           .inFilter('user_id', followingIds)
-          .order('created_at', ascending: false),
+          .order('created_at', ascending: false)
+          .limit(25),
     ]);
 
     final likesResponse = results[0];

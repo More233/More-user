@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../providers/settings_provider.dart';
 import '../widgets/language_sheet.dart';
@@ -68,7 +70,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   ImageProvider _getAvatarProvider(String username, String? dbUrl) {
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
-        return NetworkImage(dbUrl);
+        return CachedNetworkImageProvider(dbUrl);
       } else {
         return AssetImage(dbUrl);
       }
@@ -209,9 +211,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           centerTitle: true,
         ),
         body: settings.loading || _profileLoading
-            ? const Center(
-                child: CircularProgressIndicator(
+            ? Center(
+                child: CupertinoActivityIndicator(
                   color: Color(0xFF7C57FC),
+                  radius: 12,
                 ),
               )
             : SingleChildScrollView(

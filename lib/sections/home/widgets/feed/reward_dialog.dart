@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/timeline_post.dart';
 
@@ -58,10 +59,10 @@ class RewardDialog extends StatelessWidget {
                                     ),
                                     child: ClipOval(
                                       child: currentUserAvatarUrl != null
-                                          ? Image.network(
-                                              currentUserAvatarUrl!,
+                                          ? CachedNetworkImage(
+                                              imageUrl: currentUserAvatarUrl!,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (context, e, s) => Image.asset(
+                                              errorWidget: (context, url, error) => Image.asset(
                                                 'assets/home/images/element.png',
                                                 fit: BoxFit.cover,
                                               ),

@@ -30,21 +30,26 @@ class ChatRepositoryImpl implements ChatRepository {
         .order('created_at', referencedTable: 'chat_messages', ascending: false)
         .limit(1, referencedTable: 'chat_messages');
 
-    // Fetch unread messages to count them per thread
-    final unreadResponse = await _client
-        .from('chat_messages')
-        .select('thread_id')
-        .neq('sender_id', currentUserId)
-        .eq('is_read', false);
-    
-    final unreadList = List<Map<String, dynamic>>.from(unreadResponse as List);
+    final rawThreads = List<Map<String, dynamic>>.from(response as List);
+    final List<String> threadIds = rawThreads.map((t) => t['id'] as String).toList();
+
+    // Fetch unread messages to count them per thread, scoped to the current user's threads
     final Map<String, int> unreadCounts = {};
-    for (var msg in unreadList) {
-      final tId = msg['thread_id'] as String;
-      unreadCounts[tId] = (unreadCounts[tId] ?? 0) + 1;
+    if (threadIds.isNotEmpty) {
+      final unreadResponse = await _client
+          .from('chat_messages')
+          .select('thread_id')
+          .inFilter('thread_id', threadIds)
+          .neq('sender_id', currentUserId)
+          .eq('is_read', false);
+      
+      final unreadList = List<Map<String, dynamic>>.from(unreadResponse as List);
+      for (var msg in unreadList) {
+        final tId = msg['thread_id'] as String;
+        unreadCounts[tId] = (unreadCounts[tId] ?? 0) + 1;
+      }
     }
 
-    final rawThreads = List<Map<String, dynamic>>.from(response as List);
     List<Map<String, dynamic>> populatedThreads = [];
 
     for (var threadData in rawThreads) {
@@ -171,7 +176,7 @@ class ChatRepositoryImpl implements ChatRepository {
     await _client.storage.from('post-images').upload(
       fileName,
       file,
-      fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
     );
 
     return _client.storage.from('post-images').getPublicUrl(fileName);

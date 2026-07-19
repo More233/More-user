@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/timeline_post.dart';
 import '../../models/collection_model.dart';
 import '../../models/collections_state.dart';
@@ -33,6 +36,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
   List<Map<String, dynamic>> _profilesList = [];
   bool _isLoadingProfiles = true;
   String _addPeopleSearchQuery = "";
+  Timer? _searchDebounce;
 
   Widget _buildCoverImage(String? path, {
     double size = 48,
@@ -105,12 +109,23 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
     }
 
     if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(
-        path,
+      return CachedNetworkImage(
+        imageUrl: path,
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
+        placeholder: (context, url) => Container(
+          width: size,
+          height: size,
+          color: Colors.grey[200],
+          child: const Center(
+              child: CupertinoActivityIndicator(
+                color: Color(0xFF7C57FC),
+                radius: 8,
+              ),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
           width: size,
           height: size,
           color: Colors.grey[200],
@@ -148,6 +163,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _collectionNameController.removeListener(_updateSaveButtonState);
     _collectionNameController.dispose();
     super.dispose();
@@ -155,12 +171,35 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
 
   Future<void> _loadProfiles() async {
     try {
-      final res = await Supabase.instance.client.from('profiles').select();
-      if (mounted) {
-        setState(() {
-          _profilesList = List<Map<String, dynamic>>.from(res);
-          _isLoadingProfiles = false;
-        });
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      final Set<String> idsToFetch = {};
+      if (currentUser != null) {
+        idsToFetch.add(currentUser.id);
+      }
+
+      final collections = ref.read(collectionsViewModelProvider).collections;
+      for (final col in collections) {
+        idsToFetch.addAll(col.sharedUserIds);
+      }
+
+      if (idsToFetch.isNotEmpty) {
+        final res = await Supabase.instance.client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .inFilter('id', idsToFetch.toList());
+        if (mounted) {
+          setState(() {
+            _profilesList = List<Map<String, dynamic>>.from(res);
+            _isLoadingProfiles = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _profilesList = [];
+            _isLoadingProfiles = false;
+          });
+        }
       }
     } catch (e) {
       debugPrint("Error loading profiles: $e");
@@ -168,6 +207,63 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
         setState(() => _isLoadingProfiles = false);
       }
     }
+  }
+
+  Future<void> _loadAllProfilesForSearch() async {
+    setState(() => _isLoadingProfiles = true);
+    try {
+      final res = await Supabase.instance.client
+          .from('profiles')
+          .select('id, username, first_name, last_name, avatar_url')
+          .limit(100);
+      if (mounted) {
+        setState(() {
+          final existingIds = _profilesList.map((p) => p['id']).toSet();
+          for (final p in res) {
+            if (!existingIds.contains(p['id'])) {
+              _profilesList.add(p);
+            }
+          }
+          _isLoadingProfiles = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading profiles for search: $e");
+      if (mounted) {
+        setState(() => _isLoadingProfiles = false);
+      }
+    }
+  }
+
+  void _onSearchQueryChanged(String val) {
+    setState(() {
+      _addPeopleSearchQuery = val;
+    });
+
+    if (val.trim().isEmpty) return;
+
+    if (_searchDebounce?.isActive ?? false) _searchDebounce!.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () async {
+      try {
+        final res = await Supabase.instance.client
+            .from('profiles')
+            .select('id, username, first_name, last_name, avatar_url')
+            .or('username.ilike.%$val%,first_name.ilike.%$val%,last_name.ilike.%$val%')
+            .limit(50);
+        if (mounted) {
+          setState(() {
+            final existingIds = _profilesList.map((p) => p['id']).toSet();
+            for (final p in res) {
+              if (!existingIds.contains(p['id'])) {
+                _profilesList.add(p);
+              }
+            }
+          });
+        }
+      } catch (e) {
+        debugPrint("Error searching profiles: $e");
+      }
+    });
   }
 
   Widget _buildOverlappingSharedAvatars(List<String> userIds, {double size = 24}) {
@@ -214,7 +310,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
               child: ClipOval(
                 child: avatarUrl != null && avatarUrl.isNotEmpty
                     ? (avatarUrl.startsWith('http')
-                        ? Image.network(avatarUrl, fit: BoxFit.cover)
+                        ? CachedNetworkImage(imageUrl: avatarUrl, fit: BoxFit.cover, errorWidget: (context, url, error) => Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover))
                         : Image.asset(avatarUrl, fit: BoxFit.cover))
                     : Image.asset('assets/home/images/avatar_placeholder.png', fit: BoxFit.cover),
               ),
@@ -839,6 +935,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                 _isAddPeopleView = true;
                 _addPeopleSearchQuery = "";
               });
+              _loadAllProfilesForSearch();
             },
           ),
           const Divider(height: 1, color: Color(0xFFE8E8E8)),
@@ -934,11 +1031,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
-                    onChanged: (val) {
-                      setState(() {
-                        _addPeopleSearchQuery = val;
-                      });
-                    },
+                    onChanged: _onSearchQueryChanged,
                     style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, color: Colors.black),
                     decoration: InputDecoration(
                       hintText: "Search",
@@ -955,7 +1048,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
           
           Expanded(
             child: _isLoadingProfiles
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF7C57FC)))
+                ? const Center(child: CupertinoActivityIndicator())
                 : filteredProfiles.isEmpty
                     ? Center(
                         child: Text(
@@ -982,7 +1075,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                               backgroundColor: Colors.grey[200],
                               backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
                                   ? (avatarUrl.startsWith('http')
-                                      ? NetworkImage(avatarUrl)
+                                      ? CachedNetworkImageProvider(avatarUrl)
                                       : AssetImage(avatarUrl) as ImageProvider)
                                   : const AssetImage('assets/home/images/avatar_placeholder.png'),
                             ),
@@ -1059,8 +1152,9 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
             ? const SizedBox(
                 height: 250,
                 child: Center(
-                  child: CircularProgressIndicator(
+                  child: CupertinoActivityIndicator(
                     color: Color(0xFF7C57FC),
+                    radius: 12,
                   ),
                 ),
               )

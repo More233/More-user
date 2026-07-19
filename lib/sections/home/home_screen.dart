@@ -23,6 +23,7 @@ import 'widgets/bottom_sheets/comments_bottom_sheet.dart';
 import 'widgets/common/fab_coachmark_overlay.dart';
 import 'widgets/bottom_sheets/follow_friends_bottom_sheet.dart';
 import 'widgets/chat/messages_screen.dart';
+import 'widgets/common/cached_image.dart';
 import 'widgets/common/custom_loading_indicator.dart';
 import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
 import 'widgets/bottom_sheets/share_bottom_sheet.dart';
@@ -675,9 +676,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                   ),
                   child: ClipOval(
                     child: state.currentUserAvatarUrl != null && state.currentUserAvatarUrl!.isNotEmpty
-                        ? (state.currentUserAvatarUrl!.startsWith('http')
-                            ? Image.network(state.currentUserAvatarUrl!, fit: BoxFit.cover)
-                            : Image.asset(state.currentUserAvatarUrl!, fit: BoxFit.cover))
+                        ? CustomCachedImage(url: state.currentUserAvatarUrl!, fit: BoxFit.cover)
                         : Image.asset(
                             'assets/home/images/avatar_placeholder.png',
                             fit: BoxFit.cover,

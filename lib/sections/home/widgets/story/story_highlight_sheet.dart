@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class StoryHighlightSheet extends StatelessWidget {
   final String currentMediaUrl;
@@ -125,7 +126,7 @@ class StoryHighlightSheet extends StatelessWidget {
                             ),
                             child: ClipOval(
                               child: currentMediaUrl.startsWith('http')
-                                  ? Image.network(currentMediaUrl, fit: BoxFit.cover)
+                                  ? CachedNetworkImage(imageUrl: currentMediaUrl, fit: BoxFit.cover, errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.white24))
                                   : Image.asset(currentMediaUrl, fit: BoxFit.cover),
                             ),
                           ),

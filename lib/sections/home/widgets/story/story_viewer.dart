@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -54,7 +55,17 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
   void _safePop() {
     if (!mounted || _isPopped) return;
     _isPopped = true;
-    Navigator.of(context).pop();
+    final route = ModalRoute.of(context);
+    if (route != null) {
+      Navigator.of(context).popUntil((r) => r == route);
+      if (route.isCurrent) {
+        Navigator.of(context).pop();
+      } else {
+        Navigator.of(context).removeRoute(route);
+      }
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -138,7 +149,21 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
       }
     });
 
+    if (storyState.currentGroupIndex < 0 || storyState.currentGroupIndex >= widget.storyGroups.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _safePop());
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CupertinoActivityIndicator(color: Colors.white)),
+      );
+    }
     final currentGroup = widget.storyGroups[storyState.currentGroupIndex];
+    if (storyState.currentStoryIndex < 0 || storyState.currentStoryIndex >= currentGroup.mediaUrls.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _safePop());
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CupertinoActivityIndicator(color: Colors.white)),
+      );
+    }
     final currentMediaUrl = currentGroup.mediaUrls[storyState.currentStoryIndex];
 
     final client = Supabase.instance.client;
@@ -278,8 +303,9 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                                 } else {
                                                   _animationController.stop();
                                                   return const Center(
-                                                    child: CircularProgressIndicator(
+                                                    child: CupertinoActivityIndicator(
                                                       color: Colors.white,
+                                                      radius: 12,
                                                     ),
                                                   );
                                                 }
@@ -299,9 +325,10 @@ class _StoryViewerState extends ConsumerState<StoryViewer> with SingleTickerProv
                                                         _animationController.forward(from: _animationController.value);
                                                       }
                                                     }
-                                                    return const Center(
-                                                      child: CircularProgressIndicator(
+                                                    return Center(
+                                                      child: CupertinoActivityIndicator(
                                                         color: Colors.white,
+                                                        radius: 12,
                                                       ),
                                                     );
                                                   },

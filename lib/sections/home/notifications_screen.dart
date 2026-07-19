@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'view_models/notifications_view_model.dart';
 import 'profile_screen.dart';
@@ -174,7 +175,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   radius: 20,
                   backgroundColor: Colors.grey[200],
                   backgroundImage: act['avatar_url'] != null && (act['avatar_url'] as String).isNotEmpty
-                      ? NetworkImage(act['avatar_url'] as String) as ImageProvider
+                      ? CachedNetworkImageProvider(act['avatar_url'] as String) as ImageProvider
                       : const AssetImage(
                           'assets/home/images/element.png',
                         ),

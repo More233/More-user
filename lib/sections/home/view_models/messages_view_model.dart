@@ -33,6 +33,7 @@ final messagesViewModelProvider = StateNotifierProvider<MessagesViewModel, Messa
 class MessagesViewModel extends StateNotifier<MessagesState> {
   final ChatRepository _chatRepository;
   RealtimeChannel? _messagesSubscription;
+  RealtimeChannel? _threadsSubscription;
   String _currentUserId = '';
 
   MessagesViewModel({required this._chatRepository})
@@ -47,9 +48,14 @@ class MessagesViewModel extends StateNotifier<MessagesState> {
       Supabase.instance.client.removeChannel(_messagesSubscription!);
       _messagesSubscription = null;
     }
+    if (_threadsSubscription != null) {
+      Supabase.instance.client.removeChannel(_threadsSubscription!);
+      _threadsSubscription = null;
+    }
     state = state.copyWith(isLoading: true);
     await loadData();
     _subscribeToMessages();
+    _subscribeToThreads();
   }
 
   Future<void> loadData() async {
@@ -60,6 +66,21 @@ class MessagesViewModel extends StateNotifier<MessagesState> {
       debugPrint("Error loading chat data: $e");
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  void _subscribeToThreads() {
+    final client = Supabase.instance.client;
+    _threadsSubscription = client
+        .channel('public:chat_threads_user')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'chat_threads',
+          callback: (payload) async {
+            await loadData();
+          },
+        );
+    _threadsSubscription?.subscribe();
   }
 
   void _subscribeToMessages() {
@@ -73,22 +94,6 @@ class MessagesViewModel extends StateNotifier<MessagesState> {
           final isForOurThreads = state.threads.any((t) => t['thread']['id'] == threadId);
           if (isForOurThreads) {
             await loadData();
-          } else {
-            // Check if thread belongs to us before reloading
-            try {
-              final client = Supabase.instance.client;
-              final threadCheck = await client
-                  .from('chat_threads')
-                  .select('id')
-                  .eq('id', threadId)
-                  .or('user1_id.eq.$_currentUserId,user2_id.eq.$_currentUserId')
-                  .maybeSingle();
-              if (threadCheck != null) {
-                await loadData();
-              }
-            } catch (e) {
-              debugPrint("Error verifying thread ownership: $e");
-            }
           }
         }
       },
@@ -100,6 +105,9 @@ class MessagesViewModel extends StateNotifier<MessagesState> {
   void dispose() {
     if (_messagesSubscription != null) {
       Supabase.instance.client.removeChannel(_messagesSubscription!);
+    }
+    if (_threadsSubscription != null) {
+      Supabase.instance.client.removeChannel(_threadsSubscription!);
     }
     super.dispose();
   }

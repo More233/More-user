@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -73,7 +74,10 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const CircularProgressIndicator(color: Color(0xFF7C57FC)),
+                    const CupertinoActivityIndicator(
+                      color: Color(0xFF7C57FC),
+                      radius: 12,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       "Scanning photo...",
@@ -1108,10 +1112,9 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                       ),
                       child: _isSubmitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                          ? const CupertinoActivityIndicator(
+                              color: Colors.white,
+                              radius: 8,
                             )
                           : Text(
                               "Submit",
