@@ -6,12 +6,18 @@ class StoryDeleteDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color dialogBg = isDark ? const Color(0xFF131722) : const Color(0xFFF2F2F2);
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color secondaryTextColor = isDark ? Colors.white70 : const Color(0xFF333333);
+    final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFD1D1D6);
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 40),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF2F2F2),
+          color: dialogBg,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
@@ -24,7 +30,7 @@ class StoryDeleteDialog extends StatelessWidget {
                   Text(
                     "Delete this photo?",
                     style: GoogleFonts.ibmPlexSansArabic(
-                      color: Colors.black,
+                      color: textColor,
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
                     ),
@@ -34,7 +40,7 @@ class StoryDeleteDialog extends StatelessWidget {
                   Text(
                     "You can restore unarchived stories for 24 hours, or 30 days for archived stories, from Recently deleted in Your activity. After that, it will be permanently deleted.",
                     style: GoogleFonts.ibmPlexSansArabic(
-                      color: const Color(0xFF333333),
+                      color: secondaryTextColor,
                       fontSize: 13,
                       height: 1.35,
                     ),
@@ -43,7 +49,7 @@ class StoryDeleteDialog extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFD1D1D6), thickness: 0.5),
+            Divider(height: 1, color: dividerColor, thickness: 0.5),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => Navigator.pop(context, true),
@@ -61,7 +67,7 @@ class StoryDeleteDialog extends StatelessWidget {
                 ),
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFD1D1D6), thickness: 0.5),
+            Divider(height: 1, color: dividerColor, thickness: 0.5),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => Navigator.pop(context, false),
@@ -72,7 +78,7 @@ class StoryDeleteDialog extends StatelessWidget {
                 child: Text(
                   "Cancel",
                   style: GoogleFonts.ibmPlexSansArabic(
-                    color: Colors.black,
+                    color: textColor,
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
                   ),

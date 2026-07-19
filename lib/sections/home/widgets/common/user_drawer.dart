@@ -100,12 +100,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF131722) : const Color(0xFFF7F9FA),
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
       ),
-      clipBehavior: Clip.antiAlias,
       child: _loading
           ? const Center(
               child: CupertinoActivityIndicator(
@@ -446,6 +441,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           context: context,
                           icon: CupertinoIcons.square_arrow_left,
                           title: 'Logout',
+                          color: const Color(0xFFFF453A),
                           onTap: () {
                             HapticFeedback.lightImpact();
                             _showLogoutConfirmationDialog(context);
@@ -470,7 +466,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+          backgroundColor: isDark ? const Color(0xFF131722) : Colors.white,
           elevation: 12,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -508,7 +504,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                         child: Container(
                           height: 48,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF3F4F6),
+                            color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           alignment: Alignment.center,
@@ -517,7 +513,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                             style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF4B5563),
+                              color: isDark ? Colors.white70 : const Color(0xFF4B5563),
                             ),
                           ),
                         ),
@@ -804,8 +800,11 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    Color? color,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final displayColor = color ?? (isDark ? Colors.white : Colors.black87);
+    final textDisplayColor = color ?? (isDark ? Colors.white : Colors.black);
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -814,7 +813,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
           children: [
             Icon(
               icon,
-              color: isDark ? Colors.white : Colors.black87,
+              color: displayColor,
               size: 24,
             ),
             const SizedBox(width: 20),
@@ -823,7 +822,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16.5,
                 fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black,
+                color: textDisplayColor,
                 letterSpacing: -0.2,
               ),
             ),

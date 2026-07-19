@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/user_card_info.dart';
 
 class AddFriendsStep extends StatefulWidget {
@@ -80,6 +81,9 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
       final currentUserId = client.auth.currentUser?.id;
       if (currentUserId == null) return;
 
+      final isDark = mounted ? (Theme.of(context).brightness == Brightness.dark) : false;
+      final iconMutedColor = isDark ? Colors.white54 : const Color(0xFF9CA3AF);
+
       // 1. Suggestions: Query other profiles selecting only public fields and limiting to 30
       final List<dynamic> suggestionsData = await client
           .from('profiles')
@@ -96,30 +100,32 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
         final name = '$firstName $lastName'.trim();
         final username = p['username'] as String? ?? '';
         final city = p['city'] as String? ?? '';
+        final avatarUrl = p['avatar_url'] as String? ?? '';
 
         String detailText = 'On More';
-        Widget? detailIcon = const Icon(Icons.sentiment_satisfied, size: 14, color: Color(0xFF9CA3AF));
+        Widget? detailIcon = Icon(Icons.sentiment_satisfied, size: 14, color: iconMutedColor);
 
-        if (username.toLowerCase() == 'jordanmarco') {
-          detailText = '5 Mutual Friends';
-          detailIcon = const Icon(Icons.people, size: 14, color: Color(0xFF9CA3AF));
-        } else if (city.isNotEmpty) {
+        // Remove mutual friends hardcoding constraints and make dynamic
+        if (city.isNotEmpty) {
           detailText = 'Recently at $city';
           detailIcon = SvgPicture.asset(
             'assets/Auth Section/icons/location.svg',
             width: 14,
             height: 14,
-            colorFilter: const ColorFilter.mode(Color(0xFF9CA3AF), BlendMode.srcIn),
+            colorFilter: ColorFilter.mode(iconMutedColor, BlendMode.srcIn),
           );
         }
 
         final isFollowing = _followedUsernames.contains(username.toLowerCase());
+        final String avatarPath = (avatarUrl.isNotEmpty && avatarUrl.startsWith('http'))
+            ? avatarUrl
+            : _getAvatarPath(username);
 
         suggestions.add(
           UserCardInfo(
             name: name.isEmpty ? username : name,
             username: '@$username',
-            avatarPath: _getAvatarPath(username),
+            avatarPath: avatarPath,
             detailText: detailText,
             detailIcon: detailIcon,
             isRegistered: true,
@@ -217,6 +223,11 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
           final String username = isRegistered ? (match['username'] as String) : (dcPhone.isNotEmpty ? dcPhone : dcEmail);
           final String name = dcName.isNotEmpty ? dcName : username;
 
+          final matchAvatar = isRegistered ? (match['avatar_url'] as String? ?? '') : '';
+          final String avatarPath = (matchAvatar.isNotEmpty && matchAvatar.startsWith('http'))
+              ? matchAvatar
+              : _getAvatarPath(username);
+
           final isFollowing = isRegistered && _followedUsernames.contains(username.toLowerCase());
           final isInvited = !isRegistered && _invitedUsernames.contains(username.toLowerCase());
 
@@ -224,7 +235,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
             UserCardInfo(
               name: name,
               username: isRegistered ? '@$username' : username,
-              avatarPath: _getAvatarPath(username),
+              avatarPath: avatarPath,
               detailText: 'In your contacts',
               isRegistered: isRegistered,
               isFollowing: isFollowing,
@@ -356,11 +367,18 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
   Widget build(BuildContext context) {
     final filteredSuggestions = _filterList(_suggestions);
     final filteredContacts = _filterList(_contacts);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color searchBg = isDark ? const Color(0xFF1E2433) : const Color(0xFFF3F4F6);
+    final Color searchBorderColor = isDark ? const Color(0xFF2C354A) : Colors.transparent;
+    final Color inputTextColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color mutedTextColor = isDark ? Colors.white30 : const Color(0xFF9CA3AF);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
@@ -369,14 +387,14 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF1A1A2E),
+            color: titleColor,
           ),
         ),
         actions: [
           TextButton(
             onPressed: widget.onDone,
             child: Text(
-              'Done',
+              _followedUsernames.isEmpty ? 'Skip' : 'Done',
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -396,8 +414,9 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
               child: Container(
                 height: 54,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
+                  color: searchBg,
                   borderRadius: BorderRadius.circular(12),
+                  border: isDark ? Border.all(color: searchBorderColor) : null,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -406,8 +425,8 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                       'assets/Auth Section/icons/search_01.svg',
                       width: 20,
                       height: 20,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF9CA3AF),
+                      colorFilter: ColorFilter.mode(
+                        mutedTextColor,
                         BlendMode.srcIn,
                       ),
                     ),
@@ -417,12 +436,12 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                         controller: _searchController,
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 16,
-                          color: const Color(0xFF1A1A2E),
+                          color: inputTextColor,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Search by name or username',
                           hintStyle: GoogleFonts.ibmPlexSansArabic(
-                            color: const Color(0xFF9CA3AF),
+                            color: mutedTextColor,
                             fontSize: 15,
                           ),
                           border: InputBorder.none,
@@ -444,7 +463,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                             _searchQuery = '';
                           });
                         },
-                        child: const Icon(Icons.clear, color: Color(0xFF9CA3AF), size: 20),
+                        child: Icon(Icons.clear, color: mutedTextColor, size: 20),
                       ),
                   ],
                 ),
@@ -452,7 +471,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
             ),
             Expanded(
               child: _isLoading
-                  ? Center(
+                  ? const Center(
                       child: CupertinoActivityIndicator(
                         color: Color(0xFF7C57FC),
                         radius: 12,
@@ -518,15 +537,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                                         style: GoogleFonts.ibmPlexSansArabic(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF1A1A2E),
-                                        ),
-                                      ),
-                                      Text(
-                                        'See all',
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF7C57FC),
+                                          color: titleColor,
                                         ),
                                       ),
                                     ],
@@ -553,15 +564,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                                         style: GoogleFonts.ibmPlexSansArabic(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF1A1A2E),
-                                        ),
-                                      ),
-                                      Text(
-                                        'See all',
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF7C57FC),
+                                          color: titleColor,
                                         ),
                                       ),
                                     ],
@@ -586,7 +589,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                                         'No users found matching "$_searchQuery"',
                                         style: GoogleFonts.ibmPlexSansArabic(
                                           fontSize: 16,
-                                          color: const Color(0xFF9CA3AF),
+                                          color: mutedTextColor,
                                         ),
                                         textAlign: TextAlign.center,
                                       ),
@@ -604,11 +607,17 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
   }
 
   Widget _buildUserCard(UserCardInfo user) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color cardBg = isDark ? const Color(0xFF1E2433) : Colors.white;
+    final Color cardBorder = isDark ? const Color(0xFF2C354A) : const Color(0xFFF3F4F6);
+    final Color nameColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color usernameColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF3F4F6)),
+        border: Border.all(color: cardBorder),
       ),
       padding: const EdgeInsets.all(12),
       child: Row(
@@ -620,7 +629,9 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               image: DecorationImage(
-                image: AssetImage(user.avatarPath),
+                image: (user.avatarPath.startsWith('http')
+                    ? CachedNetworkImageProvider(user.avatarPath)
+                    : AssetImage(user.avatarPath)) as ImageProvider,
                 fit: BoxFit.cover,
               ),
             ),
@@ -636,7 +647,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A1A2E),
+                    color: nameColor,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -645,7 +656,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: const Color(0xFF9CA3AF),
+                    color: usernameColor,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -661,7 +672,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
-                          color: const Color(0xFF9CA3AF),
+                          color: usernameColor,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -687,7 +698,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: (user.isRegistered ? user.isFollowing : user.isInvited)
-                    ? const Color(0xFFEDE6FC)
+                    ? (isDark ? const Color(0xFF2E2254) : const Color(0xFFEDE6FC))
                     : const Color(0xFF7C57FC),
                 elevation: 0,
                 padding: EdgeInsets.zero,

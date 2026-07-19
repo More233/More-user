@@ -430,6 +430,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _confirmDeletePost(TimelinePost post) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -440,7 +441,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           child: Container(
             width: 286,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF1E2433) : Colors.white,
               borderRadius: BorderRadius.circular(20),
             ),
             padding: const EdgeInsets.only(top: 24, bottom: 24),
@@ -452,7 +453,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF323232),
+                    color: isDark ? Colors.white : const Color(0xFF323232),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -465,10 +466,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   },
                   child: Container(
                     width: 286,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
-                        top: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
-                        bottom: BorderSide(color: Color(0xFFBFBFBF), width: 0.7),
+                        top: BorderSide(color: isDark ? const Color(0xFF2C354A) : const Color(0xFFBFBFBF), width: 0.7),
+                        bottom: BorderSide(color: isDark ? const Color(0xFF2C354A) : const Color(0xFFBFBFBF), width: 0.7),
                       ),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -495,7 +496,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF373737),
+                        color: isDark ? Colors.white70 : const Color(0xFF373737),
                       ),
                     ),
                   ),
@@ -685,10 +686,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_profileLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: CustomLoadingIndicator(),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const CustomLoadingIndicator(),
       );
     }
 
@@ -711,7 +713,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: CustomScrollView(
           slivers: [
             // Pinned collapsing Twitter header
@@ -759,7 +761,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          color: isDark ? Colors.white : Colors.black,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -767,20 +769,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         _username.isNotEmpty ? '@$_username' : '',
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 14,
-                          color: const Color(0xFF687684),
+                          color: isDark ? Colors.white70 : const Color(0xFF687684),
                         ),
                       ),
                       const SizedBox(height: 12),
 
                       Row(
                         children: [
-                          const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF687684)),
+                          Icon(Icons.calendar_today_outlined, size: 14, color: isDark ? Colors.white60 : const Color(0xFF687684)),
                           const SizedBox(width: 6),
                           Text(
                             _joinedDate.isNotEmpty ? _joinedDate : 'Joined March 2021',
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 14,
-                              color: const Color(0xFF687684),
+                              color: isDark ? Colors.white70 : const Color(0xFF687684),
                             ),
                           ),
                         ],
@@ -811,7 +813,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   style: GoogleFonts.ibmPlexSansArabic(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
-                                    color: Colors.black,
+                                    color: isDark ? Colors.white : Colors.black,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -819,7 +821,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   'Following',
                                   style: GoogleFonts.ibmPlexSansArabic(
                                     fontSize: 14,
-                                    color: const Color(0xFF687684),
+                                    color: isDark ? Colors.white70 : const Color(0xFF687684),
                                   ),
                                 ),
                               ],
@@ -848,7 +850,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   style: GoogleFonts.ibmPlexSansArabic(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
-                                    color: Colors.black,
+                                    color: isDark ? Colors.white : Colors.black,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -856,7 +858,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   'Followers',
                                   style: GoogleFonts.ibmPlexSansArabic(
                                     fontSize: 14,
-                                    color: const Color(0xFF687684),
+                                    color: isDark ? Colors.white70 : const Color(0xFF687684),
                                   ),
                                 ),
                               ],
@@ -875,11 +877,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     color: _isFollowing
-                                        ? const Color(0xFFF3F4F6)
+                                        ? (isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF3F4F6))
                                         : const Color(0xFF7C57FC),
                                     borderRadius: BorderRadius.circular(100),
                                     border: _isFollowing
-                                        ? Border.all(color: const Color(0xFFE5E7EB))
+                                        ? Border.all(color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE5E7EB))
                                         : null,
                                   ),
                                   alignment: Alignment.center,
@@ -894,7 +896,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
                                             color: _isFollowing
-                                                ? const Color(0xFF374151)
+                                                ? (isDark ? Colors.white : const Color(0xFF374151))
                                                 : Colors.white,
                                           ),
                                         ),
@@ -908,9 +910,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 child: Container(
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: isDark ? const Color(0xFF2C2C2E) : Colors.white,
                                     borderRadius: BorderRadius.circular(100),
-                                    border: Border.all(color: const Color(0xFFD1D5DB)),
+                                    border: Border.all(color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFD1D5DB)),
                                   ),
                                   alignment: Alignment.center,
                                   child: _messageLoading
@@ -921,10 +923,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       : Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            const Icon(
+                                            Icon(
                                               Icons.chat_bubble_outline,
                                               size: 16,
-                                              color: Color(0xFF374151),
+                                              color: isDark ? Colors.white : const Color(0xFF374151),
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
@@ -932,7 +934,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                               style: GoogleFonts.outfit(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
-                                                color: const Color(0xFF374151),
+                                                color: isDark ? Colors.white : const Color(0xFF374151),
                                               ),
                                             ),
                                           ],
@@ -955,7 +957,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                 ),
@@ -981,7 +983,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     },
                   ),
                 const SizedBox(height: 20),
-                const Divider(height: 8, color: Color(0xFFF6F6F6)),
+                Divider(height: 8, color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF6F6F6)),
                 // My Timeline Feed Header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -990,7 +992,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Colors.black,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                 ),
@@ -1202,7 +1204,7 @@ class TwitterProfileHeaderDelegate extends SliverPersistentHeaderDelegate {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
+                  border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 4),
                 ),
                 child: Hero(
                   tag: 'user-avatar',

@@ -89,6 +89,11 @@ class _OtpInputState extends State<OtpInput> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color borderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final Color fillColor = isDark ? const Color(0xFF1E2433) : Colors.white;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -108,19 +113,19 @@ class _OtpInputState extends State<OtpInput> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1A1A2E),
+                  color: textColor,
                 ),
                 decoration: InputDecoration(
                   counterText: "",
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+                    borderSide: BorderSide(color: borderColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: Color(0xFF7C57FC), width: 1.5),
                   ),
-                  fillColor: Colors.white,
+                  fillColor: fillColor,
                   filled: true,
                   contentPadding: EdgeInsets.zero,
                 ),

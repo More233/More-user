@@ -330,14 +330,15 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
   ];
 
   Widget _buildStickerContainer(Map<String, dynamic> sticker, bool isSelected) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E2433) : Colors.white,
         shape: BoxShape.circle,
         border: Border.all(
-          color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
+          color: isSelected ? const Color(0xFF7C57FC) : (isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
           width: isSelected ? 2 : 1,
         ),
         boxShadow: [
@@ -380,6 +381,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             final filtered = _allStickers.where((s) {
               final query = searchQuery.toLowerCase();
               return s['name']!.toLowerCase().contains(query);
@@ -387,9 +389,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
             
             return Container(
               height: MediaQuery.of(context).size.height * 0.75,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF131722) : Colors.white,
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
@@ -406,7 +408,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                     width: 36,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5EA),
+                      color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE5E5EA),
                       borderRadius: BorderRadius.circular(2.5),
                     ),
                   ),
@@ -420,7 +422,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                           child: Text(
                             "Stickers",
                             style: GoogleFonts.ibmPlexSansArabic(
-                              color: const Color(0xFF1F1F1F),
+                              color: isDark ? Colors.white : const Color(0xFF1F1F1F),
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
@@ -432,13 +434,13 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                         child: Container(
                           width: 36,
                           height: 36,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF2F2F7),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF2C354A) : const Color(0xFFF2F2F7),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.close,
-                            color: Color(0xFF1F1F1F),
+                            color: isDark ? Colors.white : const Color(0xFF1F1F1F),
                             size: 20,
                           ),
                         ),
@@ -449,7 +451,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                   Container(
                     height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2F2F7),
+                      color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF2F2F7),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -464,7 +466,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                 searchQuery = val;
                               });
                             },
-                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 15, color: Colors.black),
+                            style: GoogleFonts.ibmPlexSansArabic(fontSize: 15, color: isDark ? Colors.white : Colors.black),
                             decoration: InputDecoration(
                               hintText: "Search stickers",
                               hintStyle: GoogleFonts.ibmPlexSansArabic(color: Colors.grey, fontSize: 15),
@@ -528,7 +530,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.ibmPlexSansArabic(
-                                        color: const Color(0xFF5A5D67),
+                                        color: isDark ? Colors.white70 : const Color(0xFF5A5D67),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -703,6 +705,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool hasCaption = _captionController.text.trim().isNotEmpty;
     final int remainingChars = 160 - _captionController.text.length;
     final double topPadding = MediaQuery.of(context).padding.top;
@@ -713,7 +716,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Column(
         children: [
           // Top Map Header Stack
@@ -827,7 +830,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: isDark ? const Color(0xFF1E2433).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.9),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -841,8 +844,8 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       'assets/home/icons/close.svg',
                       width: 20,
                       height: 20,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF333333),
+                      colorFilter: ColorFilter.mode(
+                        isDark ? Colors.white : const Color(0xFF333333),
                         BlendMode.srcIn,
                       ),
                     ),
@@ -898,7 +901,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                     // Sliding Animated Tray containing remaining stickers
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutBack,
+                      curve: _isStickerTrayOpen ? Curves.easeOutBack : Curves.easeOut,
                       clipBehavior: Clip.hardEdge,
                       decoration: const BoxDecoration(),
                       width: _isStickerTrayOpen
@@ -974,10 +977,10 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                     width: 40,
                                     height: 40,
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: isDark ? const Color(0xFF1E2433) : Colors.white,
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: const Color(0xFFE8E8E8),
+                                        color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8),
                                         width: 1,
                                       ),
                                       boxShadow: [
@@ -989,9 +992,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                       ],
                                     ),
                                     padding: const EdgeInsets.all(10),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.search,
-                                      color: Color(0xFF5A5D67),
+                                      color: isDark ? Colors.white : const Color(0xFF5A5D67),
                                       size: 20,
                                     ),
                                   ),
@@ -1035,7 +1038,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                             style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF303030),
+                              color: isDark ? Colors.white : const Color(0xFF303030),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -1059,9 +1062,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                   Container(
                     height: 120,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF1E2433) : Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFD4D4D4)),
+                      border: Border.all(color: isDark ? const Color(0xFF2C354A) : const Color(0xFFD4D4D4)),
                     ),
                     padding: const EdgeInsets.all(12),
                     child: Stack(
@@ -1072,14 +1075,14 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                           maxLines: null,
                           style: GoogleFonts.ibmPlexSansArabic(
                             fontSize: 16,
-                            color: const Color(0xFF303030),
+                            color: isDark ? Colors.white : const Color(0xFF303030),
                           ),
                           buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
                           decoration: InputDecoration(
                             hintText: "What're you up to?",
                             hintStyle: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 16,
-                              color: const Color(0xFF9CA3AF),
+                              color: isDark ? Colors.white38 : const Color(0xFF9CA3AF),
                             ),
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.zero,
@@ -1118,11 +1121,11 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                         child: Container(
                           height: 58,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: isDark ? const Color(0xFF1E2433) : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF7C57FC).withValues(alpha: 0.12),
+                                color: isDark ? Colors.black26 : const Color(0xFF7C57FC).withValues(alpha: 0.12),
                                 blurRadius: 4,
                                 offset: const Offset(0, 4),
                               ),
@@ -1177,11 +1180,12 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                   width: 100,
                                   height: 100,
                                   decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF1E2433) : Colors.white,
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.08),
-                                        blurRadius: 6,
+                                        color: isDark ? Colors.black26 : const Color(0xFF7C57FC).withValues(alpha: 0.08),
+                                        blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       ),
                                     ],
@@ -1304,7 +1308,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF121212),
+                      color: isDark ? Colors.white : const Color(0xFF121212),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1314,7 +1318,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEDE6FC),
+                          color: isDark ? const Color(0xFF2C2541) : const Color(0xFFEDE6FC),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -1324,8 +1328,8 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                               'assets/home/icons/add_friends.svg',
                               width: 20,
                               height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFF7C57FC),
+                              colorFilter: ColorFilter.mode(
+                                isDark ? const Color(0xFF9F85FF) : const Color(0xFF7C57FC),
                                 BlendMode.srcIn,
                               ),
                             ),
@@ -1335,7 +1339,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF7C57FC),
+                                color: isDark ? const Color(0xFF9F85FF) : const Color(0xFF7C57FC),
                               ),
                             ),
                           ],
@@ -1348,9 +1352,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8F6FE),
+                          color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF8F6FE),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFEDE6FC)),
+                          border: Border.all(color: isDark ? const Color(0xFF2C354A) : const Color(0xFFEDE6FC)),
                         ),
                         child: Row(
                           children: [
@@ -1375,7 +1379,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                           height: 44,
                                           decoration: BoxDecoration(
                                             shape: BoxShape.circle,
-                                            border: Border.all(color: Colors.white, width: 2),
+                                            border: Border.all(color: isDark ? const Color(0xFF1E2433) : Colors.white, width: 2),
                                             boxShadow: [
                                               BoxShadow(
                                                 color: Colors.black.withValues(alpha: 0.08),
@@ -1412,9 +1416,9 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                           width: 44,
                                           height: 44,
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFFEDE6FC),
+                                            color: isDark ? const Color(0xFF2C2541) : const Color(0xFFEDE6FC),
                                             shape: BoxShape.circle,
-                                            border: Border.all(color: Colors.white, width: 2),
+                                            border: Border.all(color: isDark ? const Color(0xFF1E2433) : Colors.white, width: 2),
                                             boxShadow: [
                                               BoxShadow(
                                                 color: Colors.black.withValues(alpha: 0.08),
@@ -1428,7 +1432,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                             style: GoogleFonts.ibmPlexSansArabic(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
-                                              color: const Color(0xFF7C57FC),
+                                              color: isDark ? const Color(0xFF9F85FF) : const Color(0xFF7C57FC),
                                             ),
                                           ),
                                         ),
@@ -1466,7 +1470,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF666666),
+                                      color: isDark ? Colors.white70 : const Color(0xFF666666),
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -1480,7 +1484,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEDE6FC),
+                                color: isDark ? const Color(0xFF2C2541) : const Color(0xFFEDE6FC),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               alignment: Alignment.center,
@@ -1508,7 +1512,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF121212),
+                          color: isDark ? Colors.white : const Color(0xFF121212),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1516,8 +1520,8 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                         'assets/home/icons/info_circle_small.svg',
                         width: 20,
                         height: 20,
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFF82858C),
+                        colorFilter: ColorFilter.mode(
+                          isDark ? Colors.white60 : const Color(0xFF82858C),
                           BlendMode.srcIn,
                         ),
                       ),
@@ -1534,7 +1538,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                           height: 28,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(999),
-                            color: _isPrivate ? const Color(0xFF7C57FC) : const Color(0xFFD1D1D1),
+                            color: _isPrivate ? const Color(0xFF7C57FC) : (isDark ? const Color(0xFF2C354A) : const Color(0xFFD1D1D1)),
                           ),
                           padding: const EdgeInsets.all(2),
                           child: AnimatedAlign(
@@ -1545,7 +1549,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                               height: 24,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white,
+                                color: isDark ? Colors.white70 : Colors.white,
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.15),
@@ -1567,7 +1571,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEDE6FC).withValues(alpha: 0.7),
+                        color: isDark ? const Color(0xFF2C2541).withValues(alpha: 0.7) : const Color(0xFFEDE6FC).withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -1576,8 +1580,8 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                             'assets/home/icons/info_circle_large.svg',
                             width: 28,
                             height: 28,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFF7C57FC),
+                            colorFilter: ColorFilter.mode(
+                              isDark ? const Color(0xFF9F85FF) : const Color(0xFF7C57FC),
                               BlendMode.srcIn,
                             ),
                           ),
@@ -1587,7 +1591,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                               "Add caption to continue.\nPhotos and friends are optional.",
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 14,
-                                color: const Color(0xFF7C57FC),
+                                color: isDark ? const Color(0xFF9F85FF) : const Color(0xFF7C57FC),
                                 fontWeight: FontWeight.normal,
                                 height: 1.25,
                               ),
@@ -1649,10 +1653,11 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
 }
 
   void _openChangeLocation() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final Map<String, dynamic>? selected = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF131722) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

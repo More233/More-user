@@ -22,13 +22,14 @@ class ChatRecordingOverlay extends ConsumerWidget {
     final recordingSeconds = state.recordingSeconds;
     final isPaused = state.isPaused;
     final recordingWaveforms = state.recordingWaveforms;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF181C26) : Colors.white,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFEFEFEF), width: 1),
+        border: Border.all(color: isDark ? const Color(0xFF2C354A) : const Color(0xFFEFEFEF), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -56,7 +57,7 @@ class ChatRecordingOverlay extends ConsumerWidget {
                 Text(
                   '${recordingSeconds ~/ 60}:${(recordingSeconds % 60).toString().padLeft(2, '0')}',
                   style: GoogleFonts.ibmPlexSansArabic(
-                    color: const Color(0xFF737373),
+                    color: isDark ? Colors.white70 : const Color(0xFF737373),
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -89,7 +90,7 @@ class ChatRecordingOverlay extends ConsumerWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF1E2433) : Colors.white,
                 shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
               ),

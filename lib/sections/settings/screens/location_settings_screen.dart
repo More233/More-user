@@ -245,7 +245,7 @@ class LocationSettingsScreen extends ConsumerWidget {
     final Color textColor = isDark ? Colors.white : Colors.black;
     final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF909090);
     final Color dividerColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFE8E8E8);
-    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+
     final Color arrowColor = isDark ? Colors.white24 : const Color(0xFFCCCCCC);
 
     return Directionality(
@@ -280,16 +280,15 @@ class LocationSettingsScreen extends ConsumerWidget {
               _buildSectionHeader(isAr ? 'صلاحية الوصول للموقع' : 'Location access', isAr, isDark),
               // Permission selector row
               ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: iconWrapperBg,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.location_on_outlined,
-                    size: 20,
-                    color: Color(0xFF7C57FC),
+                leading: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Center(
+                    child: Icon(
+                      Icons.location_on_outlined,
+                      size: 22,
+                      color: isDark ? Colors.white : const Color(0xFF262626),
+                    ),
                   ),
                 ),
                 title: Text(
@@ -365,20 +364,17 @@ class LocationSettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
-    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
-    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF909090);
+    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF666666);
 
     return Container(
       width: double.infinity,
-      color: sectionHeaderBg,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 8),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
           color: sectionHeaderTextColor,
-          letterSpacing: 1.0,
         ),
       ),
     );
@@ -394,23 +390,19 @@ class LocationSettingsScreen extends ConsumerWidget {
   }) {
     final Color textColor = isDark ? Colors.white : Colors.black;
     final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF888888);
-    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconWrapperBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
             child: Icon(
               icon,
-              size: 20,
-              color: const Color(0xFF7C57FC),
+              size: 22,
+              color: isDark ? Colors.white : const Color(0xFF262626),
             ),
           ),
           const SizedBox(width: 16),

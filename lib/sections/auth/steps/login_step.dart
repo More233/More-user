@@ -232,6 +232,15 @@ class _LoginStepState extends State<LoginStep> {
   @override
   Widget build(BuildContext context) {
     final hasValue = _inputController.text.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color subtitleColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
+    final Color tabBg = isDark ? const Color(0xFF1E2433) : const Color(0xFFFCFCFC);
+    final Color tabBorder = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final Color inactiveTabTextColor = isDark ? Colors.white38 : const Color(0xFF9CA3AF);
+    final Color dividerColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final Color dividerTextColor = isDark ? Colors.white38 : const Color(0xFFB0B0B0);
+    final Color switchTextColor = isDark ? Colors.white70 : const Color(0xFF4F4F4F);
 
     return SingleChildScrollView(
       child: Padding(
@@ -258,7 +267,7 @@ class _LoginStepState extends State<LoginStep> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF1A1A2E),
+                color: titleColor,
               ),
               textAlign: TextAlign.center,
             ),
@@ -268,7 +277,7 @@ class _LoginStepState extends State<LoginStep> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF9CA3AF),
+                color: subtitleColor,
               ),
               textAlign: TextAlign.center,
             ),
@@ -276,9 +285,9 @@ class _LoginStepState extends State<LoginStep> {
             // Tabs Capsule Switcher
             Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFFCFCFC),
+                color: tabBg,
                 borderRadius: BorderRadius.circular(100),
-                border: Border.all(color: const Color(0xFFE8E8E8)),
+                border: Border.all(color: tabBorder),
               ),
               padding: const EdgeInsets.all(4),
               child: Row(
@@ -307,7 +316,7 @@ class _LoginStepState extends State<LoginStep> {
                               width: 20,
                               height: 20,
                               colorFilter: ColorFilter.mode(
-                                _isPhoneTab ? const Color(0xFF7C57FC) : const Color(0xFF9CA3AF),
+                                _isPhoneTab ? const Color(0xFF7C57FC) : inactiveTabTextColor,
                                 BlendMode.srcIn,
                               ),
                             ),
@@ -317,7 +326,7 @@ class _LoginStepState extends State<LoginStep> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: _isPhoneTab ? FontWeight.w600 : FontWeight.w400,
-                                color: _isPhoneTab ? const Color(0xFF7C57FC) : const Color(0xFF9CA3AF),
+                                color: _isPhoneTab ? const Color(0xFF7C57FC) : inactiveTabTextColor,
                               ),
                             ),
                           ],
@@ -349,7 +358,7 @@ class _LoginStepState extends State<LoginStep> {
                               width: 20,
                               height: 20,
                               colorFilter: ColorFilter.mode(
-                                !_isPhoneTab ? const Color(0xFF7C57FC) : const Color(0xFF9CA3AF),
+                                !_isPhoneTab ? const Color(0xFF7C57FC) : inactiveTabTextColor,
                                 BlendMode.srcIn,
                               ),
                             ),
@@ -359,7 +368,7 @@ class _LoginStepState extends State<LoginStep> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 16,
                                 fontWeight: !_isPhoneTab ? FontWeight.w600 : FontWeight.w400,
-                                color: !_isPhoneTab ? const Color(0xFF7C57FC) : const Color(0xFF9CA3AF),
+                                color: !_isPhoneTab ? const Color(0xFF7C57FC) : inactiveTabTextColor,
                               ),
                             ),
                           ],
@@ -418,8 +427,8 @@ class _LoginStepState extends State<LoginStep> {
                     'assets/Auth Section/icons/mail_01.svg',
                     width: 20,
                     height: 20,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFF9CA3AF),
+                    colorFilter: ColorFilter.mode(
+                      inactiveTabTextColor,
                       BlendMode.srcIn,
                     ),
                   ),
@@ -467,7 +476,7 @@ class _LoginStepState extends State<LoginStep> {
             // Social Divider
             Row(
               children: [
-                Expanded(child: Container(height: 1, color: const Color(0xFFE8E8E8))),
+                Expanded(child: Container(height: 1, color: dividerColor)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
@@ -475,22 +484,24 @@ class _LoginStepState extends State<LoginStep> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
-                      color: const Color(0xFFB0B0B0),
+                      color: dividerTextColor,
                     ),
                   ),
                 ),
-                Expanded(child: Container(height: 1, color: const Color(0xFFE8E8E8))),
+                Expanded(child: Container(height: 1, color: dividerColor)),
               ],
             ),
             const SizedBox(height: 32),
             // Social Action Buttons
             _buildSocialButton(
+              context: context,
               logoSvgPath: 'assets/Auth Section/icons/social_icon.svg',
               platformName: 'Google',
               onPressed: _isLoading ? () {} : _handleGoogleSignIn,
             ),
             const SizedBox(height: 16),
             _buildSocialButton(
+              context: context,
               logoSvgPath: 'assets/Auth Section/icons/social_icon_apple.svg',
               platformName: 'Apple',
               onPressed: _isLoading ? () {} : _handleAppleSignIn,
@@ -504,7 +515,7 @@ class _LoginStepState extends State<LoginStep> {
                   "Don't have an account?",
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 16,
-                    color: const Color(0xFF4F4F4F),
+                    color: switchTextColor,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -530,21 +541,23 @@ class _LoginStepState extends State<LoginStep> {
   }
 
   Widget _buildSocialButton({
+    required BuildContext context,
     required String logoSvgPath,
     required String platformName,
     required VoidCallback onPressed,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFFE8E8E8)),
+          side: BorderSide(color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: isDark ? const Color(0xFF1E2433) : Colors.white,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -553,6 +566,9 @@ class _LoginStepState extends State<LoginStep> {
               logoSvgPath,
               width: 24,
               height: 24,
+              colorFilter: (platformName.toLowerCase() == 'apple' && isDark)
+                  ? const ColorFilter.mode(Colors.white, BlendMode.srcIn)
+                  : null,
             ),
             const SizedBox(width: 12),
             Text(
@@ -560,7 +576,7 @@ class _LoginStepState extends State<LoginStep> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF414651),
+                color: isDark ? Colors.white : const Color(0xFF414651),
               ),
             ),
           ],

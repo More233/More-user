@@ -38,12 +38,19 @@ class CountryPicker extends StatelessWidget {
   ];
 
   void _showSelectionBottomSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bottomSheetBg = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color handleColor = isDark ? Colors.white24 : const Color(0xFFE8E8E8);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color textColor = isDark ? Colors.white70 : const Color(0xFF1A1A2E);
+    final Color dialTextColor = isDark ? Colors.white54 : const Color(0xFF9CA3AF);
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: bottomSheetBg,
       builder: (context) {
         return SafeArea(
           child: Column(
@@ -54,7 +61,7 @@ class CountryPicker extends StatelessWidget {
                 width: 56,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8E8E8),
+                  color: handleColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -64,7 +71,7 @@ class CountryPicker extends StatelessWidget {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1A2E),
+                  color: titleColor,
                 ),
               ),
               const SizedBox(height: 16),
@@ -80,7 +87,7 @@ class CountryPicker extends StatelessWidget {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFF1A1A2E),
+                      color: isSelected ? const Color(0xFF7C57FC) : textColor,
                     ),
                   ),
                   trailing: Text(
@@ -88,7 +95,7 @@ class CountryPicker extends StatelessWidget {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFF9CA3AF),
+                      color: isSelected ? const Color(0xFF7C57FC) : dialTextColor,
                     ),
                   ),
                   onTap: () {
@@ -107,6 +114,9 @@ class CountryPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color displayTextColor = isDark ? Colors.white : const Color(0xFF1F242E);
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _showSelectionBottomSheet(context),
@@ -123,7 +133,7 @@ class CountryPicker extends StatelessWidget {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF1F242E),
+              color: displayTextColor,
             ),
           ),
           const SizedBox(width: 4),
@@ -131,8 +141,8 @@ class CountryPicker extends StatelessWidget {
             'assets/Auth Section/icons/arrow_down.svg',
             width: 16,
             height: 16,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF1F242E),
+            colorFilter: ColorFilter.mode(
+              displayTextColor,
               BlendMode.srcIn,
             ),
           ),

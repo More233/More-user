@@ -68,11 +68,12 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
   }
 
   void _confirmDeleteCollection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (dialogCtx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E2433) : Colors.white,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
@@ -85,14 +86,13 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: isDark ? Colors.white : Colors.black,
                     height: 1.4,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 16),
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
+              Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
               InkWell(
                 onTap: () async {
                   Navigator.pop(dialogCtx); // Close Dialog
@@ -118,7 +118,7 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
                   ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
+              Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
               InkWell(
                 onTap: () => Navigator.pop(dialogCtx),
                 child: Container(
@@ -130,7 +130,7 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF6D6D6D),
+                      color: isDark ? Colors.white54 : const Color(0xFF6D6D6D),
                     ),
                   ),
                 ),
@@ -157,21 +157,22 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
     Color bgColor;
     Color iconColor;
     String iconSvg;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     switch (post.categoryIcon) {
       case CategoryIconType.coffee:
-        bgColor = const Color(0xFFFDF6EC);
-        iconColor = const Color(0xFFE6A23C);
+        bgColor = isDark ? const Color(0xFF2C241B) : const Color(0xFFFDF6EC);
+        iconColor = isDark ? const Color(0xFFFFB74D) : const Color(0xFFE6A23C);
         iconSvg = 'assets/home/icons/coffee_02.svg';
         break;
       case CategoryIconType.camera:
-        bgColor = const Color(0xFFFFF0F5);
-        iconColor = const Color(0xFFFF5B9D);
+        bgColor = isDark ? const Color(0xFF2D1B22) : const Color(0xFFFFF0F5);
+        iconColor = isDark ? const Color(0xFFFF85B2) : const Color(0xFFFF5B9D);
         iconSvg = 'assets/home/icons/camera_01_1.svg';
         break;
       case CategoryIconType.building:
-        bgColor = const Color(0xFFF2EEFC);
-        iconColor = const Color(0xFF7C57FC);
+        bgColor = isDark ? const Color(0xFF1F1A30) : const Color(0xFFF2EEFC);
+        iconColor = isDark ? const Color(0xFF9F85FF) : const Color(0xFF7C57FC);
         iconSvg = 'assets/home/icons/building_05.svg';
         break;
     }
@@ -194,7 +195,7 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: isDark ? Colors.white70 : Colors.black,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -214,13 +215,15 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
     );
     final isCustomCollection = col.name.toLowerCase() != 'saved';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
           onPressed: () {
             Navigator.pop(context);
             if (widget.onRefresh != null) {
@@ -233,7 +236,7 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
         centerTitle: true,
@@ -244,8 +247,8 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
                 'assets/home/icons/delete_03_1.svg',
                 width: 24,
                 height: 24,
-                colorFilter: const ColorFilter.mode(
-                  Color(0xFF82858C),
+                colorFilter: ColorFilter.mode(
+                  isDark ? Colors.white70 : const Color(0xFF82858C),
                   BlendMode.srcIn,
                 ),
               ),
@@ -254,13 +257,13 @@ class _CollectionDetailsScreenState extends ConsumerState<CollectionDetailsScree
         ],
       ),
       body: _isLoading
-          ? const Center(child: CupertinoActivityIndicator())
+          ? Center(child: CupertinoActivityIndicator(color: isDark ? Colors.white : const Color(0xFF7C57FC)))
           : _collectionPosts.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.photo_library_outlined, size: 64, color: Colors.grey[300]),
+                      Icon(Icons.photo_library_outlined, size: 64, color: isDark ? Colors.grey[700] : Colors.grey[300]),
                       const SizedBox(height: 16),
                       Text(
                         'No saved check-in photos yet.',

@@ -118,11 +118,16 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final canVerify = _enteredCode.length == 6;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color sheetBg = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color handleColor = isDark ? Colors.white24 : const Color(0xFFE8E8E8);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color subtitleColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: sheetBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
         left: 24,
@@ -140,7 +145,7 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
               width: 56,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE8E8E8),
+                color: handleColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -151,7 +156,7 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF1A1A2E),
+                color: titleColor,
               ),
               textAlign: TextAlign.center,
             ),
@@ -161,7 +166,7 @@ class _OtpBottomSheetState extends State<OtpBottomSheet> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
-                color: const Color(0xFF9CA3AF),
+                color: subtitleColor,
                 height: 1.4,
               ),
               textAlign: TextAlign.center,

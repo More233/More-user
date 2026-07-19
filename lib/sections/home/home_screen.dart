@@ -387,8 +387,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         return Scaffold(
           key: _scaffoldKey,
           backgroundColor: Theme.of(context).brightness == Brightness.dark 
-              ? const Color(0xFF090B0F) // Deeper black background for shadow contrast
-              : const Color(0xFFE5E7EB), // Distinct grey background for light mode contrast
+              ? const Color(0xFF131722) // Matches dark drawer background to fill corner gaps
+              : const Color(0xFFF7F9FA), // Matches light drawer background to fill corner gaps
           body: Stack(
             children: [
               // Under Layer: The Drawer Menu

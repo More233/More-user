@@ -353,13 +353,14 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
   }
 
   void _showUnsaveConfirmation() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (dialogCtx) => Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E2433) : Colors.white,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -370,7 +371,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: isDark ? Colors.white : Colors.black,
                   height: 1.3,
                 ),
                 textAlign: TextAlign.center,
@@ -382,13 +383,13 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                 'Removing this will also remove it from all collections',
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 14,
-                  color: const Color(0xFF6D6D6D),
+                  color: isDark ? Colors.white70 : const Color(0xFF6D6D6D),
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 20),
-            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
             InkWell(
               onTap: () async {
                 Navigator.pop(dialogCtx);
@@ -428,7 +429,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                 ),
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFE8E8E8)),
+            Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
             InkWell(
               onTap: () => Navigator.pop(dialogCtx),
               child: Container(
@@ -440,7 +441,7 @@ class _SaveToListBottomSheetState extends ConsumerState<SaveToListBottomSheet> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6D6D6D),
+                    color: isDark ? Colors.white54 : const Color(0xFF6D6D6D),
                   ),
                 ),
               ),

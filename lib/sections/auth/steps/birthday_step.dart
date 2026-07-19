@@ -70,10 +70,22 @@ class _BirthdayStepState extends State<BirthdayStep> {
     final daysList = List.generate(maxDays, (index) => index + 1);
     final yearsList = List.generate(_endYear - _startYear + 1, (index) => _startYear + index);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color subtitleColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
+    final Color pickerCardBg = isDark ? const Color(0xFF1E2433) : const Color(0xFFFCFCFD);
+    final Color pickerCardBorder = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final Color privacyBannerBg = isDark ? const Color(0xFF1E2433) : const Color(0xFFF5F3FF);
+    final Color privacyBannerBorder = isDark ? const Color(0xFF2C354A) : const Color(0xFFEDE9FE);
+    final Color privacyTextColor = isDark ? const Color(0xFF9086E8) : const Color(0xFF5B4FB3);
+    final Color bottomSheetBg = isDark ? const Color(0xFF131722) : Colors.white;
+    final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF6B7280);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
@@ -81,8 +93,8 @@ class _BirthdayStepState extends State<BirthdayStep> {
             'assets/Auth Section/icons/arrow_left.svg',
             width: 24,
             height: 24,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF1A1A2E),
+            colorFilter: ColorFilter.mode(
+              isDark ? Colors.white : const Color(0xFF1A1A2E),
               BlendMode.srcIn,
             ),
           ),
@@ -112,7 +124,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1A2E),
+                  color: titleColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -121,7 +133,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF9CA3AF),
+                  color: subtitleColor,
                 ),
               ),
               const SizedBox(height: 36),
@@ -129,25 +141,19 @@ class _BirthdayStepState extends State<BirthdayStep> {
               Container(
                 height: 220,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFCFCFD),
+                  color: pickerCardBg,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFE8E8E8), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF7C57FC).withValues(alpha: 0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  border: Border.all(color: pickerCardBorder, width: 1.5),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: CupertinoTheme(
                   data: CupertinoThemeData(
+                    brightness: isDark ? Brightness.dark : Brightness.light,
                     textTheme: CupertinoTextThemeData(
                       pickerTextStyle: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF1A1A2E),
+                        color: titleColor,
                       ),
                     ),
                   ),
@@ -264,9 +270,9 @@ class _BirthdayStepState extends State<BirthdayStep> {
               // Tip / privacy info banner below picker
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5F3FF),
+                  color: privacyBannerBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFEDE9FE)),
+                  border: Border.all(color: privacyBannerBorder),
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -290,7 +296,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF5B4FB3),
+                          color: privacyTextColor,
                         ),
                       ),
                     ),
@@ -329,7 +335,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                     // Show a styled sheet or dialog explaining why we ask for birthday
                     showModalBottomSheet(
                       context: context,
-                      backgroundColor: Colors.white,
+                      backgroundColor: bottomSheetBg,
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                       ),
@@ -345,7 +351,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1A1A2E),
+                                  color: titleColor,
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -353,7 +359,7 @@ class _BirthdayStepState extends State<BirthdayStep> {
                                 'We use your birthday to help customize your experience on More, protect younger users, and comply with age requirements.',
                                 style: GoogleFonts.ibmPlexSansArabic(
                                   fontSize: 15,
-                                  color: const Color(0xFF6B7280),
+                                  color: textMutedColor,
                                   height: 1.4,
                                 ),
                               ),

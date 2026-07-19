@@ -2,19 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-
 import '../providers/settings_provider.dart';
-import '../widgets/language_sheet.dart';
-import 'edit_profile_screen.dart';
-import 'notifications_settings_screen.dart';
-import 'location_settings_screen.dart';
-import 'suggestions_settings_screen.dart';
-import 'appearance_screen.dart';
 import 'privacy_settings_screen.dart';
-import 'blocked_users_screen.dart';
-import 'help_support_screen.dart';
 import 'send_feedback_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -25,68 +14,9 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  String _fullName = '';
-  String _username = '';
-  String? _avatarUrl;
-  bool _profileLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchUserData();
-  }
 
-  Future<void> _fetchUserData() async {
-    try {
-      final client = Supabase.instance.client;
-      final currentUser = client.auth.currentUser;
-      if (currentUser == null) return;
 
-      final profile = await client
-          .from('profiles')
-          .select('first_name, last_name, username, avatar_url')
-          .eq('id', currentUser.id)
-          .maybeSingle();
-
-      if (profile != null && mounted) {
-        setState(() {
-          _fullName = '${profile['first_name'] ?? ''} ${profile['last_name'] ?? ''}'.trim();
-          _username = profile['username'] ?? '';
-          _avatarUrl = profile['avatar_url'] as String?;
-          _profileLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching profile details in settings: $e");
-      if (mounted) {
-        setState(() {
-          _profileLoading = false;
-        });
-      }
-    }
-  }
-
-  ImageProvider _getAvatarProvider(String username, String? dbUrl) {
-    if (dbUrl != null && dbUrl.isNotEmpty) {
-      if (dbUrl.startsWith('http')) {
-        return CachedNetworkImageProvider(dbUrl);
-      } else {
-        return AssetImage(dbUrl);
-      }
-    }
-    return const AssetImage('assets/home/images/element.png');
-  }
-
-  void _showLanguageBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return const LanguageSheet();
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,9 +27,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Directionality(
       textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        backgroundColor: isDark ? const Color(0xFF0F1219) : Colors.white,
         appBar: AppBar(
-          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          backgroundColor: isDark ? const Color(0xFF0F1219) : Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: Icon(
@@ -118,8 +48,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           centerTitle: true,
         ),
-        body: settings.loading || _profileLoading
-            ? Center(
+        body: settings.loading
+            ? const Center(
                 child: CupertinoActivityIndicator(
                   color: Color(0xFF7C57FC),
                   radius: 12,
@@ -129,99 +59,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   children: [
                     Divider(height: 1, color: isDark ? const Color(0xFF3A3A3C) : const Color(0xFFE8E8E8)),
-                    _buildProfileRow(isAr, isDark),
-                    Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
-                    _buildSectionHeader(isAr ? 'الحساب' : 'ACCOUNT', isAr, isDark),
-                    _buildFeatureRow(
-                      icon: Icons.person_outline,
-                      title: isAr ? 'تعديل الملف الشخصي' : 'Edit Profile',
-                      isAr: isAr,
-                      isDark: isDark,
-                      onTap: () async {
-                        final updated = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const EditProfileScreen(),
-                          ),
-                        );
-                        if (updated == true) {
-                           _fetchUserData();
-                        }
-                      },
-                    ),
-                    _buildDivider(isDark),
-                    _buildFeatureRow(
-                      icon: Icons.language_outlined,
-                      title: isAr ? 'اللغة' : 'Language',
-                      isAr: isAr,
-                      isDark: isDark,
-                      trailingText: settings.preferredLanguage == 'ar'
-                          ? 'العربية'
-                          : (settings.preferredLanguage == 'en' ? 'English' : 'Device'),
-                      onTap: () => _showLanguageBottomSheet(context),
-                    ),
-                    Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
-                    _buildSectionHeader(isAr ? 'التجربة' : 'EXPERIENCE', isAr, isDark),
-                    _buildFeatureRow(
-                      icon: Icons.notifications_none_outlined,
-                      title: isAr ? 'التنبيهات' : 'Notifications',
-                      isAr: isAr,
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const NotificationsSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildDivider(isDark),
-                    _buildFeatureRow(
-                      icon: Icons.location_on_outlined,
-                      title: isAr ? 'الموقع والأماكن المجاورة' : 'Location & Nearby',
-                      isAr: isAr,
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LocationSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildDivider(isDark),
-                    _buildFeatureRow(
-                      icon: Icons.dark_mode_outlined,
-                      title: isAr ? 'المظهر' : 'Appearance',
-                      isAr: isAr,
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AppearanceScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildDivider(isDark),
-                    _buildFeatureRow(
-                      icon: Icons.lightbulb_outline,
-                      title: isAr ? 'مقترحات تسجيل الوصول' : 'Check-in Suggestions',
-                      isAr: isAr,
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SuggestionsSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
                     _buildSectionHeader(isAr ? 'الخصوصية' : 'PRIVACY', isAr, isDark),
                     _buildFeatureRow(
                       icon: Icons.lock_outline,
@@ -237,41 +74,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
-                    _buildDivider(isDark),
-                    _buildFeatureRow(
-                      icon: Icons.block_outlined,
-                      title: isAr ? 'الأشخاص المحظورين' : 'Blocked People',
-                      isAr: isAr,
-                      isDark: isDark,
-                      trailingText: isAr
-                          ? '${settings.blockedUsers.length} محظور'
-                          : '${settings.blockedUsers.length} blocked',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const BlockedUsersScreen(),
-                          ),
-                        );
-                      },
-                    ),
                     Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
                     _buildSectionHeader(isAr ? 'الدعم' : 'SUPPORT', isAr, isDark),
-                    _buildFeatureRow(
-                      icon: Icons.help_outline,
-                      title: isAr ? 'المساعدة والدعم' : 'Help & Support',
-                      isAr: isAr,
-                      isDark: isDark,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const HelpSupportScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _buildDivider(isDark),
                     _buildFeatureRow(
                       icon: Icons.mail_outline,
                       title: isAr ? 'إرسال ملاحظاتك' : 'Send Feedback',
@@ -295,7 +99,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onTap: () => _showAboutMoreDialog(context, isAr),
                     ),
                     const SizedBox(height: 32),
-                     const SizedBox(height: 40),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -438,75 +242,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildProfileRow(bool isAr, bool isDark) {
-    return InkWell(
-      onTap: () async {
-        final updated = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const EditProfileScreen(),
-          ),
-        );
-        if (updated == true) {
-          _fetchUserData();
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: const Color(0xFFF2F2F2),
-              backgroundImage: _getAvatarProvider(_username, _avatarUrl),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _fullName.isNotEmpty ? _fullName : (isAr ? 'اسم المستخدم' : 'No Name'),
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _username.isNotEmpty ? '@$_username' : '',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 14,
-                      color: isDark ? Colors.white54 : const Color(0xFF707070),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              isAr ? Icons.arrow_back : Icons.arrow_forward_ios,
-              size: isAr ? 20 : 16,
-              color: const Color(0xFFBBBBBB),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
     return Container(
       width: double.infinity,
-      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFFAFAFA),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 8),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: isDark ? Colors.white54 : const Color(0xFF909090),
-          letterSpacing: 1.0,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: isDark ? Colors.white70 : const Color(0xFF666666),
         ),
       ),
     );
@@ -521,16 +268,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required bool isDark,
   }) {
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3EFFF),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: const Color(0xFF7C57FC),
+      leading: SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: Icon(
+            icon,
+            size: 22,
+            color: isDark ? Colors.white : const Color(0xFF262626),
+          ),
         ),
       ),
       title: Text(

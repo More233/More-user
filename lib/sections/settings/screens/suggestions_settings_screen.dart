@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/settings_provider.dart';
 
@@ -114,7 +114,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
               _buildSectionHeader(isAr ? 'التفضيلات والمقترحات الذكية' : 'INTELLIGENT SUGGESTIONS', isAr, isDark),
               // Show check-in suggestions
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/idea_01.svg',
+                icon: Icons.lightbulb_outline,
                 title: isAr ? 'إظهار مقترحات تسجيل الوصول' : 'Show check-in suggestions',
                 value: settings.showCheckInSuggestions,
                 onChanged: (val) => notifier.updateField('show_check_in_suggestions', val),
@@ -123,7 +123,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
               _buildDivider(isDark),
               // Suggest places when nearby
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/location_06.svg',
+                icon: Icons.location_on_outlined,
                 title: isAr ? 'اقتراح الأماكن عندما أكون قريباً' : 'Suggest places when nearby',
                 value: settings.suggestPlacesWhenNearby,
                 onChanged: (val) => notifier.updateField('suggest_places_when_nearby', val),
@@ -132,7 +132,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
               _buildDivider(isDark),
               // Suggest from recent visits
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/toggle_base.svg',
+                icon: Icons.history,
                 title: isAr ? 'الاقتراح من الزيارات الأخيرة' : 'Suggest from recent visits',
                 value: settings.suggestFromRecentVisits,
                 onChanged: (val) => notifier.updateField('suggest_from_recent_visits', val),
@@ -141,7 +141,7 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
               _buildDivider(isDark),
               // Use photo time & location
               _buildToggleRow(
-                iconPath: 'assets/setting/icons/radios.svg',
+                icon: Icons.photo_library_outlined,
                 title: isAr ? 'استخدام وقت وموقع الصور' : 'Use photo time & location',
                 value: settings.usePhotoTimeLocation,
                 onChanged: (val) => notifier.updateField('use_photo_time_location', val),
@@ -156,56 +156,46 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildSectionHeader(String title, bool isAr, bool isDark) {
-    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
-    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF909090);
+    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF666666);
 
     return Container(
       width: double.infinity,
-      color: sectionHeaderBg,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 8),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
           color: sectionHeaderTextColor,
-          letterSpacing: 1.0,
         ),
       ),
     );
   }
 
   Widget _buildToggleRow({
-    required String iconPath,
+    required IconData icon,
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
     required bool isDark,
   }) {
     final Color textColor = isDark ? Colors.white : Colors.black;
-    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconWrapperBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: SvgPicture.asset(
-              iconPath,
-              width: 20,
-              height: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF7C57FC),
-                BlendMode.srcIn,
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Center(
+              child: Icon(
+                icon,
+                size: 22,
+                color: isDark ? Colors.white : const Color(0xFF262626),
               ),
             ),
           ),
-
           const SizedBox(width: 16),
           Expanded(
             child: Text(
@@ -219,8 +209,8 @@ class SuggestionsSettingsScreen extends ConsumerWidget {
           ),
           CupertinoSwitch(
             value: value,
-            onChanged: onChanged,
             activeTrackColor: const Color(0xFF7C57FC),
+            onChanged: onChanged,
           ),
         ],
       ),

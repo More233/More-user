@@ -60,6 +60,12 @@ class _AuthTextFieldState extends State<AuthTextField> {
   @override
   Widget build(BuildContext context) {
     final hasError = widget.errorText != null && widget.errorText!.isNotEmpty;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color labelColor = isDark ? Colors.white70 : const Color(0xFF262626);
+    final Color containerBg = isDark ? const Color(0xFF1E2433) : Colors.white;
+    final Color borderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color hintColor = isDark ? Colors.white30 : const Color(0xFF9CA3AF);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,7 +76,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF262626),
+            color: labelColor,
           ),
         ),
         const SizedBox(height: 8),
@@ -86,14 +92,14 @@ class _AuthTextFieldState extends State<AuthTextField> {
           child: Container(
             height: 60,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: containerBg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: hasError
                     ? const Color(0xFFEF4444)
                     : _isFocused
                         ? const Color(0xFF7C57FC)
-                        : const Color(0xFFE8E8E8),
+                        : borderColor,
                 width: _isFocused || hasError ? 1.5 : 1.0,
               ),
               boxShadow: _isFocused
@@ -123,14 +129,14 @@ class _AuthTextFieldState extends State<AuthTextField> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
-                      color: const Color(0xFF1A1A2E),
+                      color: textColor,
                     ),
                     decoration: InputDecoration(
                       hintText: widget.hintText,
                       hintStyle: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
-                        color: const Color(0xFF9CA3AF),
+                        color: hintColor,
                       ),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,

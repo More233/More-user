@@ -266,7 +266,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isActive ? const Color(0xFF7C57FC) : const Color(0xFFF2F2F7),
+                  color: isActive ? const Color(0xFF7C57FC) : (Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E2433) : const Color(0xFFF2F2F7)),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -274,7 +274,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: isActive ? Colors.white : const Color(0xFF3B3C4F),
+                    color: isActive ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : const Color(0xFF3B3C4F)),
                   ),
                 ),
               ),
@@ -344,7 +344,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -430,7 +430,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -529,21 +529,22 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
     Color bgColor;
     Color iconColor;
     String iconSvg;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     switch (post.categoryIcon) {
       case CategoryIconType.coffee:
-        bgColor = const Color(0xFFFDF6EC);
-        iconColor = const Color(0xFFE6A23C);
+        bgColor = isDark ? const Color(0xFF2C241B) : const Color(0xFFFDF6EC);
+        iconColor = isDark ? const Color(0xFFFFB74D) : const Color(0xFFE6A23C);
         iconSvg = 'assets/home/icons/coffee_02.svg';
         break;
       case CategoryIconType.camera:
-        bgColor = const Color(0xFFFFF0F5);
-        iconColor = const Color(0xFFFF5B9D);
+        bgColor = isDark ? const Color(0xFF2D1B22) : const Color(0xFFFFF0F5);
+        iconColor = isDark ? const Color(0xFFFF85B2) : const Color(0xFFFF5B9D);
         iconSvg = 'assets/home/icons/camera_01_1.svg';
         break;
       case CategoryIconType.building:
-        bgColor = const Color(0xFFF2EEFC);
-        iconColor = const Color(0xFF7C57FC);
+        bgColor = isDark ? const Color(0xFF1F1A30) : const Color(0xFFF2EEFC);
+        iconColor = isDark ? const Color(0xFF9F85FF) : const Color(0xFF7C57FC);
         iconSvg = 'assets/home/icons/building_05.svg';
         break;
     }
@@ -566,7 +567,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: isDark ? Colors.white70 : Colors.black,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -586,13 +587,14 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
       orElse: () => CollectionModel(id: '', name: '', postIds: []),
     );
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -600,13 +602,13 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
           style: GoogleFonts.ibmPlexSansArabic(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: isDark ? Colors.white : Colors.black,
           ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add, color: Colors.black, size: 28),
+            icon: Icon(Icons.add, color: isDark ? Colors.white : Colors.black, size: 28),
             onPressed: _openCreateCollectionSheet,
           ),
         ],
@@ -621,7 +623,8 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
+                const SizedBox(height: 10),
                 _buildFilterPills(),
                 Expanded(
                   child: Builder(
@@ -655,13 +658,13 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black,
+                                      color: isDark ? Colors.white : Colors.black,
                                     ),
                                   ),
                                 ),
                                 _buildCollectionsGrid(collections, scrollDirection: Axis.horizontal),
                                 const SizedBox(height: 16),
-                                const Divider(height: 1, color: Color(0xFFE8E8E8)),
+                                Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
                               ],
                               if (_savedPosts.isNotEmpty) ...[
                                 Padding(
@@ -671,7 +674,7 @@ class _SavedScreenState extends ConsumerState<SavedScreen> {
                                     style: GoogleFonts.ibmPlexSansArabic(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.black,
+                                      color: isDark ? Colors.white : Colors.black,
                                     ),
                                   ),
                                 ),

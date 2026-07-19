@@ -45,13 +45,14 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   }
 
   void _confirmDeletePhoto(BuildContext context, TimelinePost post) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (dialogCtx) => Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1E2433) : Colors.white,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
@@ -64,14 +65,14 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black,
+                    color: isDark ? Colors.white : Colors.black,
                     height: 1.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 16),
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
+              Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
               InkWell(
                 onTap: () async {
                   Navigator.pop(dialogCtx); // Close Dialog
@@ -128,7 +129,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                   ),
                 ),
               ),
-              const Divider(height: 1, color: Color(0xFFE8E8E8)),
+              Divider(height: 1, color: isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8)),
               InkWell(
                 onTap: () => Navigator.pop(dialogCtx),
                 child: Container(
@@ -140,7 +141,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
                     style: GoogleFonts.ibmPlexSansArabic(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF6D6D6D),
+                      color: isDark ? Colors.white54 : const Color(0xFF6D6D6D),
                     ),
                   ),
                 ),

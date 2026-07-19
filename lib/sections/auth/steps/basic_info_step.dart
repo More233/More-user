@@ -83,10 +83,18 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color subtitleColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
+    final Color bannerBg = isDark ? const Color(0xFF1E2433) : const Color(0xFFF9F7FF);
+    final Color bannerBorder = isDark ? const Color(0xFF2C354A) : const Color(0xFFEDE9FE);
+    final Color bannerTextColor = isDark ? const Color(0xFF9086E8) : const Color(0xFF5B4FB3);
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
@@ -94,8 +102,8 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
             'assets/Auth Section/icons/arrow_left.svg',
             width: 24,
             height: 24,
-            colorFilter: const ColorFilter.mode(
-              Color(0xFF1A1A2E),
+            colorFilter: ColorFilter.mode(
+              isDark ? Colors.white : const Color(0xFF1A1A2E),
               BlendMode.srcIn,
             ),
           ),
@@ -125,7 +133,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1A2E),
+                  color: titleColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -134,53 +142,62 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF9CA3AF),
+                  color: subtitleColor,
                 ),
               ),
               const SizedBox(height: 32),
-              // Fields
+              // First Name Field
               AuthTextField(
                 controller: _firstNameController,
                 labelText: 'First Name',
-                hintText: 'Enter your first name',
+                hintText: 'e.g. John',
                 errorText: _firstNameError,
                 onChanged: (val) {
-                  if (_firstNameError != null) setState(() => _firstNameError = null);
+                  setState(() {
+                    _firstNameError = null;
+                  });
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              // Last Name Field
               AuthTextField(
                 controller: _lastNameController,
-                labelText: 'Last Name (Optional)',
-                hintText: 'Enter your last name',
+                labelText: 'Last Name',
+                hintText: 'e.g. Doe',
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              // Username Field
               AuthTextField(
                 controller: _usernameController,
                 labelText: 'Username',
-                hintText: 'Choose a username',
+                hintText: 'username',
                 errorText: _usernameError,
                 onChanged: (val) {
-                  if (_usernameError != null) setState(() => _usernameError = null);
+                  setState(() {
+                    _usernameError = null;
+                  });
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
+              // City Field
               AuthTextField(
                 controller: _cityController,
                 labelText: 'City',
-                hintText: 'Enter your city',
+                hintText: 'e.g. Riyadh',
                 errorText: _cityError,
                 onChanged: (val) {
-                  if (_cityError != null) setState(() => _cityError = null);
+                  setState(() {
+                    _cityError = null;
+                  });
                 },
               ),
               const SizedBox(height: 32),
               // Username Tip Banner (Styled premium matching Figma)
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF9F7FF),
+                  color: bannerBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFEDE9FE)),
+                  border: Border.all(color: bannerBorder),
                 ),
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -208,7 +225,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
                         style: GoogleFonts.ibmPlexSansArabic(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: const Color(0xFF5B4FB3),
+                          color: bannerTextColor,
                           height: 1.4,
                         ),
                       ),

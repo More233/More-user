@@ -26,8 +26,13 @@ class PermissionStepLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : const Color(0xFFFCFCFC);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color descColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
+
     return Container(
-      color: const Color(0xFFFCFCFC),
+      color: bgColor,
       child: SafeArea(
         child: Column(
           children: [
@@ -57,7 +62,7 @@ class PermissionStepLayout extends StatelessWidget {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A2E),
+                        color: titleColor,
                         height: 1.2,
                       ),
                     ),
@@ -67,7 +72,7 @@ class PermissionStepLayout extends StatelessWidget {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF9CA3AF),
+                        color: descColor,
                         height: 1.4,
                       ),
                     ),

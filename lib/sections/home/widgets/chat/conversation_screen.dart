@@ -309,18 +309,19 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
 
   Widget _buildDateHeader(DateTime date) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 12),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: const Color(0xFFEFEFEF),
+          color: isDark ? const Color(0xFF1E2433) : const Color(0xFFEFEFEF),
           borderRadius: BorderRadius.circular(11),
         ),
         child: Text(
           _getGroupDateLabel(date),
           style: GoogleFonts.ibmPlexSansArabic(
-            color: Colors.black,
+            color: isDark ? Colors.white70 : Colors.black,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -420,6 +421,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           ),
         ),
         body: SafeArea(
+          bottom: false,
           child: Column(
             children: [
               Expanded(
@@ -470,7 +472,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                       ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: EdgeInsets.only(
+                  left: 12,
+                  right: 12,
+                  top: 12,
+                  bottom: 12 + MediaQuery.of(context).padding.bottom,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181C26) : Colors.white,
                   border: Border(
@@ -504,7 +511,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F1219) : Colors.white,
+                                  color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181C26) : Colors.white,
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
                                     color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2B303C) : const Color(0xFFEFEFEF),

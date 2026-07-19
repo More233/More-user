@@ -48,16 +48,27 @@ class _InterestsStepState extends State<InterestsStep> {
   Widget _buildTag(int index) {
     final item = _interests[index];
     final isSelected = _selectedIndices.contains(index);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final Color tagBg = isSelected
+        ? const Color(0xFFEDE6FC)
+        : (isDark ? const Color(0xFF1E2433) : const Color(0xFFF3F4F6));
+    final Color tagBorder = isSelected
+        ? const Color(0xFF7C57FC)
+        : (isDark ? const Color(0xFF2C354A) : Colors.transparent);
+    final Color contentColor = isSelected
+        ? const Color(0xFF7C57FC)
+        : (isDark ? Colors.white70 : const Color(0xFF4A4A4A));
 
     return GestureDetector(
       onTap: () => _toggleSelection(index),
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEDE6FC) : const Color(0xFFF3F4F6),
+          color: tagBg,
           borderRadius: BorderRadius.circular(100),
           border: Border.all(
-            color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
+            color: tagBorder,
             width: 1.5,
           ),
         ),
@@ -70,7 +81,7 @@ class _InterestsStepState extends State<InterestsStep> {
               width: 18,
               height: 18,
               colorFilter: ColorFilter.mode(
-                isSelected ? const Color(0xFF7C57FC) : const Color(0xFF4A4A4A),
+                contentColor,
                 BlendMode.srcIn,
               ),
             ),
@@ -83,7 +94,7 @@ class _InterestsStepState extends State<InterestsStep> {
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 13,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFF4A4A4A),
+                  color: contentColor,
                 ),
               ),
             ),
@@ -96,11 +107,22 @@ class _InterestsStepState extends State<InterestsStep> {
   @override
   Widget build(BuildContext context) {
     final canContinue = _selectedIndices.length >= 3;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color subtitleColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
+    final Color countHelperColor = canContinue
+        ? const Color(0xFF10B981)
+        : (isDark ? Colors.white38 : const Color(0xFF9CA3AF));
+    final Color bannerBg = isDark ? const Color(0xFF1E2433) : Colors.white;
+    final Color bannerBorder = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final Color bannerTextColor = isDark ? Colors.white70 : const Color(0xFF6B7280);
+    final Color skipColor = isDark ? Colors.white38 : const Color(0xFF7C7C7C);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: bgColor,
         elevation: 0,
         scrolledUnderElevation: 0,
         automaticallyImplyLeading: false,
@@ -131,7 +153,7 @@ class _InterestsStepState extends State<InterestsStep> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A2E),
+                        color: titleColor,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -141,7 +163,7 @@ class _InterestsStepState extends State<InterestsStep> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: const Color(0xFF9CA3AF),
+                        color: subtitleColor,
                         height: 1.3,
                       ),
                       textAlign: TextAlign.center,
@@ -171,23 +193,25 @@ class _InterestsStepState extends State<InterestsStep> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: canContinue ? const Color(0xFF10B981) : const Color(0xFF9CA3AF),
+                        color: countHelperColor,
                       ),
                     ),
                     const SizedBox(height: 36),
                     // Magic AI personalization banner
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: bannerBg,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF8B60FC).withValues(alpha: 0.18),
-                            blurRadius: 12,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                        border: Border.all(color: const Color(0xFFE8E8E8)),
+                        boxShadow: !isDark
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF8B60FC).withValues(alpha: 0.18),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                        border: Border.all(color: bannerBorder),
                       ),
                       padding: const EdgeInsets.all(16),
                       child: Row(
@@ -216,7 +240,7 @@ class _InterestsStepState extends State<InterestsStep> {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w400,
-                                color: const Color(0xFF6B7280),
+                                color: bannerTextColor,
                                 height: 1.3,
                               ),
                             ),
@@ -273,7 +297,7 @@ class _InterestsStepState extends State<InterestsStep> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7C7C7C),
+                        color: skipColor,
                       ),
                     ),
                   ),

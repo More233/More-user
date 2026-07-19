@@ -23,12 +23,26 @@ class FeatureRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Color resolvedBgColor = backgroundColor;
+    if (backgroundColor == Colors.white) {
+      resolvedBgColor = isDark ? const Color(0xFF1E2433) : Colors.white;
+    } else if (backgroundColor == const Color(0xFFF7F6FC)) {
+      resolvedBgColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFF7F6FC);
+    }
+
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color subtitleColor = isDark ? Colors.white70 : const Color(0xFF9CA3AF);
+    final Color iconBgColor = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF2EEFC);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: resolvedBgColor,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: hasShadow
+        border: isDark ? Border.all(color: const Color(0xFF2C354A)) : null,
+        boxShadow: (hasShadow && !isDark)
             ? [
                 BoxShadow(
                   color: const Color(0xFF8B60FC).withValues(alpha: 0.16),
@@ -47,7 +61,7 @@ class FeatureRow extends StatelessWidget {
             height: 40,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF2EEFC),
+              color: iconBgColor,
               borderRadius: BorderRadius.circular(8),
             ),
             child: SvgPicture.asset(
@@ -72,7 +86,7 @@ class FeatureRow extends StatelessWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A1A2E),
+                    color: titleColor,
                     height: 1.2,
                   ),
                 ),
@@ -82,7 +96,7 @@ class FeatureRow extends StatelessWidget {
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: const Color(0xFF9CA3AF),
+                    color: subtitleColor,
                     height: 1.2,
                   ),
                 ),

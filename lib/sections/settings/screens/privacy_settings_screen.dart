@@ -376,20 +376,17 @@ class PrivacySettingsScreen extends ConsumerWidget {
 
   Widget _buildSectionHeader(BuildContext context, String title, bool isAr) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color sectionHeaderBg = isDark ? const Color(0xFF131722) : const Color(0xFFFAFAFA);
-    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF909090);
+    final Color sectionHeaderTextColor = isDark ? Colors.white70 : const Color(0xFF666666);
 
     return Container(
       width: double.infinity,
-      color: sectionHeaderBg,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 8),
       child: Text(
         title,
         style: GoogleFonts.ibmPlexSansArabic(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
           color: sectionHeaderTextColor,
-          letterSpacing: 1.0,
         ),
       ),
     );
@@ -409,20 +406,19 @@ class PrivacySettingsScreen extends ConsumerWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color textColor = isDark ? Colors.white : Colors.black;
     final Color textMutedColor = isDark ? Colors.white70 : const Color(0xFF909090);
-    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+
     final Color arrowColor = isDark ? Colors.white24 : const Color(0xFFCCCCCC);
 
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconWrapperBg,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: const Color(0xFF7C57FC),
+      leading: SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(
+          child: Icon(
+            icon,
+            size: 22,
+            color: isDark ? Colors.white : const Color(0xFF262626),
+          ),
         ),
       ),
       title: Text(
@@ -473,22 +469,21 @@ class PrivacySettingsScreen extends ConsumerWidget {
   }) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color textColor = isDark ? Colors.white : Colors.black;
-    final Color iconWrapperBg = isDark ? const Color(0xFF2A1C54) : const Color(0xFFF3EFFF);
+
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconWrapperBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: const Color(0xFF7C57FC),
+          SizedBox(
+            width: 24,
+            height: 24,
+            child: Center(
+              child: Icon(
+                icon,
+                size: 22,
+                color: isDark ? Colors.white : const Color(0xFF262626),
+              ),
             ),
           ),
           const SizedBox(width: 16),

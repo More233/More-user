@@ -22,15 +22,20 @@ class BirthdayPicker {
             // Calculate days in the selected month/year
             int daysInMonth = DateUtils.getDaysInMonth(selectedDate.year, selectedDate.month);
             
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final Color dialogBg = isDark ? const Color(0xFF131722) : Colors.white;
+            final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+            final Color dayBorderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              backgroundColor: Colors.white,
+              backgroundColor: dialogBg,
               title: Text(
                 'Select Birthday',
                 style: GoogleFonts.ibmPlexSansArabic(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF1A1A2E),
+                  color: textColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -44,7 +49,8 @@ class BirthdayPicker {
                       // Month Selector
                       DropdownButton<int>(
                         value: selectedDate.month,
-                        dropdownColor: Colors.white,
+                        dropdownColor: dialogBg,
+                        iconEnabledColor: textColor,
                         items: List.generate(12, (index) {
                           return DropdownMenuItem(
                             value: index + 1,
@@ -52,7 +58,7 @@ class BirthdayPicker {
                               months[index],
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 14,
-                                color: const Color(0xFF1A1A2E),
+                                color: textColor,
                               ),
                             ),
                           );
@@ -71,7 +77,8 @@ class BirthdayPicker {
                       // Year Selector
                       DropdownButton<int>(
                         value: selectedDate.year,
-                        dropdownColor: Colors.white,
+                        dropdownColor: dialogBg,
+                        iconEnabledColor: textColor,
                         items: years.map((year) {
                           return DropdownMenuItem(
                             value: year,
@@ -79,7 +86,7 @@ class BirthdayPicker {
                               year.toString(),
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 14,
-                                color: const Color(0xFF1A1A2E),
+                                color: textColor,
                               ),
                             ),
                           );
@@ -125,7 +132,7 @@ class BirthdayPicker {
                               color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isSelected ? const Color(0xFF7C57FC) : const Color(0xFFE8E8E8),
+                                color: isSelected ? const Color(0xFF7C57FC) : dayBorderColor,
                                 width: 1,
                               ),
                             ),
@@ -134,7 +141,7 @@ class BirthdayPicker {
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 13,
                                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                color: isSelected ? Colors.white : const Color(0xFF1A1A2E),
+                                color: isSelected ? Colors.white : textColor,
                               ),
                             ),
                           ),

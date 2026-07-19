@@ -73,7 +73,11 @@ class _PermissionsPageState extends State<PermissionsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color bgColor = isDark ? const Color(0xFF0F1219) : Colors.white;
+
     return Scaffold(
+      backgroundColor: bgColor,
       body: Stack(
         children: [
           PageView(
@@ -176,8 +180,6 @@ class _PermissionsPageState extends State<PermissionsPage> {
               ),
             ],
           ),
-
-
         ],
       ),
     );
@@ -185,8 +187,14 @@ class _PermissionsPageState extends State<PermissionsPage> {
 
   // The Privacy step uses CustomSwitch and Arrow icons, requiring a separate layout definition
   Widget _buildPrivacyStep() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color privacyBg = isDark ? const Color(0xFF0F1219) : const Color(0xFFFCFCFC);
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
+    final Color noteBgColor = isDark ? const Color(0xFF1E2433) : const Color(0xFFF7F6FC);
+    final Color arrowColor = isDark ? Colors.white30 : const Color(0xFF9CA3AF);
+
     return Container(
-      color: const Color(0xFFFCFCFC),
+      color: privacyBg,
       child: SafeArea(
         child: Column(
           children: [
@@ -216,7 +224,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1A1A2E),
+                        color: titleColor,
                         height: 1.2,
                       ),
                     ),
@@ -251,7 +259,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                             iconPath: 'assets/Permissions Section/icons/square_lock_01.svg',
                             title: 'Your data is secure and never sold.',
                             subtitle: 'Update your preferences anytime in Settings.',
-                            backgroundColor: const Color(0xFFF7F6FC),
+                            backgroundColor: noteBgColor,
                             hasShadow: false,
                             trailing: RotatedBox(
                               quarterTurns: 3,
@@ -259,8 +267,8 @@ class _PermissionsPageState extends State<PermissionsPage> {
                                 'assets/Permissions Section/icons/arrow_right_01.svg',
                                 width: 12,
                                 height: 12,
-                                colorFilter: const ColorFilter.mode(
-                                  Color(0xFF9CA3AF),
+                                colorFilter: ColorFilter.mode(
+                                  arrowColor,
                                   BlendMode.srcIn,
                                 ),
                               ),
