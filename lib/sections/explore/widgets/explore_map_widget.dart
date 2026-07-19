@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:moor/shared/models/lat_lng.dart' as model;
 import 'package:geolocator/geolocator.dart';
 import '../../../../config/secrets.dart';
@@ -645,103 +646,82 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         }
       }
 
-      Future<Uint8List?> resolveImageBytes(String imageId) async {
-        try {
-          final parts = imageId.split('-');
-          final String state = parts[0]; // normal / selected / dot / live / selected_live
-          final String type = parts[1]; // restaurant / hotel / ...
-          
-          if (imageId == 'dot-live-now') {
-            final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
-            final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
-            const double size = 18.0;
-            final recorder = ui.PictureRecorder();
-            final canvas = Canvas(recorder);
-            canvas.scale(dpr);
-            final bgPaint = Paint()
-              ..color = const Color(0xFF7C57FC)
-              ..style = PaintingStyle.fill;
-            canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
-            final borderPaint = Paint()
-              ..color = Colors.white
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.8;
-            canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
-            final picture = recorder.endRecording();
-            final img = await picture.toImage((size * dpr).toInt(), (size * dpr).toInt());
-            final png = await img.toByteData(format: ui.ImageByteFormat.png);
-            return png!.buffer.asUint8List();
-          } else if (state == 'checkin' || state == 'selected_checkin') {
-            final String checkinId = state == 'checkin'
-                ? imageId.substring('checkin-'.length)
-                : imageId.substring('selected_checkin-'.length);
-            final place = widget.places.firstWhere(
-              (pl) => pl['id']?.toString() == checkinId,
-              orElse: () => widget.selectedPlace != null && widget.selectedPlace!['id']?.toString() == checkinId
-                  ? widget.selectedPlace!
-                  : {},
-            );
-            final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
-            final String authorName = place['authorName'] as String? ?? 'User';
-            final String resolvedType = _resolvePlaceType(place);
-            final bool isSelected = state == 'selected_checkin';
-            return await MarkerGenerator.getCheckInCalloutPin(
-              type: resolvedType,
-              avatarUrl: avatarUrl,
-              authorName: authorName,
-              isSelected: isSelected,
-            );
-          } else if (state == 'dot') {
-            return await MarkerGenerator.getDotPin(type);
-          } else if (state == 'live' || state == 'selected_live') {
-            final bool isSelected = state == 'selected_live';
-            return await MarkerGenerator.getLivePin(type, isSelected: isSelected);
-          } else {
-            final String ratingStr = parts.length > 2 ? parts[2] : 'none';
-            final bool isSelected = state == 'selected';
+      // 3. Register style images on demand
+      for (final imageId in imagesToRegister) {
+        if (!_registeredImageIds.contains(imageId)) {
+          try {
+            final parts = imageId.split('-');
+            final String state = parts[0]; // normal / selected / dot / live / selected_live
+            final String type = parts[1]; // restaurant / hotel / ...
             
-            if (ratingStr == 'none') {
-              if (isSelected) {
-                return await MarkerGenerator.getSelectedPin(type);
-              } else {
-                return await MarkerGenerator.getNormalPin(type);
-              }
-            } else {
-              return await MarkerGenerator.getCapsulePin(type, ratingStr, isSelected: isSelected);
-            }
-          }
-        } catch (e) {
-          debugPrint("Error resolving bytes for $imageId: $e");
-          return null;
-        }
-      }
-
-      // 3. Register style images on demand in parallel
-      final unregisteredIds = imagesToRegister.where((id) => !_registeredImageIds.contains(id)).toList();
-      if (unregisteredIds.isNotEmpty) {
-        final List<Uint8List?> results = await Future.wait(
-          unregisteredIds.map((id) => resolveImageBytes(id))
-        );
-
-        for (int i = 0; i < unregisteredIds.length; i++) {
-          final imageId = unregisteredIds[i];
-          final pngBytes = results[i];
-          if (pngBytes != null) {
-            try {
-              final mbxImage = await _convertPngToMbxImage(pngBytes);
-              await _mapboxMap!.style.addStyleImage(
-                imageId,
-                dpr,
-                mbxImage,
-                false,
-                <mapbox.ImageStretches?>[],
-                <mapbox.ImageStretches?>[],
-                mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
+            Uint8List pngBytes;
+            if (imageId == 'dot-live-now') {
+              final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+              final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+              const double size = 18.0;
+              final recorder = ui.PictureRecorder();
+              final canvas = Canvas(recorder);
+              canvas.scale(dpr);
+              final bgPaint = Paint()
+                ..color = const Color(0xFF7C57FC)
+                ..style = PaintingStyle.fill;
+              canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
+              final borderPaint = Paint()
+                ..color = Colors.white
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1.8;
+              canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
+              final picture = recorder.endRecording();
+              final img = await picture.toImage((size * dpr).toInt(), (size * dpr).toInt());
+              final png = await img.toByteData(format: ui.ImageByteFormat.png);
+              pngBytes = png!.buffer.asUint8List();
+            } else if (state == 'checkin' || state == 'selected_checkin') {
+              final String checkinId = state == 'checkin'
+                  ? imageId.substring('checkin-'.length)
+                  : imageId.substring('selected_checkin-'.length);
+              final place = widget.places.firstWhere(
+                (pl) => pl['id']?.toString() == checkinId,
+                orElse: () => widget.selectedPlace != null && widget.selectedPlace!['id']?.toString() == checkinId
+                    ? widget.selectedPlace!
+                    : {},
               );
-              _registeredImageIds.add(imageId);
-            } catch (e) {
-              debugPrint("Error registering dynamic image $imageId: $e");
+              final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
+              debugPrint("ExploreMapWidget: checkinId=$checkinId, resolved place keys=${place.keys}, resolved avatarUrl=$avatarUrl");
+              final bool isSelected = state == 'selected_checkin';
+              pngBytes = await MarkerGenerator.getCheckInAvatarPin(avatarUrl, isSelected: isSelected);
+            } else if (state == 'dot') {
+              pngBytes = await MarkerGenerator.getDotPin(type);
+            } else if (state == 'live' || state == 'selected_live') {
+              final bool isSelected = state == 'selected_live';
+              pngBytes = await MarkerGenerator.getLivePin(type, isSelected: isSelected);
+            } else {
+              final String ratingStr = parts.length > 2 ? parts[2] : 'none';
+              final bool isSelected = state == 'selected';
+              
+              if (ratingStr == 'none') {
+                if (isSelected) {
+                  pngBytes = await MarkerGenerator.getSelectedPin(type);
+                } else {
+                  pngBytes = await MarkerGenerator.getNormalPin(type);
+                }
+              } else {
+                pngBytes = await MarkerGenerator.getCapsulePin(type, ratingStr, isSelected: isSelected);
+              }
             }
+
+            final mbxImage = await _convertPngToMbxImage(pngBytes);
+            await _mapboxMap!.style.addStyleImage(
+              imageId,
+              dpr,
+              mbxImage,
+              false,
+              <mapbox.ImageStretches?>[],
+              <mapbox.ImageStretches?>[],
+              mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
+            );
+            _registeredImageIds.add(imageId);
+          } catch (e) {
+            debugPrint("Error registering dynamic image $imageId: $e");
           }
         }
       }
@@ -799,74 +779,82 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final bool isCheckIn = p['isCheckIn'] == true;
         String englishTitle = '';
         String arabicTitle = '';
-        String placeEngTitle = '';
-        String placeArTitle = '';
 
-        bool containsArabicChar(String text) {
-          return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
-        }
+        if (isCheckIn) {
+          final String authorName = p['authorName'] as String? ?? '';
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          final postUserId = p['user_id'] as String? ?? p['userId'] as String? ?? '';
+          if (postUserId == currentUserId || authorName.toLowerCase() == 'you') {
+            englishTitle = 'You';
+            arabicTitle = 'أنت';
+          } else {
+            englishTitle = authorName;
+            arabicTitle = authorName;
+          }
+        } else {
+          bool containsArabicChar(String text) {
+            return RegExp(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]').hasMatch(text);
+          }
 
-        // 1. Check if name contains both separated by / or - or |
-        final separators = ['/', '-', '|'];
-        bool separated = false;
-        for (final sep in separators) {
-          if (name.contains(sep)) {
-            final parts = name.split(sep);
-            if (parts.length == 2) {
-              final part1 = parts[0].trim();
-              final part2 = parts[1].trim();
-              final hasAr1 = containsArabicChar(part1);
-              final hasAr2 = containsArabicChar(part2);
-              if (hasAr1 && !hasAr2) {
-                placeEngTitle = part2;
-                placeArTitle = part1;
-                separated = true;
-                break;
-              } else if (!hasAr1 && hasAr2) {
-                placeEngTitle = part1;
-                placeArTitle = part2;
-                separated = true;
-                break;
+          // 1. Check if name contains both separated by / or - or |
+          final separators = ['/', '-', '|'];
+          bool separated = false;
+          for (final sep in separators) {
+            if (name.contains(sep)) {
+              final parts = name.split(sep);
+              if (parts.length == 2) {
+                final part1 = parts[0].trim();
+                final part2 = parts[1].trim();
+                final hasAr1 = containsArabicChar(part1);
+                final hasAr2 = containsArabicChar(part2);
+                if (hasAr1 && !hasAr2) {
+                  englishTitle = part2;
+                  arabicTitle = part1;
+                  separated = true;
+                  break;
+                } else if (!hasAr1 && hasAr2) {
+                  englishTitle = part1;
+                  arabicTitle = part2;
+                  separated = true;
+                  break;
+                }
               }
             }
           }
-        }
 
-        if (!separated) {
-          final nameHasAr = containsArabicChar(name);
-          final arNameHasAr = containsArabicChar(arName);
+          if (!separated) {
+            final nameHasAr = containsArabicChar(name);
+            final arNameHasAr = containsArabicChar(arName);
 
-          if (nameHasAr && arNameHasAr) {
-            // Both are Arabic
-            placeEngTitle = '';
-            placeArTitle = name;
-          } else if (!nameHasAr && arNameHasAr) {
-            // name is English, arName is Arabic
-            placeEngTitle = name;
-            placeArTitle = arName;
-          } else if (!nameHasAr && !arNameHasAr) {
-            // Both are English
-            placeEngTitle = name;
-            placeArTitle = '';
-          } else {
-            // name is Arabic, arName is English
-            placeEngTitle = arName;
-            placeArTitle = name;
+            if (nameHasAr && arNameHasAr) {
+              // Both are Arabic
+              englishTitle = '';
+              arabicTitle = name;
+            } else if (!nameHasAr && arNameHasAr) {
+              // name is English, arName is Arabic
+              englishTitle = name;
+              arabicTitle = arName;
+            } else if (!nameHasAr && !arNameHasAr) {
+              // Both are English
+              englishTitle = name;
+              arabicTitle = '';
+            } else {
+              // name is Arabic, arName is English
+              englishTitle = arName;
+              arabicTitle = name;
+            }
+          }
+
+          // Clean city name in parentheses from titles
+          englishTitle = englishTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+          arabicTitle = arabicTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
+
+          // Fallback: If English title ends up empty but we have Arabic title, use Arabic as primary
+          if (englishTitle.isEmpty && arabicTitle.isNotEmpty) {
+            englishTitle = arabicTitle;
+            arabicTitle = '';
           }
         }
-
-        // Clean city name in parentheses from titles
-        placeEngTitle = placeEngTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
-        placeArTitle = placeArTitle.replaceAll(RegExp(r'\s*\(.*?\)\s*'), '').trim();
-
-        // Fallback: If English title ends up empty but we have Arabic title, use Arabic as primary
-        if (placeEngTitle.isEmpty && placeArTitle.isNotEmpty) {
-          placeEngTitle = placeArTitle;
-          placeArTitle = '';
-        }
-
-        englishTitle = placeEngTitle;
-        arabicTitle = placeArTitle;
 
         final String resolvedType = _resolvePlaceType(p);
         if (resolvedType == 'airport' && widget.selectedMapTab != 2) {
@@ -948,34 +936,10 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             "rating_str": ratingStr,
             "people_count": (p['peopleCount'] as num? ?? 0).toInt(),
             "rating_val": ratingVal,
-            "is_check_in": false, // Set to false to draw standard category pins
+            "is_check_in": isCheckIn,
             "random_percent": localPercents[p['id'].toString()] ?? 0,
           }
         });
-
-        // Add a separate overlay feature for the callout speech bubble if check-in exists
-        if (isCheckIn) {
-          features.add({
-            "type": "Feature",
-            "id": "callout_${p['id']}",
-            "geometry": {
-              "type": "Point",
-              "coordinates": [lng, lat]
-            },
-            "properties": {
-              "id": "callout_${p['id']}",
-              "place_id": p['id'].toString(),
-              "place_type": "callout_bubble",
-              "title": "",
-              "english_title": "",
-              "arabic_title": "",
-              "is_callout_feature": true,
-              "is_check_in": true,
-              "rating_str": "",
-              "random_percent": localPercents[p['id'].toString()] ?? 0,
-            }
-          });
-        }
       }
 
       final geojson = {
@@ -1023,7 +987,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             [
               "case",
               ["==", ["get", "id"], selectedId],
-              ["concat", "selected_live-", ["get", "place_type"]],
+              ["concat", "selected_checkin-", ["get", "id"]],
               ["concat", "checkin-", ["get", "id"]]
             ],
             ["==", ["get", "id"], selectedId],
@@ -1072,7 +1036,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             [
               "case",
               ["==", ["get", "id"], selectedId],
-              ["concat", "selected-", ["get", "place_type"], "-", ["get", "rating_str"]],
+              ["concat", "selected_checkin-", ["get", "id"]],
               ["concat", "checkin-", ["get", "id"]]
             ],
             ["==", ["get", "id"], selectedId],
@@ -1419,21 +1383,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         debugPrint("Error styling clusters-pins-layer: $e");
       }
 
+      // Repeatedly enforce hiding default road labels, shields, and intersections to override Mapbox async style loads
       try {
         await _mapboxMap!.style.setStyleLayerProperty("road-label", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("road-number-shield", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("road-exit-shield", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("road-intersection", "visibility", "none");
         await _mapboxMap!.style.setStyleLayerProperty("crosswalks", "visibility", "none");
-        
-        // Hide native POI layers to prevent duplicate icon/dot markers behind our custom pins
-        try { await _mapboxMap!.style.setStyleLayerProperty("poi", "visibility", "none"); } catch (_) {}
-        try { await _mapboxMap!.style.setStyleLayerProperty("poi-label", "visibility", "none"); } catch (_) {}
-        try { await _mapboxMap!.style.setStyleLayerProperty("poi-level-1", "visibility", "none"); } catch (_) {}
-        try { await _mapboxMap!.style.setStyleLayerProperty("poi-level-2", "visibility", "none"); } catch (_) {}
-        try { await _mapboxMap!.style.setStyleLayerProperty("poi-level-3", "visibility", "none"); } catch (_) {}
-        
-        debugPrint("ExploreMapWidget: Enforced road/shield/poi layer visibility overrides.");
+        debugPrint("ExploreMapWidget: Enforced road/shield layer visibility overrides.");
       } catch (e) {
         // Ignore if some layers do not exist
       }
@@ -1456,11 +1413,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       "MAPBOX_ACCESS_TOKEN",
       defaultValue: Secrets.mapboxAccessToken,
     );
-
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final String resolvedStyleUri = isDark 
-        ? "mapbox://styles/mapbox/dark-v11" 
-        : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -1502,9 +1454,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         }
       },
       child: mapbox.MapWidget(
-        key: ValueKey('explore_mapbox_widget_key_$isDark'),
+        key: const ValueKey('explore_mapbox_widget_key'),
         resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
-        styleUri: resolvedStyleUri,
+        styleUri: "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
         onStyleLoadedListener: (styleLoaded) {
           debugPrint(
             "ExploreMapWidget: Style fully loaded. Reinitializing annotations...",
@@ -1527,20 +1479,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               } catch (e) {
                 debugPrint("Error disabling map rotation on style load: $e");
               }
-
-              if (widget.myLocationEnabled) {
-                try {
-                  await _mapboxMap!.location.updateSettings(
-                    mapbox.LocationComponentSettings(
-                      enabled: true,
-                      pulsingEnabled: true,
-                    ),
-                  );
-                } catch (e) {
-                  debugPrint("Error updating mapbox location puck on style load: $e");
-                }
-              }
-
               await _initNativeClusteringSourceAndLayers(_mapboxMap!);
               await _updateMarkers();
             });
@@ -1560,19 +1498,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
           Future.microtask(() async {
             await _hideDefaultLayers(mapboxMap);
-
-            if (widget.myLocationEnabled) {
-              try {
-                await mapboxMap.location.updateSettings(
-                  mapbox.LocationComponentSettings(
-                    enabled: true,
-                    pulsingEnabled: true,
-                  ),
-                );
-              } catch (e) {
-                debugPrint("Error enabling mapbox location puck: $e");
-              }
-            }
 
             // Set projection to flat map (Mercator) instead of 3D Globe
             try {
