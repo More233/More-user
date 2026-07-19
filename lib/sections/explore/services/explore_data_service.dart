@@ -707,7 +707,7 @@ class ExploreDataService {
     }
 
     final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
-    if (isCellSynced && (keyword == null || keyword.isEmpty)) {
+    if (isCellSynced && (keyword == null || keyword.isEmpty || keyword == 'food|shops|sights')) {
       _log("ExploreDataService: Cell $cellId already synced. Returning cache. Count: ${cachedPlaces.length}");
       _placesCache[cacheKey] = cachedPlaces;
       return cachedPlaces;
@@ -753,6 +753,12 @@ class ExploreDataService {
               places.add(parsed);
             }
           }
+          if (markSynced && (keyword == null || keyword.isEmpty || keyword == 'food|shops|sights')) {
+            final double gridLat = (lat * 100).round() / 100.0;
+            final double gridLng = (lng * 100).round() / 100.0;
+            final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
+            ExploreDbCacheService.markCellSynced(cellId);
+          }
         } else {
           debugPrint("Foursquare API Error: ${response.statusCode} - ${response.body}");
         }
@@ -762,15 +768,8 @@ class ExploreDataService {
     }
 
     if (places.isNotEmpty) {
-      // Save results to SQLite cache and mark region synced asynchronously (background)
+      // Save results to SQLite cache asynchronously (background)
       ExploreDbCacheService.savePlaces(places);
-      if (markSynced) {
-        final double gridLat = (lat * 100).round() / 100.0;
-        final double gridLng = (lng * 100).round() / 100.0;
-        final String cellId = '${gridLat.toStringAsFixed(2)}_${gridLng.toStringAsFixed(2)}';
-        ExploreDbCacheService.markCellSynced(cellId);
-      }
-
       _placesCache[cacheKey] = places;
       return places;
     }

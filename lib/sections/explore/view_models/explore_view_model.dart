@@ -21,6 +21,7 @@ final exploreViewModelProvider = StateNotifierProvider<ExploreViewModel, Explore
 class ExploreViewModel extends StateNotifier<ExploreState> {
   final ExploreRepository _exploreRepository;
   Timer? _apiDebounceTimer;
+  final Map<String, DateTime> _syncedSupabaseCells = {};
 
   ExploreViewModel({required this._exploreRepository}) : super(ExploreState.initial());
 
@@ -158,21 +159,25 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
             final bool isCellSynced = await ExploreDbCacheService.isCellSynced(cellId);
             final bool hasCategory = category != null && category.isNotEmpty;
 
+            final now = DateTime.now();
+            final lastSyncTime = _syncedSupabaseCells[cellId];
+            final bool shouldSyncSupabase = lastSyncTime == null || now.difference(lastSyncTime).inSeconds > 60;
+
             // 1. Fetch Supabase check-ins and custom venues
-            if (!hasCategory) {
+            if (!hasCategory && shouldSyncSupabase) {
+              _syncedSupabaseCells[cellId] = now;
               _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize).then((data) {
                 _mergeAndUpdatePlaces([], supabaseData: data);
                 debugPrint("ExploreViewModel: Background sync Supabase checkins completed.");
               }).catchError((err) {
                 debugPrint("ExploreViewModel Error Supabase sync: $err");
+                _syncedSupabaseCells.remove(cellId);
               });
             }
 
             // 2. Only query external Foursquare API if the cell has not been synced yet
-            // Self-healing: if the cell is synced but has few places cached locally, sync anyway!
-            final localPlacesCount = initialPlaces.length;
-            if (isCellSynced && localPlacesCount > 5) {
-              debugPrint("ExploreViewModel: Cell $cellId is already synced with $localPlacesCount places. Skipping background external API calls.");
+            if (isCellSynced) {
+              debugPrint("ExploreViewModel: Cell $cellId is already synced. Skipping background external API calls.");
               return;
             }
 

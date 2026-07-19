@@ -15,7 +15,7 @@ class BookmarkTracker {
   Future<void> init() async {
     if (_initialized) return;
     
-    // 1. Load from local cache first
+    // 1. Load from local cache first (instant)
     try {
       final file = await _getTrackerFile();
       if (await file.exists()) {
@@ -30,7 +30,13 @@ class BookmarkTracker {
       debugPrint("Error loading bookmarked places from local file: $e");
     }
 
-    // 2. Load from Supabase and merge/override if logged in
+    _initialized = true;
+
+    // 2. Load from Supabase in the background to avoid blocking the caller
+    _syncFromSupabase();
+  }
+
+  Future<void> _syncFromSupabase() async {
     try {
       final client = Supabase.instance.client;
       final user = client.auth.currentUser;
@@ -56,8 +62,6 @@ class BookmarkTracker {
     } catch (e) {
       debugPrint("Error loading bookmarked places from Supabase: $e");
     }
-
-    _initialized = true;
   }
 
   Future<File> _getTrackerFile() async {

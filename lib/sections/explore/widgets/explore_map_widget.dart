@@ -645,89 +645,103 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         }
       }
 
-      // 3. Register style images on demand
-      for (final imageId in imagesToRegister) {
-        if (!_registeredImageIds.contains(imageId)) {
-          try {
-            final parts = imageId.split('-');
-            final String state = parts[0]; // normal / selected / dot / live / selected_live
-            final String type = parts[1]; // restaurant / hotel / ...
-            
-            Uint8List pngBytes;
-            if (imageId == 'dot-live-now') {
-              final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
-              final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
-              const double size = 18.0;
-              final recorder = ui.PictureRecorder();
-              final canvas = Canvas(recorder);
-              canvas.scale(dpr);
-              final bgPaint = Paint()
-                ..color = const Color(0xFF7C57FC)
-                ..style = PaintingStyle.fill;
-              canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
-              final borderPaint = Paint()
-                ..color = Colors.white
-                ..style = PaintingStyle.stroke
-                ..strokeWidth = 1.8;
-              canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
-              final picture = recorder.endRecording();
-              final img = await picture.toImage((size * dpr).toInt(), (size * dpr).toInt());
-              final png = await img.toByteData(format: ui.ImageByteFormat.png);
-              pngBytes = png!.buffer.asUint8List();
-            } else if (state == 'checkin' || state == 'selected_checkin') {
-              final String checkinId = state == 'checkin'
-                  ? imageId.substring('checkin-'.length)
-                  : imageId.substring('selected_checkin-'.length);
-              final place = widget.places.firstWhere(
-                (pl) => pl['id']?.toString() == checkinId,
-                orElse: () => widget.selectedPlace != null && widget.selectedPlace!['id']?.toString() == checkinId
-                    ? widget.selectedPlace!
-                    : {},
-              );
-              final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
-              final String authorName = place['authorName'] as String? ?? 'User';
-              final String resolvedType = _resolvePlaceType(place);
-              debugPrint("ExploreMapWidget: checkinId=$checkinId, resolved place keys=${place.keys}, resolved avatarUrl=$avatarUrl, authorName=$authorName");
-              final bool isSelected = state == 'selected_checkin';
-              pngBytes = await MarkerGenerator.getCheckInCalloutPin(
-                type: resolvedType,
-                avatarUrl: avatarUrl,
-                authorName: authorName,
-                isSelected: isSelected,
-              );
-            } else if (state == 'dot') {
-              pngBytes = await MarkerGenerator.getDotPin(type);
-            } else if (state == 'live' || state == 'selected_live') {
-              final bool isSelected = state == 'selected_live';
-              pngBytes = await MarkerGenerator.getLivePin(type, isSelected: isSelected);
-            } else {
-              final String ratingStr = parts.length > 2 ? parts[2] : 'none';
-              final bool isSelected = state == 'selected';
-              
-              if (ratingStr == 'none') {
-                if (isSelected) {
-                  pngBytes = await MarkerGenerator.getSelectedPin(type);
-                } else {
-                  pngBytes = await MarkerGenerator.getNormalPin(type);
-                }
-              } else {
-                pngBytes = await MarkerGenerator.getCapsulePin(type, ratingStr, isSelected: isSelected);
-              }
-            }
-
-            final mbxImage = await _convertPngToMbxImage(pngBytes);
-            await _mapboxMap!.style.addStyleImage(
-              imageId,
-              dpr,
-              mbxImage,
-              false,
-              <mapbox.ImageStretches?>[],
-              <mapbox.ImageStretches?>[],
-              mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
+      Future<Uint8List?> resolveImageBytes(String imageId) async {
+        try {
+          final parts = imageId.split('-');
+          final String state = parts[0]; // normal / selected / dot / live / selected_live
+          final String type = parts[1]; // restaurant / hotel / ...
+          
+          if (imageId == 'dot-live-now') {
+            final ui.PlatformDispatcher dispatcher = ui.PlatformDispatcher.instance;
+            final double dpr = dispatcher.views.isNotEmpty ? dispatcher.views.first.devicePixelRatio : 3.0;
+            const double size = 18.0;
+            final recorder = ui.PictureRecorder();
+            final canvas = Canvas(recorder);
+            canvas.scale(dpr);
+            final bgPaint = Paint()
+              ..color = const Color(0xFF7C57FC)
+              ..style = PaintingStyle.fill;
+            canvas.drawCircle(const Offset(9.0, 9.0), 6.5, bgPaint);
+            final borderPaint = Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.8;
+            canvas.drawCircle(const Offset(9.0, 9.0), 6.5, borderPaint);
+            final picture = recorder.endRecording();
+            final img = await picture.toImage((size * dpr).toInt(), (size * dpr).toInt());
+            final png = await img.toByteData(format: ui.ImageByteFormat.png);
+            return png!.buffer.asUint8List();
+          } else if (state == 'checkin' || state == 'selected_checkin') {
+            final String checkinId = state == 'checkin'
+                ? imageId.substring('checkin-'.length)
+                : imageId.substring('selected_checkin-'.length);
+            final place = widget.places.firstWhere(
+              (pl) => pl['id']?.toString() == checkinId,
+              orElse: () => widget.selectedPlace != null && widget.selectedPlace!['id']?.toString() == checkinId
+                  ? widget.selectedPlace!
+                  : {},
             );
-            _registeredImageIds.add(imageId);
-          } catch (e) {
-            debugPrint("Error registering dynamic image $imageId: $e");
+            final String? avatarUrl = place['authorAvatar'] as String? ?? place['author_avatar'] as String?;
+            final String authorName = place['authorName'] as String? ?? 'User';
+            final String resolvedType = _resolvePlaceType(place);
+            final bool isSelected = state == 'selected_checkin';
+            return await MarkerGenerator.getCheckInCalloutPin(
+              type: resolvedType,
+              avatarUrl: avatarUrl,
+              authorName: authorName,
+              isSelected: isSelected,
+            );
+          } else if (state == 'dot') {
+            return await MarkerGenerator.getDotPin(type);
+          } else if (state == 'live' || state == 'selected_live') {
+            final bool isSelected = state == 'selected_live';
+            return await MarkerGenerator.getLivePin(type, isSelected: isSelected);
+          } else {
+            final String ratingStr = parts.length > 2 ? parts[2] : 'none';
+            final bool isSelected = state == 'selected';
+            
+            if (ratingStr == 'none') {
+              if (isSelected) {
+                return await MarkerGenerator.getSelectedPin(type);
+              } else {
+                return await MarkerGenerator.getNormalPin(type);
+              }
+            } else {
+              return await MarkerGenerator.getCapsulePin(type, ratingStr, isSelected: isSelected);
+            }
+          }
+        } catch (e) {
+          debugPrint("Error resolving bytes for $imageId: $e");
+          return null;
+        }
+      }
+
+      // 3. Register style images on demand in parallel
+      final unregisteredIds = imagesToRegister.where((id) => !_registeredImageIds.contains(id)).toList();
+      if (unregisteredIds.isNotEmpty) {
+        final List<Uint8List?> results = await Future.wait(
+          unregisteredIds.map((id) => resolveImageBytes(id))
+        );
+
+        for (int i = 0; i < unregisteredIds.length; i++) {
+          final imageId = unregisteredIds[i];
+          final pngBytes = results[i];
+          if (pngBytes != null) {
+            try {
+              final mbxImage = await _convertPngToMbxImage(pngBytes);
+              await _mapboxMap!.style.addStyleImage(
+                imageId,
+                dpr,
+                mbxImage,
+                false,
+                <mapbox.ImageStretches?>[],
+                <mapbox.ImageStretches?>[],
+                mapbox.ImageContent(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0),
+              );
+              _registeredImageIds.add(imageId);
+            } catch (e) {
+              debugPrint("Error registering dynamic image $imageId: $e");
+            }
           }
         }
       }
