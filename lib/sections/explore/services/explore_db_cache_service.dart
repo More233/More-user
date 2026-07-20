@@ -541,6 +541,22 @@ class ExploreDbCacheService {
       debugPrint("ExploreDbCacheService Error clearing cache: $e");
     }
   }
+
+  static Future<Map<String, dynamic>?> getPlaceById(String id) async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.query(
+        'cached_places',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      if (maps.isEmpty) return null;
+      return _parseDbRows(maps).first;
+    } catch (e) {
+      debugPrint("ExploreDbCacheService Error querying place by id: $e");
+      return null;
+    }
+  }
 }
 
 // Top-level function for background isolate parsing of DB rows

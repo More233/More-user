@@ -1501,9 +1501,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               await _hideDefaultLayers(_mapboxMap!);
               await _initDynamicLayers(_mapboxMap!);
               
-              // Set projection dynamically based on theme (Mercator for light mode, Globe for dark mode to support Night preset)
+              // Set projection to Mercator (flat map) in all modes
               try {
-                await _mapboxMap!.style.setProjection(isDark ? "globe" : "mercator");
+                await _mapboxMap!.style.setProjection("mercator");
               } catch (e) {
                 debugPrint("Error setting map projection: $e");
               }
@@ -1537,14 +1537,13 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         ),
         onMapCreated: (mapboxMap) {
           _mapboxMap = mapboxMap;
-          final isDark = Theme.of(context).brightness == Brightness.dark;
 
           Future.microtask(() async {
             await _hideDefaultLayers(mapboxMap);
 
-            // Set projection dynamically based on theme (Mercator for light mode, Globe for dark mode to support Night preset)
+            // Set projection to Mercator (flat map) in all modes
             try {
-              await mapboxMap.style.setProjection(isDark ? "globe" : "mercator");
+              await mapboxMap.style.setProjection("mercator");
             } catch (e) {
               debugPrint("Error setting map projection: $e");
             }

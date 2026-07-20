@@ -174,7 +174,10 @@ class ExplorePlaceCard extends StatelessWidget {
                                 width: 20,
                                 height: 20,
                                 colorFilter: ColorFilter.mode(
-                                  place['imageUrl'] != null && place['imageUrl'].toString().isNotEmpty
+                                  place['imageUrl'] != null &&
+                                  place['imageUrl'].toString().isNotEmpty &&
+                                  !place['imageUrl'].toString().contains('unsplash.com/photo-') &&
+                                  !place['imageUrl'].toString().contains('placeholder_for_')
                                       ? Colors.white
                                       : const Color(0xFF7C57FC),
                                   BlendMode.srcIn,

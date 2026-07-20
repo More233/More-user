@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/place_details_state.dart';
 import '../services/explore_data_service.dart';
+import '../services/explore_db_cache_service.dart';
 import '../helpers/bookmark_tracker.dart';
 
 final placeDetailsViewModelProvider = StateNotifierProvider.family.autoDispose<
@@ -27,41 +28,81 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
     try {
       final double lat = (place['latitude'] as num?)?.toDouble() ?? 29.378033;
       final double lng = (place['longitude'] as num?)?.toDouble() ?? 30.697478;
+      final String placeId = place['id'].toString();
 
-      final details = await ExploreDataService.fetchPlaceDetails(
-        place['id'].toString(),
-        place['name']?.toString() ?? '',
-        lat,
-        lng,
-        lat,
-        lng,
-      );
-
-      if (details != null) {
-        final updatedPlace = Map<String, dynamic>.from(place)..addAll(details);
-
-        List<String> detailsImages = [];
-        final List<dynamic>? placePhotos = details['photos'] as List<dynamic>?;
+      // 1. Try to load from SQLite cache first for instant UI response
+      final cached = await ExploreDbCacheService.getPlaceById(placeId);
+      if (cached != null) {
+        final updatedPlace = Map<String, dynamic>.from(place)..addAll(cached);
+        List<String> cachedImages = [];
+        final List<dynamic>? placePhotos = cached['photos'] as List<dynamic>?;
         if (placePhotos != null && placePhotos.isNotEmpty) {
-          detailsImages = List<String>.from(placePhotos.where((img) => img != null && !img.toString().contains('unsplash.com/photo-')));
+          cachedImages = List<String>.from(placePhotos.where((img) => img != null && !img.toString().contains('unsplash.com/photo-') && img.toString().isNotEmpty));
         }
 
-        final finalImages = detailsImages.isNotEmpty ? detailsImages : state.images;
+        // Fallback check (only if not placeholder)
+        if (cachedImages.isEmpty) {
+          final String? defaultImg = cached['imageUrl']?.toString();
+          if (defaultImg != null && defaultImg.isNotEmpty && !defaultImg.contains('unsplash.com/photo-') && !defaultImg.contains('placeholder_for_')) {
+            cachedImages = [defaultImg];
+          }
+        }
 
         state = state.copyWith(
           place: updatedPlace,
-          images: finalImages,
+          images: cachedImages,
         );
       }
+
+      // 2. Check if we need to fetch fresh data from API
+      // If cached is null, or it has no photos, or it is stale (cached more than 7 days ago)
+      final int cachedAt = cached?['cachedAt'] as int? ?? 0;
+      final int now = DateTime.now().millisecondsSinceEpoch;
+      final bool isStale = (now - cachedAt > 7 * 24 * 60 * 60 * 1000); // 7 days
+      final bool hasNoPhotos = cached == null || (cached['photos'] as List?)?.isEmpty == true;
+
+      if (cached == null || isStale || hasNoPhotos) {
+        final details = await ExploreDataService.fetchPlaceDetails(
+          placeId,
+          place['name']?.toString() ?? '',
+          lat,
+          lng,
+          lat,
+          lng,
+          forceRefresh: true, // Force fresh fetch from APIs
+        );
+
+        if (details != null) {
+          final updatedPlace = Map<String, dynamic>.from(place)..addAll(details);
+
+          List<String> detailsImages = [];
+          final List<dynamic>? placePhotos = details['photos'] as List<dynamic>?;
+          if (placePhotos != null && placePhotos.isNotEmpty) {
+            detailsImages = List<String>.from(placePhotos.where((img) => img != null && !img.toString().contains('unsplash.com/photo-') && img.toString().isNotEmpty));
+          }
+
+          if (detailsImages.isEmpty) {
+            final String? defaultImg = details['imageUrl']?.toString();
+            if (defaultImg != null && defaultImg.isNotEmpty && !defaultImg.contains('unsplash.com/photo-') && !defaultImg.contains('placeholder_for_')) {
+              detailsImages = [defaultImg];
+            }
+          }
+
+          state = state.copyWith(
+            place: updatedPlace,
+            images: detailsImages,
+          );
+        }
+      }
     } catch (e) {
-      debugPrint("Error loading place details from Foursquare: $e");
+      debugPrint("Error loading place details: $e");
     }
   }
 
   static List<String> _getInitialImages(Map<String, dynamic> place) {
     final List<dynamic>? placePhotos = place['photos'] as List<dynamic>?;
     if (placePhotos != null && placePhotos.isNotEmpty) {
-      return List<String>.from(placePhotos.where((img) => img != null && !img.toString().contains('unsplash.com/photo-')));
+      return List<String>.from(placePhotos.where((img) => img != null && !img.toString().contains('unsplash.com/photo-') && img.toString().isNotEmpty));
     }
 
     final String? defaultImg = place['imageUrl']?.toString();
@@ -131,8 +172,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
         if (p['id'] == place['id']) continue;
 
         final String rawUrl = p['imageUrl'] as String? ?? '';
-        final bool hasRealImage = rawUrl.isNotEmpty && !rawUrl.contains('unsplash.com/photo-');
-        if (!hasRealImage) continue;
+        if (rawUrl.isEmpty) continue;
 
         if (category.isNotEmpty && p['type'] == category) {
           filtered.add(p);
@@ -144,8 +184,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
           if (p['id'] == place['id']) continue;
 
           final String rawUrl = p['imageUrl'] as String? ?? '';
-          final bool hasRealImage = rawUrl.isNotEmpty && !rawUrl.contains('unsplash.com/photo-');
-          if (!hasRealImage) continue;
+          if (rawUrl.isEmpty) continue;
 
           if (!filtered.any((item) => item['id'] == p['id'])) {
             filtered.add(p);

@@ -30,7 +30,9 @@ class DynamicPlaceImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool hasRealImage = imageUrl != null &&
-                              imageUrl!.isNotEmpty;
+                              imageUrl!.isNotEmpty &&
+                              !imageUrl!.contains('unsplash.com/photo-') &&
+                              !imageUrl!.contains('placeholder_for_');
 
     Widget displayWidget;
 

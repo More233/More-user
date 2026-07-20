@@ -431,12 +431,15 @@ class ExploreDataService {
 
     final List<String> parsedPhotos = [];
     final photosList = venue['photos'] as List<dynamic>? ?? [];
+    int count = 0;
     for (final p in photosList) {
+      if (count >= 10) break;
       if (p is Map) {
         final prefix = p['prefix'] as String? ?? '';
         final suffix = p['suffix'] as String? ?? '';
         if (prefix.isNotEmpty && suffix.isNotEmpty) {
           parsedPhotos.add('${prefix}original$suffix');
+          count++;
         }
       }
     }
@@ -767,6 +770,50 @@ class ExploreDataService {
   }
 
 
+  static Future<List<dynamic>> _fetchSupabaseVisitors(String placeId) async {
+    try {
+      final client = Supabase.instance.client;
+      final res = await client
+          .from('posts')
+          .select('*, author:profiles!posts_user_id_fkey(*)')
+          .eq('place_id', placeId)
+          .eq('is_private', false)
+          .order('created_at', ascending: false)
+          .limit(10);
+      return res as List<dynamic>? ?? [];
+    } catch (e) {
+      debugPrint("Error fetching supabase visitors for place: $e");
+      return [];
+    }
+  }
+
+  static List<Map<String, dynamic>> _parseVisitors(List<dynamic> visitorsRes) {
+    final List<Map<String, dynamic>> parsedVisitors = [];
+    for (final v in visitorsRes) {
+      final author = v['author'] as Map<String, dynamic>?;
+      if (author != null) {
+        final String name = '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim();
+        parsedVisitors.add({
+          'userId': author['id'] as String?,
+          'name': name.isEmpty ? 'Anonymous' : name,
+          'avatarUrl': author['avatar_url'] as String?,
+          'createdAt': v['created_at'] as String? ?? '',
+        });
+      }
+    }
+    
+    final seen = <String>{};
+    final uniqueVisitors = <Map<String, dynamic>>[];
+    for (final visitor in parsedVisitors) {
+      final name = visitor['name'] as String;
+      if (!seen.contains(name)) {
+        seen.add(name);
+        uniqueVisitors.add(visitor);
+      }
+    }
+    return uniqueVisitors;
+  }
+
   static Future<Map<String, dynamic>?> fetchPlaceDetails(
     String placeId,
     String defaultName,
@@ -775,22 +822,75 @@ class ExploreDataService {
     double userLat,
     double userLng, {
     String defaultType = 'Other',
+    bool forceRefresh = false,
   }) async {
     Map<String, dynamic>? placeMap;
     List<dynamic> visitorsRes = [];
 
-    final bool isFoursquareId = RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(placeId) || placeId.startsWith('fsq_');
-
-    if (isFoursquareId && _isFoursquareKeyValid) {
-      String cleanPlaceId = placeId;
-      if (cleanPlaceId.startsWith('fsq_')) {
-        cleanPlaceId = cleanPlaceId.substring(4);
+    // 1. Check local SQLite cache first (unless forceRefresh is true)
+    if (!forceRefresh) {
+      try {
+        final cached = await ExploreDbCacheService.getPlaceById(placeId);
+        if (cached != null) {
+          final List<dynamic>? photos = cached['photos'] as List<dynamic>?;
+          if (photos != null && photos.isNotEmpty) {
+            _log("ExploreDataService: Returning cached place details with photos for: $placeId");
+            visitorsRes = await _fetchSupabaseVisitors(placeId);
+            cached['visitors'] = _parseVisitors(visitorsRes);
+            cached['peopleCount'] = cached['visitors'].length;
+            if (cached['visitors'].isNotEmpty) {
+              cached['reviewsCount'] = cached['visitors'].length;
+            }
+            return cached;
+          }
+        }
+      } catch (e) {
+        debugPrint("Error reading cached place details: $e");
       }
+    }
+
+    final bool isFoursquareId = RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(placeId) || placeId.startsWith('fsq_');
+    String? cleanPlaceId;
+
+    if (isFoursquareId) {
+      cleanPlaceId = placeId.startsWith('fsq_') ? placeId.substring(4) : placeId;
+    } else if (placeId.startsWith('seed_') && _isFoursquareKeyValid) {
+      // Resolve seed place to a Foursquare ID dynamically
+      try {
+        final String searchUrl = 'https://places-api.foursquare.com/places/search'
+            '?query=${Uri.encodeComponent(defaultName)}'
+            '&ll=$defaultLat,$defaultLng'
+            '&radius=500'
+            '&limit=1';
+        final response = await _client.get(
+          Uri.parse(searchUrl),
+          headers: {
+            'Authorization': 'Bearer $foursquareApiKey',
+            'X-Places-Api-Version': '2025-06-17',
+            'Accept': 'application/json',
+          },
+        );
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final results = data['results'] as List<dynamic>? ?? [];
+          if (results.isNotEmpty) {
+            final venue = results.first as Map<String, dynamic>;
+            final foundId = venue['fsq_place_id'] as String? ?? venue['fsq_id'] as String? ?? venue['id'] as String?;
+            if (foundId != null) {
+              cleanPlaceId = foundId.startsWith('fsq_') ? foundId.substring(4) : foundId;
+              debugPrint("Resolved seeded place '$defaultName' to Foursquare ID: $cleanPlaceId");
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Error resolving seeded place to Foursquare ID: $e");
+      }
+    }
+
+    if (cleanPlaceId != null && _isFoursquareKeyValid) {
       final String url = 'https://places-api.foursquare.com/places/$cleanPlaceId'
           '?fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,website,tel,hours,hours_popular';
-      final String photosUrl = 'https://places-api.foursquare.com/places/$cleanPlaceId/photos?limit=50';
-
-      final client = Supabase.instance.client;
+      final String photosUrl = 'https://places-api.foursquare.com/places/$cleanPlaceId/photos?limit=10';
 
       try {
         final results = await Future.wait<dynamic>([
@@ -810,13 +910,7 @@ class ExploreDataService {
               'Accept': 'application/json',
             },
           ),
-          client
-               .from('posts')
-               .select('*, author:profiles!posts_user_id_fkey(*)')
-               .eq('place_id', placeId)
-               .eq('is_private', false)
-               .order('created_at', ascending: false)
-               .limit(10),
+          _fetchSupabaseVisitors(placeId),
         ]);
 
         final httpResponse = results[0] as http.Response;
@@ -829,18 +923,23 @@ class ExploreDataService {
           final List<String> parsedPhotos = [];
           if (photosResponse.statusCode == 200) {
             final List<dynamic> photosList = json.decode(photosResponse.body) as List<dynamic>;
+            int count = 0;
             for (final p in photosList) {
+              if (count >= 10) break;
               if (p is Map) {
                 final prefix = p['prefix'] as String? ?? '';
                 final suffix = p['suffix'] as String? ?? '';
                 if (prefix.isNotEmpty && suffix.isNotEmpty) {
                   parsedPhotos.add('${prefix}original$suffix');
+                  count++;
                 }
               }
             }
           }
 
           placeMap = parseFoursquareV3Venue(result, userLat, userLng);
+          // Keep original id so we update database cache correctly
+          placeMap['id'] = placeId;
           
           if (parsedPhotos.isNotEmpty) {
             placeMap['photos'] = parsedPhotos;
@@ -875,6 +974,7 @@ class ExploreDataService {
         'peopleCount': 0,
         'type': defaultType,
         'imageUrl': getPlaceholderUrl(defaultType, placeId),
+        'photos': <String>[],
         'isSaved': false,
         'isVisited': false,
         'iconUrl': null,
@@ -884,34 +984,12 @@ class ExploreDataService {
         'website': null,
         'phone': null,
       };
+      
+      visitorsRes = await _fetchSupabaseVisitors(placeId);
     }
 
     try {
-      final list = List<Map<String, dynamic>>.from(visitorsRes);
-      final List<Map<String, dynamic>> parsedVisitors = [];
-      for (final v in list) {
-        final author = v['author'] as Map<String, dynamic>?;
-        if (author != null) {
-          final String name = '${author['first_name'] ?? ''} ${author['last_name'] ?? ''}'.trim();
-          parsedVisitors.add({
-            'userId': author['id'] as String?,
-            'name': name.isEmpty ? 'Anonymous' : name,
-            'avatarUrl': author['avatar_url'] as String?,
-            'createdAt': v['created_at'] as String? ?? '',
-          });
-        }
-      }
-      
-      final seen = <String>{};
-      final uniqueVisitors = <Map<String, dynamic>>[];
-      for (final visitor in parsedVisitors) {
-        final name = visitor['name'] as String;
-        if (!seen.contains(name)) {
-          seen.add(name);
-          uniqueVisitors.add(visitor);
-        }
-      }
-
+      final uniqueVisitors = _parseVisitors(visitorsRes);
       placeMap['visitors'] = uniqueVisitors;
       placeMap['peopleCount'] = uniqueVisitors.length;
       if (uniqueVisitors.isNotEmpty) {
