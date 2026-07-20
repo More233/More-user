@@ -44,24 +44,24 @@ serve(async (req: Request) => {
     const senderName = `${firstName} ${lastName}`.trim() || 'Someone'
     const senderAvatar = senderProfile?.avatar_url ?? ''
 
-    // 3. Construct notification title and body text based on type (Arabic support)
+    // 3. Construct notification title and body text based on type (English)
     let titleText = 'More'
     let bodyText = ''
 
     if (type === 'mention') {
-      titleText = 'الإشارة إليك 🏷️'
-      bodyText = `أشار إليك ${senderName} في قصة.`
+      titleText = 'New Mention 🏷️'
+      bodyText = `${senderName} mentioned you in a story.`
     } else if (type === 'follow') {
-      titleText = 'متابع جديد 👋'
-      bodyText = `بدأ ${senderName} في متابعتك.`
+      titleText = 'New Follower 👋'
+      bodyText = `${senderName} started following you.`
     } else if (type === 'like') {
-      titleText = 'إعجاب جديد ❤️'
-      bodyText = `أعجب ${senderName} بمنشورك.`
+      titleText = 'New Like ❤️'
+      bodyText = `${senderName} liked your check-in.`
     } else if (type === 'comment') {
-      titleText = 'تعليق جديد 💬'
-      bodyText = `علق ${senderName} على منشورك.`
+      titleText = 'New Comment 💬'
+      bodyText = `${senderName} commented on your check-in.`
     } else {
-      bodyText = `لديك تنبيه جديد من ${senderName}.`
+      bodyText = `You have a new notification from ${senderName}.`
     }
 
     // 4. Send FCM Notification using Firebase v1 REST API
@@ -88,6 +88,7 @@ serve(async (req: Request) => {
                 body: bodyText,
               },
               sound: "default",
+              badge: 1,
             },
           },
           fcm_options: {

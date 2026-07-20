@@ -89,6 +89,7 @@ serve(async (req: Request) => {
                 body: bodyText,
               },
               sound: "default",
+              badge: 1,
             },
           },
           fcm_options: {

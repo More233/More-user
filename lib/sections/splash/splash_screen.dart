@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../permissions/permissions_page.dart';
+import '../auth/auth_flow_page.dart';
 import '../home/home_screen.dart';
 import '../explore/services/explore_data_service.dart';
 import 'widgets/svg_path_painter.dart';
@@ -79,7 +79,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const PermissionsPage()),
+          MaterialPageRoute(builder: (context) => const AuthFlowPage()),
         );
       }
     });

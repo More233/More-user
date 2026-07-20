@@ -28,6 +28,7 @@ import 'widgets/common/custom_loading_indicator.dart';
 import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
 import 'widgets/bottom_sheets/share_bottom_sheet.dart';
 import 'widgets/feed/social_feed_view.dart';
+import '../../services/notification_service.dart';
 import 'widgets/common/user_drawer.dart';
 import 'widgets/story/story_composer_screen.dart';
 
@@ -368,6 +369,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(
+      notificationsViewModelProvider.select((s) => s.unreadCount),
+      (previous, next) {
+        final unreadMsgs = ref.read(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0));
+        NotificationService.updateBadgeCount(next + unreadMsgs);
+      },
+    );
+
+    ref.listen<int>(
+      messagesViewModelProvider.select((s) => s.threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0))),
+      (previous, next) {
+        final unreadNotifs = ref.read(notificationsViewModelProvider).unreadCount;
+        NotificationService.updateBadgeCount(unreadNotifs + next);
+      },
+    );
+
     final state = ref.watch(timelineViewModelProvider);
     final isPlaceSelected = ref.watch(exploreViewModelProvider.select((s) => s.selectedPlace != null));
     final isListView = ref.watch(exploreViewModelProvider.select((s) => s.isListView));

@@ -570,9 +570,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
         try {
           await client.from('notifications').insert({
-            'user_id': targetUserId,
-            'actor_id': currentUserId,
-            'category': 'follow',
+            'receiver_id': targetUserId,
+            'sender_id': currentUserId,
+            'type': 'follow',
           });
         } catch (ne) {
           debugPrint("Error inserting follow notification: $ne");
@@ -892,7 +892,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         )
                                       : Text(
                                           _isFollowing ? 'Following' : 'Follow',
-                                          style: GoogleFonts.outfit(
+                                          style: GoogleFonts.ibmPlexSansArabic(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
                                             color: _isFollowing
@@ -931,7 +931,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                             const SizedBox(width: 6),
                                             Text(
                                               'Message',
-                                              style: GoogleFonts.outfit(
+                                              style: GoogleFonts.ibmPlexSansArabic(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w600,
                                                 color: isDark ? Colors.white : const Color(0xFF374151),

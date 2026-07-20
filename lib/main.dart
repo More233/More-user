@@ -34,6 +34,7 @@ class MyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
+      navigatorKey: NotificationService.navigatorKey,
       title: 'More Onboarding Flow',
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,

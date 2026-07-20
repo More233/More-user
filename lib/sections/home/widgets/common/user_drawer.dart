@@ -15,7 +15,6 @@ import '../../../auth/account_manager.dart';
 import '../../../auth/auth_flow_page.dart';
 import '../saved/saved_screen.dart';
 import '../../notifications_screen.dart';
-import '../../../settings/widgets/language_sheet.dart';
 import '../../../settings/screens/location_settings_screen.dart';
 import '../../../settings/screens/suggestions_settings_screen.dart';
 import '../../../settings/screens/blocked_users_screen.dart';
@@ -312,21 +311,6 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                         ),
                         _buildDrawerItem(
                           context: context,
-                          icon: CupertinoIcons.globe,
-                          title: 'Language',
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            widget.onCloseMenu?.call();
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) => const LanguageSheet(),
-                            );
-                          },
-                        ),
-                        _buildDrawerItem(
-                          context: context,
                           icon: CupertinoIcons.bell,
                           title: 'Notifications',
                           onTap: () {
@@ -461,7 +445,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) {
+      builder: (dialogContext) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -475,7 +459,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
               children: [
                 Text(
                   'Log out of More?',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 19,
                     fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : const Color(0xFF111827),
@@ -485,7 +469,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                 const SizedBox(height: 10),
                 Text(
                   'Are you sure you want to log out?',
-                  style: GoogleFonts.outfit(
+                  style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     color: isDark ? Colors.white54 : const Color(0xFF6B7280),
                     height: 1.5,
@@ -499,7 +483,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                       child: GestureDetector(
                         onTap: () {
                           HapticFeedback.lightImpact();
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                         },
                         child: Container(
                           height: 48,
@@ -510,7 +494,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           alignment: Alignment.center,
                           child: Text(
                             'Cancel',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white70 : const Color(0xFF4B5563),
@@ -524,18 +508,20 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                       child: GestureDetector(
                         onTap: () async {
                           HapticFeedback.mediumImpact();
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                           widget.onCloseMenu?.call();
                           ref.invalidate(messagesViewModelProvider);
                           ref.invalidate(exploreViewModelProvider);
                           ref.invalidate(socialFeedViewModelProvider);
+                          
+                          // Capture navigator before async gap to avoid using unmounted context
+                          final navigator = Navigator.of(context);
                           await Supabase.instance.client.auth.signOut();
-                          if (context.mounted) {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (context) => const AuthFlowPage()),
-                              (route) => false,
-                            );
-                          }
+                          
+                          navigator.pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const AuthFlowPage()),
+                            (route) => false,
+                          );
                         },
                         child: Container(
                           height: 48,
@@ -546,7 +532,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                           alignment: Alignment.center,
                           child: Text(
                             'Log Out',
-                            style: GoogleFonts.outfit(
+                            style: GoogleFonts.ibmPlexSansArabic(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -580,11 +566,11 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (bottomSheetContext) {
         debugPrint("==== showModalBottomSheet Builder Called ====");
         
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (statefulContext, setModalState) {
             return Container(
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
@@ -597,7 +583,7 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                 child: FutureBuilder<List<SavedAccount>>(
                   future: AccountManager.getSavedAccounts(),
                   initialData: initialAccounts,
-                  builder: (context, snapshot) {
+                  builder: (futureBuilderContext, snapshot) {
                     final accounts = snapshot.data ?? initialAccounts;
 
                     return Column(
@@ -709,13 +695,15 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                         if (isActive) return;
                                         if (_isEditingAccounts) return;
 
-                                        Navigator.pop(context);
+                                        Navigator.pop(bottomSheetContext);
                                         widget.onCloseMenu?.call();
+                                        
+                                        final navigator = Navigator.of(context);
                                         
                                         showDialog(
                                           context: context,
                                           barrierDismissible: false,
-                                          builder: (context) => const Center(
+                                          builder: (dialogContext) => const Center(
                                             child: CupertinoActivityIndicator(
                                               color: Color(0xFF7C57FC),
                                               radius: 12,
@@ -724,14 +712,17 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                                         );
 
                                         final success = await AccountManager.switchToAccount(acc.userId);
-                                        if (context.mounted) {
-                                          Navigator.pop(context);
-                                          if (success) {
-                                            Navigator.of(context).pushAndRemoveUntil(
-                                              MaterialPageRoute(builder: (context) => HomeScreen()),
-                                              (route) => false,
-                                            );
-                                          } else {
+                                        
+                                        // Pop the loading dialog route
+                                        navigator.pop();
+                                        
+                                        if (success) {
+                                          navigator.pushAndRemoveUntil(
+                                            MaterialPageRoute(builder: (context) => const HomeScreen()),
+                                            (route) => false,
+                                          );
+                                        } else {
+                                          if (context.mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text("Failed to switch account")),
                                             );
@@ -763,19 +754,21 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                             ),
                           ),
                           onTap: () async {
+                            final navigator = Navigator.of(context);
+                            final bottomSheetNavigator = Navigator.of(bottomSheetContext);
                             await AccountManager.saveCurrentAccount();
                             ref.invalidate(messagesViewModelProvider);
                             ref.invalidate(exploreViewModelProvider);
                             ref.invalidate(socialFeedViewModelProvider);
                             await Supabase.instance.client.auth.signOut();
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              widget.onCloseMenu?.call();
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(builder: (context) => const AuthFlowPage()),
-                                (route) => false,
-                              );
-                            }
+                            
+                            bottomSheetNavigator.pop();
+                            widget.onCloseMenu?.call();
+                            
+                            navigator.pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (context) => const AuthFlowPage()),
+                              (route) => false,
+                            );
                           },
                         ),
                         const SizedBox(height: 12),

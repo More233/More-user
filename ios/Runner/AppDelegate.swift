@@ -31,6 +31,31 @@ import AVFoundation
         }
     }
     
+    let badgeChannel = FlutterMethodChannel(name: "com.app.more/badge_utils", binaryMessenger: controller.binaryMessenger)
+    badgeChannel.setMethodCallHandler { (call, result) in
+        if call.method == "setBadgeCount" {
+            guard let args = call.arguments as? Int else {
+                result(FlutterError(code: "INVALID_ARGUMENTS", message: "Argument must be an integer", details: nil))
+                return
+            }
+            if #available(iOS 16.0, *) {
+                UNUserNotificationCenter.current().setBadgeCount(args) { error in
+                    if let error = error {
+                        print("Error setting badge count: \(error)")
+                        result(FlutterError(code: "IOS_ERROR", message: error.localizedDescription, details: nil))
+                    } else {
+                        result(true)
+                    }
+                }
+            } else {
+                UIApplication.shared.applicationIconBadgeNumber = args
+                result(true)
+            }
+        } else {
+            result(FlutterMethodNotImplemented)
+        }
+    }
+    
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

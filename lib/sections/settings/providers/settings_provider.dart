@@ -49,7 +49,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
         state = SettingsState(
           loading: false,
-          preferredLanguage: profile['preferred_language'] as String? ?? 'en',
+          preferredLanguage: 'en',
           profileVisibility: profile['profile_visibility'] as String? ?? 'friends',
           friendRequestsVisibility: profile['friend_requests_visibility'] as String? ?? 'friends_of_friends',
           checkInVisibility: profile['check_in_visibility'] as String? ?? 'friends',
@@ -146,7 +146,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   void _updateLocalState(String key, dynamic value) {
     switch (key) {
       case 'preferred_language':
-        state = state.copyWith(preferredLanguage: value as String);
+        state = state.copyWith(preferredLanguage: 'en');
         break;
       case 'profile_visibility':
         state = state.copyWith(profileVisibility: value as String);

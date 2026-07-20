@@ -31,6 +31,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   String? _avatarUrl;
+  bool? _lastIsDark;
 
   void _fetchUserAvatar() async {
     try {
@@ -131,16 +132,29 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final double topPadding = MediaQuery.of(context).padding.top;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     
+    if (_lastIsDark != null && _lastIsDark != isDark) {
+      _lastIsDark = isDark;
+      if (_mapController != null) {
+        final newStyle = isDark
+            ? "mapbox://styles/mapbox/dark-v11"
+            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+        _mapController!.style.setStyleURI(newStyle);
+      }
+    } else {
+      _lastIsDark = isDark;
+    }
+
     return Scaffold(
       body: Stack(
         children: [
           // Fullscreen Mapbox Map
           Positioned.fill(
             child: mapbox.MapWidget(
-              key: ValueKey('location_picker_map_${Theme.of(context).brightness == Brightness.dark}'),
+              key: const ValueKey('location_picker_map_key'),
               resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
-              styleUri: Theme.of(context).brightness == Brightness.dark
+              styleUri: isDark
                   ? "mapbox://styles/mapbox/dark-v11"
                   : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
               cameraOptions: mapbox.CameraOptions(
@@ -151,37 +165,41 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                 _mapController = controller;
                 await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
                 await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
-                try {
-                  final layers = await controller.style.getStyleLayers();
-                  const List<String> hideKeywords = [
-                    'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
-                    'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
-                    'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
-                    'beverage', 'intersection', 'entrance', 'parking'
-                  ];
-                  for (final layerInfo in layers) {
-                    if (layerInfo != null) {
-                      final idLower = layerInfo.id.toLowerCase();
-                      if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
-                        continue;
-                      }
-                      bool shouldHide = false;
-                      for (final keyword in hideKeywords) {
-                        if (idLower.contains(keyword)) {
-                          shouldHide = true;
-                          break;
+              },
+              onStyleLoadedListener: (styleLoaded) async {
+                if (_mapController != null) {
+                  try {
+                    final layers = await _mapController!.style.getStyleLayers();
+                    const List<String> hideKeywords = [
+                      'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
+                      'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
+                      'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
+                      'beverage', 'intersection', 'entrance', 'parking'
+                    ];
+                    for (final layerInfo in layers) {
+                      if (layerInfo != null) {
+                        final idLower = layerInfo.id.toLowerCase();
+                        if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
+                          continue;
+                        }
+                        bool shouldHide = false;
+                        for (final keyword in hideKeywords) {
+                          if (idLower.contains(keyword)) {
+                            shouldHide = true;
+                            break;
+                          }
+                        }
+                        if (shouldHide) {
+                          await _mapController!.style.setStyleLayerProperty(
+                            layerInfo.id,
+                            'visibility',
+                            'none',
+                          );
                         }
                       }
-                      if (shouldHide) {
-                        await controller.style.setStyleLayerProperty(
-                          layerInfo.id,
-                          'visibility',
-                          'none',
-                        );
-                      }
                     }
-                  }
-                } catch (_) {}
+                  } catch (_) {}
+                }
               },
               onCameraChangeListener: (event) {
                 if (_mapController != null) {

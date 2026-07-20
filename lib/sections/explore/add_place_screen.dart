@@ -41,6 +41,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
   late double _longitude;
   String _address = "Cairo, Cairo 11568, Egypt";
   mapbox.MapboxMap? _mapController;
+  bool? _lastIsDark;
 
   // Selected Category
   String _category = "";
@@ -601,6 +602,18 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
   Widget build(BuildContext context) {
     final double topPadding = MediaQuery.of(context).padding.top;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    if (_lastIsDark != null && _lastIsDark != isDark) {
+      _lastIsDark = isDark;
+      if (_mapController != null) {
+        final newStyle = isDark
+            ? "mapbox://styles/mapbox/dark-v11"
+            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+        _mapController!.style.setStyleURI(newStyle);
+      }
+    } else {
+      _lastIsDark = isDark;
+    }
     final Color bgColor = isDark ? const Color(0xFF131722) : Colors.white;
     final Color headerColor = isDark ? const Color(0xFF131722) : Colors.white;
     final Color textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
@@ -822,7 +835,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                         child: Stack(
                           children: [
                               mapbox.MapWidget(
-                                key: ValueKey('add_place_map_${Theme.of(context).brightness == Brightness.dark}'),
+                                key: const ValueKey('add_place_map_key'),
                                 resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
                                 styleUri: Theme.of(context).brightness == Brightness.dark
                                     ? "mapbox://styles/mapbox/dark-v11"
@@ -835,37 +848,41 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                   _mapController = controller;
                                   await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
                                   await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
-                                  try {
-                                    final layers = await controller.style.getStyleLayers();
-                                    const List<String> hideKeywords = [
-                                      'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
-                                      'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
-                                      'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
-                                      'beverage', 'intersection', 'entrance', 'parking'
-                                    ];
-                                    for (final layerInfo in layers) {
-                                      if (layerInfo != null) {
-                                        final idLower = layerInfo.id.toLowerCase();
-                                        if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
-                                          continue;
-                                        }
-                                        bool shouldHide = false;
-                                        for (final keyword in hideKeywords) {
-                                          if (idLower.contains(keyword)) {
-                                            shouldHide = true;
-                                            break;
+                                },
+                                onStyleLoadedListener: (styleLoaded) async {
+                                  if (_mapController != null) {
+                                    try {
+                                      final layers = await _mapController!.style.getStyleLayers();
+                                      const List<String> hideKeywords = [
+                                        'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
+                                        'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
+                                        'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
+                                        'beverage', 'intersection', 'entrance', 'parking'
+                                      ];
+                                      for (final layerInfo in layers) {
+                                        if (layerInfo != null) {
+                                          final idLower = layerInfo.id.toLowerCase();
+                                          if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
+                                            continue;
+                                          }
+                                          bool shouldHide = false;
+                                          for (final keyword in hideKeywords) {
+                                            if (idLower.contains(keyword)) {
+                                              shouldHide = true;
+                                              break;
+                                            }
+                                          }
+                                          if (shouldHide) {
+                                            await _mapController!.style.setStyleLayerProperty(
+                                              layerInfo.id,
+                                              'visibility',
+                                              'none',
+                                            );
                                           }
                                         }
-                                        if (shouldHide) {
-                                          await controller.style.setStyleLayerProperty(
-                                            layerInfo.id,
-                                            'visibility',
-                                            'none',
-                                          );
-                                        }
                                       }
-                                    }
-                                  } catch (_) {}
+                                    } catch (_) {}
+                                  }
                                 },
                               ),
                             // Selection pin in center of mini map

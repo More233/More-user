@@ -267,52 +267,11 @@ class PlaceDetailsInfo extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   child: Stack(
                     children: [
-                      mapbox.MapWidget(
-                        key: ValueKey('place_details_mini_map_${Theme.of(context).brightness == Brightness.dark}'),
-                        resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
-                        styleUri: Theme.of(context).brightness == Brightness.dark
-                            ? "mapbox://styles/mapbox/dark-v11"
-                            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
-                        cameraOptions: mapbox.CameraOptions(
-                          center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
-                          zoom: 15.0,
-                        ),
-                        onMapCreated: (controller) async {
-                          await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
-                          await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
-                          try {
-                            final layers = await controller.style.getStyleLayers();
-                            const List<String> hideKeywords = [
-                              'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
-                              'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
-                              'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
-                              'beverage', 'intersection', 'entrance', 'parking'
-                            ];
-                            for (final layerInfo in layers) {
-                              if (layerInfo != null) {
-                                final idLower = layerInfo.id.toLowerCase();
-                                if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
-                                  continue;
-                                }
-                                bool shouldHide = false;
-                                for (final keyword in hideKeywords) {
-                                  if (idLower.contains(keyword)) {
-                                    shouldHide = true;
-                                    break;
-                                  }
-                                }
-                                if (shouldHide) {
-                                  await controller.style.setStyleLayerProperty(
-                                    layerInfo.id,
-                                    'visibility',
-                                    'none',
-                                    );
-                                  }
-                                }
-                              }
-                            } catch (_) {}
-                          },
-                        ),
+                      _MiniMapPreview(
+                        lat: lat,
+                        lng: lng,
+                        isDark: Theme.of(context).brightness == Brightness.dark,
+                      ),
                       const Center(
                         child: Icon(
                           Icons.location_on,
@@ -370,6 +329,93 @@ class PlaceDetailsInfo extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MiniMapPreview extends StatefulWidget {
+  final double lat;
+  final double lng;
+  final bool isDark;
+
+  const _MiniMapPreview({
+    required this.lat,
+    required this.lng,
+    required this.isDark,
+  });
+
+  @override
+  State<_MiniMapPreview> createState() => _MiniMapPreviewState();
+}
+
+class _MiniMapPreviewState extends State<_MiniMapPreview> {
+  mapbox.MapboxMap? _mapController;
+  bool? _lastIsDark;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_lastIsDark != null && _lastIsDark != widget.isDark) {
+      _lastIsDark = widget.isDark;
+      if (_mapController != null) {
+        final newStyle = widget.isDark
+            ? "mapbox://styles/mapbox/dark-v11"
+            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+        _mapController!.style.setStyleURI(newStyle);
+      }
+    } else {
+      _lastIsDark = widget.isDark;
+    }
+
+    return mapbox.MapWidget(
+      key: const ValueKey('place_details_mini_map_key'),
+      resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
+      styleUri: widget.isDark
+          ? "mapbox://styles/mapbox/dark-v11"
+          : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+      cameraOptions: mapbox.CameraOptions(
+        center: mapbox.Point(coordinates: mapbox.Position(widget.lng, widget.lat)).toJson(),
+        zoom: 15.0,
+      ),
+      onMapCreated: (controller) async {
+        _mapController = controller;
+        await controller.compass.updateSettings(mapbox.CompassSettings(enabled: false));
+        await controller.scaleBar.updateSettings(mapbox.ScaleBarSettings(enabled: false));
+      },
+      onStyleLoadedListener: (styleLoaded) async {
+        if (_mapController != null) {
+          try {
+            final layers = await _mapController!.style.getStyleLayers();
+            const List<String> hideKeywords = [
+              'poi', 'transit', 'rail', 'bus', 'station', 'ferry', 'shield', 'motorway',
+              'number', 'crossing', 'traffic', 'landmark', 'symbol', 'monument', 'worship',
+              'cemetery', 'lodging', 'hotel', 'restaurant', 'cafe', 'shop', 'food',
+              'beverage', 'intersection', 'entrance', 'parking'
+            ];
+            for (final layerInfo in layers) {
+              if (layerInfo != null) {
+                final idLower = layerInfo.id.toLowerCase();
+                if (idLower.contains('pointannotation') || idLower.contains('annotation')) {
+                  continue;
+                }
+                bool shouldHide = false;
+                for (final keyword in hideKeywords) {
+                  if (idLower.contains(keyword)) {
+                    shouldHide = true;
+                    break;
+                  }
+                }
+                if (shouldHide) {
+                  await _mapController!.style.setStyleLayerProperty(
+                    layerInfo.id,
+                    'visibility',
+                    'none',
+                  );
+                }
+              }
+            }
+          } catch (_) {}
+        }
+      },
     );
   }
 }

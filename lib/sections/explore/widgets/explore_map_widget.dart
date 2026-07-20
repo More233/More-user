@@ -60,6 +60,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
   bool? _isBaseLayersVisible;
   bool _isUpdatingMarkers = false;
   bool _needsUpdateAgain = false;
+  bool? _lastIsDark;
 
   static const List<String> _permanentHideKeywords = [
     'poi',
@@ -1435,6 +1436,17 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
     );
 
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    if (_lastIsDark != null && _lastIsDark != isDark) {
+      _lastIsDark = isDark;
+      if (_mapboxMap != null) {
+        final newStyle = isDark
+            ? "mapbox://styles/mapbox/dark-v11"
+            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+        _mapboxMap!.style.setStyleURI(newStyle);
+      }
+    } else {
+      _lastIsDark = isDark;
+    }
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -1476,7 +1488,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         }
       },
       child: mapbox.MapWidget(
-        key: ValueKey('explore_mapbox_widget_key_$isDark'),
+        key: const ValueKey('explore_mapbox_widget_key'),
         resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
         styleUri: isDark
             ? "mapbox://styles/mapbox/dark-v11"
@@ -1490,6 +1502,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             Future.microtask(() async {
               await _hideDefaultLayers(_mapboxMap!);
               await _initDynamicLayers(_mapboxMap!);
+              
+              // Set projection dynamically based on theme (Mercator for light mode, Globe for dark mode to support Night preset)
+              try {
+                await _mapboxMap!.style.setProjection(isDark ? "globe" : "mercator");
+              } catch (e) {
+                debugPrint("Error setting map projection: $e");
+              }
+
               _isBaseLayersVisible = null;
               await _applyBaseLabelVisibility(_currentZoom);
               try {
