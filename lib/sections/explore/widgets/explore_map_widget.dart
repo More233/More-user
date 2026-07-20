@@ -180,13 +180,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final source = mapbox.GeoJsonSource(
           id: "places-source",
           data: '{"type": "FeatureCollection", "features": []}',
-          cluster: true,
-          clusterMaxZoom: 13,
-          clusterRadius: 50,
-          clusterProperties: {
-            "dominant_type_code": ["max", ["get", "place_type_code"]],
-            "people_count": ["+", ["get", "people_count"]]
-          },
+          cluster: false,
         );
         await mapboxMap.style.addSource(source);
       } catch (e) {
@@ -275,8 +269,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         final placesLayer = mapbox.SymbolLayer(
           id: "places-layer",
           sourceId: "places-source",
-          iconAllowOverlap: true,
-          iconIgnorePlacement: true,
+          iconAllowOverlap: false,
+          iconIgnorePlacement: false,
           textAllowOverlap: false,
           textIgnorePlacement: false,
           textVariableAnchor: ["right", "left"],
@@ -989,7 +983,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         List<dynamic> buildLiveIconCaseForPercent(int percent) {
           return [
             "case",
-            ["coalesce", ["get", "is_check_in"], false],
+            ["all", ["coalesce", ["get", "is_check_in"], false], [">=", ["zoom"], 10.8]],
             [
               "case",
               ["==", ["get", "id"], selectedId],
@@ -999,11 +993,11 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             ["==", ["get", "id"], selectedId],
             ["concat", "selected_live-", ["get", "place_type"]],
             if (percent == 0)
-              ""
+              "dot-live-now"
             else if (percent < 100) ...[
               ["<", ["get", "random_percent"], percent],
               ["concat", "live-", ["get", "place_type"]],
-              ""
+              "dot-live-now"
             ] else
               ["concat", "live-", ["get", "place_type"]]
           ];
@@ -1012,25 +1006,25 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         iconImageExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildLiveIconCaseForPercent(0),
-          2.9,
           buildLiveIconCaseForPercent(10),
-          4.5,
+          3.0,
           buildLiveIconCaseForPercent(20),
-          6.0,
+          4.5,
           buildLiveIconCaseForPercent(30),
-          7.5,
+          6.0,
           buildLiveIconCaseForPercent(40),
-          9.0,
+          7.5,
           buildLiveIconCaseForPercent(50),
-          10.8,
+          9.0,
           buildLiveIconCaseForPercent(60),
-          12.5,
+          10.8,
           buildLiveIconCaseForPercent(70),
-          14.5,
+          12.5,
           buildLiveIconCaseForPercent(80),
-          16.5,
+          14.5,
           buildLiveIconCaseForPercent(90),
+          16.5,
+          buildLiveIconCaseForPercent(95),
           18.5,
           buildLiveIconCaseForPercent(100),
         ]);
@@ -1038,7 +1032,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         List<dynamic> buildIconCaseForPercent(int percent) {
           return [
             "case",
-            ["coalesce", ["get", "is_check_in"], false],
+            ["all", ["coalesce", ["get", "is_check_in"], false], [">=", ["zoom"], 10.8]],
             [
               "case",
               ["==", ["get", "id"], selectedId],
@@ -1061,25 +1055,25 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         iconImageExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildIconCaseForPercent(0),
-          2.9,
           buildIconCaseForPercent(10),
-          4.5,
+          3.0,
           buildIconCaseForPercent(20),
-          6.0,
+          4.5,
           buildIconCaseForPercent(30),
-          7.5,
+          6.0,
           buildIconCaseForPercent(40),
-          9.0,
+          7.5,
           buildIconCaseForPercent(50),
-          10.8,
+          9.0,
           buildIconCaseForPercent(60),
-          12.5,
+          10.8,
           buildIconCaseForPercent(70),
-          14.5,
+          12.5,
           buildIconCaseForPercent(80),
-          16.5,
+          14.5,
           buildIconCaseForPercent(90),
+          16.5,
+          buildIconCaseForPercent(95),
           18.5,
           buildIconCaseForPercent(100),
         ]);
@@ -1110,6 +1104,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         List<dynamic> buildLiveLabelCaseForPercent(int percent) {
           return [
             "case",
+            ["all", ["coalesce", ["get", "is_check_in"], false], ["<", ["zoom"], 10.8]],
+            "",
             ["==", ["get", "id"], selectedId],
             liveLabelFormatExpr,
             if (percent == 0)
@@ -1126,25 +1122,25 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         textFieldExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildLiveLabelCaseForPercent(0),
-          2.9,
           buildLiveLabelCaseForPercent(10),
-          4.5,
+          3.0,
           buildLiveLabelCaseForPercent(20),
-          6.0,
+          4.5,
           buildLiveLabelCaseForPercent(30),
-          7.5,
+          6.0,
           buildLiveLabelCaseForPercent(40),
-          9.0,
+          7.5,
           buildLiveLabelCaseForPercent(50),
-          10.8,
+          9.0,
           buildLiveLabelCaseForPercent(60),
-          12.5,
+          10.8,
           buildLiveLabelCaseForPercent(70),
-          14.5,
+          12.5,
           buildLiveLabelCaseForPercent(80),
-          16.5,
+          14.5,
           buildLiveLabelCaseForPercent(90),
+          16.5,
+          buildLiveLabelCaseForPercent(95),
           18.5,
           buildLiveLabelCaseForPercent(100),
         ]);
@@ -1170,6 +1166,8 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         List<dynamic> buildLabelCaseForPercent(int percent) {
           return [
             "case",
+            ["all", ["coalesce", ["get", "is_check_in"], false], ["<", ["zoom"], 10.8]],
+            "",
             ["==", ["get", "id"], selectedId],
             labelFormatExpr,
             if (percent == 0)
@@ -1186,25 +1184,25 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         textFieldExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildLabelCaseForPercent(0),
-          2.9,
           buildLabelCaseForPercent(10),
-          4.5,
+          3.0,
           buildLabelCaseForPercent(20),
-          6.0,
+          4.5,
           buildLabelCaseForPercent(30),
-          7.5,
+          6.0,
           buildLabelCaseForPercent(40),
-          9.0,
+          7.5,
           buildLabelCaseForPercent(50),
-          10.8,
+          9.0,
           buildLabelCaseForPercent(60),
-          12.5,
+          10.8,
           buildLabelCaseForPercent(70),
-          14.5,
+          12.5,
           buildLabelCaseForPercent(80),
-          16.5,
+          14.5,
           buildLabelCaseForPercent(90),
+          16.5,
+          buildLabelCaseForPercent(95),
           18.5,
           buildLabelCaseForPercent(100),
         ]);
@@ -1440,7 +1438,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       _lastIsDark = isDark;
       if (_mapboxMap != null) {
         final newStyle = isDark
-            ? "mapbox://styles/mapbox/dark-v11"
+            ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
             : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
         _mapboxMap!.style.setStyleURI(newStyle);
       }
@@ -1491,7 +1489,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         key: const ValueKey('explore_mapbox_widget_key'),
         resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
         styleUri: isDark
-            ? "mapbox://styles/mapbox/dark-v11"
+            ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
             : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
         onStyleLoadedListener: (styleLoaded) {
           debugPrint(

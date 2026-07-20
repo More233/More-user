@@ -289,6 +289,215 @@ class ExploreDbCacheService {
       
       final now = DateTime.now().millisecondsSinceEpoch;
 
+      // Unconditionally add premium global landmarks from user screenshots
+      final List<Map<String, dynamic>> premiumLandmarks = [
+        {
+          "id": "seed_cairo_knoll_coffee",
+          "name": "Knoll Coffee Roasters",
+          "arabicName": "محمصة ومقهى نول",
+          "address": "Knoll Coffee Roasters, Cairo, Egypt",
+          "latitude": 30.0444,
+          "longitude": 31.2357,
+          "rating": 4.8,
+          "reviewsCount": 250,
+          "price": "\$\$",
+          "peopleCount": 15,
+          "type": "Coffee",
+          "imageUrl": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 1,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_riyadh_mado",
+          "name": "Mado",
+          "arabicName": "مادو",
+          "address": "Mado, Riyadh, Saudi Arabia",
+          "latitude": 24.7136,
+          "longitude": 46.6753,
+          "rating": 4.5,
+          "reviewsCount": 890,
+          "price": "\$\$\$",
+          "peopleCount": 42,
+          "type": "Coffee",
+          "imageUrl": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 1,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_zanzibar_kendwa_beach",
+          "name": "Kendwa Beach",
+          "arabicName": "شاطئ كيندوا",
+          "address": "Kendwa Beach, Zanzibar, Tanzania",
+          "latitude": -5.7417,
+          "longitude": 39.2942,
+          "rating": 4.7,
+          "reviewsCount": 1200,
+          "price": "\$\$",
+          "peopleCount": 80,
+          "type": "Other",
+          "imageUrl": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 0,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_namibia_etosha",
+          "name": "Etosha National Park",
+          "arabicName": "محمية إيتوشا الوطنية",
+          "address": "Etosha National Park, Namibia",
+          "latitude": -18.8556,
+          "longitude": 16.3292,
+          "rating": 4.9,
+          "reviewsCount": 3400,
+          "price": "\$\$\$",
+          "peopleCount": 120,
+          "type": "Other",
+          "imageUrl": "https://images.unsplash.com/photo-1516426122078-c23e76319801?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 0,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_cape_town_kirstenbosch",
+          "name": "Kirstenbosch Botanical Gardens",
+          "arabicName": "حدائق كيرستنبوش النباتية",
+          "address": "Kirstenbosch Botanical Gardens, Cape Town, South Africa",
+          "latitude": -33.9903,
+          "longitude": 18.4323,
+          "rating": 4.8,
+          "reviewsCount": 5600,
+          "price": "\$\$",
+          "peopleCount": 210,
+          "type": "Other",
+          "imageUrl": "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 0,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_jhb_yfm",
+          "name": "YFM",
+          "arabicName": "محطة واي إف إم",
+          "address": "YFM Radio Station, Johannesburg, South Africa",
+          "latitude": -26.1367,
+          "longitude": 28.0531,
+          "rating": 4.2,
+          "reviewsCount": 85,
+          "price": "\$",
+          "peopleCount": 4,
+          "type": "Other",
+          "imageUrl": "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 0,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_lagos_banana_island",
+          "name": "Banana Island",
+          "arabicName": "جزيرة الموز",
+          "address": "Banana Island, Lagos, Nigeria",
+          "latitude": 6.4590,
+          "longitude": 3.4866,
+          "rating": 4.5,
+          "reviewsCount": 450,
+          "price": "\$\$\$\$",
+          "peopleCount": 35,
+          "type": "Other",
+          "imageUrl": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 0,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_london_heathrow",
+          "name": "Heathrow Airport",
+          "arabicName": "مطار هيثرو",
+          "address": "Heathrow Airport, London, United Kingdom",
+          "latitude": 51.4700,
+          "longitude": -0.4543,
+          "rating": 4.4,
+          "reviewsCount": 9800,
+          "price": "\$\$\$",
+          "peopleCount": 450,
+          "type": "Other",
+          "imageUrl": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 0,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        },
+        {
+          "id": "seed_istanbul_taksim",
+          "name": "Taksim Square",
+          "arabicName": "ميدان تقسيم",
+          "address": "Taksim Square, Istanbul, Turkey",
+          "latitude": 41.0370,
+          "longitude": 28.9850,
+          "rating": 4.6,
+          "reviewsCount": 15400,
+          "price": "\$",
+          "peopleCount": 850,
+          "type": "Other",
+          "imageUrl": "https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=500",
+          "photos": "[]",
+          "isSaved": 0,
+          "isVisited": 0,
+          "actionType": "check-in",
+          "isRegistered": 0,
+          "googleReviews": "[]",
+          "openNow": 1,
+          "weekdayText": "[]"
+        }
+      ];
+
+      for (final place in premiumLandmarks) {
+        batch.insert('cached_places', {
+          ...place,
+          'cachedAt': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+
       for (final item in list) {
         final place = Map<String, dynamic>.from(item as Map);
         batch.insert('cached_places', {
@@ -298,20 +507,27 @@ class ExploreDbCacheService {
       }
 
       await batch.commit(noResult: true);
-      debugPrint("ExploreDbCacheService: Successfully seeded database with ${list.length} global places.");
+      debugPrint("ExploreDbCacheService: Successfully seeded database with ${list.length + premiumLandmarks.length} global places.");
     } catch (e) {
       debugPrint("ExploreDbCacheService Error seeding database: $e");
     }
   }
 
-  // Check if database needs to be seeded - disabled to ensure live, accurate data
+  // Check if database needs to be seeded - enabled to ensure rich visual density globally
   static Future<void> _checkAndSeedIfNeeded(Database db) async {
-    // Seeding disabled to keep map live and prevent fake points from showing up in coordinates (like in the sea)
     try {
-      // Clear any remaining seeded places from the database just in case
-      await db.delete('cached_places', where: "id LIKE 'seed_%'");
+      final List<Map<String, dynamic>> maps = await db.rawQuery(
+        "SELECT COUNT(*) as count FROM cached_places WHERE id LIKE 'seed_%'"
+      );
+      final int count = maps.first['count'] as int? ?? 0;
+      if (count == 0) {
+        debugPrint("ExploreDbCacheService: No seeded places found. Seeding database in background...");
+        await seedDatabase(db);
+      } else {
+        debugPrint("ExploreDbCacheService: Already seeded with $count places.");
+      }
     } catch (e) {
-      debugPrint("ExploreDbCacheService Error clearing seeded places: $e");
+      debugPrint("ExploreDbCacheService Error checking/seeding database: $e");
     }
   }
 

@@ -607,7 +607,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
       _lastIsDark = isDark;
       if (_mapController != null) {
         final newStyle = isDark
-            ? "mapbox://styles/mapbox/dark-v11"
+            ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
             : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
         _mapController!.style.setStyleURI(newStyle);
       }
@@ -838,7 +838,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                 key: const ValueKey('add_place_map_key'),
                                 resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
                                 styleUri: Theme.of(context).brightness == Brightness.dark
-                                    ? "mapbox://styles/mapbox/dark-v11"
+                                    ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
                                     : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
                                 cameraOptions: mapbox.CameraOptions(
                                   center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
