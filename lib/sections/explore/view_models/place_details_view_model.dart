@@ -48,6 +48,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
           }
         }
 
+        if (!mounted) return;
         state = state.copyWith(
           place: updatedPlace,
           images: cachedImages,
@@ -88,6 +89,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
             }
           }
 
+          if (!mounted) return;
           state = state.copyWith(
             place: updatedPlace,
             images: detailsImages,
@@ -146,6 +148,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
         }
       }
 
+      if (!mounted) return;
       state = state.copyWith(
         placePosts: postsList,
         peopleImages: imageUrls,
@@ -153,6 +156,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
       );
     } catch (e) {
       debugPrint("Error loading place posts: $e");
+      if (!mounted) return;
       state = state.copyWith(isLoadingPosts: false);
     }
   }
@@ -192,12 +196,14 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
         }
       }
 
+      if (!mounted) return;
       state = state.copyWith(
         similarPlaces: filtered,
         isLoadingSimilar: false,
       );
     } catch (e) {
       debugPrint("Error loading similar places: $e");
+      if (!mounted) return;
       state = state.copyWith(isLoadingSimilar: false);
     }
   }
