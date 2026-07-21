@@ -67,7 +67,34 @@ serve(async (req: Request) => {
       bodyText = 'Sent a message'
     }
 
-    // 5. Send FCM Notification using Firebase v1 REST API
+    // 5. Calculate recipient's total unread count (unread notifications + unread chat messages)
+    const { count: unreadNotifs } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', recipientId)
+      .eq('read', false)
+
+    const { data: userThreads } = await supabase
+      .from('chat_threads')
+      .select('id')
+      .or(`user1_id.eq.${recipientId},user2_id.eq.${recipientId}`)
+
+    let unreadMessages = 0
+    if (userThreads && userThreads.length > 0) {
+      const threadIds = userThreads.map((t: any) => t.id)
+      const { count: unreadMsgs } = await supabase
+        .from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .in('thread_id', threadIds)
+        .neq('sender_id', recipientId)
+        .eq('is_read', false)
+      
+      unreadMessages = unreadMsgs ?? 0
+    }
+
+    const totalUnreadBadge = (unreadNotifs ?? 0) + unreadMessages
+
+    // 6. Send FCM Notification using Firebase v1 REST API
     const accessToken = await getAccessToken(firebaseServiceAccount)
     
     const fcmPayload = {
@@ -89,7 +116,7 @@ serve(async (req: Request) => {
                 body: bodyText,
               },
               sound: "default",
-              badge: 1,
+              badge: totalUnreadBadge,
             },
           },
           fcm_options: {
