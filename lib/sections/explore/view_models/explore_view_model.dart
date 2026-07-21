@@ -501,6 +501,7 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       _exploreRepository.fetchPlaceDetails(
         placeId,
         name,
+        place['arabicName'] as String?,
         plat,
         plng,
         userLat,

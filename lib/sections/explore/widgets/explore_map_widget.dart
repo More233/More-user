@@ -1006,26 +1006,18 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         iconImageExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildLiveIconCaseForPercent(10),
+          buildLiveIconCaseForPercent(15),
           3.0,
-          buildLiveIconCaseForPercent(20),
-          4.5,
           buildLiveIconCaseForPercent(30),
+          4.5,
+          buildLiveIconCaseForPercent(45),
           6.0,
-          buildLiveIconCaseForPercent(40),
-          7.5,
-          buildLiveIconCaseForPercent(50),
-          9.0,
           buildLiveIconCaseForPercent(60),
-          10.8,
-          buildLiveIconCaseForPercent(70),
-          12.5,
-          buildLiveIconCaseForPercent(80),
-          14.5,
+          7.5,
+          buildLiveIconCaseForPercent(75),
+          9.0,
           buildLiveIconCaseForPercent(90),
-          16.5,
-          buildLiveIconCaseForPercent(95),
-          18.5,
+          10.8,
           buildLiveIconCaseForPercent(100),
         ]);
       } else {
@@ -1055,26 +1047,18 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         iconImageExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildIconCaseForPercent(10),
+          buildIconCaseForPercent(15),
           3.0,
-          buildIconCaseForPercent(20),
-          4.5,
           buildIconCaseForPercent(30),
+          4.5,
+          buildIconCaseForPercent(45),
           6.0,
-          buildIconCaseForPercent(40),
-          7.5,
-          buildIconCaseForPercent(50),
-          9.0,
           buildIconCaseForPercent(60),
-          10.8,
-          buildIconCaseForPercent(70),
-          12.5,
-          buildIconCaseForPercent(80),
-          14.5,
+          7.5,
+          buildIconCaseForPercent(75),
+          9.0,
           buildIconCaseForPercent(90),
-          16.5,
-          buildIconCaseForPercent(95),
-          18.5,
+          10.8,
           buildIconCaseForPercent(100),
         ]);
       }
@@ -1122,26 +1106,18 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         textFieldExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildLiveLabelCaseForPercent(10),
+          buildLiveLabelCaseForPercent(15),
           3.0,
-          buildLiveLabelCaseForPercent(20),
-          4.5,
           buildLiveLabelCaseForPercent(30),
+          4.5,
+          buildLiveLabelCaseForPercent(45),
           6.0,
-          buildLiveLabelCaseForPercent(40),
-          7.5,
-          buildLiveLabelCaseForPercent(50),
-          9.0,
           buildLiveLabelCaseForPercent(60),
-          10.8,
-          buildLiveLabelCaseForPercent(70),
-          12.5,
-          buildLiveLabelCaseForPercent(80),
-          14.5,
+          7.5,
+          buildLiveLabelCaseForPercent(75),
+          9.0,
           buildLiveLabelCaseForPercent(90),
-          16.5,
-          buildLiveLabelCaseForPercent(95),
-          18.5,
+          10.8,
           buildLiveLabelCaseForPercent(100),
         ]);
       } else {
@@ -1184,26 +1160,18 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         textFieldExpression = jsonEncode([
           "step",
           ["zoom"],
-          buildLabelCaseForPercent(10),
+          buildLabelCaseForPercent(15),
           3.0,
-          buildLabelCaseForPercent(20),
-          4.5,
           buildLabelCaseForPercent(30),
+          4.5,
+          buildLabelCaseForPercent(45),
           6.0,
-          buildLabelCaseForPercent(40),
-          7.5,
-          buildLabelCaseForPercent(50),
-          9.0,
           buildLabelCaseForPercent(60),
-          10.8,
-          buildLabelCaseForPercent(70),
-          12.5,
-          buildLabelCaseForPercent(80),
-          14.5,
+          7.5,
+          buildLabelCaseForPercent(75),
+          9.0,
           buildLabelCaseForPercent(90),
-          16.5,
-          buildLabelCaseForPercent(95),
-          18.5,
+          10.8,
           buildLabelCaseForPercent(100),
         ]);
       }
@@ -1439,7 +1407,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       if (_mapboxMap != null) {
         final newStyle = isDark
             ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
-            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+            : "mapbox://styles/mapbox/streets-v12";
         _mapboxMap!.style.setStyleURI(newStyle);
       }
     } else {
@@ -1490,7 +1458,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
         resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
         styleUri: isDark
             ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
-            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+            : "mapbox://styles/mapbox/streets-v12",
         onStyleLoadedListener: (styleLoaded) {
           debugPrint(
             "ExploreMapWidget: Style fully loaded. Reinitializing annotations...",

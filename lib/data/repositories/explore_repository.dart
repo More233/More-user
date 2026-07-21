@@ -12,6 +12,7 @@ abstract class ExploreRepository {
   Future<Map<String, dynamic>?> fetchPlaceDetails(
     String placeId,
     String name,
+    String? defaultArabicName,
     double lat,
     double lng,
     double userLat,

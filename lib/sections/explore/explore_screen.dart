@@ -160,6 +160,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       final place = await ExploreDataService.fetchPlaceDetails(
         '',
         '',
+        null,
         latLng.latitude,
         latLng.longitude,
         userLat,

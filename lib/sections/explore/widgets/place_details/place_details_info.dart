@@ -359,7 +359,7 @@ class _MiniMapPreviewState extends State<_MiniMapPreview> {
       if (_mapController != null) {
         final newStyle = widget.isDark
             ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
-            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+            : "mapbox://styles/mapbox/streets-v12";
         _mapController!.style.setStyleURI(newStyle);
       }
     } else {
@@ -371,7 +371,7 @@ class _MiniMapPreviewState extends State<_MiniMapPreview> {
       resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
       styleUri: widget.isDark
           ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
-          : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+          : "mapbox://styles/mapbox/streets-v12",
       cameraOptions: mapbox.CameraOptions(
         center: mapbox.Point(coordinates: mapbox.Position(widget.lng, widget.lat)).toJson(),
         zoom: 15.0,

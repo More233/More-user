@@ -568,6 +568,7 @@ class ExploreDataService {
             'Authorization': 'Bearer $foursquareApiKey',
             'X-Places-Api-Version': '2025-06-17',
             'Accept': 'application/json',
+            'Accept-Language': 'ar',
           },
         );
 
@@ -702,6 +703,7 @@ class ExploreDataService {
               'Authorization': 'Bearer $foursquareApiKey',
               'X-Places-Api-Version': '2025-06-17',
               'Accept': 'application/json',
+              'Accept-Language': 'ar',
             },
           );
 
@@ -817,6 +819,7 @@ class ExploreDataService {
   static Future<Map<String, dynamic>?> fetchPlaceDetails(
     String placeId,
     String defaultName,
+    String? defaultArabicName,
     double defaultLat,
     double defaultLng,
     double userLat,
@@ -868,6 +871,7 @@ class ExploreDataService {
             'Authorization': 'Bearer $foursquareApiKey',
             'X-Places-Api-Version': '2025-06-17',
             'Accept': 'application/json',
+            'Accept-Language': 'ar',
           },
         );
         if (response.statusCode == 200) {
@@ -900,6 +904,7 @@ class ExploreDataService {
               'Authorization': 'Bearer $foursquareApiKey',
               'X-Places-Api-Version': '2025-06-17',
               'Accept': 'application/json',
+              'Accept-Language': 'ar',
             },
           ),
           _client.get(
@@ -908,6 +913,7 @@ class ExploreDataService {
               'Authorization': 'Bearer $foursquareApiKey',
               'X-Places-Api-Version': '2025-06-17',
               'Accept': 'application/json',
+              'Accept-Language': 'ar',
             },
           ),
           _fetchSupabaseVisitors(placeId),
@@ -941,6 +947,15 @@ class ExploreDataService {
           // Keep original id so we update database cache correctly
           placeMap['id'] = placeId;
           
+          // Preserve original Arabic name if Foursquare returned English but we have Arabic
+          if (defaultArabicName != null && defaultArabicName.isNotEmpty) {
+            final String parsedAr = placeMap['arabicName']?.toString() ?? '';
+            final bool containsAr = RegExp(r'[\u0600-\u06FF]').hasMatch(parsedAr);
+            if (!containsAr) {
+              placeMap['arabicName'] = defaultArabicName;
+            }
+          }
+
           if (parsedPhotos.isNotEmpty) {
             placeMap['photos'] = parsedPhotos;
             placeMap['imageUrl'] = parsedPhotos.first;
@@ -963,7 +978,7 @@ class ExploreDataService {
       placeMap = {
         'id': placeId,
         'name': defaultName,
-        'arabicName': defaultName,
+        'arabicName': defaultArabicName ?? defaultName,
         'address': '',
         'latitude': defaultLat,
         'longitude': defaultLng,

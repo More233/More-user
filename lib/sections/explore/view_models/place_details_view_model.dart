@@ -66,6 +66,7 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
         final details = await ExploreDataService.fetchPlaceDetails(
           placeId,
           place['name']?.toString() ?? '',
+          place['arabicName']?.toString(),
           lat,
           lng,
           lat,

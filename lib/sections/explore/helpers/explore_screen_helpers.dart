@@ -514,13 +514,17 @@ class ExploreScreenHelpers {
           final double plat = (place['latitude'] as num?)?.toDouble() ?? 0.0;
           final double plng = (place['longitude'] as num?)?.toDouble() ?? 0.0;
           if (plat != 0.0 && plng != 0.0) {
-            final double maxDist = currentZoom < 7.0
-                ? 5000000.0 // 5000 km (essentially global)
-                : (currentZoom < 10.0
-                    ? 300000.0 // 300 km
-                    : (currentZoom < 12.0
-                        ? 100000.0 // 100 km
-                        : 40000.0)); // 40 km for zoom >= 12.0
+            final double maxDist = currentZoom < 4.0
+                ? 20000000.0 // 20,000 km (entire Earth)
+                : (currentZoom < 7.0
+                    ? 8000000.0 // 8,000 km
+                    : (currentZoom < 10.0
+                        ? 1500000.0 // 1,500 km (generous region)
+                        : (currentZoom < 12.0
+                            ? 500000.0 // 500 km
+                            : (currentZoom < 14.0
+                                ? 150000.0 // 150 km
+                                : 50000.0)))); // 50 km for zoom >= 14.0
 
             final distance = Geolocator.distanceBetween(
               center.latitude,

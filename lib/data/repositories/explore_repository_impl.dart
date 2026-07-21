@@ -40,6 +40,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
   Future<Map<String, dynamic>?> fetchPlaceDetails(
     String placeId,
     String name,
+    String? defaultArabicName,
     double lat,
     double lng,
     double userLat,
@@ -49,6 +50,7 @@ class ExploreRepositoryImpl implements ExploreRepository {
     return ExploreDataService.fetchPlaceDetails(
       placeId,
       name,
+      defaultArabicName,
       lat,
       lng,
       userLat,

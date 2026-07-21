@@ -608,7 +608,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
       if (_mapController != null) {
         final newStyle = isDark
             ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
-            : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue";
+            : "mapbox://styles/mapbox/streets-v12";
         _mapController!.style.setStyleURI(newStyle);
       }
     } else {
@@ -839,7 +839,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                                 resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
                                 styleUri: Theme.of(context).brightness == Brightness.dark
                                     ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
-                                    : "mapbox://styles/basiii/cmri3vcu7007401qr2y7l5bue",
+                                    : "mapbox://styles/mapbox/streets-v12",
                                 cameraOptions: mapbox.CameraOptions(
                                   center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
                                   zoom: 15.0,
