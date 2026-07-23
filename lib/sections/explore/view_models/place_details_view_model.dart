@@ -56,13 +56,14 @@ class PlaceDetailsViewModel extends StateNotifier<PlaceDetailsState> {
       }
 
       // 2. Check if we need to fetch fresh data from API
-      // If cached is null, or it has no photos, or it is stale (cached more than 7 days ago)
+      // If cached is null, or it has no photos, or it is stale (cached more than 7 days ago), or it only has the 1 default photo from Nearby Search
       final int cachedAt = cached?['cachedAt'] as int? ?? 0;
       final int now = DateTime.now().millisecondsSinceEpoch;
       final bool isStale = (now - cachedAt > 7 * 24 * 60 * 60 * 1000); // 7 days
       final bool hasNoPhotos = cached == null || (cached['photos'] as List?)?.isEmpty == true;
+      final bool hasOnlyOnePhoto = cached != null && (cached['photos'] as List?)?.length == 1;
 
-      if (cached == null || isStale || hasNoPhotos) {
+      if (cached == null || isStale || hasNoPhotos || hasOnlyOnePhoto) {
         final details = await ExploreDataService.fetchPlaceDetails(
           placeId,
           place['name']?.toString() ?? '',

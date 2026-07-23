@@ -482,7 +482,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
         'latitude': _latitude,
         'longitude': _longitude,
         'category_name': _category,
-        'user_id': user?.id,
+        'created_by': user?.id,
         'is_private': _isPrivate,
       });
 

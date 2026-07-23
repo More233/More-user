@@ -339,8 +339,14 @@ class ExploreDataService {
     defaultValue: Secrets.foursquareApiKey,
   );
 
-  static final bool _isFoursquareKeyValid = foursquareApiKey.isNotEmpty && 
-      foursquareApiKey != 'YOUR_FOURSQUARE_API_KEY';
+
+  static const String googlePlacesApiKey = String.fromEnvironment(
+    'GOOGLE_PLACES_API_KEY',
+    defaultValue: Secrets.googlePlacesApiKey,
+  );
+
+  static final bool _isGooglePlacesKeyValid = googlePlacesApiKey.isNotEmpty && 
+      googlePlacesApiKey != 'YOUR_GOOGLE_PLACES_API_KEY';
 
   static String? mapKeywordsToFoursquareCategories(String keyword) {
     final List<String> categories = [];
@@ -488,6 +494,142 @@ class ExploreDataService {
     };
   }
 
+  static String mapGoogleTypesToType(List<dynamic> googleTypes) {
+    if (googleTypes.isEmpty) return 'Other';
+    final List<String> types = googleTypes.map((t) => t.toString().toLowerCase()).toList();
+
+    if (types.contains('cafe') || types.contains('coffee_shop')) {
+      return 'Coffee';
+    }
+    if (types.contains('bakery')) {
+      return 'Bakery';
+    }
+    if (types.contains('restaurant') || types.contains('food') || types.contains('meal_takeaway') || types.contains('meal_delivery')) {
+      return 'Restaurant';
+    }
+    if (types.contains('bar') || types.contains('night_club') || types.contains('liquor_store')) {
+      return 'Juices';
+    }
+    if (types.contains('supermarket') || types.contains('grocery_or_supermarket') || types.contains('convenience_store') || types.contains('shopping_mall')) {
+      return 'Supermarket';
+    }
+    if (types.contains('pharmacy') || types.contains('drugstore')) {
+      return 'Pharmacy';
+    }
+    if (types.contains('lodging') || types.contains('hotel')) {
+      return 'Hotels';
+    }
+    if (types.contains('park') || types.contains('tourist_attraction') || types.contains('amusement_park') || types.contains('campground')) {
+      return 'Parks';
+    }
+    if (types.contains('airport')) {
+      return 'Airport';
+    }
+    if (types.contains('movie_theater') || types.contains('cinema')) {
+      return 'Movies';
+    }
+    if (types.contains('stadium') || types.contains('gym') || types.contains('sports_complex')) {
+      return 'Sports';
+    }
+    if (types.contains('museum') ||
+        types.contains('art_gallery') ||
+        types.contains('aquarium') ||
+        types.contains('zoo') ||
+        types.contains('theater')) {
+      return 'Concerts';
+    }
+
+    return 'Other';
+  }
+
+  static Map<String, dynamic> parseGooglePlace(
+    Map<String, dynamic> place,
+    double userLat,
+    double userLng,
+  ) {
+    final id = place['place_id'] as String? ?? '';
+    final name = place['name'] as String? ?? '';
+    final address = place['vicinity'] as String? ?? place['formatted_address'] as String? ?? '';
+    
+    final geometry = place['geometry'] as Map<String, dynamic>?;
+    final location = geometry?['location'] as Map<String, dynamic>?;
+    final plat = (location?['lat'] as num?)?.toDouble() ?? userLat;
+    final plng = (location?['lng'] as num?)?.toDouble() ?? userLng;
+    
+    final types = place['types'] as List<dynamic>? ?? [];
+    final type = mapGoogleTypesToType(types);
+
+    final double meters = Geolocator.distanceBetween(userLat, userLng, plat, plng);
+    final double km = meters / 1000;
+    final String distanceStr = km < 1 
+        ? '${meters.toStringAsFixed(0)} m' 
+        : '${km.toStringAsFixed(1)} km';
+
+    final iconUrl = place['icon'] as String?;
+
+    final List<String> parsedPhotos = [];
+    final photosList = place['photos'] as List<dynamic>? ?? [];
+    int count = 0;
+    for (final p in photosList) {
+      if (count >= 10) break;
+      if (p is Map) {
+        final photoRef = p['photo_reference'] as String? ?? '';
+        if (photoRef.isNotEmpty) {
+          parsedPhotos.add(
+            'https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=$photoRef&key=$googlePlacesApiKey'
+          );
+          count++;
+        }
+      }
+    }
+
+    final imageUrl = parsedPhotos.isNotEmpty ? parsedPhotos.first : getPlaceholderUrl(type, id);
+
+    final ratingVal = (place['rating'] as num?)?.toDouble() ?? 4.0;
+    final reviewsCount = (place['user_ratings_total'] as num?)?.toInt() ?? 5;
+
+    final priceLevel = (place['price_level'] as num?)?.toInt() ?? 2;
+    final priceStr = r'$' * priceLevel;
+
+    final hoursObj = place['opening_hours'] as Map<String, dynamic>?;
+    final bool? openNow = hoursObj?['open_now'] as bool?;
+    final weekdayText = List<String>.from(hoursObj?['weekday_text'] as List? ?? []);
+
+    return {
+      'id': id,
+      'name': name,
+      'arabicName': name,
+      'address': address,
+      'latitude': plat,
+      'longitude': plng,
+      'distance': distanceStr,
+      'rating': ratingVal,
+      'reviewsCount': reviewsCount,
+      'price': priceStr,
+      'peopleCount': calculateSimulatedBusyness(id, reviewsCount),
+      'type': type,
+      'imageUrl': imageUrl,
+      'photos': parsedPhotos,
+      'isSaved': false,
+      'isVisited': false,
+      'iconUrl': iconUrl,
+      'actionType': getActionTypeForPlaceType(type),
+      'isRegistered': false,
+      'visitors': <Map<String, dynamic>>[],
+      'website': place['website'] as String?,
+      'phone': (place['formatted_phone_number'] as String? ?? place['international_phone_number'] as String?),
+      'openNow': openNow,
+      'weekdayText': weekdayText.isNotEmpty ? weekdayText : null,
+    };
+  }
+
+  static String? cleanKeywordForGoogle(String? keyword) {
+    if (keyword == null || keyword.isEmpty || keyword == 'food|shops|sights') {
+      return null;
+    }
+    return keyword.replaceAll('|', ' ');
+  }
+
   static Future<List<Map<String, dynamic>>> fetchNearbyFoursquarePlaces(
     double lat,
     double lng, {
@@ -541,45 +683,33 @@ class ExploreDataService {
       return cachedPlaces;
     }
 
-    // 4. Fetch fresh places from Foursquare (no Google Places fallback)
+    // 4. Fetch fresh places from Google Places (no Foursquare fallback)
     List<Map<String, dynamic>> places = [];
 
-    if (_isFoursquareKeyValid) {
+    if (_isGooglePlacesKeyValid) {
       try {
-        final int fsqRadius = radius.clamp(100.0, 100000.0).toInt();
-        String url = 'https://places-api.foursquare.com/places/search'
-            '?ll=$lat,$lng'
-            '&radius=$fsqRadius'
-            '&limit=50'
-            '&fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,photos';
+        final double googleRadius = radius.clamp(10.0, 50000.0);
+        String url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+            '?location=$lat,$lng'
+            '&radius=${googleRadius.toInt()}'
+            '&language=ar'
+            '&key=$googlePlacesApiKey';
 
-        if (keyword != null && keyword.isNotEmpty) {
-          final fsqCategories = mapKeywordsToFoursquareCategories(keyword);
-          if (fsqCategories != null) {
-            url += '&categories=$fsqCategories';
-          } else {
-            url += '&query=${Uri.encodeComponent(keyword)}';
-          }
+        final cleanedKeyword = cleanKeywordForGoogle(keyword);
+        if (cleanedKeyword != null && cleanedKeyword.isNotEmpty) {
+          url += '&keyword=${Uri.encodeComponent(cleanedKeyword)}';
         }
 
-        final response = await _client.get(
-          Uri.parse(url),
-          headers: {
-            'Authorization': 'Bearer $foursquareApiKey',
-            'X-Places-Api-Version': '2025-06-17',
-            'Accept': 'application/json',
-            'Accept-Language': 'ar',
-          },
-        );
+        final response = await _client.get(Uri.parse(url));
 
-        debugPrint("Foursquare API Response Status: ${response.statusCode}, Body length: ${response.body.length}");
+        debugPrint("Google Nearby Search API Response Status: ${response.statusCode}, Body length: ${response.body.length}");
 
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           final results = data['results'] as List<dynamic>? ?? [];
           for (final item in results) {
-            final venue = item as Map<String, dynamic>;
-            final parsed = parseFoursquareV3Venue(venue, lat, lng);
+            final place = item as Map<String, dynamic>;
+            final parsed = parseGooglePlace(place, lat, lng);
             if (parsed['type'] != 'Airport') {
               places.add(parsed);
             }
@@ -591,10 +721,10 @@ class ExploreDataService {
             ExploreDbCacheService.markCellSynced(cellId);
           }
         } else {
-          debugPrint("Foursquare API Error: ${response.statusCode} - ${response.body}");
+          debugPrint("Google Places Nearby Search API Error: ${response.statusCode} - ${response.body}");
         }
       } catch (e) {
-        debugPrint("Error fetching Foursquare nearby places: $e");
+        debugPrint("Error fetching Google Places nearby places: $e");
       }
     }
 
@@ -619,13 +749,6 @@ class ExploreDataService {
   static Future<List<Map<String, dynamic>>> searchFoursquarePlaces(String query, double lat, double lng) async {
     final List<Map<String, dynamic>> places = [];
     
-    final String url = 'https://places-api.foursquare.com/places/search'
-        '?query=${Uri.encodeComponent(query)}'
-        '&ll=$lat,$lng'
-        '&radius=50000'
-        '&limit=50'
-        '&fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,photos';
-
     final normQuery = query.toLowerCase();
     final hasCityExplicitly = normQuery.contains('رياض') || normQuery.contains('riyadh') ||
                               normQuery.contains('حلوان') || normQuery.contains('helwan') ||
@@ -641,87 +764,90 @@ class ExploreDataService {
     final client = Supabase.instance.client;
 
     try {
-      // 1. Fetch custom venues from Supabase
-      final currentUserId = client.auth.currentUser?.id;
-      var venuesQuery = client
-          .from('custom_venues')
-          .select('*')
-          .ilike('name', '%$query%')
-          .gte('latitude', latMin)
-          .lte('latitude', latMax)
-          .gte('longitude', lngMin)
-          .lte('longitude', lngMax);
+      // 1. Fetch custom venues from Supabase (wrapped in a nested try-catch so database issues don't prevent Google search)
+      try {
+        final currentUserId = client.auth.currentUser?.id;
+        var venuesQuery = client
+            .from('custom_venues')
+            .select('*')
+            .ilike('name', '%$query%')
+            .gte('latitude', latMin)
+            .lte('latitude', latMax)
+            .gte('longitude', lngMin)
+            .lte('longitude', lngMax);
 
-      if (currentUserId != null) {
-        venuesQuery = venuesQuery.or('is_private.eq.false,user_id.eq.$currentUserId');
-      } else {
-        venuesQuery = venuesQuery.eq('is_private', false);
+        if (currentUserId != null) {
+          venuesQuery = venuesQuery.or('is_private.eq.false,created_by.eq.$currentUserId');
+        } else {
+          venuesQuery = venuesQuery.eq('is_private', false);
+        }
+
+        final venuesResponse = await venuesQuery.limit(10);
+
+        final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
+        for (final res in venueResults) {
+          final id = res['id'] as String;
+          if (places.any((p) => p['id'] == id)) continue;
+
+          final plat = (res['latitude'] as num).toDouble();
+          final plng = (res['longitude'] as num).toDouble();
+          final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+          final double km = meters / 1000;
+          final String distanceStr = km < 1 
+              ? '${meters.toStringAsFixed(0)} m' 
+              : '${km.toStringAsFixed(1)} km';
+
+          places.add({
+            'id': id,
+            'name': res['name'] as String,
+            'arabicName': res['name'] as String,
+            'address': res['address'] as String,
+            'latitude': plat,
+            'longitude': plng,
+            'distance': distanceStr,
+            'rating': 4.5,
+            'reviewsCount': 5,
+            'price': r'$$',
+            'peopleCount': 3,
+            'type': res['category_name'] as String? ?? 'default',
+            'imageUrl': getPlaceholderUrl(res['category_name'] as String? ?? 'Other', id),
+            'isSaved': false,
+            'isVisited': false,
+            'actionType': getActionTypeForPlaceType(res['category_name'] as String? ?? 'Other'),
+            'isCustomVenue': true,
+          });
+        }
+      } catch (e) {
+        debugPrint("Error fetching custom venues from Supabase: $e");
       }
 
-      final venuesResponse = await venuesQuery.limit(10);
-
-      final venueResults = List<Map<String, dynamic>>.from(venuesResponse as List);
-      for (final res in venueResults) {
-        final id = res['id'] as String;
-        if (places.any((p) => p['id'] == id)) continue;
-
-        final plat = (res['latitude'] as num).toDouble();
-        final plng = (res['longitude'] as num).toDouble();
-        final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
-        final double km = meters / 1000;
-        final String distanceStr = km < 1 
-            ? '${meters.toStringAsFixed(0)} m' 
-            : '${km.toStringAsFixed(1)} km';
-
-        places.add({
-          'id': id,
-          'name': res['name'] as String,
-          'arabicName': res['name'] as String,
-          'address': res['address'] as String,
-          'latitude': plat,
-          'longitude': plng,
-          'distance': distanceStr,
-          'rating': 4.5,
-          'reviewsCount': 5,
-          'price': r'$$',
-          'peopleCount': 3,
-          'type': res['category_name'] as String? ?? 'default',
-          'imageUrl': getPlaceholderUrl(res['category_name'] as String? ?? 'Other', id),
-          'isSaved': false,
-          'isVisited': false,
-          'actionType': getActionTypeForPlaceType(res['category_name'] as String? ?? 'Other'),
-          'isCustomVenue': true,
-        });
-      }
-
-      // 2. Fetch fresh places from Foursquare (if key is valid, no Google Places fallback)
-      if (_isFoursquareKeyValid) {
+      // 2. Fetch fresh places from Google Places (if key is valid, no Foursquare fallback)
+      if (_isGooglePlacesKeyValid) {
         try {
-          final httpResponse = await _client.get(
-            Uri.parse(url),
-            headers: {
-              'Authorization': 'Bearer $foursquareApiKey',
-              'X-Places-Api-Version': '2025-06-17',
-              'Accept': 'application/json',
-              'Accept-Language': 'ar',
-            },
-          );
+          final String googleSearchUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
+              '?query=${Uri.encodeComponent(query)}'
+              '&location=$lat,$lng'
+              '&radius=50000'
+              '&language=ar'
+              '&key=$googlePlacesApiKey';
+
+          final httpResponse = await _client.get(Uri.parse(googleSearchUrl));
 
           if (httpResponse.statusCode == 200) {
             final data = json.decode(httpResponse.body);
             final resultsList = data['results'] as List<dynamic>? ?? [];
             for (final item in resultsList) {
-              final venue = item as Map<String, dynamic>;
-              final parsed = parseFoursquareV3Venue(venue, lat, lng);
+              final place = item as Map<String, dynamic>;
+              final parsed = parseGooglePlace(place, lat, lng);
               if (parsed['type'] != 'Airport') {
                 places.add(parsed);
               }
             }
           } else {
-            debugPrint("Foursquare Search API Error: ${httpResponse.statusCode} - ${httpResponse.body}");
+            debugPrint("Google Places Search API Error: ${httpResponse.statusCode} - ${httpResponse.body}");
           }
         } catch (e) {
-          debugPrint("Error performing Foursquare search API call: $e");
+          debugPrint("Error performing Google Places search API call: $e");
         }
       }
     } catch (e) {
@@ -852,119 +978,80 @@ class ExploreDataService {
       }
     }
 
-    final bool isFoursquareId = RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(placeId) || placeId.startsWith('fsq_');
+    final bool isGoogleId = !placeId.startsWith('tapped_') &&
+                            !placeId.startsWith('swarm_') &&
+                            !placeId.startsWith('checkin_') &&
+                            !placeId.startsWith('custom_') &&
+                            placeId.length >= 10;
     String? cleanPlaceId;
 
-    if (isFoursquareId) {
-      cleanPlaceId = placeId.startsWith('fsq_') ? placeId.substring(4) : placeId;
-    } else if (placeId.startsWith('seed_') && _isFoursquareKeyValid) {
-      // Resolve seed place to a Foursquare ID dynamically
+    if (isGoogleId && !placeId.startsWith('seed_')) {
+      cleanPlaceId = placeId;
+    } else if (placeId.startsWith('seed_') && _isGooglePlacesKeyValid) {
+      // Resolve seed place to a Google Place ID dynamically
       try {
-        final String searchUrl = 'https://places-api.foursquare.com/places/search'
+        final String searchUrl = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
             '?query=${Uri.encodeComponent(defaultName)}'
-            '&ll=$defaultLat,$defaultLng'
+            '&location=$defaultLat,$defaultLng'
             '&radius=500'
-            '&limit=1';
-        final response = await _client.get(
-          Uri.parse(searchUrl),
-          headers: {
-            'Authorization': 'Bearer $foursquareApiKey',
-            'X-Places-Api-Version': '2025-06-17',
-            'Accept': 'application/json',
-            'Accept-Language': 'ar',
-          },
-        );
+            '&language=ar'
+            '&key=$googlePlacesApiKey';
+        final response = await _client.get(Uri.parse(searchUrl));
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           final results = data['results'] as List<dynamic>? ?? [];
           if (results.isNotEmpty) {
             final venue = results.first as Map<String, dynamic>;
-            final foundId = venue['fsq_place_id'] as String? ?? venue['fsq_id'] as String? ?? venue['id'] as String?;
+            final foundId = venue['place_id'] as String?;
             if (foundId != null) {
-              cleanPlaceId = foundId.startsWith('fsq_') ? foundId.substring(4) : foundId;
-              debugPrint("Resolved seeded place '$defaultName' to Foursquare ID: $cleanPlaceId");
+              cleanPlaceId = foundId;
+              debugPrint("Resolved seeded place '$defaultName' to Google Place ID: $cleanPlaceId");
             }
           }
         }
       } catch (e) {
-        debugPrint("Error resolving seeded place to Foursquare ID: $e");
+        debugPrint("Error resolving seeded place to Google Place ID: $e");
       }
     }
 
-    if (cleanPlaceId != null && _isFoursquareKeyValid) {
-      final String url = 'https://places-api.foursquare.com/places/$cleanPlaceId'
-          '?fields=fsq_place_id,name,location,categories,latitude,longitude,link,rating,stats,popularity,price,website,tel,hours,hours_popular';
-      final String photosUrl = 'https://places-api.foursquare.com/places/$cleanPlaceId/photos?limit=10';
+    if (cleanPlaceId != null && _isGooglePlacesKeyValid) {
+      final String url = 'https://maps.googleapis.com/maps/api/place/details/json'
+          '?place_id=$cleanPlaceId'
+          '&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level,types,website,formatted_phone_number,opening_hours,photos'
+          '&language=ar'
+          '&key=$googlePlacesApiKey';
 
       try {
         final results = await Future.wait<dynamic>([
-          _client.get(
-            Uri.parse(url),
-            headers: {
-              'Authorization': 'Bearer $foursquareApiKey',
-              'X-Places-Api-Version': '2025-06-17',
-              'Accept': 'application/json',
-              'Accept-Language': 'ar',
-            },
-          ),
-          _client.get(
-            Uri.parse(photosUrl),
-            headers: {
-              'Authorization': 'Bearer $foursquareApiKey',
-              'X-Places-Api-Version': '2025-06-17',
-              'Accept': 'application/json',
-              'Accept-Language': 'ar',
-            },
-          ),
+          _client.get(Uri.parse(url)),
           _fetchSupabaseVisitors(placeId),
         ]);
 
         final httpResponse = results[0] as http.Response;
-        final photosResponse = results[1] as http.Response;
-        visitorsRes = results[2] as List<dynamic>;
+        visitorsRes = results[1] as List<dynamic>;
 
         if (httpResponse.statusCode == 200) {
-          final result = json.decode(httpResponse.body) as Map<String, dynamic>;
-          
-          final List<String> parsedPhotos = [];
-          if (photosResponse.statusCode == 200) {
-            final List<dynamic> photosList = json.decode(photosResponse.body) as List<dynamic>;
-            int count = 0;
-            for (final p in photosList) {
-              if (count >= 10) break;
-              if (p is Map) {
-                final prefix = p['prefix'] as String? ?? '';
-                final suffix = p['suffix'] as String? ?? '';
-                if (prefix.isNotEmpty && suffix.isNotEmpty) {
-                  parsedPhotos.add('${prefix}original$suffix');
-                  count++;
-                }
+          final data = json.decode(httpResponse.body);
+          final result = data['result'] as Map<String, dynamic>?;
+          if (result != null) {
+            placeMap = parseGooglePlace(result, userLat, userLng);
+            // Keep original id so we update database cache correctly
+            placeMap['id'] = placeId;
+            
+            // Preserve original Arabic name if Google returned English but we have Arabic
+            if (defaultArabicName != null && defaultArabicName.isNotEmpty) {
+              final String parsedAr = placeMap['arabicName']?.toString() ?? '';
+              final bool containsAr = RegExp(r'[\u0600-\u06FF]').hasMatch(parsedAr);
+              if (!containsAr) {
+                placeMap['arabicName'] = defaultArabicName;
               }
             }
           }
-
-          placeMap = parseFoursquareV3Venue(result, userLat, userLng);
-          // Keep original id so we update database cache correctly
-          placeMap['id'] = placeId;
-          
-          // Preserve original Arabic name if Foursquare returned English but we have Arabic
-          if (defaultArabicName != null && defaultArabicName.isNotEmpty) {
-            final String parsedAr = placeMap['arabicName']?.toString() ?? '';
-            final bool containsAr = RegExp(r'[\u0600-\u06FF]').hasMatch(parsedAr);
-            if (!containsAr) {
-              placeMap['arabicName'] = defaultArabicName;
-            }
-          }
-
-          if (parsedPhotos.isNotEmpty) {
-            placeMap['photos'] = parsedPhotos;
-            placeMap['imageUrl'] = parsedPhotos.first;
-          }
         } else {
-          debugPrint("Foursquare Details API Error: ${httpResponse.statusCode} - ${httpResponse.body}");
+          debugPrint("Google Places Details API Error: ${httpResponse.statusCode} - ${httpResponse.body}");
         }
       } catch (e) {
-        debugPrint("Error performing parallel Foursquare place details fetch: $e");
+        debugPrint("Error performing parallel Google Places details fetch: $e");
       }
     }
 
