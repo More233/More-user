@@ -713,7 +713,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           // Centered logo
           SvgPicture.asset(
             'assets/Splash/logo.svg',
-            height: 22,
+            height: 28,
+            fit: BoxFit.contain,
             colorFilter: ColorFilter.mode(
               Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF7C57FC),
               BlendMode.srcIn,

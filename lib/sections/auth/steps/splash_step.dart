@@ -30,11 +30,10 @@ class SplashStep extends StatelessWidget {
             // Splash main illustration
             SvgPicture.asset(
               'assets/Splash/logo.svg',
-              width: 154,
-              height: 48.79,
+              height: 52,
               fit: BoxFit.contain,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF7C57FC),
+              colorFilter: ColorFilter.mode(
+                isDark ? Colors.white : const Color(0xFF7C57FC),
                 BlendMode.srcIn,
               ),
             ),

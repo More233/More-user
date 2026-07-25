@@ -11,33 +11,21 @@ class SvgPathPainter extends CustomPainter {
     required this.color,
   });
 
-  // Exact centerline points that follow the cursive handwriting path of "More"
-  // scaled to the SVG viewBox 299x71
+  // Exact centerline points that follow the new logo vector paths
+  // scaled to the SVG viewBox 211x141
   static const List<Offset> _centerlinePoints = [
-    // M
-    Offset(12, 35), Offset(3, 33), Offset(16, 15), Offset(22.6, 62),
-    Offset(48, 30), Offset(65.7, 14.9), Offset(35.7, 63.9),
-    Offset(71.6, 61.7), Offset(103, 16.6), Offset(107, 56), Offset(123, 31.8),
-    
-    // o (circle loops counter-clockwise)
-    Offset(140, 20), Offset(136, 30), Offset(145, 54), Offset(165, 54), Offset(170, 30), Offset(160, 16),
-    Offset(140, 20), // close circle
-    Offset(165, 12), Offset(185, 29), Offset(189, 15), // transition to r (with bottom loop)
-    
-    // r
-    Offset(191.5, 2), Offset(200, 5), Offset(209, 7), Offset(217, 53), Offset(223, 35), Offset(236, 49),
-    
-    // e (loop counter-clockwise, through top-right first)
-    Offset(283, 7.5), Offset(273, 1), Offset(251, 5), Offset(245, 30), Offset(254, 53), Offset(272, 60), Offset(281, 52), Offset(298, 50)
+    Offset(105, 3), Offset(76, 31), Offset(133, 31),
+    Offset(12, 140), Offset(12, 78), Offset(43, 34), Offset(86, 78), Offset(105, 141),
+    Offset(148, 78), Offset(166, 34), Offset(210, 78), Offset(210, 140)
   ];
 
   @override
   void paint(Canvas canvas, Size size) {
     if (paths.isEmpty) return;
 
-    // Exact viewBox in SVG is 299x71
-    final double scaleX = size.width / 299.0;
-    final double scaleY = size.height / 71.0;
+    // Exact viewBox in SVG is 211x141
+    final double scaleX = size.width / 211.0;
+    final double scaleY = size.height / 141.0;
     final Matrix4 scaleMatrix = Matrix4.diagonal3Values(scaleX, scaleY, 1.0);
 
     // Save a layer to isolate blending
@@ -92,7 +80,7 @@ class SvgPathPainter extends CustomPainter {
     final maskPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 38.0 * scaleX
+      ..strokeWidth = 60.0 * scaleX
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..blendMode = BlendMode.dstIn; // Keep what was already drawn (the logo) where the stroke overlaps

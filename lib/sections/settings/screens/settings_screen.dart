@@ -135,20 +135,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: Image.asset(
-                    'assets/Splash/logo.png',
+                    'assets/app icons.png',
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 72,
-                      height: 72,
-                      color: const Color(0xFFECE7FF),
-                      child: const Icon(
-                        Icons.info_outline,
-                        color: Color(0xFF7C57FC),
-                        size: 32,
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 16),

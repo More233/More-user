@@ -112,11 +112,10 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
         centerTitle: true,
         title: SvgPicture.asset(
           'assets/Splash/logo.svg',
-          width: 120,
-          height: 38,
+          height: 34,
           fit: BoxFit.contain,
-          colorFilter: const ColorFilter.mode(
-            Color(0xFF7C57FC),
+          colorFilter: ColorFilter.mode(
+            isDark ? Colors.white : const Color(0xFF7C57FC),
             BlendMode.srcIn,
           ),
         ),

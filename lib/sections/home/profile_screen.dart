@@ -292,7 +292,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
 
-  ImageProvider _getAvatarProvider(String username, String? dbUrl) {
+  ImageProvider _getAvatarProvider(String username, String? dbUrl, [String? name]) {
+    final uname = username.toLowerCase();
+    final fname = (name ?? '').toLowerCase();
+    if (uname.contains('admin') || fname.contains('admin') || uname.contains('more') || fname.contains('more') || (dbUrl != null && (dbUrl.contains('admin') || dbUrl.contains('logo')))) {
+      return const AssetImage('assets/home/images/avatar.png');
+    }
     if (dbUrl != null && dbUrl.isNotEmpty) {
       if (dbUrl.startsWith('http')) {
         return CachedNetworkImageProvider(dbUrl);
@@ -300,17 +305,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return AssetImage(dbUrl);
       }
     }
-    switch (username.toLowerCase()) {
+    switch (uname) {
       case 'mayat':
         return const AssetImage('assets/home/images/profile_image_1.png');
       case 'jordanmarco':
         return const AssetImage('assets/home/images/profile_image2.png');
-      case 'avaj':
-        return const AssetImage('assets/home/images/avatar.png');
-      case 'karennne':
-        return const AssetImage('assets/home/images/element.png');
       default:
-        return const AssetImage('assets/home/images/element.png');
+        return const AssetImage('assets/home/images/avatar.png');
     }
   }
 
