@@ -45,17 +45,9 @@ class _LoginStepState extends State<LoginStep> {
     if (value.isEmpty) return;
 
     if (_isPhoneTab) {
-      final expectedLength = _selectedCountry.code == 'EG' ? 10 : 9;
-      if (value.length != expectedLength) {
+      if (value.length < 6 || value.length > 15) {
         setState(() {
-          _errorText = 'Phone number must be $expectedLength digits';
-        });
-        return;
-      }
-      final expectedStart = _selectedCountry.code == 'EG' ? '1' : '5';
-      if (!value.startsWith(expectedStart)) {
-        setState(() {
-          _errorText = 'Phone number must start with $expectedStart';
+          _errorText = 'Please enter a valid phone number';
         });
         return;
       }
@@ -385,13 +377,13 @@ class _LoginStepState extends State<LoginStep> {
                 key: const ValueKey('phone_field'),
                 controller: _inputController,
                 labelText: 'Phone Number',
-                hintText: '${_selectedCountry.dialCode}  ${_selectedCountry.hintFormat}',
+                hintText: '5X XXX XXXX',
                 keyboardType: TextInputType.phone,
                 errorText: _errorText,
                 readOnly: _isLoading,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(_selectedCountry.code == 'EG' ? 10 : 9),
+                  LengthLimitingTextInputFormatter(15),
                 ],
                 prefixIcon: CountryPicker(
                   selectedCountry: _selectedCountry,

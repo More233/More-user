@@ -4,6 +4,7 @@ class CountryInfo {
   final String flagEmoji;
   final String name;
   final String hintFormat;
+  final String? flagUri;
 
   const CountryInfo({
     required this.code,
@@ -11,5 +12,6 @@ class CountryInfo {
     required this.flagEmoji,
     required this.name,
     required this.hintFormat,
+    this.flagUri,
   });
 }
