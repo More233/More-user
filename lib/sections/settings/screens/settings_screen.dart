@@ -152,7 +152,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isAr ? 'الإصدار 1.0.1 (169)' : 'Version 1.0.1 (169)',
+                  isAr ? 'الإصدار 1.0.2 (253)' : 'Version 1.0.2 (253)',
                   style: GoogleFonts.ibmPlexSansArabic(
                     fontSize: 14,
                     color: versionTextColor,
@@ -183,7 +183,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     showLicensePage(
                       context: context,
                       applicationName: 'More',
-                      applicationVersion: '1.0.1',
+                      applicationVersion: '1.0.2',
                     );
                   },
                   child: Container(
