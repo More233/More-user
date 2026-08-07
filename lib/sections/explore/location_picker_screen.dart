@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -78,7 +80,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       final target = const LatLng(24.7136, 46.6753);
       _mapController?.easeTo(
         mapbox.CameraOptions(
-          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)),
           zoom: 14.0,
         ),
         mapbox.MapAnimationOptions(duration: 1000),
@@ -88,7 +90,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       final target = const LatLng(30.0444, 31.2357);
       _mapController?.easeTo(
         mapbox.CameraOptions(
-          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)),
           zoom: 14.0,
         ),
         mapbox.MapAnimationOptions(duration: 1000),
@@ -99,7 +101,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       final target = LatLng(_currentCenter.latitude + 0.01, _currentCenter.longitude + 0.01);
       _mapController?.easeTo(
         mapbox.CameraOptions(
-          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+          center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)),
           zoom: 14.0,
         ),
         mapbox.MapAnimationOptions(duration: 1000),
@@ -153,12 +155,11 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           Positioned.fill(
             child: mapbox.MapWidget(
               key: const ValueKey('location_picker_map_key'),
-              resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
               styleUri: isDark
                   ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
                   : "mapbox://styles/mapbox/streets-v12",
               cameraOptions: mapbox.CameraOptions(
-                center: mapbox.Point(coordinates: mapbox.Position(_currentCenter.longitude, _currentCenter.latitude)).toJson(),
+                center: mapbox.Point(coordinates: mapbox.Position(_currentCenter.longitude, _currentCenter.latitude)),
                 zoom: 15.0,
               ),
               onMapCreated: (controller) async {
@@ -204,7 +205,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
               onCameraChangeListener: (event) {
                 if (_mapController != null) {
                   _mapController!.getCameraState().then((state) {
-                    final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(state.center));
+                    final centerPoint = state.center;
                     setState(() {
                       _currentCenter = LatLng(centerPoint.coordinates.lat.toDouble(), centerPoint.coordinates.lng.toDouble());
                     });
@@ -375,7 +376,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   final target = LatLng(pos.latitude, pos.longitude);
                   _mapController?.easeTo(
                     mapbox.CameraOptions(
-                      center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)).toJson(),
+                      center: mapbox.Point(coordinates: mapbox.Position(target.longitude, target.latitude)),
                       zoom: 15.0,
                     ),
                     mapbox.MapAnimationOptions(duration: 1000),

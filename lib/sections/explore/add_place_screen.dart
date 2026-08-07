@@ -1,4 +1,6 @@
 import 'dart:async';
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +8,6 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../../config/secrets.dart';
 import 'location_picker_screen.dart';
 
 class AddPlaceScreen extends StatefulWidget {
@@ -123,7 +124,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
           // Move the map camera to the scanned location
           _mapController?.easeTo(
             mapbox.CameraOptions(
-              center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+              center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)),
               zoom: 15.0,
             ),
             mapbox.MapAnimationOptions(duration: 800),
@@ -215,7 +216,7 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
         _address = result['address'] as String;
       });
       _mapController?.easeTo(
-        mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson()),
+        mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude))),
         mapbox.MapAnimationOptions(duration: 500),
       );
     }
@@ -836,12 +837,11 @@ class _AddPlaceScreenState extends State<AddPlaceScreen> {
                           children: [
                               mapbox.MapWidget(
                                 key: const ValueKey('add_place_map_key'),
-                                resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
                                 styleUri: Theme.of(context).brightness == Brightness.dark
                                     ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
                                     : "mapbox://styles/mapbox/streets-v12",
                                 cameraOptions: mapbox.CameraOptions(
-                                  center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+                                  center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)),
                                   zoom: 15.0,
                                 ),
                                 onMapCreated: (controller) async {

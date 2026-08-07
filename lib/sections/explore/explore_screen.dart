@@ -106,7 +106,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       // Animate the map camera to the target location
       _mapController?.easeTo(
         mapbox.CameraOptions(
-          center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+          center: mapbox.Point(coordinates: mapbox.Position(lng, lat)),
           zoom: 17.0,
         ),
         mapbox.MapAnimationOptions(duration: 800),
@@ -169,7 +169,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
       if (place != null && place['id'].toString().isNotEmpty && !place['id'].toString().startsWith('tapped_') && mounted) {
         ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(place);
         _mapController?.easeTo(
-          mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(latLng.longitude, latLng.latitude)).toJson()),
+          mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(latLng.longitude, latLng.latitude))),
           mapbox.MapAnimationOptions(duration: 500),
         );
         return;
@@ -208,7 +208,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     if (mounted) {
       ref.read(exploreViewModelProvider.notifier).updateSelectedPlaceManual(fallbackPlace);
       _mapController?.easeTo(
-        mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(latLng.longitude, latLng.latitude)).toJson()),
+        mapbox.CameraOptions(center: mapbox.Point(coordinates: mapbox.Position(latLng.longitude, latLng.latitude))),
         mapbox.MapAnimationOptions(duration: 500),
       );
     }
@@ -218,7 +218,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
     if (location != null) {
       _mapController?.easeTo(
         mapbox.CameraOptions(
-          center: mapbox.Point(coordinates: mapbox.Position(location.longitude, location.latitude)).toJson(),
+          center: mapbox.Point(coordinates: mapbox.Position(location.longitude, location.latitude)),
           zoom: 15.0,
         ),
         mapbox.MapAnimationOptions(duration: 1000),
@@ -656,7 +656,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                     (place['longitude'] as num? ?? 0.0).toDouble(),
                     (place['latitude'] as num? ?? 0.0).toDouble(),
                   ),
-                ).toJson(),
+                ),
                 zoom: 18.0,
               ),
               mapbox.MapAnimationOptions(duration: 1000),
@@ -672,7 +672,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   state.userLocation!.longitude,
                   state.userLocation!.latitude,
                 ),
-              ).toJson(),
+              ),
               zoom: 15.0,
             ),
             mapbox.MapAnimationOptions(duration: 1000),
@@ -699,7 +699,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                 mapbox.CameraOptions(
                   center: mapbox.Point(
                     coordinates: mapbox.Position(plng, plat),
-                  ).toJson(),
+                  ),
                   zoom: 18.0,
                 ),
                 mapbox.MapAnimationOptions(duration: 1000),
@@ -776,7 +776,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
               if (plat != 0.0 && plng != 0.0) {
                 _mapController?.easeTo(
                   mapbox.CameraOptions(
-                    center: mapbox.Point(coordinates: mapbox.Position(plng, plat)).toJson(),
+                    center: mapbox.Point(coordinates: mapbox.Position(plng, plat)),
                     zoom: 18.0,
                   ),
                   mapbox.MapAnimationOptions(duration: 1000),
@@ -856,7 +856,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
                   onCameraIdle: () {
                     if (_mapController != null) {
                       _mapController!.getCameraState().then((cameraState) {
-                        final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(cameraState.center));
+                        final centerPoint = cameraState.center;
                         final center = LatLng(
                           centerPoint.coordinates.lat.toDouble(),
                           centerPoint.coordinates.lng.toDouble(),

@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'dart:async';
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,7 +10,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
-import '../../../../../config/secrets.dart';
 import '../../models/timeline_post.dart';
 import '../../../explore/services/explore_data_service.dart';
 import '../../gallery_picker_screen.dart';
@@ -208,7 +209,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
           
           _mapController?.easeTo(
             mapbox.CameraOptions(
-              center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+              center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)),
               zoom: 15.0,
             ),
             mapbox.MapAnimationOptions(duration: 500),
@@ -743,12 +744,11 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
                 height: 220 + topPadding,
                 child: mapbox.MapWidget(
                   key: const ValueKey('check_in_composer_map_key'),
-                  resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
                   styleUri: isDark
                       ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
                       : "mapbox://styles/mapbox/streets-v12",
                   cameraOptions: mapbox.CameraOptions(
-                    center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+                    center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)),
                     zoom: 15.0,
                   ),
                   onMapCreated: (controller) async {
@@ -1694,7 +1694,7 @@ class _CheckInComposerScreenState extends State<CheckInComposerScreen> {
       });
       _mapController?.easeTo(
         mapbox.CameraOptions(
-          center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)).toJson(),
+          center: mapbox.Point(coordinates: mapbox.Position(_longitude, _latitude)),
           zoom: 15.0,
         ),
         mapbox.MapAnimationOptions(duration: 500),

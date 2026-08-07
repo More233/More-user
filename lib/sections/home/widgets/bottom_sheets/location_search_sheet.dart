@@ -1,11 +1,12 @@
 import 'dart:async';
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
-import '../../../../../config/secrets.dart';
 import '../../../explore/services/explore_data_service.dart';
 
 class LocationSearchSheet extends StatefulWidget {
@@ -953,12 +954,11 @@ class _SearchMiniMapPreviewState extends State<_SearchMiniMapPreview> {
 
     return mapbox.MapWidget(
       key: const ValueKey('location_search_mini_map_key'),
-      resourceOptions: mapbox.ResourceOptions(accessToken: const String.fromEnvironment("MAPBOX_ACCESS_TOKEN", defaultValue: Secrets.mapboxAccessToken)),
       styleUri: widget.isDark
           ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
           : "mapbox://styles/mapbox/streets-v12",
       cameraOptions: mapbox.CameraOptions(
-        center: mapbox.Point(coordinates: mapbox.Position(widget.lng, widget.lat)).toJson(),
+        center: mapbox.Point(coordinates: mapbox.Position(widget.lng, widget.lat)),
         zoom: 15.0,
       ),
       onMapCreated: (controller) async {

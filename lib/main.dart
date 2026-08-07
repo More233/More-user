@@ -7,8 +7,13 @@ import 'services/notification_service.dart';
 
 import 'sections/settings/providers/theme_provider.dart';
 
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
+import 'config/secrets.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  mapbox.MapboxOptions.setAccessToken(Secrets.mapboxAccessToken);
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

@@ -17,9 +17,21 @@ subprojects {
 }
 
 subprojects {
+    plugins.withId("com.android.library") {
+        plugins.apply("kotlin-android")
+    }
     afterEvaluate {
         val android = extensions.findByName("android") as? com.android.build.gradle.BaseExtension
-        android?.compileSdkVersion(36)
+        android?.apply {
+            compileSdkVersion(36)
+            defaultConfig {
+                externalNativeBuild {
+                    cmake {
+                        arguments("-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384")
+                    }
+                }
+            }
+        }
     }
 }
 

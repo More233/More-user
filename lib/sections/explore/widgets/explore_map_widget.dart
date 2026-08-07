@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -7,7 +9,6 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:moor/shared/models/lat_lng.dart' as model;
 import 'package:geolocator/geolocator.dart';
-import '../../../../config/secrets.dart';
 import '../helpers/marker_generator.dart';
 
 class ExploreMapWidget extends StatefulWidget {
@@ -132,7 +133,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       final double plng = double.tryParse(widget.selectedPlace!['longitude']?.toString() ?? '') ?? 0.0;
       if (plat != 0.0 && plng != 0.0 && _mapboxMap != null) {
         _mapboxMap!.getCameraState().then((cameraState) {
-          final centerPoint = mapbox.Point.fromJson(Map<String, dynamic>.from(cameraState.center));
+          final centerPoint = cameraState.center;
           final double dist = Geolocator.distanceBetween(
             centerPoint.coordinates.lat.toDouble(),
             centerPoint.coordinates.lng.toDouble(),
@@ -148,7 +149,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             mapbox.CameraOptions(
               center: mapbox.Point(
                 coordinates: mapbox.Position(plng, plat),
-              ).toJson(),
+              ),
               zoom: targetZoom,
             ),
             mapbox.MapAnimationOptions(duration: 1000),
@@ -1396,11 +1397,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    const String mapboxAccessToken = String.fromEnvironment(
-      "MAPBOX_ACCESS_TOKEN",
-      defaultValue: Secrets.mapboxAccessToken,
-    );
-
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     if (_lastIsDark != null && _lastIsDark != isDark) {
       _lastIsDark = isDark;
@@ -1455,7 +1451,6 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
       },
       child: mapbox.MapWidget(
         key: const ValueKey('explore_mapbox_widget_key'),
-        resourceOptions: mapbox.ResourceOptions(accessToken: mapboxAccessToken),
         styleUri: isDark
             ? "mapbox://styles/mapbox/navigation-guidance-night-v4"
             : "mapbox://styles/mapbox/streets-v12",
@@ -1471,7 +1466,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               
               // Set projection to Mercator (flat map) in all modes
               try {
-                await _mapboxMap!.style.setProjection("mercator");
+                await _mapboxMap!.style.setProjection(
+                  mapbox.StyleProjection(name: mapbox.StyleProjectionName.mercator),
+                );
               } catch (e) {
                 debugPrint("Error setting map projection: $e");
               }
@@ -1500,7 +1497,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
               widget.initialCameraPosition.target.longitude,
               widget.initialCameraPosition.target.latitude,
             ),
-          ).toJson(),
+          ),
           zoom: widget.initialCameraPosition.zoom,
         ),
         onMapCreated: (mapboxMap) {
@@ -1511,7 +1508,9 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
             // Set projection to Mercator (flat map) in all modes
             try {
-              await mapboxMap.style.setProjection("mercator");
+              await mapboxMap.style.setProjection(
+                mapbox.StyleProjection(name: mapbox.StyleProjectionName.mercator),
+              );
             } catch (e) {
               debugPrint("Error setting map projection: $e");
             }
@@ -1580,43 +1579,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             widget.onCameraIdle!();
           }
         },
-        onTapListener: (point) async {
+        onTapListener: (context) async {
           if (_mapboxMap == null) return;
 
-          // Detect if the coordinate is geographical due to the iOS plugin bug
-          final bool isIosGeoBug = point.x.abs() <= 90.0 && point.y.abs() <= 180.0;
-
-          mapbox.ScreenCoordinate screenPt;
-          model.LatLng geoLatLng;
-
-          if (isIosGeoBug) {
-            geoLatLng = model.LatLng(point.x, point.y);
-            try {
-              screenPt = await _mapboxMap!.pixelForCoordinate(
-                mapbox.Point(
-                  coordinates: mapbox.Position(point.y, point.x),
-                ).toJson(),
-              );
-            } catch (e) {
-              debugPrint("Error converting coordinate to pixel: $e");
-              screenPt = point;
-            }
-          } else {
-            screenPt = point;
-            try {
-              final value = await _mapboxMap!.coordinateForPixel(point);
-              final geoPoint = mapbox.Point.fromJson(
-                Map<String, dynamic>.from(value),
-              );
-              geoLatLng = model.LatLng(
-                geoPoint.coordinates.lat.toDouble(),
-                geoPoint.coordinates.lng.toDouble(),
-              );
-            } catch (e) {
-              debugPrint("Error converting pixel to coordinate: $e");
-              geoLatLng = const model.LatLng(0.0, 0.0);
-            }
-          }
+          final screenPt = context.touchPosition;
+          final geoLatLng = model.LatLng(
+            context.point.coordinates.lat.toDouble(),
+            context.point.coordinates.lng.toDouble(),
+          );
 
           // Query within a 24x24 pixel bounding box around the tap for precise selection
           const double tolerance = 12.0;
@@ -1625,10 +1595,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             max: mapbox.ScreenCoordinate(x: screenPt.x + tolerance, y: screenPt.y + tolerance),
           );
 
-          final renderedQueryGeometry = mapbox.RenderedQueryGeometry(
-            value: json.encode(screenBox.encode()),
-            type: mapbox.Type.SCREEN_BOX,
-          );
+          final renderedQueryGeometry = mapbox.RenderedQueryGeometry.fromScreenBox(screenBox);
 
           try {
             final features = await _mapboxMap!.queryRenderedFeatures(
@@ -1646,13 +1613,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
 
             debugPrint("ExploreMapWidget Tap: Queried ${features.length} features.");
             if (features.isNotEmpty && features.first != null) {
-              final feature = features.first!;
-              final properties = feature.feature['properties'] as Map?;
+              final featureItem = features.first!;
+              final featureMap = featureItem.queriedFeature.feature;
+              final properties = featureMap['properties'] as Map?;
               debugPrint("ExploreMapWidget Tap: Properties = $properties");
               if (properties != null) {
                 final bool isCluster = properties.containsKey('point_count') || properties.containsKey('cluster_id');
                 if (isCluster) {
-                  final geometry = feature.feature['geometry'] as Map?;
+                  final geometry = featureMap['geometry'] as Map?;
                   final coordinates = geometry?['coordinates'] as List?;
                   if (coordinates != null && coordinates.length >= 2) {
                     final double lng = (coordinates[0] as num).toDouble();
@@ -1661,7 +1629,7 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
                     debugPrint("ExploreMapWidget Tap: Cluster clicked, zooming into: ($lat, $lng) at zoom $targetZoom");
                     _mapboxMap?.easeTo(
                       mapbox.CameraOptions(
-                        center: mapbox.Point(coordinates: mapbox.Position(lng, lat)).toJson(),
+                        center: mapbox.Point(coordinates: mapbox.Position(lng, lat)),
                         zoom: targetZoom,
                       ),
                       mapbox.MapAnimationOptions(duration: 500),
@@ -1704,27 +1672,14 @@ class _ExploreMapWidgetState extends State<ExploreMapWidget> {
             widget.onTap!(geoLatLng);
           }
         },
-        onLongTapListener: (point) async {
+        onLongTapListener: (context) async {
           if (widget.onLongPress != null && _mapboxMap != null) {
-            final bool isIosGeoBug = point.x.abs() <= 90.0 && point.y.abs() <= 180.0;
-            if (isIosGeoBug) {
-              widget.onLongPress!(model.LatLng(point.x, point.y));
-            } else {
-              try {
-                final value = await _mapboxMap!.coordinateForPixel(point);
-                final geoPoint = mapbox.Point.fromJson(
-                  Map<String, dynamic>.from(value),
-                );
-                widget.onLongPress!(
-                  model.LatLng(
-                    geoPoint.coordinates.lat.toDouble(),
-                    geoPoint.coordinates.lng.toDouble(),
-                  ),
-                );
-              } catch (e) {
-                debugPrint("Error converting pixel to coordinate on long press: $e");
-              }
-            }
+            widget.onLongPress!(
+              model.LatLng(
+                context.point.coordinates.lat.toDouble(),
+                context.point.coordinates.lng.toDouble(),
+              ),
+            );
           }
         },
       ),
