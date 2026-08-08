@@ -49,7 +49,7 @@
 	<key>UIRequiresFullScreen</key>
 	<true/>
 	<key>NSContactsUsageDescription</key>
-	<string>This app needs access to your contacts to help you find friends who are already on More.</string>
+	<string>This app uploads your contacts to our secure server to help you find and connect with friends on More. Your contact data is kept private and never shared with third parties.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app requires access to your photo library to select photos for your check-in.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

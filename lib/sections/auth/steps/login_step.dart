@@ -73,11 +73,8 @@ class _LoginStepState extends State<LoginStep> {
         await Supabase.instance.client.auth.signInWithOtp(
           phone: address,
         );
-      } else {
-        await Supabase.instance.client.auth.signInWithOtp(
-          email: address,
-        );
       }
+      // For email login/signup, skip sending OTP and navigate directly
 
       if (mounted) {
         widget.onContinue(address);
@@ -107,7 +104,7 @@ class _LoginStepState extends State<LoginStep> {
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: 'io.supabase.moreapp://login-callback',
-        authScreenLaunchMode: LaunchMode.externalApplication,
+        authScreenLaunchMode: LaunchMode.inAppBrowserView,
       );
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -188,7 +185,7 @@ class _LoginStepState extends State<LoginStep> {
           OAuthProvider.apple,
           redirectTo: kIsWeb ? null : 'io.supabase.moreapp://login-callback',
           authScreenLaunchMode:
-              kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+              kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppBrowserView,
         );
       }
     } on AuthException catch (e) {

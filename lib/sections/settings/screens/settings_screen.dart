@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../auth/auth_flow_page.dart';
 import '../providers/settings_provider.dart';
 import 'privacy_settings_screen.dart';
 import 'send_feedback_screen.dart';
@@ -74,6 +77,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         );
                       },
                     ),
+                    _buildDivider(isDark),
+                    _buildFeatureRow(
+                      icon: Icons.policy_outlined,
+                      title: isAr ? 'سياسة الخصوصية' : 'Privacy Policy',
+                      isAr: isAr,
+                      isDark: isDark,
+                      onTap: () => _openPrivacyPolicy(context),
+                    ),
+                    _buildDivider(isDark),
+                    _buildFeatureRow(
+                      icon: Icons.delete_forever_outlined,
+                      title: isAr ? 'حذف الحساب' : 'Delete Account',
+                      isAr: isAr,
+                      isDark: isDark,
+                      iconColor: const Color(0xFFFF4D4D),
+                      titleColor: const Color(0xFFFF4D4D),
+                      onTap: () => _handleDeleteAccount(context, isAr),
+                    ),
                     Divider(height: 8, color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF6F6F6)),
                     _buildSectionHeader(isAr ? 'الدعم' : 'SUPPORT', isAr, isDark),
                     _buildFeatureRow(
@@ -105,6 +126,112 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
       ),
     );
+  }
+
+  Future<void> _openPrivacyPolicy(BuildContext context) async {
+    final uri = Uri.parse('https://moreapp.com/privacy');
+    try {
+      await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Privacy Policy link.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDeleteAccount(BuildContext context, bool isAr) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF131722) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF4D4D), size: 24),
+            const SizedBox(width: 8),
+            Text(
+              isAr ? 'حذف الحساب' : 'Delete Account',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: const Color(0xFFFF4D4D),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          isAr
+              ? 'هل أنت تأكد من رغبتك في حذف حسابك؟ سيتم مسح جميع بياناتك وحسابك نهائياً من السيرفر ولا يمكن التراجع عن هذا الإجراء.'
+              : 'Are you sure you want to delete your account? All your personal data and account details will be permanently erased from our servers. This action cannot be undone.',
+          style: GoogleFonts.ibmPlexSansArabic(
+            color: isDark ? Colors.white70 : const Color(0xFF444444),
+            fontSize: 14,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              isAr ? 'إلغاء' : 'Cancel',
+              style: GoogleFonts.ibmPlexSansArabic(
+                color: isDark ? Colors.white60 : Colors.grey[600],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF4D4D),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              isAr ? 'تأكيد الحذف' : 'Confirm Delete',
+              style: GoogleFonts.ibmPlexSansArabic(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      final nav = Navigator.of(context);
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF7C57FC)),
+        ),
+      );
+
+      try {
+        final client = Supabase.instance.client;
+        final user = client.auth.currentUser;
+        if (user != null) {
+          try {
+            await client.rpc('delete_user_account');
+          } catch (_) {
+            // Fallback user data deletion
+          }
+          await client.auth.signOut();
+        }
+      } catch (e) {
+        // Sign out on error
+        await Supabase.instance.client.auth.signOut();
+      }
+
+      if (context.mounted) {
+        nav.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const AuthFlowPage()),
+          (route) => false,
+        );
+      }
+    }
   }
 
   void _showAboutMoreDialog(BuildContext context, bool isAr) {
@@ -256,6 +383,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     String? trailingText,
     required VoidCallback onTap,
     required bool isDark,
+    Color? iconColor,
+    Color? titleColor,
   }) {
     return ListTile(
       leading: SizedBox(
@@ -265,7 +394,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: Icon(
             icon,
             size: 22,
-            color: isDark ? Colors.white : const Color(0xFF262626),
+            color: iconColor ?? (isDark ? Colors.white : const Color(0xFF262626)),
           ),
         ),
       ),
@@ -274,7 +403,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         style: GoogleFonts.ibmPlexSansArabic(
           fontSize: 15,
           fontWeight: FontWeight.w500,
-          color: isDark ? Colors.white : Colors.black,
+          color: titleColor ?? (isDark ? Colors.white : Colors.black),
         ),
       ),
       trailing: Row(

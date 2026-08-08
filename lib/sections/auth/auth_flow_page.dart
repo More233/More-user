@@ -220,7 +220,11 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
                   // Step 1: Login
                   LoginStep(
                     onContinue: (address) {
-                      _showOtpBottomSheet(context, address);
+                      if (address.contains('@')) {
+                        _navigateToStep(AuthStep.basicInfo);
+                      } else {
+                        _showOtpBottomSheet(context, address);
+                      }
                     },
                     onSignUpPressed: () {
                       _navigateToStep(AuthStep.basicInfo);
