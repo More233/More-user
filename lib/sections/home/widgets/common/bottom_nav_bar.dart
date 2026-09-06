@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui';
 
@@ -23,8 +22,9 @@ class BottomNavBar extends StatelessWidget {
 
   static const _items = [
     'Home',
-    'Search',
-    'Notifications',
+    'Explore',
+    'Bookings',
+    'Orders',
     'Messages',
   ];
 
@@ -61,9 +61,7 @@ class BottomNavBar extends StatelessWidget {
                   final isActive = index == selectedIndex;
                   
                   int badgeCount = 0;
-                  if (label == 'Notifications') {
-                    badgeCount = unreadNotificationsCount;
-                  } else if (label == 'Messages') {
+                  if (label == 'Messages') {
                     badgeCount = unreadMessagesCount;
                   }
 
@@ -101,43 +99,30 @@ class _NavItem extends StatelessWidget {
   });
 
   Widget _buildIcon() {
+    String assetPath;
     if (label == 'Home') {
-      return SvgPicture.asset(
-        'assets/home/icons/home.svg',
-        width: 24,
-        height: 24,
-        colorFilter: ColorFilter.mode(
-          isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-          BlendMode.srcIn,
-        ),
-      );
+      assetPath = 'assets/home/icons/home.svg';
+    } else if (label == 'Explore') {
+      assetPath = 'assets/home/icons/explore_nav_icon.svg';
+    } else if (label == 'Bookings') {
+      assetPath = 'assets/home/icons/booking_nav_icon.svg';
+    } else if (label == 'Orders') {
+      assetPath = 'assets/home/icons/order_nav_icon.svg';
+    } else if (label == 'Messages') {
+      assetPath = 'assets/home/icons/chat_bubble_icon.svg';
+    } else {
+      assetPath = 'assets/home/icons/home.svg';
     }
-    if (label == 'Search') {
-      return SvgPicture.asset(
-        'assets/home/icons/search_01.svg',
-        width: 24,
-        height: 24,
-        colorFilter: ColorFilter.mode(
-          isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-          BlendMode.srcIn,
-        ),
-      );
-    }
-    if (label == 'Notifications') {
-      return Icon(
-        CupertinoIcons.bell,
-        size: 24,
-        color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-      );
-    }
-    if (label == 'Messages') {
-      return Icon(
-        CupertinoIcons.chat_bubble,
-        size: 24,
-        color: isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
-      );
-    }
-    return const Icon(Icons.help_outline);
+
+    return SvgPicture.asset(
+      assetPath,
+      width: 22,
+      height: 22,
+      colorFilter: ColorFilter.mode(
+        isActive ? const Color(0xFF7C57FC) : const Color(0xFF82858C),
+        BlendMode.srcIn,
+      ),
+    );
   }
 
   @override

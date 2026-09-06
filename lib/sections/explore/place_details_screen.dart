@@ -14,6 +14,7 @@ import 'widgets/place_details/place_details_header.dart';
 import 'widgets/place_details/place_details_info.dart';
 import 'widgets/place_details/place_details_actions.dart';
 import 'widgets/place_details/place_details_more_info_sheet.dart';
+import 'widgets/place_details/venue_booking_sheet.dart';
 import '../home/widgets/feed/check_in_composer_screen.dart';
 import 'services/explore_data_service.dart';
 import 'view_models/explore_view_model.dart';
@@ -351,6 +352,14 @@ class _PlaceDetailsScreenState extends ConsumerState<PlaceDetailsScreen> {
               viewModel.toggleBookmark();
             },
             onShareTap: _sharePlace,
+            onBookTap: () {
+              VenueBookingSheet.show(
+                context,
+                venueId: state.place['id']?.toString() ?? '',
+                venueName: state.place['name']?.toString() ?? 'Place',
+                venueCategory: state.place['category']?.toString(),
+              );
+            },
           ),
         ],
       ),

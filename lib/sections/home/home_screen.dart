@@ -30,7 +30,9 @@ import 'widgets/bottom_sheets/share_bottom_sheet.dart';
 import 'widgets/feed/social_feed_view.dart';
 import '../../services/notification_service.dart';
 import 'widgets/common/user_drawer.dart';
-import 'widgets/story/story_composer_screen.dart';
+import '../bookings/bookings_screen.dart';
+import '../orders/orders_screen.dart';
+import 'home_search_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -294,8 +296,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
         SafeArea(
           top: true,
           bottom: false,
-          child: const NotificationsScreen(
-            showBackButton: false,
+          child: BookingsScreen(
+            onExploreTapped: () {
+              ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
+            },
+          ),
+        ),
+        SafeArea(
+          top: true,
+          bottom: false,
+          child: OrdersScreen(
+            onExploreTapped: () {
+              ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
+            },
           ),
         ),
         SafeArea(
@@ -628,10 +641,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                        right: 16,
                                        bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
                                         child: IgnorePointer(
-                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) || isPlaceSelectedOnMap,
+                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 4) || isPlaceSelectedOnMap,
                                           child: AnimatedOpacity(
                                             duration: const Duration(milliseconds: 200),
-                                            opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 3) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
+                                            opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 4) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
                                             child: _buildFAB(state),
                                           ),
                                         ),
@@ -678,6 +691,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
   }
 
   Widget _buildHeader(TimelineState state) {
+    final unreadNotificationsCount = ref.watch(notificationsViewModelProvider).unreadCount;
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       height: 56,
@@ -720,35 +734,111 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
               BlendMode.srcIn,
             ),
           ),
-          // Right aligned add story (+) button
+          // Right aligned actions: Search and Notifications
           Align(
             alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const StoryComposerScreen()),
-                );
-              },
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF7C57FC),
-                    width: 1.8,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TimelineSearchScreen(
+                          posts: state.posts,
+                          onLikeToggle: (id) => ref.read(timelineViewModelProvider.notifier).toggleLike(id),
+                          onBookmarkToggle: (id, isSaved) => ref.read(timelineViewModelProvider.notifier).updateBookmarkState(id, isSaved),
+                          onPostUpdated: () => ref.read(timelineViewModelProvider.notifier).refreshAll(),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF181C26)
+                          : const Color(0xFFF4F5F7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/home/icons/search_01.svg',
+                        width: 18,
+                        height: 18,
+                        colorFilter: ColorFilter.mode(
+                          Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF181C26),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.add,
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF7C57FC),
-                    size: 18,
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(showBackButton: true),
+                      ),
+                    );
+                  },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFF181C26)
+                              : const Color(0xFFF4F5F7),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/home/icons/notification_02.svg',
+                            width: 18,
+                            height: 18,
+                            colorFilter: ColorFilter.mode(
+                              Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF181C26),
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (unreadNotificationsCount > 0)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF4D4F),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                            child: Center(
+                              child: Text(
+                                unreadNotificationsCount > 99 ? '99+' : '$unreadNotificationsCount',
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
@@ -777,7 +867,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        if (state.selectedNavIndex == 3) {
+        if (state.selectedNavIndex == 4) {
           _messagesKey.currentState?.showNewChatBottomSheet();
         } else {
           if (state.isFirstCheckIn) {
@@ -799,7 +889,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           transitionBuilder: (child, animation) {
             return ScaleTransition(scale: animation, child: child);
           },
-          child: state.selectedNavIndex == 3
+          child: state.selectedNavIndex == 4
               ? const Icon(
                   CupertinoIcons.plus_bubble,
                   key: ValueKey('chat_icon'),

@@ -8,6 +8,8 @@ class PlaceDetailsActions extends StatelessWidget {
   final VoidCallback onCheckInTap;
   final VoidCallback onSaveTap;
   final VoidCallback onShareTap;
+  final VoidCallback? onBookTap;
+  final VoidCallback? onOrderTap;
 
   const PlaceDetailsActions({
     super.key,
@@ -17,6 +19,8 @@ class PlaceDetailsActions extends StatelessWidget {
     required this.onCheckInTap,
     required this.onSaveTap,
     required this.onShareTap,
+    this.onBookTap,
+    this.onOrderTap,
   });
 
   @override
@@ -38,6 +42,73 @@ class PlaceDetailsActions extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (onBookTap != null || onOrderTap != null) ...[
+            Row(
+              children: [
+                if (onBookTap != null)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onBookTap,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7C57FC).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFF7C57FC).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.calendar_month, color: Color(0xFF7C57FC), size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Reserve",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF7C57FC),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                if (onBookTap != null && onOrderTap != null) const SizedBox(width: 8),
+                if (onOrderTap != null)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onOrderTap,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7C57FC),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Order Now",
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           // Row 1: Check In button
           GestureDetector(
             onTap: onCheckInTap,
