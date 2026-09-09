@@ -78,13 +78,9 @@ class CupertinoTabBarPlatformView: NSObject, FlutterPlatformView, UITabBarDelega
       for i in range {
         var image: UIImage? = nil
         if i < symbols.count {
-          if i < sizes.count && sizes[i].doubleValue > 0 {
-            let sz = CGFloat(sizes[i].doubleValue)
-            let cfg = UIImage.SymbolConfiguration(pointSize: sz, weight: .medium)
-            image = UIImage(systemName: symbols[i], withConfiguration: cfg) ?? UIImage(systemName: symbols[i])
-          } else {
-            image = UIImage(systemName: symbols[i])
-          }
+          let sz: CGFloat = (i < sizes.count && sizes[i].doubleValue > 0) ? CGFloat(sizes[i].doubleValue) : 17.5
+          let cfg = UIImage.SymbolConfiguration(pointSize: sz, weight: .medium)
+          image = UIImage(systemName: symbols[i], withConfiguration: cfg) ?? UIImage(systemName: symbols[i])
         }
         let title = (i < labels.count) ? labels[i] : nil
         let item = UITabBarItem(title: title, image: image, selectedImage: image)
@@ -198,13 +194,9 @@ channel.setMethodCallHandler { [weak self] call, result in
             for i in range {
               var image: UIImage? = nil
               if i < symbols.count {
-                if i < self.currentSizes.count && self.currentSizes[i].doubleValue > 0 {
-                  let sz = CGFloat(self.currentSizes[i].doubleValue)
-                  let cfg = UIImage.SymbolConfiguration(pointSize: sz, weight: .medium)
-                  image = UIImage(systemName: symbols[i], withConfiguration: cfg) ?? UIImage(systemName: symbols[i])
-                } else {
-                  image = UIImage(systemName: symbols[i])
-                }
+                let sz: CGFloat = (i < self.currentSizes.count && self.currentSizes[i].doubleValue > 0) ? CGFloat(self.currentSizes[i].doubleValue) : 17.5
+                let cfg = UIImage.SymbolConfiguration(pointSize: sz, weight: .medium)
+                image = UIImage(systemName: symbols[i], withConfiguration: cfg) ?? UIImage(systemName: symbols[i])
               }
               let title = (i < labels.count) ? labels[i] : nil
               let item = UITabBarItem(title: title, image: image, selectedImage: image)
@@ -326,7 +318,11 @@ channel.setMethodCallHandler { [weak self] call, result in
         if let args = call.arguments as? [String: Any], let idx = (args["index"] as? NSNumber)?.intValue {
           // Single bar
           if let bar = self.tabBar, let items = bar.items, idx >= 0, idx < items.count {
-            bar.selectedItem = items[idx]
+            if bar.selectedItem != items[idx] {
+              UIView.transition(with: bar, duration: 0.25, options: [.transitionCrossDissolve], animations: {
+                bar.selectedItem = items[idx]
+              }, completion: nil)
+            }
             result(nil)
             return
           }
