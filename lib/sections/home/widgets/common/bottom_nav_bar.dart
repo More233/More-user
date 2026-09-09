@@ -47,20 +47,17 @@ class BottomNavBar extends StatelessWidget {
 
     final safeIndex = selectedIndex.clamp(0, tabItems.length - 1);
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 6),
-        child: CNTabBar(
-          currentIndex: safeIndex,
-          iconSize: 17.0,
-          onTap: (idx) {
-            HapticFeedback.selectionClick();
-            onItemTapped(idx);
-          },
-          tint: const Color(0xFF7C57FC),
-          items: tabItems,
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
+      child: CNTabBar(
+        currentIndex: safeIndex,
+        iconSize: 17.0,
+        onTap: (idx) {
+          HapticFeedback.selectionClick();
+          onItemTapped(idx);
+        },
+        tint: const Color(0xFF7C57FC),
+        items: tabItems,
       ),
     );
   }
