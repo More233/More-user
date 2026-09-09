@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/gestures.dart';
 
 import '../channel/params.dart';
 import '../style/sf_symbol.dart';
@@ -162,18 +161,12 @@ class _CNTabBarState extends State<CNTabBar> {
             creationParams: creationParams,
             creationParamsCodec: const StandardMessageCodec(),
             onPlatformViewCreated: _onCreated,
-            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-              Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
-            },
           )
         : AppKitView(
             viewType: viewType,
             creationParams: creationParams,
             creationParamsCodec: const StandardMessageCodec(),
             onPlatformViewCreated: _onCreated,
-            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-              Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
-            },
           );
 
     final h = widget.height ?? _intrinsicHeight ?? 50.0;
@@ -182,63 +175,14 @@ class _CNTabBarState extends State<CNTabBar> {
       return SizedBox(
         height: h,
         width: w,
-        child: Stack(
-          children: [
-            Positioned.fill(child: platformView),
-            Positioned.fill(
-              child: Directionality(
-                textDirection: TextDirection.ltr,
-                child: Row(
-                  children: List.generate(widget.items.length, (index) {
-                    return Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          debugPrint('CNTabBar: tapped tab index $index');
-                          HapticFeedback.selectionClick();
-                          widget.onTap(index);
-                          _syncPropsToNativeIfNeeded();
-                        },
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-          ],
-        ),
+        child: platformView,
       );
     }
 
     return SizedBox(
       height: h,
-      child: Stack(
-        children: [
-          Positioned.fill(child: platformView),
-          Positioned.fill(
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: Row(
-                children: List.generate(widget.items.length, (index) {
-                  return Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        widget.onTap(index);
-                        _syncPropsToNativeIfNeeded();
-                      },
-                    ),
-                  );
-                }),
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: platformView,
     );
-
-
   }
 
   void _onCreated(int id) {
