@@ -7,6 +7,8 @@ class DeliveryAddressModel {
   final double latitude;
   final double longitude;
   final bool isCovered;
+  final String? regionId;
+  final String? regionName;
 
   const DeliveryAddressModel({
     required this.title,
@@ -15,6 +17,8 @@ class DeliveryAddressModel {
     required this.latitude,
     required this.longitude,
     this.isCovered = true,
+    this.regionId,
+    this.regionName,
   });
 
   Map<String, dynamic> toMap() {
@@ -25,6 +29,8 @@ class DeliveryAddressModel {
       'latitude': latitude,
       'longitude': longitude,
       'isCovered': isCovered,
+      'regionId': regionId,
+      'regionName': regionName,
     };
   }
 
@@ -36,6 +42,8 @@ class DeliveryAddressModel {
       latitude: (map['latitude'] as num?)?.toDouble() ?? 24.7136,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 46.6753,
       isCovered: map['isCovered'] as bool? ?? true,
+      regionId: map['regionId'] as String?,
+      regionName: map['regionName'] as String?,
     );
   }
 

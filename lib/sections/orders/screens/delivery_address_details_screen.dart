@@ -38,13 +38,16 @@ class _DeliveryAddressDetailsScreenState extends State<DeliveryAddressDetailsScr
     HapticFeedback.mediumImpact();
     setState(() => _isSaving = true);
 
+    final region = DeliveryAddressService.instance.findCoveredRegion(widget.latitude, widget.longitude);
     final model = DeliveryAddressModel(
       title: widget.title,
       fullAddress: widget.fullAddress,
       details: _detailsController.text.trim(),
       latitude: widget.latitude,
       longitude: widget.longitude,
-      isCovered: true,
+      isCovered: region != null,
+      regionId: region?.id,
+      regionName: region?.name,
     );
 
     await DeliveryAddressService.instance.saveAddress(model);
