@@ -2,13 +2,15 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'models/delivery_address_model.dart';
 import 'models/delivery_banner_model.dart';
+import 'providers/delivery_orders_provider.dart';
 import 'services/delivery_address_service.dart';
 import 'screens/delivery_location_picker_screen.dart';
 
-class OrdersScreen extends StatefulWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   final VoidCallback onExploreTapped;
 
   const OrdersScreen({
@@ -17,10 +19,10 @@ class OrdersScreen extends StatefulWidget {
   });
 
   @override
-  State<OrdersScreen> createState() => _OrdersScreenState();
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen> {
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   @override
   void initState() {
     super.initState();
@@ -29,7 +31,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _openLocationPicker(BuildContext context) async {
     HapticFeedback.lightImpact();
-    final current = DeliveryAddressService.instance.currentAddress.value;
+    final current = ref.read(currentAddressProvider);
     await Navigator.push<bool>(
       context,
       CupertinoPageRoute(
@@ -48,72 +50,73 @@ class _OrdersScreenState extends State<OrdersScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final sheetBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-        final textColor = isDark ? Colors.white : const Color(0xFF1E2022);
+        return Consumer(
+          builder: (context, ref, _) {
+            final isDark = Theme.of(ctx).brightness == Brightness.dark;
+            final sheetBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+            final textColor = isDark ? Colors.white : const Color(0xFF1E2022);
+            final savedList = ref.watch(savedAddressesProvider);
+            final current = ref.watch(currentAddressProvider);
 
-        return Container(
-          decoration: BoxDecoration(
-            color: sheetBg,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 12,
-            bottom: MediaQuery.of(ctx).padding.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Drag Handle
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4.5,
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : const Color(0xFFE0E0E0),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-
-              // Title Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    color: isDark ? Colors.white70 : const Color(0xFF757575),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                  Text(
-                    'اختر موقع التوصيل',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
+            return Container(
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 12,
+                bottom: MediaQuery.of(ctx).padding.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Drag Handle
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : const Color(0xFFE0E0E0),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
 
-              // Saved Addresses List
-              ValueListenableBuilder<List<DeliveryAddressModel>>(
-                valueListenable: DeliveryAddressService.instance.savedAddresses,
-                builder: (context, savedList, _) {
-                  if (savedList.isEmpty) {
-                    return Padding(
+                  // Title Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        color: isDark ? Colors.white70 : const Color(0xFF757575),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                      Text(
+                        'اختر موقع التوصيل',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Saved Addresses List
+                  if (savedList.isEmpty)
+                    Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Column(
                         children: [
@@ -132,146 +135,145 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           ),
                         ],
                       ),
-                    );
-                  }
+                    )
+                  else
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 280),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: savedList.length,
+                        separatorBuilder: (c, i) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final item = savedList[index];
+                          final isSelected = current != null &&
+                              item.latitude == current.latitude &&
+                              item.longitude == current.longitude;
 
-                  return ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 280),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: savedList.length,
-                      separatorBuilder: (c, i) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final item = savedList[index];
-                        final isSelected = currentAddress != null &&
-                            item.latitude == currentAddress.latitude &&
-                            item.longitude == currentAddress.longitude;
-
-                        return InkWell(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            DeliveryAddressService.instance.saveAddress(item);
-                            Navigator.pop(ctx);
-                          },
-                          borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFF10B981).withValues(alpha: 0.08)
-                                  : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF9FAFB)),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
+                          return InkWell(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              ref.read(currentAddressProvider.notifier).setAddress(item);
+                              Navigator.pop(ctx);
+                            },
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
                                 color: isSelected
-                                    ? const Color(0xFF10B981)
-                                    : (isDark ? Colors.white12 : const Color(0xFFEEEEEE)),
-                                width: isSelected ? 1.6 : 1,
+                                    ? const Color(0xFF10B981).withValues(alpha: 0.08)
+                                    : (isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF9FAFB)),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? const Color(0xFF10B981)
+                                      : (isDark ? Colors.white12 : const Color(0xFFEEEEEE)),
+                                  width: isSelected ? 1.6 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_circle_rounded,
+                                      color: Color(0xFF10B981),
+                                      size: 22,
+                                    )
+                                  else
+                                    IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 20,
+                                        color: Color(0xFF9E9E9E),
+                                      ),
+                                      onPressed: () {
+                                        DeliveryAddressService.instance.removeSavedAddress(index);
+                                      },
+                                    ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          item.title,
+                                          style: GoogleFonts.ibmPlexSansArabic(
+                                            fontSize: 14.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: textColor,
+                                          ),
+                                          textAlign: TextAlign.right,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.fullAddress,
+                                          style: GoogleFonts.ibmPlexSansArabic(
+                                            fontSize: 12,
+                                            color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          textAlign: TextAlign.right,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Center(
+                                      child: _SleekOutlinePin(
+                                        color: Color(0xFF00A651),
+                                        size: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                if (isSelected)
-                                  const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Color(0xFF10B981),
-                                    size: 22,
-                                  )
-                                else
-                                  IconButton(
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    icon: const Icon(
-                                      Icons.delete_outline_rounded,
-                                      size: 20,
-                                      color: Color(0xFF9E9E9E),
-                                    ),
-                                    onPressed: () {
-                                      DeliveryAddressService.instance.removeSavedAddress(index);
-                                    },
-                                  ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        item.title,
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: textColor,
-                                        ),
-                                        textAlign: TextAlign.right,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        item.fullAddress,
-                                        style: GoogleFonts.ibmPlexSansArabic(
-                                          fontSize: 12,
-                                          color: isDark ? Colors.white60 : const Color(0xFF6B7280),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.right,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: _SleekOutlinePin(
-                                      color: Color(0xFF00A651),
-                                      size: 16,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
+                          );
+                        },
+                      ),
+                    ),
+
+                  const SizedBox(height: 18),
+
+                  // Pick New Location on Map Button
+                  SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _openLocationPicker(context);
                       },
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 18),
-
-              // Pick New Location on Map Button
-              SizedBox(
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _openLocationPicker(context);
-                  },
-                  icon: const Icon(Icons.add_location_alt_outlined, size: 20),
-                  label: Text(
-                    'تحديد موقع جديد على الخريطة',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      icon: const Icon(Icons.add_location_alt_outlined, size: 20),
+                      label: Text(
+                        'تحديد موقع جديد على الخريطة',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C57FC),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7C57FC),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -279,49 +281,37 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isCovered = ref.watch(isCoveredProvider);
+    final currentAddress = ref.watch(currentAddressProvider);
+    final bannersAsync = ref.watch(deliveryBannersStreamProvider);
+    final banners = bannersAsync.value ?? [];
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
 
     return Scaffold(
       backgroundColor: bgColor,
-      body: ValueListenableBuilder<DeliveryAddressModel?>(
-        valueListenable: DeliveryAddressService.instance.currentAddress,
-        builder: (context, address, _) {
-          final isCovered = address != null && address.isCovered;
-
-          if (!isCovered) {
-            // Out of Coverage View with Header
-            return Column(
+      body: !isCovered
+          ? Column(
               children: [
-                _buildSimpleHeader(context, address, isDark),
+                _buildSimpleHeader(context, currentAddress, isDark),
                 Expanded(
-                  child: _buildOutOfCoverageView(context, isDark, address: address),
+                  child: _buildOutOfCoverageView(context, isDark, address: currentAddress),
                 ),
               ],
-            );
-          }
-
-          // Covered View: The ENTIRE top container IS the promotional banner image!
-          // Filter button removed. Categories & daily offers removed as requested.
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              children: [
-                ValueListenableBuilder<List<DeliveryBannerModel>>(
-                  valueListenable: DeliveryAddressService.instance.currentBanners,
-                  builder: (context, banners, _) {
-                    return _FullBannerHeaderContainer(
-                      banners: banners,
-                      address: address,
-                      onLocationTapped: () => _showAddressBottomSheet(context, address),
-                    );
-                  },
-                ),
-              ],
+            )
+          : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: [
+                  _FullBannerHeaderContainer(
+                    banners: banners,
+                    address: currentAddress,
+                    onLocationTapped: () => _showAddressBottomSheet(context, currentAddress),
+                  ),
+                ],
+              ),
             ),
-          );
-        },
-      ),
     );
   }
 
@@ -335,7 +325,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Container(
-      color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFFEF8DC),
+      color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
       padding: EdgeInsets.fromLTRB(16, topPadding + 8, 16, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -367,7 +357,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     const SizedBox(width: 6),
                     const _SleekOutlinePin(
                       color: Color(0xFF00A651),
-                      size: 16,
+                      size: 12,
                     ),
                   ],
                 ),
@@ -403,12 +393,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // HungerStation Vector Signpost & Cactus Illustration
             const _OutOfCoverageIllustration(),
-
             const SizedBox(height: 26),
-
-            // Main Out of Coverage Text
             Text(
               'نعتذر منك، موقعك الحالي خارج نطاق التوصيل لدينا',
               style: GoogleFonts.ibmPlexSansArabic(
@@ -419,7 +405,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-
             if (address != null && address.fullAddress.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
@@ -433,15 +418,16 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-
             const SizedBox(height: 14),
 
-            // Dynamically show covered active regions from Dashboard
-            ValueListenableBuilder(
-              valueListenable: DeliveryAddressService.instance.activeRegions,
-              builder: (context, regions, _) {
+            // Dynamically show covered active regions from Supabase via Riverpod stream
+            Consumer(
+              builder: (context, ref, _) {
+                final regionsAsync = ref.watch(activeRegionsStreamProvider);
+                final regions = regionsAsync.value ?? [];
                 if (regions.isEmpty) return const SizedBox.shrink();
                 final names = regions.map((r) => r.name).join('، ');
+
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
@@ -494,14 +480,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 }
 
-/// Custom sleek outline location pin (clean, delicate, 1.6px stroke, green)
+/// Custom sleek outline location pin (clean, delicate, 1.4px stroke, green)
 class _SleekOutlinePin extends StatelessWidget {
   final Color color;
   final double size;
 
   const _SleekOutlinePin({
     this.color = const Color(0xFF00A651),
-    this.size = 16,
+    this.size = 12,
   });
 
   @override
@@ -521,7 +507,7 @@ class _OutlinePinPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
-    const strokeWidth = 1.6;
+    const strokeWidth = 1.35;
 
     final paint = Paint()
       ..color = color
@@ -557,9 +543,9 @@ class _OutlinePinPainter extends CustomPainter {
 }
 
 /// Full Banner Container where the ENTIRE container IS the promotional image,
-/// with bottom-left and bottom-right 16px corner radius, floating location header,
-/// floating search bar, and dynamic indicator dots at the bottom.
-class _FullBannerHeaderContainer extends StatefulWidget {
+/// covering the status bar completely, with bottom-left and bottom-right 16px corner radius,
+/// floating location header, floating search bar, and dynamic indicator circles at the bottom.
+class _FullBannerHeaderContainer extends ConsumerStatefulWidget {
   final List<DeliveryBannerModel> banners;
   final DeliveryAddressModel? address;
   final VoidCallback onLocationTapped;
@@ -571,13 +557,12 @@ class _FullBannerHeaderContainer extends StatefulWidget {
   });
 
   @override
-  State<_FullBannerHeaderContainer> createState() => _FullBannerHeaderContainerState();
+  ConsumerState<_FullBannerHeaderContainer> createState() => _FullBannerHeaderContainerState();
 }
 
-class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> {
+class _FullBannerHeaderContainerState extends ConsumerState<_FullBannerHeaderContainer> {
   late final PageController _pageController;
   Timer? _autoScrollTimer;
-  int _currentIndex = 0;
 
   static const List<Map<String, String>> _fallbackBanners = [
     {
@@ -606,13 +591,22 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
     _autoScrollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       final total = widget.banners.isNotEmpty ? widget.banners.length : _fallbackBanners.length;
       if (total <= 1 || !_pageController.hasClients) return;
-      final next = (_currentIndex + 1) % total;
+      final current = ref.read(bannerCarouselIndexProvider);
+      final next = (current + 1) % total;
       _pageController.animateToPage(
         next,
         duration: const Duration(milliseconds: 600),
         curve: Curves.easeInOutCubic,
       );
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _FullBannerHeaderContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.banners.length != widget.banners.length) {
+      _startAutoScroll();
+    }
   }
 
   @override
@@ -644,7 +638,7 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
         height: totalContainerHeight,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: const Color(0xFFFEF8DC),
+          color: const Color(0xFFF3F4F6),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
@@ -656,12 +650,13 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Sliding Banners Background (The entire frame IS the image, covering status bar)
+            // 1. Sliding Banners Background (The entire frame IS the image, covering status bar full bleed)
             PageView.builder(
               controller: _pageController,
               itemCount: total,
               onPageChanged: (index) {
-                setState(() => _currentIndex = index);
+                // Strictly NO setState: Riverpod notifier state update
+                ref.read(bannerCarouselIndexProvider.notifier).state = index;
               },
               itemBuilder: (context, index) {
                 final imageUrl = hasRealBanners
@@ -672,36 +667,13 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
                   imageUrl,
                   fit: BoxFit.cover,
                   errorBuilder: (ctx, err, stack) => Container(
-                    color: const Color(0xFFFEF8DC),
+                    color: const Color(0xFFF3F4F6),
                   ),
                 );
               },
             ),
 
-            // 2. Soft translucent overlay to ensure the header and search bar are perfectly legible
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: topPadding + 110,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      const Color(0xFFFEF8DC).withValues(alpha: 0.95),
-                      const Color(0xFFFEF8DC).withValues(alpha: 0.85),
-                      const Color(0xFFFEF8DC).withValues(alpha: 0.2),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.55, 0.85, 1.0],
-                  ),
-                ),
-              ),
-            ),
-
-            // 3. Header & Floating Search Bar Layer (Positioned right below status bar)
+            // 2. Header & Floating Search Bar Layer (Top gradient removed completely as requested)
             Positioned(
               top: topPadding + 6,
               left: 0,
@@ -709,7 +681,7 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Location Header (Filter button removed! Right aligned)
+                  // Location Header (Right aligned, delicate 12px pin icon)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -737,12 +709,18 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       color: const Color(0xFF1E2022),
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.white.withValues(alpha: 0.9),
+                                          blurRadius: 6,
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(width: 6),
                                   const _SleekOutlinePin(
                                     color: Color(0xFF00A651),
-                                    size: 16,
+                                    size: 12,
                                   ),
                                 ],
                               ),
@@ -755,8 +733,14 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
                                   displayStreet,
                                   style: GoogleFonts.ibmPlexSansArabic(
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF374151),
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        blurRadius: 6,
+                                      ),
+                                    ],
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -816,46 +800,58 @@ class _FullBannerHeaderContainerState extends State<_FullBannerHeaderContainer> 
               ),
             ),
 
-            // 4. Floating Indicator Dots Overlay at Bottom Center ("الدوائر الصغيرة اللي بتعرف في كام اعلان")
-            if (total > 1)
-              Positioned(
-                bottom: 12,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.12),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(total, (i) {
-                        final isCurrent = i == _currentIndex;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                          width: isCurrent ? 14 : 5.5,
-                          height: 5.5,
-                          decoration: BoxDecoration(
-                            color: isCurrent ? const Color(0xFF1E2022) : const Color(0xFFD1D5DB),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                ),
-              ),
+            // 3. Dynamic Pure Circle Dots Indicator (Watches bannerCarouselIndexProvider with zero setState)
+            _BannerDotsIndicator(total: total),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dynamic pure circles indicator at bottom center of banner
+class _BannerDotsIndicator extends ConsumerWidget {
+  final int total;
+  const _BannerDotsIndicator({required this.total});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (total <= 1) return const SizedBox.shrink();
+    final currentIndex = ref.watch(bannerCarouselIndexProvider);
+
+    return Positioned(
+      bottom: 12,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4.5),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(total, (i) {
+              final isCurrent = i == (currentIndex % total);
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                width: 5.5,
+                height: 5.5,
+                decoration: BoxDecoration(
+                  color: isCurrent ? const Color(0xFF1E2022) : const Color(0xFFD1D5DB),
+                  shape: BoxShape.circle,
+                ),
+              );
+            }),
+          ),
         ),
       ),
     );
