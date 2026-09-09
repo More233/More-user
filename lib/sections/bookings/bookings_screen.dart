@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../home/widgets/common/custom_loading_indicator.dart';
+import '../auth/auth_flow_page.dart';
 
 class BookingsScreen extends StatefulWidget {
   final VoidCallback onExploreTapped;
@@ -17,7 +18,6 @@ class BookingsScreen extends StatefulWidget {
 }
 
 class _BookingsScreenState extends State<BookingsScreen> {
-  int _selectedSegment = 0; // 0: Upcoming, 1: Past
   bool _isLoading = true;
   List<Map<String, dynamic>> _bookings = [];
   RealtimeChannel? _subscription;
@@ -111,19 +111,6 @@ class _BookingsScreenState extends State<BookingsScreen> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredBookings {
-    final now = DateTime.now();
-    return _bookings.where((b) {
-      final dateStr = b['booking_date'] as String? ?? '';
-      final date = DateTime.tryParse(dateStr) ?? now;
-      final status = b['status'] as String? ?? 'pending';
-      final isFuture = date.isAfter(now.subtract(const Duration(days: 1))) &&
-          status != 'cancelled' &&
-          status != 'completed';
-      return _selectedSegment == 0 ? isFuture : !isFuture;
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -135,88 +122,34 @@ class _BookingsScreenState extends State<BookingsScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Bookings',
+          'الحجوزات',
           style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
             color: textColor,
           ),
         ),
-        centerTitle: false,
+        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          // Segmented Control
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  _buildSegmentItem(0, 'Upcoming'),
-                  _buildSegmentItem(1, 'Past'),
-                ],
-              ),
-            ),
-          ),
-          // Content
-          Expanded(
-            child: _isLoading
-                ? const CustomLoadingIndicator()
-                : _filteredBookings.isEmpty
-                    ? _buildEmptyState(isDark)
-                    : RefreshIndicator(
-                        color: const Color(0xFF7C57FC),
-                        onRefresh: () => _fetchBookings(showLoader: false),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                          itemCount: _filteredBookings.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final item = _filteredBookings[index];
-                            return _buildBookingCard(item, cardBg, borderColor, isDark);
-                          },
-                        ),
-                      ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSegmentItem(int index, String title) {
-    final isSelected = _selectedSegment == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedSegment = index),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected
-                  ? Colors.white
-                  : (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white70
-                      : const Color(0xFF6B7280)),
-            ),
-          ),
-        ),
-      ),
+      body: _isLoading
+          ? const CustomLoadingIndicator()
+          : _bookings.isEmpty
+              ? _buildEmptyState(isDark)
+              : RefreshIndicator(
+                  color: const Color(0xFF7C57FC),
+                  onRefresh: () => _fetchBookings(showLoader: false),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                    itemCount: _bookings.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final item = _bookings[index];
+                      return _buildBookingCard(item, cardBg, borderColor, isDark);
+                    },
+                  ),
+                ),
     );
   }
 
@@ -369,74 +302,125 @@ class _BookingsScreenState extends State<BookingsScreen> {
   }
 
   Widget _buildEmptyState(bool isDark) {
-    final isUpcoming = _selectedSegment == 0;
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
+    final bool isLoggedIn = user != null;
+
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C57FC).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/home/icons/booking_nav_icon.svg',
-                  width: 36,
-                  height: 36,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF7C57FC),
-                    BlendMode.srcIn,
+            // Illustration / Icon with Alert badge matching Hungerstation
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C57FC).withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              isUpcoming ? 'No upcoming reservations' : 'No past reservations',
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isUpcoming
-                  ? 'Book tables at your favorite spots, reserve hotel stays, or plan venue visits effortlessly.'
-                  : 'Your completed and past reservations will appear here.',
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            if (isUpcoming)
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: widget.onExploreTapped,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7C57FC),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Find Places to Reserve',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                  child: Center(
+                    child: SvgPicture.asset(
+                      'assets/home/icons/booking_nav_icon.svg',
+                      width: 50,
+                      height: 50,
+                      colorFilter: const ColorFilter.mode(
+                        Color(0xFF7C57FC),
+                        BlendMode.srcIn,
+                      ),
                     ),
                   ),
                 ),
+                Positioned(
+                  top: 2,
+                  right: 4,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4B4B),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.priority_high_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'حجوزاتك ستظهر هنا',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
               ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                isLoggedIn
+                    ? 'ستظهر حجوزاتك السابقة والقادمة هنا فور قيامك بالحجز.'
+                    : 'سجل الدخول لعرض حجوزاتك السابقة والقادمة.',
+                style: GoogleFonts.ibmPlexSansArabic(
+                  fontSize: 14,
+                  color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (isLoggedIn) {
+                    widget.onExploreTapped();
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AuthFlowPage()),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7C57FC),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  isLoggedIn ? 'استكشف الأماكن واحجز الآن' : 'تسجيل الدخول',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

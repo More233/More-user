@@ -27,8 +27,8 @@ class ExploreRepositoryImpl implements ExploreRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5}) {
-    return ExploreDataService.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize);
+  Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5, bool forceRefresh = false}) {
+    return ExploreDataService.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize, forceRefresh: forceRefresh);
   }
 
   @override

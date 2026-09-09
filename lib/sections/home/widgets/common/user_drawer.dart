@@ -19,7 +19,6 @@ import '../../../settings/screens/location_settings_screen.dart';
 import '../../../settings/screens/suggestions_settings_screen.dart';
 import '../../../settings/screens/blocked_users_screen.dart';
 import '../../../settings/screens/settings_screen.dart';
-import '../../../settings/screens/appearance_screen.dart';
 import '../../../settings/screens/help_support_screen.dart';
 
 
@@ -335,21 +334,6 @@ class _UserDrawerState extends ConsumerState<UserDrawer> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => const LocationSettingsScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        _buildDrawerItem(
-                          context: context,
-                          icon: CupertinoIcons.moon,
-                          title: 'Appearance',
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            widget.onCloseMenu?.call();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AppearanceScreen(),
                               ),
                             );
                           },

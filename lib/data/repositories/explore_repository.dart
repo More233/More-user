@@ -7,7 +7,7 @@ abstract class ExploreRepository {
     bool cacheOnly = false,
     bool markSynced = true,
   });
-  Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5});
+  Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5, bool forceRefresh = false});
   Future<List<Map<String, dynamic>>> searchPlaces(String query, double lat, double lng);
   Future<Map<String, dynamic>?> fetchPlaceDetails(
     String placeId,

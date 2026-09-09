@@ -297,6 +297,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.9"
+  cupertino_native:
+    dependency: "direct main"
+    description:
+      path: "packages/cupertino_native"
+      relative: true
+    source: path
+    version: "0.1.1"
   dart_jsonwebtoken:
     dependency: transitive
     description:

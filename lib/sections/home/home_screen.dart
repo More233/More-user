@@ -404,7 +404,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     final bool isPlaceSelectedOnMap = isPlaceSelected && state.selectedNavIndex == 1;
     debugPrint("HomeScreen: build() called, isLoading=${state.isLoading}, selectedNavIndex=${state.selectedNavIndex}, isPlaceSelectedOnMap=$isPlaceSelectedOnMap");
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final navBarHeight = 52.0 + bottomPadding;
     final screenWidth = MediaQuery.of(context).size.width;
     final menuWidth = screenWidth * 0.76;
 
@@ -492,6 +491,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                 : null,
                             child: Scaffold(
                               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                              extendBody: true,
+                              bottomNavigationBar: AnimatedSlide(
+                                offset: _isNavBarVisible ? Offset.zero : const Offset(0, 1.5),
+                                duration: const Duration(milliseconds: 250),
+                                curve: Curves.easeInOut,
+                                child: BottomNavBar(
+                                  borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0),
+                                  selectedIndex: state.selectedNavIndex,
+                                  userAvatarUrl: state.currentUserAvatarUrl,
+                                  unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
+                                  unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
+                                  onItemTapped: (index) {
+                                    debugPrint('HomeScreen: onItemTapped called with index $index');
+                                    setState(() {
+                                      _isHeaderVisible = true;
+                                      _isNavBarVisible = true;
+                                      if (index != 1) {
+                                        _selectedExploreLat = null;
+                                        _selectedExploreLng = null;
+                                        _selectedExploreAddress = null;
+                                      }
+                                    });
+                                    ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+                                  },
+                                ),
+                              ),
                               body: NotificationListener<ScrollNotification>(
                                 onNotification: (ScrollNotification notification) {
                                   if (state.selectedNavIndex == 0) {
@@ -547,32 +572,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                       child: state.isLoading
                                           ? const CustomLoadingIndicator()
                                           : _buildBody(state),
-                                    ),
-                                    AnimatedPositioned(
-                                      duration: const Duration(milliseconds: 250),
-                                      curve: Curves.easeInOut,
-                                      left: 0,
-                                      right: 0,
-                                      bottom: _isNavBarVisible ? 0.0 : -navBarHeight,
-                                      child: BottomNavBar(
-                                        borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0),
-                                        selectedIndex: state.selectedNavIndex,
-                                        userAvatarUrl: state.currentUserAvatarUrl,
-                                        unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
-                                        unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
-                                        onItemTapped: (index) {
-                                          setState(() {
-                                            _isHeaderVisible = true;
-                                            _isNavBarVisible = true;
-                                            if (index != 1) {
-                                              _selectedExploreLat = null;
-                                              _selectedExploreLng = null;
-                                              _selectedExploreAddress = null;
-                                            }
-                                          });
-                                          ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-                                        },
-                                      ),
                                     ),
                                      // The Map Button next to Plus Button
                                      AnimatedPositioned(

@@ -821,6 +821,62 @@ class ExploreDataService {
         debugPrint("Error fetching custom venues from Supabase: $e");
       }
 
+      // 1b. Fetch verified business venues from 'venues' table
+      try {
+        final bVenuesResponse = await client
+            .from('venues')
+            .select('*')
+            .eq('is_active', true)
+            .ilike('name', '%$query%')
+            .limit(10);
+
+        final bVenueResults = List<Map<String, dynamic>>.from(bVenuesResponse as List);
+        for (final res in bVenueResults) {
+          final id = res['id'].toString();
+          if (places.any((p) => p['id'] == id)) continue;
+
+          final plat = (res['latitude'] as num).toDouble();
+          final plng = (res['longitude'] as num).toDouble();
+          final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+          final double km = meters / 1000;
+          final String distanceStr = km < 1 
+              ? '${meters.toStringAsFixed(0)} m' 
+              : '${km.toStringAsFixed(1)} km';
+
+          final bType = res['business_type'] as String? ?? 'restaurant';
+          final bool supportsBooking = res['supports_booking'] as bool? ?? false;
+          final bool supportsOrdering = res['supports_ordering'] as bool? ?? false;
+
+          places.add({
+            'id': id,
+            'name': res['name'] as String,
+            'arabicName': res['name'] as String,
+            'address': res['address'] as String? ?? '',
+            'latitude': plat,
+            'longitude': plng,
+            'distance': distanceStr,
+            'rating': (res['rating'] as num?)?.toDouble() ?? 4.8,
+            'reviewsCount': (res['reviews_count'] as int?) ?? 12,
+            'price': r'$$',
+            'peopleCount': 3,
+            'type': bType,
+            'imageUrl': (res['photos'] != null && (res['photos'] as List).isNotEmpty)
+                ? (res['photos'] as List)[0]
+                : getPlaceholderUrl(bType, id),
+            'isSaved': false,
+            'isVisited': false,
+            'actionType': supportsBooking ? 'book' : (supportsOrdering ? 'order' : 'visit'),
+            'isCustomVenue': true,
+            'isVenue': true,
+            'supportsOrdering': supportsOrdering,
+            'supportsBooking': supportsBooking,
+            'phone': res['phone'] as String? ?? '',
+          });
+        }
+      } catch (e) {
+        debugPrint("Error fetching business venues from Supabase: $e");
+      }
+
       // 2. Fetch fresh places from Google Places (if key is valid, no Foursquare fallback)
       if (_isGooglePlacesKeyValid) {
         try {
@@ -1107,12 +1163,12 @@ class ExploreDataService {
     return placeMap;
   }
 
-  static Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5}) async {
+  static Future<Map<String, dynamic>> fetchSupabaseCheckinsAndVenues(double lat, double lng, {double? boxSize = 0.5, bool forceRefresh = false}) async {
     final int roundedLat = (lat * 100).round();
     final int roundedLng = (lng * 100).round();
     final String cacheKey = '${roundedLat}_${roundedLng}_${boxSize ?? 'global'}';
 
-    if (_supabaseCache.containsKey(cacheKey)) {
+    if (!forceRefresh && _supabaseCache.containsKey(cacheKey)) {
       _log("ExploreDataService: Returning cached Supabase checkins/venues for key: $cacheKey");
       return _supabaseCache[cacheKey]!;
     }
@@ -1138,7 +1194,11 @@ class ExploreDataService {
       var venuesQuery = client
           .from('custom_venues')
           .select('*, creator:profiles(*)');
-      // Note: custom_venues does not have an is_private column — fetch all venues in the area
+
+      var businessVenuesQuery = client
+          .from('venues')
+          .select('*')
+          .eq('is_active', true);
 
       if (boxSize != null) {
         final double latMin = lat - boxSize;
@@ -1157,15 +1217,23 @@ class ExploreDataService {
             .lte('latitude', latMax)
             .gte('longitude', lngMin)
             .lte('longitude', lngMax);
+
+        businessVenuesQuery = businessVenuesQuery
+            .gte('latitude', latMin)
+            .lte('latitude', latMax)
+            .gte('longitude', lngMin)
+            .lte('longitude', lngMax);
       }
 
       final results = await Future.wait<dynamic>([
         postsQuery,
         venuesQuery,
+        businessVenuesQuery,
       ]);
 
       final postsResponse = results[0];
       final venuesResponse = results[1];
+      final businessVenuesResponse = results[2];
 
       postResults = List<Map<String, dynamic>>.from(postsResponse as List);
       for (final res in postResults) {
@@ -1235,6 +1303,52 @@ class ExploreDataService {
           'isVisited': false,
           'actionType': getActionTypeForPlaceType(res['category_name'] as String? ?? 'Other'),
           'isCustomVenue': true,
+        });
+      }
+
+      // Add verified business venues from 'venues' table
+      final businessVenuesResults = List<Map<String, dynamic>>.from(businessVenuesResponse as List);
+      for (final res in businessVenuesResults) {
+        final id = res['id'].toString();
+        if (customVenues.any((v) => v['id'] == id)) continue;
+
+        final plat = (res['latitude'] as num).toDouble();
+        final plng = (res['longitude'] as num).toDouble();
+
+        final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        final bType = res['business_type'] as String? ?? 'restaurant';
+        final bool supportsBooking = res['supports_booking'] as bool? ?? false;
+        final bool supportsOrdering = res['supports_ordering'] as bool? ?? false;
+
+        customVenues.add({
+          'id': id,
+          'name': res['name'] as String,
+          'arabicName': res['name'] as String,
+          'address': res['address'] as String? ?? '',
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'rating': (res['rating'] as num?)?.toDouble() ?? 4.8,
+          'reviewsCount': (res['reviews_count'] as int?) ?? 12,
+          'price': r'$$',
+          'peopleCount': 2,
+          'type': bType,
+          'imageUrl': (res['photos'] != null && (res['photos'] as List).isNotEmpty)
+              ? (res['photos'] as List)[0]
+              : getPlaceholderUrl(bType, id),
+          'isSaved': false,
+          'isVisited': false,
+          'actionType': supportsBooking ? 'book' : (supportsOrdering ? 'order' : 'visit'),
+          'isCustomVenue': true,
+          'isVenue': true,
+          'supportsOrdering': supportsOrdering,
+          'supportsBooking': supportsBooking,
+          'phone': res['phone'] as String? ?? '',
         });
       }
     } catch (e) {

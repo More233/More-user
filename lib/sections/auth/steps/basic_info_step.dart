@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/auth_text_field.dart';
 
 class BasicInfoStep extends StatefulWidget {
@@ -54,6 +55,7 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
   String? _firstNameError;
   String? _usernameError;
   String? _cityError;
+  bool _isCheckingUsername = false;
 
   @override
   void dispose() {
@@ -64,19 +66,56 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
+    if (_isCheckingUsername) return;
+
+    final firstName = _firstNameController.text.trim();
+    final username = _usernameController.text.trim();
+    final city = _cityController.text.trim();
+
     setState(() {
-      _firstNameError = _firstNameController.text.trim().isEmpty ? 'First Name is required' : null;
-      _usernameError = _usernameController.text.trim().isEmpty ? 'Username is required' : null;
-      _cityError = _cityController.text.trim().isEmpty ? 'City is required' : null;
+      _firstNameError = firstName.isEmpty ? 'First Name is required' : null;
+      _usernameError = username.isEmpty ? 'Username is required' : null;
+      _cityError = city.isEmpty ? 'City is required' : null;
     });
 
-    if (_firstNameError == null && _usernameError == null && _cityError == null) {
+    if (_firstNameError != null || _usernameError != null || _cityError != null) {
+      return;
+    }
+
+    // Check username availability in Supabase profiles
+    setState(() => _isCheckingUsername = true);
+    try {
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      final existing = await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .ilike('username', username)
+          .limit(1);
+
+      if (existing.isNotEmpty && (currentUserId == null || existing.first['id'] != currentUserId)) {
+        if (mounted) {
+          setState(() {
+            _isCheckingUsername = false;
+            _usernameError = 'This username is already taken. Please choose another.';
+          });
+        }
+        return;
+      }
+    } catch (e) {
+      debugPrint("Error checking username availability: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingUsername = false);
+      }
+    }
+
+    if (mounted) {
       widget.onCompleted(
-        _firstNameController.text.trim(),
+        firstName,
         _lastNameController.text.trim(),
-        _usernameController.text.trim(),
-        _cityController.text.trim(),
+        username,
+        city,
       );
     }
   }
@@ -246,14 +285,23 @@ class _BasicInfoStepState extends State<BasicInfoStep> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    'Continue',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isCheckingUsername
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(
+                          'Continue',
+                          style: GoogleFonts.ibmPlexSansArabic(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),

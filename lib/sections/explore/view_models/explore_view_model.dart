@@ -10,6 +10,7 @@ import '../helpers/bookmark_tracker.dart';
 import '../helpers/explore_screen_helpers.dart';
 import '../helpers/marker_generator.dart';
 import '../services/explore_db_cache_service.dart';
+import '../services/explore_data_service.dart';
 import '../models/explore_state.dart';
 import '../models/filter_state.dart';
 
@@ -250,6 +251,17 @@ class ExploreViewModel extends StateNotifier<ExploreState> {
       debugPrint("Error fetching nearby places: $e");
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  void refreshVenuesAndCheckins(double lat, double lng, {double? boxSize = 0.5}) {
+    ExploreDataService.clearSupabaseCache();
+    _syncedSupabaseCells.clear();
+    _exploreRepository.fetchSupabaseCheckinsAndVenues(lat, lng, boxSize: boxSize, forceRefresh: true).then((data) {
+      _mergeAndUpdatePlaces([], supabaseData: data);
+      debugPrint("ExploreViewModel: Forced refresh of Supabase venues and checkins completed.");
+    }).catchError((err) {
+      debugPrint("ExploreViewModel Error forced Supabase refresh: $err");
+    });
   }
 
   void _mergeAndUpdatePlaces(List<Map<String, dynamic>> newPlaces, {Map<String, dynamic>? supabaseData}) {

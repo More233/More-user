@@ -172,12 +172,22 @@ class _AuthFlowPageState extends State<AuthFlowPage> {
       }
     } on PostgrestException catch (e) {
       if (mounted) {
+        final isUsernameDuplicate = e.message.contains('profiles_username_key') || e.code == '23505';
+        final errorText = isUsernameDuplicate
+            ? 'Username "$_username" is already taken. Please choose another username.'
+            : 'Failed to save profile: ${e.message}';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save profile: ${e.message}'),
+            content: Text(errorText),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
+
+        if (isUsernameDuplicate) {
+          _navigateToStep(AuthStep.basicInfo);
+        }
       }
     } catch (e) {
       if (mounted) {

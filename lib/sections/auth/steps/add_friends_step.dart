@@ -48,26 +48,94 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
     return phone.replaceAll(RegExp(r'[^\d+]'), '');
   }
 
-  String _getAvatarPath(String username) {
-    final clean = username.startsWith('@') ? username.substring(1) : username;
-    final lower = clean.toLowerCase();
-    if (lower == 'mayat') {
-      return 'assets/Auth Section/images/element.png';
-    } else if (lower == 'jordanmarco') {
-      return 'assets/Auth Section/images/element_1.png';
-    } else if (lower == 'avaj') {
-      return 'assets/Auth Section/images/element_2.png';
-    } else {
-      final hash = clean.codeUnits.fold(0, (prev, element) => prev + element);
-      final index = hash % 3;
-      if (index == 0) {
-        return 'assets/Auth Section/images/element.png';
-      } else if (index == 1) {
-        return 'assets/Auth Section/images/element_1.png';
-      } else {
-        return 'assets/Auth Section/images/element_2.png';
-      }
+  String _getInitials(String name) {
+    final clean = name.replaceAll(RegExp(r'[@+]'), '').trim();
+    if (clean.isEmpty) return '?';
+    final parts = clean.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) {
+      final first = parts.first;
+      return first.characters.take(2).toString().toUpperCase();
     }
+    final firstChar = parts.first.characters.take(1).toString();
+    final secondChar = parts.last.characters.take(1).toString();
+    return '$firstChar$secondChar'.toUpperCase();
+  }
+
+  Color _getAvatarBgColor(String name, bool isDark) {
+    final colors = [
+      const Color(0xFF5E5CE6), // Apple Indigo
+      const Color(0xFF0A84FF), // Apple Blue
+      const Color(0xFF30D158), // Apple Green
+      const Color(0xFFFF9F0A), // Apple Orange
+      const Color(0xFFFF375F), // Apple Pink
+      const Color(0xFFBF5AF2), // Apple Purple
+      const Color(0xFF64D2FF), // Apple Cyan
+      const Color(0xFF7C57FC), // App Brand Purple
+    ];
+    final hash = name.codeUnits.fold(0, (prev, elem) => prev + elem);
+    return colors[hash % colors.length];
+  }
+
+  Widget _buildAvatar(UserCardInfo user, bool isDark) {
+    final hasValidUrl = user.avatarPath.isNotEmpty && user.avatarPath.startsWith('http');
+    if (hasValidUrl) {
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: user.avatarPath,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDark ? Colors.white10 : Colors.black12,
+            ),
+            child: const CupertinoActivityIndicator(radius: 10),
+          ),
+          errorWidget: (context, url, error) => _buildInitialsWidget(user.name, isDark),
+        ),
+      );
+    }
+    return _buildInitialsWidget(user.name, isDark);
+  }
+
+  Widget _buildInitialsWidget(String name, bool isDark) {
+    final initials = _getInitials(name);
+    final bgColor = _getAvatarBgColor(name, isDark);
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            bgColor,
+            bgColor.withValues(alpha: 0.85),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: bgColor.withValues(alpha: 0.25),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: GoogleFonts.ibmPlexSansArabic(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
   }
 
   Future<void> _fetchProfiles() async {
@@ -119,7 +187,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
         final isFollowing = _followedUsernames.contains(username.toLowerCase());
         final String avatarPath = (avatarUrl.isNotEmpty && avatarUrl.startsWith('http'))
             ? avatarUrl
-            : _getAvatarPath(username);
+            : '';
 
         suggestions.add(
           UserCardInfo(
@@ -203,30 +271,35 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
 
           final normalizedPhone = _normalizePhone(dcPhone);
 
-          // Check registration
-          final match = matchedProfilesData.firstWhere(
-            (p) {
-              final pPhone = p['phone'] as String? ?? '';
-              final pEmail = p['email'] as String? ?? '';
+          // Check registration safely without orElse type crashes
+          Map<String, dynamic>? match;
+          for (final item in matchedProfilesData) {
+            if (item is Map) {
+              final pPhone = item['phone']?.toString() ?? '';
+              final pEmail = item['email']?.toString() ?? '';
               if (normalizedPhone.isNotEmpty && pPhone.isNotEmpty) {
-                if (_normalizePhone(pPhone) == normalizedPhone) return true;
+                if (_normalizePhone(pPhone) == normalizedPhone) {
+                  match = Map<String, dynamic>.from(item);
+                  break;
+                }
               }
               if (dcEmail.isNotEmpty && pEmail.isNotEmpty) {
-                if (dcEmail.toLowerCase() == pEmail.toLowerCase()) return true;
+                if (dcEmail.toLowerCase() == pEmail.toLowerCase()) {
+                  match = Map<String, dynamic>.from(item);
+                  break;
+                }
               }
-              return false;
-            },
-            orElse: () => null,
-          );
+            }
+          }
 
           final isRegistered = match != null;
-          final String username = isRegistered ? (match['username'] as String) : (dcPhone.isNotEmpty ? dcPhone : dcEmail);
+          final String username = isRegistered ? (match['username'] as String? ?? '') : (dcPhone.isNotEmpty ? dcPhone : dcEmail);
           final String name = dcName.isNotEmpty ? dcName : username;
 
           final matchAvatar = isRegistered ? (match['avatar_url'] as String? ?? '') : '';
           final String avatarPath = (matchAvatar.isNotEmpty && matchAvatar.startsWith('http'))
               ? matchAvatar
-              : _getAvatarPath(username);
+              : '';
 
           final isFollowing = isRegistered && _followedUsernames.contains(username.toLowerCase());
           final isInvited = !isRegistered && _invitedUsernames.contains(username.toLowerCase());
@@ -623,19 +696,7 @@ class _AddFriendsStepState extends State<AddFriendsStep> {
       child: Row(
         children: [
           // Avatar
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              image: DecorationImage(
-                image: (user.avatarPath.startsWith('http')
-                    ? CachedNetworkImageProvider(user.avatarPath)
-                    : AssetImage(user.avatarPath)) as ImageProvider,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          _buildAvatar(user, isDark),
           const SizedBox(width: 12),
           // Name and Details
           Expanded(

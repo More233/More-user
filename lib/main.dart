@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'sections/splash/splash_screen.dart';
 import 'services/notification_service.dart';
 
-import 'sections/settings/providers/theme_provider.dart';
-
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mapbox;
 import 'config/secrets.dart';
 
@@ -36,13 +34,11 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeProvider);
-
     return MaterialApp(
       navigatorKey: NotificationService.navigatorKey,
-      title: 'More Onboarding Flow',
+      title: 'More',
       debugShowCheckedModeBanner: false,
-      themeMode: themeMode,
+      themeMode: ThemeMode.light,
       theme: ThemeData(
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
@@ -56,29 +52,6 @@ class MyApp extends ConsumerWidget {
           seedColor: const Color(0xFF7C57FC),
           primary: const Color(0xFF7C57FC),
           surface: Colors.white,
-        ),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0F1219),
-        dividerColor: const Color(0xFF1E2433),
-        dividerTheme: const DividerThemeData(
-          color: Color(0xFF1E2433),
-          thickness: 1.0,
-        ),
-        drawerTheme: const DrawerThemeData(
-          backgroundColor: Color(0xFF131722),
-        ),
-        bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: Color(0xFF131722),
-          modalBackgroundColor: Color(0xFF131722),
-        ),
-        colorScheme: ColorScheme.fromSeed(
-          brightness: Brightness.dark,
-          seedColor: const Color(0xFF7C57FC),
-          primary: const Color(0xFF7C57FC),
-          surface: const Color(0xFF181C26),
         ),
         useMaterial3: true,
       ),

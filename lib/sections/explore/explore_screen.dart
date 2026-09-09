@@ -718,7 +718,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           ),
         );
         if (added == true) {
-          ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
+          ref.read(exploreViewModelProvider.notifier).refreshVenuesAndCheckins(lat, lng);
         }
       }
     }

@@ -290,8 +290,42 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
           'icon': _getIconForTypes([(res['category_name'] as String? ?? 'Other').toLowerCase()]),
         });
       }
+
+      // Also query verified venues from 'venues' table
+      final bVenuesResponse = await client
+          .from('venues')
+          .select('*')
+          .eq('is_active', true)
+          .gte('latitude', latMin)
+          .lte('latitude', latMax)
+          .gte('longitude', lngMin)
+          .lte('longitude', lngMax);
+
+      final bVenueResults = List<Map<String, dynamic>>.from(bVenuesResponse as List);
+      for (final res in bVenueResults) {
+        final id = res['id'].toString();
+        if (places.any((p) => p['placeId'] == id)) continue;
+
+        final plat = (res['latitude'] as num).toDouble();
+        final plng = (res['longitude'] as num).toDouble();
+        final double meters = Geolocator.distanceBetween(lat, lng, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'placeId': id,
+          'name': res['name'] as String,
+          'address': res['address'] as String? ?? '',
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'icon': _getIconForTypes([(res['business_type'] as String? ?? 'restaurant').toLowerCase()]),
+        });
+      }
     } catch (e) {
-      debugPrint("Error loading nearby custom venues: $e");
+      debugPrint("Error loading nearby custom and business venues: $e");
     }
 
     // If places is still empty, load hardcoded fallback locations
@@ -402,8 +436,39 @@ class _LocationSearchSheetState extends State<LocationSearchSheet> {
           'icon': _getIconForTypes([(res['category_name'] as String? ?? 'Other').toLowerCase()]),
         });
       }
+      // Also search verified business venues from 'venues' table
+      final bVenuesResponse = await client
+          .from('venues')
+          .select('*')
+          .eq('is_active', true)
+          .ilike('name', '%$query%')
+          .limit(10);
+
+      final bVenueResults = List<Map<String, dynamic>>.from(bVenuesResponse as List);
+      for (final res in bVenueResults) {
+        final id = res['id'].toString();
+        if (places.any((p) => p['placeId'] == id)) continue;
+
+        final plat = (res['latitude'] as num).toDouble();
+        final plng = (res['longitude'] as num).toDouble();
+        final double meters = Geolocator.distanceBetween(_latitude, _longitude, plat, plng);
+        final double km = meters / 1000;
+        final String distanceStr = km < 1 
+            ? '${meters.toStringAsFixed(0)} m' 
+            : '${km.toStringAsFixed(1)} km';
+
+        places.add({
+          'placeId': id,
+          'name': res['name'] as String,
+          'address': res['address'] as String? ?? '',
+          'latitude': plat,
+          'longitude': plng,
+          'distance': distanceStr,
+          'icon': _getIconForTypes([(res['business_type'] as String? ?? 'restaurant').toLowerCase()]),
+        });
+      }
     } catch (e) {
-      debugPrint("Error searching custom venues in database: $e");
+      debugPrint("Error searching custom and business venues in database: $e");
     }
 
     // Add local fallback locations matching search

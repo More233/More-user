@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../home/widgets/common/custom_loading_indicator.dart';
+import 'models/delivery_address_model.dart';
+import 'services/delivery_address_service.dart';
+import 'screens/delivery_location_picker_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   final VoidCallback onExploreTapped;
@@ -17,410 +19,513 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  int _selectedSegment = 0; // 0: Active, 1: Past
-  bool _isLoading = true;
-  List<Map<String, dynamic>> _orders = [];
-  RealtimeChannel? _subscription;
-
   @override
   void initState() {
     super.initState();
-    _fetchOrders();
-    _setupRealtime();
+    DeliveryAddressService.instance.init();
   }
 
-  @override
-  void dispose() {
-    _subscription?.unsubscribe();
-    super.dispose();
-  }
-
-  void _setupRealtime() {
-    final client = Supabase.instance.client;
-    final user = client.auth.currentUser;
-    if (user == null) return;
-
-    _subscription = client
-        .channel('public:orders:${user.id}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'orders',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: user.id,
-          ),
-          callback: (_) => _fetchOrders(showLoader: false),
-        )
-        .subscribe();
-  }
-
-  Future<void> _fetchOrders({bool showLoader = true}) async {
-    if (showLoader) setState(() => _isLoading = true);
-
-    try {
-      final client = Supabase.instance.client;
-      final user = client.auth.currentUser;
-      if (user == null) {
-        if (mounted) setState(() => _isLoading = false);
-        return;
-      }
-
-      final response = await client
-          .from('orders')
-          .select('*, venues(name, address), couriers(full_name, phone, vehicle_type)')
-          .eq('user_id', user.id)
-          .order('created_at', ascending: false);
-
-      if (mounted) {
-        setState(() {
-          _orders = List<Map<String, dynamic>>.from(response);
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching orders: $e');
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  List<Map<String, dynamic>> get _filteredOrders {
-    return _orders.where((o) {
-      final status = o['status'] as String? ?? 'pending';
-      final isActive = status != 'delivered' && status != 'cancelled';
-      return _selectedSegment == 0 ? isActive : !isActive;
-    }).toList();
+  Future<void> _openLocationPicker(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    final current = DeliveryAddressService.instance.currentAddress.value;
+    await Navigator.push<bool>(
+      context,
+      CupertinoPageRoute(
+        builder: (_) => DeliveryLocationPickerScreen(
+          initialLat: current?.latitude,
+          initialLng: current?.longitude,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
-    final cardBg = isDark ? const Color(0xFF181C26) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF2C354A) : const Color(0xFFE8E8E8);
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Orders',
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: textColor,
-          ),
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: ValueListenableBuilder<DeliveryAddressModel?>(
+          valueListenable: DeliveryAddressService.instance.currentAddress,
+          builder: (context, address, _) {
+            return Column(
+              children: [
+                // Top Header (Matches Screenshot 1)
+                _buildTopHeader(context, address, isDark),
+
+                const Divider(height: 1, color: Color(0xFFEEEEEE)),
+
+                // Body content:
+                // If no address saved -> Out of coverage empty prompt (Screenshot 1)
+                // If address saved -> Orders Home with red container as requested
+                Expanded(
+                  child: address == null
+                      ? _buildOutOfCoverageView(context, isDark)
+                      : _buildOrdersHomeWithSavedAddress(context, address, isDark),
+                ),
+              ],
+            );
+          },
         ),
-        centerTitle: false,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildTopHeader(BuildContext context, DeliveryAddressModel? address, bool isDark) {
+    final textColor = isDark ? Colors.white : const Color(0xFF1E2022);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Segmented Control
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          // Left: Search Button
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              HapticFeedback.selectionClick();
+            },
             child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  _buildSegmentItem(0, 'Active Orders'),
-                  _buildSegmentItem(1, 'Past Orders'),
-                ],
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(shape: BoxShape.circle),
+              child: Icon(
+                Icons.search_rounded,
+                color: textColor,
+                size: 26,
               ),
             ),
           ),
-          // Content
-          Expanded(
-            child: _isLoading
-                ? const CustomLoadingIndicator()
-                : _filteredOrders.isEmpty
-                    ? _buildEmptyState(isDark)
-                    : RefreshIndicator(
-                        color: const Color(0xFF7C57FC),
-                        onRefresh: () => _fetchOrders(showLoader: false),
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                          itemCount: _filteredOrders.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final order = _filteredOrders[index];
-                            return _buildOrderCard(order, cardBg, borderColor, isDark);
-                          },
-                        ),
-                      ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildSegmentItem(int index, String title) {
-    final isSelected = _selectedSegment == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedSegment = index),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF7C57FC) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            title,
-            style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              color: isSelected
-                  ? Colors.white
-                  : (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white70
-                      : const Color(0xFF6B7280)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOrderCard(
-    Map<String, dynamic> order,
-    Color cardBg,
-    Color borderColor,
-    bool isDark,
-  ) {
-    final venue = order['venues'] as Map<String, dynamic>? ?? {};
-    final venueName = venue['name'] as String? ?? 'More Store';
-    final total = order['total_amount']?.toString() ?? '0';
-    final status = order['status'] as String? ?? 'pending';
-    final otpCode = order['otp_code'] as String?;
-    final courier = order['couriers'] as Map<String, dynamic>?;
-
-    Color statusColor = const Color(0xFFF59E0B);
-    String statusText = 'Received';
-    if (status == 'accepted') {
-      statusColor = const Color(0xFF3B82F6);
-      statusText = 'Accepted';
-    } else if (status == 'preparing') {
-      statusColor = const Color(0xFF8B5CF6);
-      statusText = 'Preparing...';
-    } else if (status == 'ready_for_pickup') {
-      statusColor = const Color(0xFF10B981);
-      statusText = 'Ready for Pickup';
-    } else if (status == 'picked_up') {
-      statusColor = const Color(0xFF06B6D4);
-      statusText = 'Out for Delivery';
-    } else if (status == 'delivered') {
-      statusColor = const Color(0xFF10B981);
-      statusText = 'Delivered ✓';
-    } else if (status == 'cancelled') {
-      statusColor = const Color(0xFFEF4444);
-      statusText = 'Cancelled';
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  venueName,
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  statusText,
-                  style: GoogleFonts.ibmPlexSansArabic(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total Amount',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 12,
-                      color: isDark ? Colors.white54 : const Color(0xFF9CA3AF),
+          // Right: Delivery Address Selector (Matches Screenshot 1)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _openLocationPicker(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: Color(0xFF1E2022),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '$total SAR',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF7C57FC),
-                    ),
-                  ),
-                ],
-              ),
-              if (otpCode != null && status != 'delivered' && status != 'cancelled')
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF7C57FC).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF7C57FC).withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.shield_outlined, size: 16, color: Color(0xFF7C57FC)),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Delivery OTP: $otpCode',
-                        style: GoogleFonts.ibmPlexSansArabic(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF7C57FC),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-          if (courier != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E2433) : const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.delivery_dining, color: Color(0xFF7C57FC), size: 22),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Courier: ${courier['full_name'] ?? 'Assigned Driver'}',
+                    const SizedBox(width: 2),
+                    Text(
+                      'التوصيل لـ',
                       style: GoogleFonts.ibmPlexSansArabic(
                         fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+                const SizedBox(height: 1),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      address != null ? address.title : 'اختر موقعك',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF757575),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.location_on_rounded,
+                      size: 15,
+                      color: Color(0xFF10B981),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState(bool isDark) {
-    final isActive = _selectedSegment == 0;
+  Widget _buildOutOfCoverageView(BuildContext context, bool isDark) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFF7C57FC).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: SvgPicture.asset(
-                  'assets/home/icons/order_nav_icon.svg',
-                  width: 36,
-                  height: 36,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF7C57FC),
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            // Custom Hungerstation-style Vector Signpost & Cactus Illustration
+            const _OutOfCoverageIllustration(),
+
+            const SizedBox(height: 28),
+
+            // Main Text (Exact wording from Screenshot 1)
             Text(
-              isActive ? 'No active orders' : 'No past orders',
+              'نعتذر منك، موقعك الحالي خارج نطاق التوصيل لدينا',
               style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isActive
-                  ? 'Order meals, drinks, and favorites from top restaurants for fast delivery or pickup.'
-                  : 'Your past orders and receipt history will appear here.',
-              style: GoogleFonts.ibmPlexSansArabic(
-                fontSize: 14,
-                color: isDark ? Colors.white60 : const Color(0xFF6B7280),
+                color: isDark ? Colors.white : const Color(0xFF1E2022),
+                height: 1.35,
               ),
               textAlign: TextAlign.center,
             ),
+
             const SizedBox(height: 24),
-            if (isActive)
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: widget.onExploreTapped,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7C57FC),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    elevation: 0,
+
+            // Primary Purple Button: "اختر موقعًا جديدًا"
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () => _openLocationPicker(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7C57FC),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Text(
-                    'Browse Menus & Order',
-                    style: GoogleFonts.ibmPlexSansArabic(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                ),
+                child: Text(
+                  'اختر موقعًا جديدًا',
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildOrdersHomeWithSavedAddress(
+    BuildContext context,
+    DeliveryAddressModel address,
+    bool isDark,
+  ) {
+    final textColor = isDark ? Colors.white : const Color(0xFF1E2022);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Red Container explicitly requested by the user:
+          // ("حطلي بس فيها كونتينر لونه أحمر، ماشي؟ إن أنا كده سيفت العنوان، وبعدين هقولك هنغير التصميم إزاي دلوقتي")
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE53935), // Pure vibrant red container
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFE53935).withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'العنوان محفوظ ✓',
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'موقع التوصيل الحالي',
+                      style: GoogleFonts.ibmPlexSansArabic(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  address.title,
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                if (address.fullAddress.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    address.fullAddress,
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 13.5,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ],
+                if (address.details.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'التفاصيل: ${address.details}',
+                    style: GoogleFonts.ibmPlexSansArabic(
+                      fontSize: 12.5,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Change Location Action Button
+          OutlinedButton.icon(
+            onPressed: () => _openLocationPicker(context),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              side: const BorderSide(color: Color(0xFFE0E0E0), width: 1.2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.edit_location_alt_rounded, size: 19, color: Color(0xFF10B981)),
+            label: Text(
+              'تغيير موقع التوصيل',
+              style: GoogleFonts.ibmPlexSansArabic(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Custom Pixel-Perfect Hungerstation-style Out of Coverage Illustration
+class _OutOfCoverageIllustration extends StatelessWidget {
+  const _OutOfCoverageIllustration();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 250,
+      height: 190,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Baseline ground bar
+          Positioned(
+            bottom: 12,
+            left: 15,
+            right: 15,
+            child: Container(
+              height: 3.5,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC7CBD1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Left Cactus
+          Positioned(
+            bottom: 15,
+            left: 36,
+            child: CustomPaint(
+              size: const Size(40, 85),
+              painter: _CactusPainter(isLeft: true),
+            ),
+          ),
+
+          // Right Cactus
+          Positioned(
+            bottom: 15,
+            right: 32,
+            child: CustomPaint(
+              size: const Size(42, 110),
+              painter: _CactusPainter(isLeft: false),
+            ),
+          ),
+
+          // Center Post / Sign Pole
+          Positioned(
+            bottom: 15,
+            child: Container(
+              width: 4,
+              height: 145,
+              color: const Color(0xFFD1D5DB),
+            ),
+          ),
+
+          // Signpost Disc
+          Positioned(
+            top: 6,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFB0B7C1), width: 3.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.location_on_rounded,
+                      size: 46,
+                      color: const Color(0xFFD1D5DB),
+                    ),
+                  ),
+                ),
+
+                // Red Exclamation Badge (!)
+                Positioned(
+                  top: 0,
+                  right: -4,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFE53935).withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Front Paper Delivery Bag with "H"
+          Positioned(
+            bottom: 15,
+            child: Container(
+              width: 58,
+              height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFFB0B7C1),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  'H',
+                  style: GoogleFonts.poppins(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CactusPainter extends CustomPainter {
+  final bool isLeft;
+  _CactusPainter({required this.isLeft});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD1D5DB)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7.0
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final path = Path();
+    if (isLeft) {
+      // Main stem
+      path.moveTo(size.width * 0.7, size.height);
+      path.lineTo(size.width * 0.7, 6);
+      // Left branch
+      path.moveTo(size.width * 0.7, size.height * 0.65);
+      path.lineTo(size.width * 0.15, size.height * 0.65);
+      path.lineTo(size.width * 0.15, size.height * 0.3);
+    } else {
+      // Main stem
+      path.moveTo(size.width * 0.25, size.height);
+      path.lineTo(size.width * 0.25, 6);
+      // Right branch
+      path.moveTo(size.width * 0.25, size.height * 0.55);
+      path.lineTo(size.width * 0.85, size.height * 0.55);
+      path.lineTo(size.width * 0.85, size.height * 0.25);
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
