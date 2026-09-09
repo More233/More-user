@@ -404,7 +404,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     final bool isPlaceSelectedOnMap = isPlaceSelected && state.selectedNavIndex == 1;
     debugPrint("HomeScreen: build() called, isLoading=${state.isLoading}, selectedNavIndex=${state.selectedNavIndex}, isPlaceSelectedOnMap=$isPlaceSelectedOnMap");
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final navBarHeight = 50.0 + bottomPadding;
+    final navBarHeight = 52.0 + bottomPadding;
     final screenWidth = MediaQuery.of(context).size.width;
     final menuWidth = screenWidth * 0.76;
 
