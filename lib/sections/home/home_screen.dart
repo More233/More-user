@@ -302,14 +302,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             },
           ),
         ),
-        SafeArea(
-          top: true,
-          bottom: false,
-          child: OrdersScreen(
-            onExploreTapped: () {
-              ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
-            },
-          ),
+        OrdersScreen(
+          onExploreTapped: () {
+            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
+          },
         ),
         SafeArea(
           top: true,
