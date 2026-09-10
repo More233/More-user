@@ -50,37 +50,83 @@ class DailyOffersWidget extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final item = items[index];
-                return GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    onItemTapped?.call(item);
-                  },
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 135,
-                      height: 180,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Image.network(
-                        item.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (ctx, err, stack) => Container(
-                          color: const Color(0xFFE5E7EB),
-                          child: const Icon(Icons.broken_image_rounded, color: Colors.grey),
+                final displayText = (item.subtitle != null && item.subtitle!.trim().isNotEmpty)
+                    ? item.subtitle!.trim()
+                    : item.title.trim();
+
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      onItemTapped?.call(item);
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        width: 135,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // Image
+                            Image.network(
+                              item.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Container(
+                                color: const Color(0xFFE5E7EB),
+                                child: const Icon(Icons.broken_image_rounded, color: Colors.grey),
+                              ),
+                            ),
+
+                            // Bottom Shadow Overlay + Centered Text
+                            if (displayText.isNotEmpty)
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.fromLTRB(6, 16, 6, 8),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.bottomCenter,
+                                      end: Alignment.topCenter,
+                                      colors: [
+                                        Colors.black.withValues(alpha: 0.8),
+                                        Colors.black.withValues(alpha: 0.35),
+                                        Colors.transparent,
+                                      ],
+                                      stops: const [0.0, 0.65, 1.0],
+                                    ),
+                                  ),
+                                  child: Text(
+                                    displayText,
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                );
+                  );
               },
             ),
           ),
