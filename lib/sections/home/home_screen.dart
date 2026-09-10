@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../explore/explore_screen.dart';
+import '../explore/explore_maintenance_screen.dart';
 import '../explore/view_models/explore_view_model.dart';
 import '../explore/services/explore_data_service.dart';
 import '../auth/account_manager.dart';
@@ -282,6 +283,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
           bottom: false,
           child: _buildTimelineTab(state),
         ),
+        // =============================================================================
+        // Explore Screen (Map & Places)
+        // Temporarily placed under maintenance per user request.
+        // All code and logic is preserved intact below; uncomment when maintenance is completed.
+        // =============================================================================
+        /*
         ExploreScreen(
           userAvatarUrl: state.currentUserAvatarUrl,
           initialLatitude: _selectedExploreLat,
@@ -292,6 +299,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
             ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
           },
           onAvatarTapped: _onAvatarTapped,
+        ),
+        */
+        ExploreMaintenanceScreen(
+          userAvatarUrl: state.currentUserAvatarUrl,
+          onAvatarTapped: _onAvatarTapped,
+          onBackToHome: () {
+            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
+          },
+          onNavigateToOrders: () {
+            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(3);
+          },
         ),
         SafeArea(
           top: true,
@@ -488,30 +506,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                             child: Scaffold(
                               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                               extendBody: true,
-                              bottomNavigationBar: AnimatedSlide(
-                                offset: _isNavBarVisible ? Offset.zero : const Offset(0, 1.5),
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeInOut,
-                                child: BottomNavBar(
-                                  borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0),
-                                  selectedIndex: state.selectedNavIndex,
-                                  userAvatarUrl: state.currentUserAvatarUrl,
-                                  unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
-                                  unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
-                                  onItemTapped: (index) {
-                                    debugPrint('HomeScreen: onItemTapped called with index $index');
-                                    setState(() {
-                                      _isHeaderVisible = true;
-                                      _isNavBarVisible = true;
-                                      if (index != 1) {
-                                        _selectedExploreLat = null;
-                                        _selectedExploreLng = null;
-                                        _selectedExploreAddress = null;
-                                      }
-                                    });
-                                    ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
-                                  },
-                                ),
+                              bottomNavigationBar: BottomNavBar(
+                                borderRadius: BorderRadius.circular(_menuAnimation.value * 64.0),
+                                selectedIndex: state.selectedNavIndex,
+                                userAvatarUrl: state.currentUserAvatarUrl,
+                                unreadNotificationsCount: ref.watch(notificationsViewModelProvider).unreadCount,
+                                unreadMessagesCount: ref.watch(messagesViewModelProvider).threads.fold<int>(0, (sum, t) => sum + (t['unreadCount'] as int? ?? 0)),
+                                onItemTapped: (index) {
+                                  debugPrint('HomeScreen: onItemTapped called with index $index');
+                                  setState(() {
+                                    _isHeaderVisible = true;
+                                    if (index != 1) {
+                                      _selectedExploreLat = null;
+                                      _selectedExploreLng = null;
+                                      _selectedExploreAddress = null;
+                                    }
+                                  });
+                                  ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
+                                },
                               ),
                               body: NotificationListener<ScrollNotification>(
                                 onNotification: (ScrollNotification notification) {
@@ -520,41 +532,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                       final delta = notification.scrollDelta;
                                       if (delta != null) {
                                         if (delta > 0.5) {
-                                          if (_isHeaderVisible || _isNavBarVisible) {
+                                          if (_isHeaderVisible) {
                                             setState(() {
                                               _isHeaderVisible = false;
-                                              _isNavBarVisible = false;
                                             });
                                           }
                                         } else if (delta < -0.5) {
-                                          if (!_isHeaderVisible || !_isNavBarVisible) {
+                                          if (!_isHeaderVisible) {
                                             setState(() {
                                               _isHeaderVisible = true;
-                                              _isNavBarVisible = true;
                                             });
                                           }
                                         }
                                       }
                                       if (notification.metrics.pixels <= 0) {
-                                        if (!_isHeaderVisible || !_isNavBarVisible) {
+                                        if (!_isHeaderVisible) {
                                           setState(() {
                                             _isHeaderVisible = true;
-                                            _isNavBarVisible = true;
                                           });
                                         }
                                       }
                                     } else if (notification is ScrollEndNotification) {
                                       if (notification.metrics.pixels <= 0) {
-                                        if (!_isHeaderVisible || !_isNavBarVisible) {
+                                        if (!_isHeaderVisible) {
                                           setState(() {
                                             _isHeaderVisible = true;
-                                            _isNavBarVisible = true;
-                                          });
-                                        }
-                                      } else {
-                                        if (!_isNavBarVisible) {
-                                          setState(() {
-                                            _isNavBarVisible = true;
                                           });
                                         }
                                       }
@@ -631,19 +633,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                        ),
                                      ),
                                      AnimatedPositioned(
-                                       duration: const Duration(milliseconds: 250),
-                                       curve: Curves.easeInOut,
-                                       right: 16,
-                                       bottom: _isNavBarVisible ? 70 + bottomPadding : 20 + bottomPadding,
+                                        duration: const Duration(milliseconds: 250),
+                                        curve: Curves.easeInOut,
+                                        right: 16,
+                                        bottom: 66 + bottomPadding,
                                         child: IgnorePointer(
-                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 4) || isPlaceSelectedOnMap,
+                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 4) || isPlaceSelectedOnMap,
                                           child: AnimatedOpacity(
                                             duration: const Duration(milliseconds: 200),
-                                            opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 1 || state.selectedNavIndex == 4) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
+                                            opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 4) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
                                             child: _buildFAB(state),
                                           ),
                                         ),
-                                     ),
+                                      ),
                                   ],
                                 ),
                               ),
