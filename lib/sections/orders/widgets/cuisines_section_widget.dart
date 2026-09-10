@@ -15,7 +15,8 @@ class CuisinesSectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = section.items;
+    final items = List<HomeSectionItemModel>.from(section.items)
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -57,34 +58,17 @@ class CuisinesSectionWidget extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Circular Photo Container
-                      Container(
+                      // Pure Image - No white background, no border, no shadow
+                      SizedBox(
                         width: 74,
                         height: 74,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                          border: Border.all(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.07),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image.network(
-                            item.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => const Icon(
-                              Icons.restaurant_menu_rounded,
-                              size: 28,
-                              color: Colors.grey,
-                            ),
+                        child: Image.network(
+                          item.imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (ctx, err, stack) => const Icon(
+                            Icons.restaurant_menu_rounded,
+                            size: 28,
+                            color: Colors.grey,
                           ),
                         ),
                       ),

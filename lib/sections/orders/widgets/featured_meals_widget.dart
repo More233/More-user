@@ -19,132 +19,116 @@ class FeaturedMealsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = section.items;
+    final items = List<HomeSectionItemModel>.from(section.items)
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final priceSubtitle = section.subtitle ?? '19 ريال';
+    final hasCustomBanner = section.bannerImageUrl != null &&
+        section.bannerImageUrl!.isNotEmpty &&
+        section.bannerImageUrl!.startsWith('http') &&
+        !section.bannerImageUrl!.contains('unsplash.com/photo-1562967914');
 
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 20),
-      child: Column(
-        children: [
-          // 1. Soft Pink Promo Banner Header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFFDE8ED),
-                  Color(0xFFFCE1E8),
-                ],
-              ),
-            ),
-            child: Column(
-              children: [
-                // Top Row: Arrow Button on Left + Typography on Right
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(12),
+          topRight: Radius.circular(12),
+        ),
+        child: Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            color: Color(0xFFFDE8ED),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Promotional Meals Image Banner with Top Rounded Corners (12)
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  onViewAllTapped?.call();
+                },
+                child: Stack(
                   children: [
-                    // Circular White Action Button on the Left
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        onViewAllTapped?.call();
-                      },
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.arrow_back_rounded,
-                            size: 20,
-                            color: Color(0xFF1E2022),
-                          ),
-                        ),
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
                       ),
+                      child: hasCustomBanner
+                          ? Image.network(
+                              section.bannerImageUrl!,
+                              width: double.infinity,
+                              height: 120,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Image.asset(
+                                'assets/home/images/meals_banner_default.png',
+                                width: double.infinity,
+                                height: 120,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Image.asset(
+                              'assets/home/images/meals_banner_default.png',
+                              width: double.infinity,
+                              height: 120,
+                              fit: BoxFit.cover,
+                            ),
                     ),
 
-                    // Typography: "وجبات ابتداءً من 19 ريال"
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Price Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF2D55),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFFF2D55).withValues(alpha: 0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            priceSubtitle,
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'وجبـــات',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                color: const Color(0xFF1E2022),
-                                height: 1.1,
-                              ),
-                            ),
-                            Text(
-                              'ابتداءً من',
-                              style: GoogleFonts.ibmPlexSansArabic(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF4B5563),
-                                height: 1.1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    // Action Button on the Left (Arrow tap target)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          onViewAllTapped?.call();
+                        },
+                        child: hasCustomBanner
+                            ? Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.12),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.arrow_back_rounded,
+                                    size: 20,
+                                    color: Color(0xFF1E2022),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(width: 44, height: 44),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+              ),
 
-                // Horizontal Meal Cards List
-                SizedBox(
+              const SizedBox(height: 12),
+
+              // 2. Horizontal Meal Cards List
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: SizedBox(
                   height: 228,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     reverse: true, // RTL
                     clipBehavior: Clip.none,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: items.length,
                     separatorBuilder: (_, _) => const SizedBox(width: 12),
                     itemBuilder: (context, index) {
@@ -153,10 +137,10 @@ class FeaturedMealsWidget extends StatelessWidget {
                     },
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -15,7 +15,8 @@ class DailyOffersWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = section.items;
+    final items = List<HomeSectionItemModel>.from(section.items)
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -69,47 +70,13 @@ class DailyOffersWidget extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            item.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => Container(
-                              color: const Color(0xFFE5E7EB),
-                              child: const Icon(Icons.broken_image_rounded, color: Colors.grey),
-                            ),
-                          ),
-                          // Subtle bottom vignette gradient for text if subtitle exists
-                          if (item.subtitle != null && item.subtitle!.isNotEmpty)
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
-                                    colors: [
-                                      Colors.black.withValues(alpha: 0.7),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                ),
-                                child: Text(
-                                  item.subtitle!,
-                                  style: GoogleFonts.ibmPlexSansArabic(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
+                      child: Image.network(
+                        item.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Container(
+                          color: const Color(0xFFE5E7EB),
+                          child: const Icon(Icons.broken_image_rounded, color: Colors.grey),
+                        ),
                       ),
                     ),
                   ),
