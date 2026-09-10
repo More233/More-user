@@ -14,11 +14,12 @@ class CategoriesGridWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = section.items;
+    final items = List<HomeSectionItemModel>.from(section.items)
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -26,13 +27,13 @@ class CategoriesGridWidget extends StatelessWidget {
           Text(
             section.title,
             style: GoogleFonts.ibmPlexSansArabic(
-              fontSize: 18,
+              fontSize: 15.5,
               fontWeight: FontWeight.w800,
               color: const Color(0xFF1E2022),
             ),
             textAlign: TextAlign.right,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // 4-column Grid
           GridView.builder(
@@ -63,47 +64,49 @@ class CategoriesGridWidget extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Rounded container holding image + badge
+          // Full Image Container + badge
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7F8FA),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  width: 1,
-                ),
-              ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  // Center Image
-                  Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(
-                        item.imageUrl,
-                        fit: BoxFit.contain,
-                        errorBuilder: (ctx, err, stack) => Icon(
-                          Icons.fastfood_rounded,
-                          size: 32,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                // The square container itself is the image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF2F4F7),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        width: 1,
+                      ),
+                    ),
+                    child: Image.network(
+                      item.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (ctx, err, stack) => Center(
+                        child: Icon(
+                          Icons.image_outlined,
+                          size: 28,
                           color: Colors.grey.shade400,
                         ),
                       ),
                     ),
                   ),
+                ),
 
-                  // Optional Badge pill at bottom of container
-                  if (item.badgeText != null && item.badgeText!.isNotEmpty)
-                    Positioned(
-                      bottom: -5,
-                      child: _buildBadge(item.badgeText!, item.badgeColor),
-                    ),
-                ],
-              ),
+                // Optional Badge pill at bottom of container
+                if (item.badgeText != null && item.badgeText!.isNotEmpty)
+                  Positioned(
+                    bottom: -5,
+                    child: _buildBadge(item.badgeText!, item.badgeColor),
+                  ),
+              ],
             ),
           ),
 

@@ -3,8 +3,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../explore/view_models/explore_view_model.dart';
 import 'models/delivery_address_model.dart';
 import 'models/delivery_banner_model.dart';
 import 'models/home_section_model.dart';
@@ -34,12 +36,15 @@ class OrdersScreen extends ConsumerStatefulWidget {
 class _OrdersScreenState extends ConsumerState<OrdersScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isScrolled = false;
-  bool _showFarLocationNotice = true;
+  bool _isNoticeDismissed = false;
 
   @override
   void initState() {
     super.initState();
     DeliveryAddressService.instance.init();
+    Future.microtask(() {
+      ref.read(exploreViewModelProvider.notifier).getUserLocation();
+    });
 
     _scrollController.addListener(() {
       final scrolled = _scrollController.hasClients && _scrollController.offset > 80;
@@ -255,10 +260,15 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                                       color: const Color(0xFF10B981).withValues(alpha: 0.12),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Center(
-                                      child: _SleekOutlinePin(
-                                        color: Color(0xFF00A651),
-                                        size: 13,
+                                    child: Center(
+                                      child: SvgPicture.asset(
+                                        'assets/home/icons/location_01.svg',
+                                        width: 14,
+                                        height: 14,
+                                        colorFilter: const ColorFilter.mode(
+                                          Color(0xFF00A651),
+                                          BlendMode.srcIn,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -320,6 +330,18 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final topPadding = MediaQuery.of(context).padding.top;
 
+    // Check if the selected delivery address is far from current device GPS
+    final userGps = ref.watch(exploreViewModelProvider.select((s) => s.userLocation));
+    final bool isFarLocation = (currentAddress != null && userGps != null)
+        ? DeliveryAddressService.calculateDistanceInKm(
+            userGps.latitude,
+            userGps.longitude,
+            currentAddress.latitude,
+            currentAddress.longitude,
+          ) > 25.0
+        : false;
+    final bool showFarNotice = isFarLocation && !_isNoticeDismissed;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: !isCovered
@@ -341,18 +363,20 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Top Yellow Promotional Header + Carousel
+                      // Top Promotional Header + Carousel (Full-Bleed, No Yellow Wrapper)
                       _TopPromotionalBannerHeader(
                         banners: banners,
                         address: currentAddress,
-                        showNotice: _showFarLocationNotice,
+                        showNotice: showFarNotice,
                         onDismissNotice: () {
                           setState(() {
-                            _showFarLocationNotice = false;
+                            _isNoticeDismissed = true;
                           });
                         },
                         onLocationTapped: () => _showAddressBottomSheet(context, currentAddress),
                       ),
+
+                      const SizedBox(height: 10),
 
                       // Section 1: "وش ودك تطلب اليوم؟"
                       if (_findSection(sections, 'categories') != null)
@@ -605,11 +629,19 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
     );
   }
 
-  static Widget _buildCrispLocationText(DeliveryAddressModel? address, {required bool isDark}) {
-    final displayCity = address?.regionName ?? address?.title ?? 'Ar Riyadh';
+  static Widget _buildCrispLocationText(
+    DeliveryAddressModel? address, {
+    required bool isDark,
+    Color? textColor,
+    Color? subtitleColor,
+  }) {
+    final displayCity = address?.regionName ?? address?.title ?? 'الرياض';
     final displayStreet = (address != null && address.fullAddress.isNotEmpty)
         ? address.fullAddress
         : 'زين العابدين علي، Al Riyadh, Jeddah 2383...';
+
+    final effectiveTextColor = textColor ?? (isDark ? Colors.white : const Color(0xFF1E2022));
+    final effectiveSubColor = subtitleColor ?? (isDark ? Colors.white70 : const Color(0xFF4B5563));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -618,10 +650,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.keyboard_arrow_down_rounded,
               size: 19,
-              color: Color(0xFF1E2022),
+              color: effectiveTextColor,
             ),
             const SizedBox(width: 4),
             Text(
@@ -629,13 +661,18 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: isDark ? Colors.white : const Color(0xFF1E2022),
+                color: effectiveTextColor,
               ),
             ),
             const SizedBox(width: 6),
-            const _SleekOutlinePin(
-              color: Color(0xFF00A651),
-              size: 13,
+            SvgPicture.asset(
+              'assets/home/icons/location_01.svg',
+              width: 14,
+              height: 14,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF00A651),
+                BlendMode.srcIn,
+              ),
             ),
           ],
         ),
@@ -647,7 +684,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
             style: GoogleFonts.ibmPlexSansArabic(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+              color: effectiveSubColor,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -731,182 +768,190 @@ class _TopPromotionalBannerHeaderState extends ConsumerState<_TopPromotionalBann
     final hasRealBanners = widget.banners.isNotEmpty;
     final total = hasRealBanners ? widget.banners.length : _fallbackBanners.length;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFE600), // HungerStation signature yellow
+    final double bannerHeight = topPadding + (widget.showNotice ? 275.0 : 225.0);
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(12),
+        bottomRight: Radius.circular(12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: topPadding + 6),
+      child: SizedBox(
+        height: bannerHeight,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            PageView.builder(
+              controller: _pageController,
+              itemCount: total,
+              onPageChanged: (index) {
+                ref.read(bannerCarouselIndexProvider.notifier).state = index;
+              },
+              itemBuilder: (context, index) {
+                final imageUrl = hasRealBanners
+                    ? widget.banners[index].imageUrl
+                    : _fallbackBanners[index]['image']!;
 
-          // 1. Top Location Header (Right Aligned, Pure Crisp Black Font, No Blur)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: widget.onLocationTapped,
-                  child: _OrdersScreenState._buildCrispLocationText(widget.address, isDark: false),
-                ),
-              ],
+                return Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, stack) => Container(
+                    color: const Color(0xFF1F242D),
+                  ),
+                );
+              },
             ),
-          ),
 
-          // 2. Far location blue speech-bubble notification (if visible)
-          if (widget.showNotice) ...[
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.topRight,
-                children: [
-                  // Little upward triangle pointer
-                  Positioned(
-                    top: -6,
-                    right: 28,
-                    child: CustomPaint(
-                      size: const Size(12, 6),
-                      painter: _TrianglePainter(color: const Color(0xFF007AFF)),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.black.withValues(alpha: 0.15),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.28),
+                    ],
+                    stops: const [0.0, 0.35, 0.7, 1.0],
+                  ),
+                ),
+              ),
+            ),
+
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: topPadding + 6),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: widget.onLocationTapped,
+                        child: _OrdersScreenState._buildCrispLocationText(
+                          widget.address,
+                          isDark: false,
+                          textColor: Colors.white,
+                          subtitleColor: Colors.white.withValues(alpha: 0.92),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (widget.showNotice) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.topRight,
+                      children: [
+                        Positioned(
+                          top: -6,
+                          right: 28,
+                          child: CustomPaint(
+                            size: const Size(12, 6),
+                            painter: _TrianglePainter(color: const Color(0xFF007AFF)),
+                          ),
+                        ),
+
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF007AFF),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF007AFF).withValues(alpha: 0.35),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              GestureDetector(
+                                onTap: widget.onDismissNotice,
+                                child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  'هل عنوان التوصيل صحيح؟ يبدو الموقع بعيدًا عنك',
+                                  style: GoogleFonts.ibmPlexSansArabic(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.right,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ],
 
-                  // Speech bubble
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                const SizedBox(height: 12),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    height: 46,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF007AFF),
-                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(100),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF007AFF).withValues(alpha: 0.25),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        GestureDetector(
-                          onTap: widget.onDismissNotice,
-                          child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
-                        ),
                         Expanded(
                           child: Text(
-                            'هل عنوان التوصيل صحيح؟ يبدو الموقع بعيدًا عنك',
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
+                            'ابحث عن المطاعم والمتاجر',
                             textAlign: TextAlign.right,
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF9CA3AF),
+                            ),
                           ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.search_rounded,
+                          size: 22,
+                          color: Color(0xFF4B5563),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 12),
-
-          // 3. Floating White Search Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              height: 46,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'ابحث عن المطاعم والمتاجر',
-                      textAlign: TextAlign.right,
-                      style: GoogleFonts.ibmPlexSansArabic(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF9CA3AF),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.search_rounded,
-                    size: 22,
-                    color: Color(0xFF4B5563),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // 4. Sliding Banner Carousel
-          SizedBox(
-            height: 190,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                PageView.builder(
-                  controller: _pageController,
-                  itemCount: total,
-                  onPageChanged: (index) {
-                    ref.read(bannerCarouselIndexProvider.notifier).state = index;
-                  },
-                  itemBuilder: (context, index) {
-                    final imageUrl = hasRealBanners
-                        ? widget.banners[index].imageUrl
-                        : _fallbackBanners[index]['image']!;
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, err, stack) => Container(
-                            color: const Color(0xFFF3F4F6),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
                 ),
-
-                // Pure Dot Indicators
-                _BannerDotsIndicator(total: total),
               ],
             ),
-          ),
 
-          const SizedBox(height: 14),
-        ],
+            _BannerDotsIndicator(total: total),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Upward pointer triangle for speech bubble
 class _TrianglePainter extends CustomPainter {
   final Color color;
   _TrianglePainter({required this.color});
@@ -926,7 +971,6 @@ class _TrianglePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Banner pure dot indicator
 class _BannerDotsIndicator extends ConsumerWidget {
   final int total;
   const _BannerDotsIndicator({required this.total});
@@ -937,7 +981,7 @@ class _BannerDotsIndicator extends ConsumerWidget {
     final currentIndex = ref.watch(bannerCarouselIndexProvider);
 
     return Positioned(
-      bottom: 10,
+      bottom: 12,
       left: 0,
       right: 0,
       child: Center(
@@ -949,15 +993,18 @@ class _BannerDotsIndicator extends ConsumerWidget {
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: List.generate(total, (i) {
-              final isCurrent = i == (currentIndex % total);
-              return Container(
+            children: List.generate(total, (index) {
+              final isSelected = index == (currentIndex % total);
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
                 margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                width: 5.5,
-                height: 5.5,
+                width: isSelected ? 6.0 : 5.0,
+                height: isSelected ? 6.0 : 5.0,
                 decoration: BoxDecoration(
-                  color: isCurrent ? const Color(0xFF1E2022) : const Color(0xFFD1D5DB),
                   shape: BoxShape.circle,
+                  color: isSelected
+                      ? const Color(0xFF1E2022)
+                      : const Color(0xFFD1D5DB),
                 ),
               );
             }),
@@ -968,7 +1015,6 @@ class _BannerDotsIndicator extends ConsumerWidget {
   }
 }
 
-/// Custom sleek outline location pin
 class _SleekOutlinePin extends StatelessWidget {
   final Color color;
   final double size;

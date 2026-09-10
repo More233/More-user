@@ -25,7 +25,8 @@ final homeSectionsStreamProvider = StreamProvider<List<HomeSectionModel>>((ref) 
           final sections = sectionsData
               .map((m) {
                 final sec = HomeSectionModel.fromMap(m);
-                final items = allItems.where((i) => i.sectionId == sec.id).toList();
+                final items = allItems.where((i) => i.sectionId == sec.id).toList()
+                  ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
                 return sec.copyWith(items: items);
               })
               .where((s) => s.isActive)
