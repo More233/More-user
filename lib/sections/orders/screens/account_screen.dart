@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../settings/screens/help_support_screen.dart';
 import '../../auth/account_manager.dart';
 import '../../auth/auth_flow_page.dart';
+import 'rewards_screen.dart';
+import 'more_pro_screen.dart';
+import 'vouchers_screen.dart';
+import 'about_app_screen.dart';
+import 'partner_register_screen.dart';
+import 'my_orders_screen.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
@@ -19,6 +25,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   String? _avatarUrl;
   final String _country = 'مصر';
   final String _flag = '🇪🇬';
+  bool _isPro = false;
+  final int _userPoints = 350;
 
   @override
   void initState() {
@@ -42,21 +50,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         });
       }
     }
-  }
-
-  void _showComingSoon(String title) {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$title - قريباً في التحديث القادم',
-          textAlign: TextAlign.right,
-          style: GoogleFonts.ibmPlexSansArabic(),
-        ),
-        backgroundColor: const Color(0xFF1E2022),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _handleLogout() async {
@@ -236,9 +229,19 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                           ),
                           const SizedBox(height: 10),
                           GestureDetector(
-                            onTap: () => _showComingSoon('More Pro'),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => MoreProScreen(
+                                    initialIsPro: _isPro,
+                                    onProStatusChanged: (val) => setState(() => _isPro = val),
+                                  ),
+                                ),
+                              );
+                            },
                             child: Text(
-                              'جرب مجاناً',
+                              _isPro ? 'عرض اشتراكك' : 'جرب مجاناً',
                               style: GoogleFonts.ibmPlexSansArabic(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
@@ -300,55 +303,89 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 
               const SizedBox(height: 24),
 
-              // 3. Menu Items List (Screenshot 5)
+              // 3. Menu Items List
               _buildMenuTile(
                 icon: Icons.card_giftcard_rounded,
                 title: 'مكافآت',
-                trailingText: '0 نقاط',
-                onTap: () => _showComingSoon('المكافآت'),
+                trailingText: '$_userPoints نقطة',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RewardsScreen()),
+                  );
+                },
                 textColor: textColor,
               ),
               _buildMenuTile(
                 icon: Icons.receipt_long_rounded,
                 title: 'طلباتي السابقة',
-                onTap: () => _showComingSoon('طلباتي السابقة'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+                  );
+                },
                 textColor: textColor,
               ),
               _buildMenuTile(
                 icon: Icons.confirmation_number_outlined,
                 title: 'القسائم',
-                onTap: () => _showComingSoon('القسائم'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const VouchersScreen()),
+                  );
+                },
                 textColor: textColor,
               ),
               _buildMenuTile(
                 icon: Icons.workspace_premium_rounded,
                 title: 'More pro',
                 trailingBadge: 'pro',
-                onTap: () => _showComingSoon('More Pro'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MoreProScreen(
+                        initialIsPro: _isPro,
+                        onProStatusChanged: (val) => setState(() => _isPro = val),
+                      ),
+                    ),
+                  );
+                },
                 textColor: textColor,
               ),
               _buildMenuTile(
                 icon: Icons.help_outline_rounded,
                 title: 'احصل على المساعدة',
-                onTap: () => _showComingSoon('الدعم الفني'),
-                textColor: textColor,
-              ),
-              _buildMenuTile(
-                icon: Icons.app_shortcut_rounded,
-                title: 'تغيير أيقونة التطبيق',
-                onTap: () => _showComingSoon('تغيير الأيقونة'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+                  );
+                },
                 textColor: textColor,
               ),
               _buildMenuTile(
                 icon: Icons.info_outline_rounded,
                 title: 'حول التطبيق',
-                onTap: () => _showComingSoon('حول التطبيق'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutAppScreen()),
+                  );
+                },
                 textColor: textColor,
               ),
               _buildMenuTile(
                 icon: Icons.handshake_outlined,
                 title: 'انضم كشريك',
-                onTap: () => _showComingSoon('انضم كشريك'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PartnerRegisterScreen()),
+                  );
+                },
                 textColor: textColor,
               ),
               _buildMenuTile(

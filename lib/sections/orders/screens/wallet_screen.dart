@@ -2,8 +2,301 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class WalletScreen extends StatelessWidget {
+class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  double _balance = 250.00;
+
+  final List<Map<String, dynamic>> _transactions = [
+    {
+      'title': 'شحن رصيد عن طريق Apple Pay',
+      'amount': '+150.00 ج.م',
+      'date': 'اليوم، 02:15 م',
+      'isPositive': true,
+      'type': 'topup',
+    },
+    {
+      'title': 'طلب من مطعم بلبن',
+      'amount': '-85.00 ج.م',
+      'date': 'أمس، 09:30 م',
+      'isPositive': false,
+      'type': 'order',
+    },
+    {
+      'title': 'استرداد نقدي (Cashback 10%)',
+      'amount': '+20.00 ج.م',
+      'date': '10 سبتمبر 2026',
+      'isPositive': true,
+      'type': 'cashback',
+    },
+    {
+      'title': 'طلب من بازوكا فاميلي',
+      'amount': '-165.00 ج.م',
+      'date': '06 سبتمبر 2026',
+      'isPositive': false,
+      'type': 'order',
+    },
+    {
+      'title': 'شحن رصيد ترحيبي للمحفظة',
+      'amount': '+100.00 ج.م',
+      'date': '01 سبتمبر 2026',
+      'isPositive': true,
+      'type': 'topup',
+    },
+  ];
+
+  void _showTopUpSheet() {
+    HapticFeedback.lightImpact();
+    double selectedAmount = 100.0;
+    String selectedMethod = 'Apple Pay';
+    final customCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final sheetBg = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+          final textColor = isDark ? Colors.white : const Color(0xFF1E2022);
+
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              top: 20,
+              left: 20,
+              right: 20,
+            ),
+            decoration: BoxDecoration(
+              color: sheetBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                    Text(
+                      'شحن رصيد المحفظة',
+                      style: GoogleFonts.ibmPlexSansArabic(fontSize: 18, fontWeight: FontWeight.w800, color: textColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  'اختر المبلغ المطلوب شحنه',
+                  style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, fontWeight: FontWeight.w700, color: textColor),
+                ),
+                const SizedBox(height: 12),
+
+                // Amount presets
+                Row(
+                  children: [50, 100, 200, 500].map((amt) {
+                    final isSel = selectedAmount == amt.toDouble() && customCtrl.text.isEmpty;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setSheetState(() {
+                            selectedAmount = amt.toDouble();
+                            customCtrl.clear();
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSel ? const Color(0xFF7C57FC) : (isDark ? Colors.white10 : Colors.grey.shade100),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSel ? const Color(0xFF7C57FC) : Colors.transparent,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                '$amt',
+                                style: GoogleFonts.spaceMono(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: isSel ? Colors.white : textColor,
+                                ),
+                              ),
+                              Text(
+                                'ج.م',
+                                style: GoogleFonts.ibmPlexSansArabic(
+                                  fontSize: 11,
+                                  color: isSel ? Colors.white70 : Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 20),
+
+                Text(
+                  'طريقة الدفع',
+                  style: GoogleFonts.ibmPlexSansArabic(fontSize: 14, fontWeight: FontWeight.w700, color: textColor),
+                ),
+                const SizedBox(height: 10),
+
+                _buildPaymentOption(
+                  id: 'Apple Pay',
+                  title: 'Apple Pay',
+                  icon: Icons.apple,
+                  isSelected: selectedMethod == 'Apple Pay',
+                  onTap: () => setSheetState(() => selectedMethod = 'Apple Pay'),
+                  textColor: textColor,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 8),
+                _buildPaymentOption(
+                  id: 'Card',
+                  title: 'بطاقة بنكية (Visa / Mastercard)',
+                  icon: Icons.credit_card_rounded,
+                  isSelected: selectedMethod == 'Card',
+                  onTap: () => setSheetState(() => selectedMethod = 'Card'),
+                  textColor: textColor,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 8),
+                _buildPaymentOption(
+                  id: 'Vodafone Cash',
+                  title: 'محفظة إلكترونية (فودافون كاش / اتصالات / أورنج)',
+                  icon: Icons.phone_android_rounded,
+                  isSelected: selectedMethod == 'Vodafone Cash',
+                  onTap: () => setSheetState(() => selectedMethod = 'Vodafone Cash'),
+                  textColor: textColor,
+                  isDark: isDark,
+                ),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final topupAmount = customCtrl.text.isNotEmpty
+                          ? (double.tryParse(customCtrl.text) ?? selectedAmount)
+                          : selectedAmount;
+
+                      Navigator.pop(ctx);
+                      _executeTopup(topupAmount, selectedMethod);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C57FC),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: Text(
+                      'تأكيد وشحن $selectedAmount ج.م',
+                      style: GoogleFonts.ibmPlexSansArabic(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _executeTopup(double amount, String method) {
+    HapticFeedback.heavyImpact();
+    setState(() {
+      _balance += amount;
+      _transactions.insert(0, {
+        'title': 'شحن رصيد عن طريق $method',
+        'amount': '+${amount.toStringAsFixed(2)} ج.م',
+        'date': 'الآن',
+        'isPositive': true,
+        'type': 'topup',
+      });
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'تم شحن ${amount.toStringAsFixed(2)} ج.م بنجاح إلى محفظتك! 🎉',
+          textAlign: TextAlign.right,
+          style: GoogleFonts.ibmPlexSansArabic(),
+        ),
+        backgroundColor: const Color(0xFF10B981),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  static Widget _buildPaymentOption({
+    required String id,
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Color textColor,
+    required bool isDark,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF7C57FC) : (isDark ? Colors.white10 : Colors.grey.shade200),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+              color: isSelected ? const Color(0xFF7C57FC) : Colors.grey,
+              size: 20,
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: GoogleFonts.ibmPlexSansArabic(fontSize: 13.5, fontWeight: FontWeight.w700, color: textColor),
+            ),
+            const SizedBox(width: 10),
+            Icon(icon, size: 20, color: const Color(0xFF7C57FC)),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +388,7 @@ class WalletScreen extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '150.00',
+                        _balance.toStringAsFixed(2),
                         style: GoogleFonts.spaceMono(
                           color: Colors.white,
                           fontSize: 34,
@@ -109,14 +402,7 @@ class WalletScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('شحن المحفظة قريباً', textAlign: TextAlign.right, style: GoogleFonts.ibmPlexSansArabic()),
-                              ),
-                            );
-                          },
+                          onPressed: _showTopUpSheet,
                           icon: const Icon(Icons.add_rounded, size: 18, color: Color(0xFF4C1D95)),
                           label: Text(
                             'شحن الرصيد',
@@ -125,6 +411,7 @@ class WalletScreen extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
@@ -138,7 +425,7 @@ class WalletScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             Text(
-              'العمليات الأخيرة',
+              'العمليات الأخيرة (${_transactions.length})',
               style: GoogleFonts.ibmPlexSansArabic(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -153,16 +440,21 @@ class WalletScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFEEEEEE)),
               ),
-              child: ListView(
+              child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildTxTile('شحن رصيد عن طريق Apple Pay', '+150.00 ج.م', 'اليوم، 02:15 م', true, textColor),
-                  const Divider(height: 1),
-                  _buildTxTile('طلب من مطعم بلبن', '-85.00 ج.م', 'أمس، 09:30 م', false, textColor),
-                  const Divider(height: 1),
-                  _buildTxTile('استرداد نقدي (Cashback)', '+20.00 ج.م', '10 سبتمبر 2026', true, textColor),
-                ],
+                itemCount: _transactions.length,
+                separatorBuilder: (ctx, i) => const Divider(height: 1),
+                itemBuilder: (ctx, i) {
+                  final tx = _transactions[i];
+                  return _buildTxTile(
+                    tx['title'] as String,
+                    tx['amount'] as String,
+                    tx['date'] as String,
+                    tx['isPositive'] as bool,
+                    textColor,
+                  );
+                },
               ),
             ),
           ],
