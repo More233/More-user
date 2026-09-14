@@ -28,20 +28,16 @@ class BottomNavBar extends StatelessWidget {
         icon: CNSymbol('house.fill', size: 17.0),
       ),
       const CNTabBarItem(
-        label: 'استكشف',
-        icon: CNSymbol('safari.fill', size: 17.0),
-      ),
-      const CNTabBarItem(
-        label: 'الحجوزات',
-        icon: CNSymbol('calendar', size: 17.0),
-      ),
-      const CNTabBarItem(
-        label: 'الطلبات',
+        label: 'طلباتك',
         icon: CNSymbol('bag.fill', size: 17.0),
       ),
       const CNTabBarItem(
-        label: 'الرسائل',
-        icon: CNSymbol('bubble.left.and.bubble.right.fill', size: 17.0),
+        label: 'more pay',
+        icon: CNSymbol('creditcard.fill', size: 17.0),
+      ),
+      const CNTabBarItem(
+        label: 'حسابك',
+        icon: CNSymbol('person.crop.circle.fill', size: 17.0),
       ),
     ];
 

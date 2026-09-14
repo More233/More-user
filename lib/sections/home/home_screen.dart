@@ -1,39 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../explore/explore_screen.dart';
-import '../explore/explore_maintenance_screen.dart';
 import '../explore/view_models/explore_view_model.dart';
 import '../explore/services/explore_data_service.dart';
 import '../auth/account_manager.dart';
-import 'models/timeline_post.dart';
 import 'models/timeline_state.dart';
 import 'view_models/timeline_view_model.dart';
-import 'view_models/collections_view_model.dart';
-import 'view_models/social_feed_view_model.dart';
-import 'notifications_screen.dart';
 import 'view_models/notifications_view_model.dart';
 import 'view_models/messages_view_model.dart';
 import 'widgets/common/bottom_nav_bar.dart';
-import 'widgets/feed/check_in_composer_screen.dart';
-import 'widgets/bottom_sheets/comments_bottom_sheet.dart';
-import 'widgets/common/fab_coachmark_overlay.dart';
-import 'widgets/bottom_sheets/follow_friends_bottom_sheet.dart';
-import 'widgets/chat/messages_screen.dart';
-import 'widgets/common/cached_image.dart';
 import 'widgets/common/custom_loading_indicator.dart';
-import 'widgets/bottom_sheets/save_to_list_bottom_sheet.dart';
-import 'widgets/bottom_sheets/share_bottom_sheet.dart';
-import 'widgets/feed/social_feed_view.dart';
 import '../../services/notification_service.dart';
 import 'widgets/common/user_drawer.dart';
-import '../bookings/bookings_screen.dart';
 import '../orders/orders_screen.dart';
-import 'home_search_screen.dart';
+import '../orders/screens/my_orders_screen.dart';
+import '../orders/screens/wallet_screen.dart';
+import '../orders/screens/account_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -44,13 +26,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProviderStateMixin {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final GlobalKey<MessagesScreenState> _messagesKey = GlobalKey<MessagesScreenState>();
-  double? _selectedExploreLat;
-  double? _selectedExploreLng;
-  String? _selectedExploreAddress;
-  String? _selectedExplorePlaceId;
   bool _isHeaderVisible = true;
-  bool _isNavBarVisible = true;
 
   late AnimationController _menuAnimationController;
   late Animation<double> _menuAnimation;
@@ -71,7 +47,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     
     Future.microtask(() async {
       ref.read(timelineViewModelProvider.notifier).init();
-      ref.read(collectionsViewModelProvider.notifier).init();
       ref.read(notificationsViewModelProvider.notifier).init();
       await AccountManager.saveCurrentAccount();
     });
@@ -83,20 +58,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     super.dispose();
   }
 
-  void _onAvatarTapped() {
-    HapticFeedback.lightImpact();
-    if (_isMenuOpen) {
-      _menuAnimationController.reverse();
-      setState(() {
-        _isMenuOpen = false;
-      });
-    } else {
-      _menuAnimationController.forward();
-      setState(() {
-        _isMenuOpen = true;
-      });
-    }
-  }
+
 
   void _onHorizontalDragStart(DragStartDetails details, int selectedNavIndex) {
     if (_isMenuOpen || selectedNavIndex == 0 || details.globalPosition.dx < 45.0) {
@@ -156,238 +118,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     }
   }
 
-  void _openSaveToList(TimelinePost post) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return SaveToListBottomSheet(
-          post: post,
-          onSavedStateChanged: (isSaved) {
-            ref.read(timelineViewModelProvider.notifier).updateBookmarkState(post.id, isSaved);
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _handleBookmarkTap(TimelinePost post) async {
-    final notifier = ref.read(collectionsViewModelProvider.notifier);
-    final colState = ref.read(collectionsViewModelProvider);
-
-    if (post.isBookmarked) {
-      _openSaveToList(post);
-    } else {
-      if (colState.collections.isEmpty) {
-        try {
-          final savedColId = await notifier.getOrCreateSavedCollection();
-          await notifier.addPostToCollection(savedColId, post.id);
-          ref.read(timelineViewModelProvider.notifier).updateBookmarkState(post.id, true);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Saved to Saved list"),
-                backgroundColor: Color(0xFF7C57FC),
-              ),
-            );
-          }
-        } catch (e) {
-          debugPrint("Error auto-saving post: $e");
-        }
-      } else {
-        _openSaveToList(post);
-      }
-    }
-  }
-
-  void _openComments(TimelinePost post) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return CommentsBottomSheet(
-          post: post,
-          onCommentAdded: (comment) {
-            setState(() {
-              post.comments.add(comment);
-              post.commentsCount = post.comments.length;
-            });
-          },
-        );
-      },
-    );
-  }
-
-  void _openShare(TimelinePost post) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return ShareBottomSheet(post: post);
-      },
-    );
-  }
-
-  void _startOnboardingFlow() {
-    ref.read(timelineViewModelProvider.notifier).startOnboardingFlow();
-    _openCheckInComposer(isFirstCheckIn: true);
-  }
-
-  void _openCheckInComposer({bool isFirstCheckIn = false}) async {
-    double? initialLat;
-    double? initialLng;
-
-    final selectedNavIndex = ref.read(timelineViewModelProvider).selectedNavIndex;
-    if (selectedNavIndex == 1) {
-      final exploreState = ref.read(exploreViewModelProvider);
-      final center = exploreState.lastFetchedLocation ?? exploreState.userLocation;
-      if (center != null) {
-        initialLat = center.latitude;
-        initialLng = center.longitude;
-      }
-    }
-
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CheckInComposerScreen(
-          isFirstCheckIn: isFirstCheckIn,
-          initialLatitude: initialLat,
-          initialLongitude: initialLng,
-        ),
-      ),
-    );
-
-    if (result == true) {
-      ref.read(timelineViewModelProvider.notifier).loadPosts();
-      ref.read(timelineViewModelProvider.notifier).completeFirstCheckIn();
-      ref.read(socialFeedViewModelProvider.notifier).refreshFeed();
-      // Clear the Supabase cache so the new check-in post is fetched fresh on the map
-      ExploreDataService.clearSupabaseCache();
-      final exploreState = ref.read(exploreViewModelProvider);
-      final lat = exploreState.userLocation?.latitude ?? 24.7136;
-      final lng = exploreState.userLocation?.longitude ?? 46.6753;
-      ref.read(exploreViewModelProvider.notifier).fetchNearbyPlaces(lat, lng);
-    }
-  }
-
   Widget _buildBody(TimelineState state) {
     return IndexedStack(
-      index: state.selectedNavIndex,
+      index: state.selectedNavIndex.clamp(0, 3),
       children: [
-        SafeArea(
-          top: true,
-          bottom: false,
-          child: _buildTimelineTab(state),
-        ),
-        // =============================================================================
-        // Explore Screen (Map & Places)
-        // Temporarily placed under maintenance per user request.
-        // All code and logic is preserved intact below; uncomment when maintenance is completed.
-        // =============================================================================
-        /*
-        ExploreScreen(
-          userAvatarUrl: state.currentUserAvatarUrl,
-          initialLatitude: _selectedExploreLat,
-          initialLongitude: _selectedExploreLng,
-          initialAddress: _selectedExploreAddress,
-          initialPlaceId: _selectedExplorePlaceId,
-          onBackToTimeline: () {
-            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
-          },
-          onAvatarTapped: _onAvatarTapped,
-        ),
-        */
-        ExploreMaintenanceScreen(
-          userAvatarUrl: state.currentUserAvatarUrl,
-          onAvatarTapped: _onAvatarTapped,
-          onBackToHome: () {
-            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(0);
-          },
-          onNavigateToOrders: () {
-            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(3);
-          },
-        ),
-        SafeArea(
-          top: true,
-          bottom: false,
-          child: BookingsScreen(
-            onExploreTapped: () {
-              ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
-            },
-          ),
-        ),
         OrdersScreen(
-          onExploreTapped: () {
-            ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
-          },
+          onExploreTapped: () {},
         ),
-        SafeArea(
-          top: true,
-          bottom: false,
-          child: MessagesScreen(
-            key: _messagesKey,
-            followedUsernames: state.followedUsernames,
-            onFollowChanged: (username, isFollowed) {
-              ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
-            },
-            showBackButton: false,
-            onAvatarTapped: _onAvatarTapped,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimelineTab(TimelineState state) {
-    return Stack(
-      children: [
-        Column(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              height: _isHeaderVisible ? 56.0 : 0.0,
-              child: ClipRect(
-                child: _buildHeader(state),
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              height: _isHeaderVisible ? 8.0 : 0.0,
-              child: const SizedBox(height: 8),
-            ),
-            Expanded(
-              child: SocialFeedView(
-                currentUserAvatarUrl: state.currentUserAvatarUrl,
-                followedUsernames: state.followedUsernames,
-                onAvatarTapped: _onAvatarTapped,
-                openFollowFriends: () => _openFollowFriends(state.followedUsernames),
-                onLike: (post) => ref.read(timelineViewModelProvider.notifier).toggleLike(post.id),
-                onBookmark: _handleBookmarkTap,
-                onComment: _openComments,
-                onShare: _openShare,
-                onLocationTapped: (lat, lng, address, placeId) {
-                  setState(() {
-                    _selectedExploreLat = lat;
-                    _selectedExploreLng = lng;
-                    _selectedExploreAddress = address;
-                    _selectedExplorePlaceId = placeId;
-                  });
-                  ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(1);
-                },
-              ),
-            ),
-          ],
-        ),
-        if (state.isFirstCheckIn && state.showCoachmark)
-          FabCoachmarkOverlay(
-            onTap: _startOnboardingFlow,
-          ),
+        const MyOrdersScreen(),
+        const WalletScreen(),
+        const AccountScreen(),
       ],
     );
   }
@@ -414,10 +154,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
 
     final state = ref.watch(timelineViewModelProvider);
     final isPlaceSelected = ref.watch(exploreViewModelProvider.select((s) => s.selectedPlace != null));
-    final isListView = ref.watch(exploreViewModelProvider.select((s) => s.isListView));
     final bool isPlaceSelectedOnMap = isPlaceSelected && state.selectedNavIndex == 1;
     debugPrint("HomeScreen: build() called, isLoading=${state.isLoading}, selectedNavIndex=${state.selectedNavIndex}, isPlaceSelectedOnMap=$isPlaceSelectedOnMap");
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final screenWidth = MediaQuery.of(context).size.width;
     final menuWidth = screenWidth * 0.76;
 
@@ -516,11 +254,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                   debugPrint('HomeScreen: onItemTapped called with index $index');
                                   setState(() {
                                     _isHeaderVisible = true;
-                                    if (index != 1) {
-                                      _selectedExploreLat = null;
-                                      _selectedExploreLng = null;
-                                      _selectedExploreAddress = null;
-                                    }
                                   });
                                   ref.read(timelineViewModelProvider.notifier).setSelectedNavIndex(index);
                                 },
@@ -571,81 +304,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
                                           ? const CustomLoadingIndicator()
                                           : _buildBody(state),
                                     ),
-                                     // The Map Button next to Plus Button
-                                     AnimatedPositioned(
-                                       duration: const Duration(milliseconds: 250),
-                                       curve: Curves.easeInOut,
-                                       left: 0,
-                                       right: 0,
-                                       bottom: _isNavBarVisible ? 75 + bottomPadding : 25 + bottomPadding,
-                                       child: IgnorePointer(
-                                         ignoring: !(state.selectedNavIndex == 1 && isListView),
-                                         child: AnimatedOpacity(
-                                           duration: const Duration(milliseconds: 200),
-                                           opacity: (state.selectedNavIndex == 1 && isListView) ? 1.0 : 0.0,
-                                           child: Center(
-                                             child: GestureDetector(
-                                               onTap: () {
-                                                 HapticFeedback.lightImpact();
-                                                 ref.read(exploreViewModelProvider.notifier).updateListView(false);
-                                               },
-                                               child: Container(
-                                                 height: 50,
-                                                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                                                 decoration: BoxDecoration(
-                                                   color: Colors.white,
-                                                   borderRadius: BorderRadius.circular(100),
-                                                   border: Border.all(
-                                                     color: const Color(0xFF7C57FC).withValues(alpha: 0.15),
-                                                     width: 1,
-                                                   ),
-                                                   boxShadow: [
-                                                     BoxShadow(
-                                                       color: Colors.black.withValues(alpha: 0.1),
-                                                       blurRadius: 8,
-                                                       offset: const Offset(0, 2),
-                                                     ),
-                                                   ],
-                                                 ),
-                                                 child: Row(
-                                                   mainAxisSize: MainAxisSize.min,
-                                                   children: [
-                                                     const Icon(
-                                                       Icons.map_outlined,
-                                                       color: Color(0xFF7C57FC),
-                                                       size: 20,
-                                                     ),
-                                                     const SizedBox(width: 8),
-                                                     Text(
-                                                       "Map",
-                                                       style: GoogleFonts.ibmPlexSansArabic(
-                                                         color: const Color(0xFF7C57FC),
-                                                         fontWeight: FontWeight.bold,
-                                                         fontSize: 14,
-                                                       ),
-                                                     ),
-                                                   ],
-                                                 ),
-                                               ),
-                                             ),
-                                           ),
-                                         ),
-                                       ),
-                                     ),
-                                     AnimatedPositioned(
-                                        duration: const Duration(milliseconds: 250),
-                                        curve: Curves.easeInOut,
-                                        right: 16,
-                                        bottom: 66 + bottomPadding,
-                                        child: IgnorePointer(
-                                          ignoring: !(state.selectedNavIndex == 0 || state.selectedNavIndex == 4) || isPlaceSelectedOnMap,
-                                          child: AnimatedOpacity(
-                                            duration: const Duration(milliseconds: 200),
-                                            opacity: ((state.selectedNavIndex == 0 || state.selectedNavIndex == 4) && !isPlaceSelectedOnMap) ? 1.0 : 0.0,
-                                            child: _buildFAB(state),
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
@@ -687,220 +345,5 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with SingleTickerProvid
     );
   }
 
-  Widget _buildHeader(TimelineState state) {
-    final unreadNotificationsCount = ref.watch(notificationsViewModelProvider).unreadCount;
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Left aligned profile avatar
-          Align(
-            alignment: Alignment.centerLeft,
-            child: GestureDetector(
-              onTap: _onAvatarTapped,
-              child: Hero(
-                tag: 'user-avatar',
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                  ),
-                  child: ClipOval(
-                    child: state.currentUserAvatarUrl != null && state.currentUserAvatarUrl!.isNotEmpty
-                        ? CustomCachedImage(url: state.currentUserAvatarUrl!, fit: BoxFit.cover)
-                        : Image.asset(
-                            'assets/home/images/avatar_placeholder.png',
-                            fit: BoxFit.cover,
-                          ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Centered logo
-          SvgPicture.asset(
-            'assets/Splash/logo.svg',
-            height: 28,
-            fit: BoxFit.contain,
-            colorFilter: ColorFilter.mode(
-              Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF7C57FC),
-              BlendMode.srcIn,
-            ),
-          ),
-          // Right aligned actions: Search and Notifications
-          Align(
-            alignment: Alignment.centerRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TimelineSearchScreen(
-                          posts: state.posts,
-                          onLikeToggle: (id) => ref.read(timelineViewModelProvider.notifier).toggleLike(id),
-                          onBookmarkToggle: (id, isSaved) => ref.read(timelineViewModelProvider.notifier).updateBookmarkState(id, isSaved),
-                          onPostUpdated: () => ref.read(timelineViewModelProvider.notifier).refreshAll(),
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF181C26)
-                          : const Color(0xFFF4F5F7),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        'assets/home/icons/search_01.svg',
-                        width: 18,
-                        height: 18,
-                        colorFilter: ColorFilter.mode(
-                          Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF181C26),
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationsScreen(showBackButton: true),
-                      ),
-                    );
-                  },
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? const Color(0xFF181C26)
-                              : const Color(0xFFF4F5F7),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: SvgPicture.asset(
-                            'assets/home/icons/notification_02.svg',
-                            width: 18,
-                            height: 18,
-                            colorFilter: ColorFilter.mode(
-                              Theme.of(context).brightness == Brightness.dark ? Colors.white : const Color(0xFF181C26),
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (unreadNotificationsCount > 0)
-                        Positioned(
-                          top: -2,
-                          right: -2,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF4D4F),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                            child: Center(
-                              child: Text(
-                                unreadNotificationsCount > 99 ? '99+' : '$unreadNotificationsCount',
-                                style: GoogleFonts.ibmPlexSansArabic(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-
-  void _openFollowFriends(Set<String> followedUsernames) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return FollowFriendsBottomSheet(
-          followedUsernames: followedUsernames,
-          onFollowChanged: (username, isFollowed) {
-            ref.read(timelineViewModelProvider.notifier).toggleFollow(username, isFollowed);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildFAB(TimelineState state) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        if (state.selectedNavIndex == 4) {
-          _messagesKey.currentState?.showNewChatBottomSheet();
-        } else {
-          if (state.isFirstCheckIn) {
-            ref.read(timelineViewModelProvider.notifier).setShowCoachmark(true);
-          } else {
-            _openCheckInComposer();
-          }
-        }
-      },
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: const BoxDecoration(
-          color: Color(0xFF7C57FC),
-          shape: BoxShape.circle,
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, animation) {
-            return ScaleTransition(scale: animation, child: child);
-          },
-          child: state.selectedNavIndex == 4
-              ? const Icon(
-                  CupertinoIcons.plus_bubble,
-                  key: ValueKey('chat_icon'),
-                  color: Colors.white,
-                  size: 26,
-                )
-              : const Icon(
-                  Icons.add,
-                  key: ValueKey('add_icon'),
-                  color: Colors.white,
-                  size: 28,
-                ),
-        ),
-      ),
-    );
-  }
 }

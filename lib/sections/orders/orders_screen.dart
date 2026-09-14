@@ -20,6 +20,9 @@ import 'widgets/daily_offers_widget.dart';
 import 'widgets/featured_meals_widget.dart';
 import 'widgets/picks_section_widget.dart';
 import 'widgets/cuisines_section_widget.dart';
+import 'widgets/restaurant_card_widget.dart';
+import 'screens/restaurants_list_screen.dart';
+import 'providers/restaurants_provider.dart';
 
 class OrdersScreen extends ConsumerStatefulWidget {
   final VoidCallback onExploreTapped;
@@ -384,6 +387,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                           section: _findSection(sections, 'categories')!,
                           onItemTapped: (item) {
                             HapticFeedback.lightImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => RestaurantsListScreen(initialCategory: item.title),
+                              ),
+                            );
                           },
                         ),
 
@@ -433,8 +442,68 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                           section: _findSection(sections, 'cuisines')!,
                           onItemTapped: (cuisine) {
                             HapticFeedback.lightImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => RestaurantsListScreen(initialCategory: cuisine.title),
+                              ),
+                            );
                           },
                         ),
+
+                      // Section 6: المطاعم المميزة (Screenshot 1)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final restaurants = ref.watch(filteredRestaurantsProvider);
+                          if (restaurants.isEmpty) return const SizedBox.shrink();
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => const RestaurantsListScreen()),
+                                        );
+                                      },
+                                      child: Text(
+                                        'عرض الكل',
+                                        style: GoogleFonts.ibmPlexSansArabic(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: const Color(0xFF7C57FC),
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      'المطاعم',
+                                      style: GoogleFonts.ibmPlexSansArabic(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF1E2022),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: restaurants.length,
+                                itemBuilder: (context, idx) {
+                                  return RestaurantCardWidget(restaurant: restaurants[idx]);
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -471,6 +540,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                         GestureDetector(
                           onTap: () {
                             HapticFeedback.lightImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RestaurantsListScreen()),
+                            );
                           },
                           child: Container(
                             width: 38,
@@ -902,42 +975,51 @@ class _TopPromotionalBannerHeaderState extends ConsumerState<_TopPromotionalBann
 
                 const SizedBox(height: 12),
 
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Container(
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(100),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.12),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'ابحث عن المطاعم والمتاجر',
-                            textAlign: TextAlign.right,
-                            style: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF9CA3AF),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const RestaurantsListScreen()),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Container(
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(100),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'ابحث عن المطاعم والمتاجر',
+                              textAlign: TextAlign.right,
+                              style: GoogleFonts.ibmPlexSansArabic(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF9CA3AF),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.search_rounded,
-                          size: 22,
-                          color: Color(0xFF4B5563),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.search_rounded,
+                            size: 22,
+                            color: Color(0xFF4B5563),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1015,64 +1097,6 @@ class _BannerDotsIndicator extends ConsumerWidget {
   }
 }
 
-class _SleekOutlinePin extends StatelessWidget {
-  final Color color;
-  final double size;
-
-  const _SleekOutlinePin({
-    this.color = const Color(0xFF00A651),
-    this.size = 13,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size * 1.25),
-      painter: _OutlinePinPainter(color: color),
-    );
-  }
-}
-
-class _OutlinePinPainter extends CustomPainter {
-  final Color color;
-  _OutlinePinPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    const strokeWidth = 1.35;
-
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final r = w / 2;
-    final path = Path();
-    path.moveTo(r, h);
-    path.cubicTo(w * 0.15, h * 0.65, 0, h * 0.45, 0, r);
-    path.arcToPoint(
-      Offset(w, r),
-      radius: Radius.circular(r),
-      clockwise: true,
-    );
-    path.cubicTo(w, h * 0.45, w * 0.85, h * 0.65, r, h);
-    path.close();
-    canvas.drawPath(path, paint);
-
-    final dotPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
-    canvas.drawCircle(Offset(r, r), r * 0.35, dotPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 class _OutOfCoverageIllustration extends StatelessWidget {
   const _OutOfCoverageIllustration();
